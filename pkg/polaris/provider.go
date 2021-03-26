@@ -31,7 +31,7 @@ import (
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Provider -
+// Provider defines the schema and resource map for the Polaris provider.
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
@@ -52,15 +52,17 @@ func Provider() *schema.Provider {
 	}
 }
 
-// providerConfigure -
+// providerConfigure configures the Polaris provider.
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	account := d.Get("account").(string)
 
+	// Load default configuration from the users home folder.
 	polConfig, err := polaris.DefaultConfig(account)
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}
 
+	// Create the Polaris client.
 	polClient, err := polaris.NewClient(polConfig, log.StandardLogger{})
 	if err != nil {
 		return nil, diag.FromErr(err)
