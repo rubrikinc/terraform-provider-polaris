@@ -20,16 +20,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-VERSION=0.0.3
+VERSION ?= 0.0.3
 
-default: install
+GOOS   = $(shell go env GOOS)
+GOARCH = $(shell go env GOARCH)
+
+.PHONY: build test all build_darwin_amd64 build_linux_amd64 build_windows_amd64 install
 
 build:
 	CGO_ENABLED=0 go build ./cmd/terraform-provider-polaris
 
 test:
-	CGO_ENABLED=0 go test -v ./...
+	CGO_ENABLED=0 go test -cover ./...
 
 install: build
-	@mkdir -p ~/.terraform.d/plugins/terraform.rubrik.com/rubrik/polaris/${VERSION}/linux_amd64
-	cp terraform-provider-polaris ~/.terraform.d/plugins/terraform.rubrik.com/rubrik/polaris/${VERSION}/linux_amd64
+	@mkdir -p ~/.terraform.d/plugins/terraform.rubrik.com/rubrik/polaris/$(VERSION)/$(GOOS)_$(GOARCH)
+	cp terraform-provider-polaris ~/.terraform.d/plugins/terraform.rubrik.com/rubrik/polaris/$(VERSION)/$(GOOS)_$(GOARCH)
+
+all: build_darwin_amd64 build_linux_amd64 build_windows_amd64
+
+build_darwin_amd64:
+	CGO_ENABLED=0 GOOS="darwin" GOARCH="amd64" go build -o ./build/darwin_amd64/ ./cmd/terraform-provider-polaris
+
+build_linux_amd64:
+	CGO_ENABLED=0 GOOS="linux" GOARCH="amd64" go build -o ./build/linux_amd64/ ./cmd/terraform-provider-polaris
+
+build_windows_amd64:
+	CGO_ENABLED=0 GOOS="windows" GOARCH="amd64" go build -o ./build/windows_amd64/ ./cmd/terraform-provider-polaris
