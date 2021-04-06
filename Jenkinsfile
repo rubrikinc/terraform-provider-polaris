@@ -42,6 +42,9 @@ pipeline {
             }
         }
         stage('Build') {
+            environment {
+                VERSION = sh(script: 'if [[ $TAG_NAME =~ ^v[0-9]+.[0-9]+.[0-9]+$ ]]; then echo ${TAG_NAME:1}; else echo 0.0.1; fi', returnStdout: true).trim()
+            }
             steps {
                 sh 'make clean all'
             }
