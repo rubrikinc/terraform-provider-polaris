@@ -5,24 +5,22 @@ pipeline {
     }
     stages {
         stage('lint') {
+            environment {
+                GO_GET_TOKEN = credentials('go-get-token')
+            }
             steps {
+                sh 'echo "machine github.com login ${GO_GET_TOKEN}" > ~/.netrc'
                 sh 'go vet ./...'
             }
         }
         stage('build') {
-            environment {
-                CGO_ENABLED = '0'
-            }
             steps {
-                sh 'go build ./...'
+                sh 'make all'
             }
         }
         stage('test') {
-            environment {
-                CGO_ENABLED = '0'
-            }
             steps {
-                sh 'go test -cover ./...'
+                sh 'make test'
             }
         }
     }
