@@ -35,24 +35,15 @@ pipeline {
                 sh 'go vet ./...'
             }
         }
-        stage('Build') {
-            when {
-                expression {
-                    !(GIT_LOCAL_BRANCH ==~​ /v\d+.\d+.\d+/)
-                }
-            }
+        stage('Info') {
             steps {
-                sh 'make clean all'
+                sh 'echo "Branch name: ${BRANCH_NAME}"'
+                sh 'echo "Tag name: ${TAG_NAME}"'
             }
         }
-        stage('Build Release') {
-            when {
-                expression {
-                    GIT_LOCAL_BRANCH ==~​ /v\d+.\d+.\d+/
-                }
-            }
+        stage('Build') {
             steps {
-                sh 'VERSION=${GIT_LOCAL_BRANCH:1} make clean all'
+                sh 'make clean all'
             }
         }
         stage('Test') {
