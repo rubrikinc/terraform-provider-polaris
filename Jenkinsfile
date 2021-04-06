@@ -35,14 +35,10 @@ pipeline {
                 sh 'go vet ./...'
             }
         }
-        stage('Info') {
-            steps {
-                sh 'echo "Branch name: ${BRANCH_NAME}"'
-                sh 'echo "Tag name: ${TAG_NAME}"'
-            }
-        }
         stage('Build') {
             environment {
+                // Extract version information from tags named as vX.Y.Z.
+                // Other tags and branches are defaulted to v0.0.1.
                 VERSION = sh(script: 'if [[ $TAG_NAME =~ ^v[0-9]+.[0-9]+.[0-9]+$ ]]; then echo ${TAG_NAME:1}; else echo 0.0.1; fi', returnStdout: true).trim()
             }
             steps {

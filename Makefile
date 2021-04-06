@@ -28,19 +28,26 @@ GOARCH = $(shell go env GOARCH)
 
 .PHONY: build test install all build_darwin_amd64 build_linux_amd64 build_windows_amd64 clean
 
+# Build for host OS/ARCH
 build:
 	CGO_ENABLED=0 go build -o build/$(PROVIDER)/$(GOOS)_$(GOARCH)/ ./cmd/terraform-provider-polaris
-
-test:
-	CGO_ENABLED=0 go test -cover ./...
 
 install: build
 	@mkdir -p ~/.terraform.d/plugins/
 	cp -r build/*/ ~/.terraform.d/plugins/
 
+test:
+	CGO_ENABLED=0 go test -cover ./...
+
+clean:
+	-@rm -r ./build
+
+# Build for all supported OS/ARCH pairs and create a zip file with the
+# resulting binaries.
 all: build_darwin_amd64 build_linux_amd64 build_windows_amd64
 	cd build; zip -r terraform-provider-polaris.zip terraform.rubrik.com
 
+# Build for specific OS/ARCH
 build_darwin_amd64:
 	CGO_ENABLED=0 GOOS="darwin" GOARCH="amd64" go build -o build/$(PROVIDER)/darwin_amd64/ ./cmd/terraform-provider-polaris
 	@cd build; sha256sum $(PROVIDER)/darwin_amd64/terraform-provider-polaris >> terraform-provider-polaris.sha256
@@ -52,6 +59,3 @@ build_linux_amd64:
 build_windows_amd64:
 	CGO_ENABLED=0 GOOS="windows" GOARCH="amd64" go build -o build/$(PROVIDER)/windows_amd64/ ./cmd/terraform-provider-polaris
 	@cd build; sha256sum $(PROVIDER)/windows_amd64/terraform-provider-polaris.exe >> terraform-provider-polaris.sha256
-
-clean:
-	-@rm -r ./build
