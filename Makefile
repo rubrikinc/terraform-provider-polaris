@@ -25,7 +25,7 @@ VERSION ?= 0.0.3
 GOOS   = $(shell go env GOOS)
 GOARCH = $(shell go env GOARCH)
 
-.PHONY: build test all build_darwin_amd64 build_linux_amd64 build_windows_amd64 install
+.PHONY: build test install all build_darwin_amd64 build_linux_amd64 build_windows_amd64 clean
 
 build:
 	CGO_ENABLED=0 go build ./cmd/terraform-provider-polaris
@@ -47,3 +47,6 @@ build_linux_amd64:
 
 build_windows_amd64:
 	CGO_ENABLED=0 GOOS="windows" GOARCH="amd64" go build -o ./build/windows_amd64/ ./cmd/terraform-provider-polaris
+
+clean:
+	-@rm -r ./build
