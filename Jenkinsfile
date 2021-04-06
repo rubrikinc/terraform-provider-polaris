@@ -37,8 +37,8 @@ pipeline {
         }
         stage('Build') {
             when {
-                not {
-                    tag pattern: 'v\\d+.\\d+.\\d+', comparator: 'REGEXP'
+                expression {
+                    !(GIT_LOCAL_BRANCH ==~​ /v\d+.\d+.\d+/)
                 }
             }
             steps {
@@ -47,13 +47,15 @@ pipeline {
         }
         stage('Build Release') {
             when {
-                tag pattern: 'v\\d+.\\d+.\\d+', comparator: 'REGEXP'
+                expression {
+                    GIT_LOCAL_BRANCH ==~​ /v\d+.\d+.\d+/
+                }
             }
             steps {
-                sh 'VERSION=${TAG_NAME:1} make clean all'
+                sh 'VERSION=${GIT_LOCAL_BRANCH:1} make clean all'
             }
         }
-        stage('test') {
+        stage('Test') {
             steps {
                 sh 'make test'
             }
