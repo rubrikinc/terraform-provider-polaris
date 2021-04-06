@@ -40,13 +40,16 @@ install: build
 all: build_darwin_amd64 build_linux_amd64 build_windows_amd64
 
 build_darwin_amd64:
-	CGO_ENABLED=0 GOOS="darwin" GOARCH="amd64" go build -o ./build/darwin_amd64/ ./cmd/terraform-provider-polaris
+	CGO_ENABLED=0 GOOS="darwin" GOARCH="amd64" go build -o build/darwin_amd64/ ./cmd/terraform-provider-polaris
+	@cd build/darwin_amd64; sha256sum terraform-provider-polaris > terraform-provider-polaris.sha256
 
 build_linux_amd64:
-	CGO_ENABLED=0 GOOS="linux" GOARCH="amd64" go build -o ./build/linux_amd64/ ./cmd/terraform-provider-polaris
+	CGO_ENABLED=0 GOOS="linux" GOARCH="amd64" go build -o build/linux_amd64/ ./cmd/terraform-provider-polaris
+	@cd build/linux_amd64; sha256sum terraform-provider-polaris > terraform-provider-polaris.sha256
 
 build_windows_amd64:
-	CGO_ENABLED=0 GOOS="windows" GOARCH="amd64" go build -o ./build/windows_amd64/ ./cmd/terraform-provider-polaris
+	CGO_ENABLED=0 GOOS="windows" GOARCH="amd64" go build -o build/windows_amd64/ ./cmd/terraform-provider-polaris
+	@cd build/windows_amd64; sha256sum terraform-provider-polaris.exe > terraform-provider-polaris.sha256
 
 clean:
 	-@rm -r ./build
