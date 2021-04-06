@@ -26,7 +26,7 @@ pipeline {
         go 'go-1.16.2'
     }
     stages {
-        stage('lint') {
+        stage('Lint') {
             environment {
                 GO_GET_TOKEN = credentials('go-get-token')
             }
@@ -35,9 +35,22 @@ pipeline {
                 sh 'go vet ./...'
             }
         }
-        stage('build') {
+        stage('Build') {
+            when {
+                not {
+                    tag pattern: 'v\\d+.\\d+.\\d+', comparator: 'REGEXP'
+                }
+            }
             steps {
-                sh 'make all'
+                sh 'make clean all'
+            }
+        }
+        stage('Build Release') {
+            when {
+                tag pattern: 'v\\d+.\\d+.\\d+', comparator: 'REGEXP'
+            }
+            steps {
+                sh 'VERSION=${TAG_NAME:1} make clean all'
             }
         }
         stage('test') {

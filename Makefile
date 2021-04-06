@@ -20,8 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-VERSION ?= 0.0.3
-
+VERSION ?= 0.0.1
 PROVIDER = terraform.rubrik.com/rubrik/polaris/$(VERSION)
 
 GOOS   = $(shell go env GOOS)
