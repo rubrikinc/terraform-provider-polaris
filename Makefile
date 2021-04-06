@@ -30,16 +30,17 @@ GOARCH = $(shell go env GOARCH)
 .PHONY: build test install all build_darwin_amd64 build_linux_amd64 build_windows_amd64 clean
 
 build:
-	CGO_ENABLED=0 go build ./cmd/terraform-provider-polaris
+	CGO_ENABLED=0 go build -o build/$(PROVIDER)/$(GOOS)_$(GOARCH)/ ./cmd/terraform-provider-polaris
 
 test:
 	CGO_ENABLED=0 go test -cover ./...
 
 install: build
-	@mkdir -p ~/.terraform.d/plugins/$(PROVIDER)/$(GOOS)_$(GOARCH)
-	cp terraform-provider-polaris ~/.terraform.d/plugins/$(PROVIDER)/$(GOOS)_$(GOARCH)
+	@mkdir -p ~/.terraform.d/plugins/
+	cp -r build/*/ ~/.terraform.d/plugins/
 
 all: build_darwin_amd64 build_linux_amd64 build_windows_amd64
+	cd build; zip -r terraform-provider-polaris.zip terraform.rubrik.com
 
 build_darwin_amd64:
 	CGO_ENABLED=0 GOOS="darwin" GOARCH="amd64" go build -o build/$(PROVIDER)/darwin_amd64/ ./cmd/terraform-provider-polaris
