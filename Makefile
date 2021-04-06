@@ -22,6 +22,8 @@
 
 VERSION ?= 0.0.3
 
+PROVIDER = terraform.rubrik.com/rubrik/polaris/$(VERSION)
+
 GOOS   = $(shell go env GOOS)
 GOARCH = $(shell go env GOARCH)
 
@@ -34,22 +36,22 @@ test:
 	CGO_ENABLED=0 go test -cover ./...
 
 install: build
-	@mkdir -p ~/.terraform.d/plugins/terraform.rubrik.com/rubrik/polaris/$(VERSION)/$(GOOS)_$(GOARCH)
-	cp terraform-provider-polaris ~/.terraform.d/plugins/terraform.rubrik.com/rubrik/polaris/$(VERSION)/$(GOOS)_$(GOARCH)
+	@mkdir -p ~/.terraform.d/plugins/$(PROVIDER)/$(GOOS)_$(GOARCH)
+	cp terraform-provider-polaris ~/.terraform.d/plugins/$(PROVIDER)/$(GOOS)_$(GOARCH)
 
 all: build_darwin_amd64 build_linux_amd64 build_windows_amd64
 
 build_darwin_amd64:
-	CGO_ENABLED=0 GOOS="darwin" GOARCH="amd64" go build -o build/darwin_amd64/ ./cmd/terraform-provider-polaris
-	@cd build/darwin_amd64; sha256sum terraform-provider-polaris > terraform-provider-polaris.sha256
+	CGO_ENABLED=0 GOOS="darwin" GOARCH="amd64" go build -o build/$(PROVIDER)/darwin_amd64/ ./cmd/terraform-provider-polaris
+	@cd build; sha256sum $(PROVIDER)/darwin_amd64/terraform-provider-polaris >> terraform-provider-polaris.sha256
 
 build_linux_amd64:
-	CGO_ENABLED=0 GOOS="linux" GOARCH="amd64" go build -o build/linux_amd64/ ./cmd/terraform-provider-polaris
-	@cd build/linux_amd64; sha256sum terraform-provider-polaris > terraform-provider-polaris.sha256
+	CGO_ENABLED=0 GOOS="linux" GOARCH="amd64" go build -o build/$(PROVIDER)/linux_amd64/ ./cmd/terraform-provider-polaris
+	@cd build; sha256sum $(PROVIDER)/linux_amd64/terraform-provider-polaris >> terraform-provider-polaris.sha256
 
 build_windows_amd64:
-	CGO_ENABLED=0 GOOS="windows" GOARCH="amd64" go build -o build/windows_amd64/ ./cmd/terraform-provider-polaris
-	@cd build/windows_amd64; sha256sum terraform-provider-polaris.exe > terraform-provider-polaris.sha256
+	CGO_ENABLED=0 GOOS="windows" GOARCH="amd64" go build -o build/$(PROVIDER)/windows_amd64/ ./cmd/terraform-provider-polaris
+	@cd build; sha256sum $(PROVIDER)/windows_amd64/terraform-provider-polaris.exe >> terraform-provider-polaris.sha256
 
 clean:
 	-@rm -r ./build

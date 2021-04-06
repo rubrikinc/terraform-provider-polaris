@@ -16,6 +16,7 @@ pipeline {
         stage('build') {
             steps {
                 sh 'make all'
+                zip zipFile: 'terraform-provider-polaris.zip', dir: 'build', overwrite: true
             }
         }
         stage('test') {
@@ -26,7 +27,7 @@ pipeline {
     }
     post {
         always {
-            archiveArtifacts artifacts: 'build/**', onlyIfSuccessful: true
+            archiveArtifacts artifacts: 'terraform-provider-polaris.zip', onlyIfSuccessful: true
         }
     }
 }
