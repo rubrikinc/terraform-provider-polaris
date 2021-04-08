@@ -25,21 +25,22 @@ pipeline {
     tools {
         go 'go-1.16.2'
     }
+    environment {
+        // Install GitHub token, required to access private repositories using
+        // go get.
+        NETRC = credentials('provider-netrc-file')
+    }
     stages {
         stage('Lint') {
-            environment {
-                GO_GET_TOKEN = credentials('go-get-token')
-            }
             steps {
-                sh 'echo "machine github.com login ${GO_GET_TOKEN}" > ~/.netrc'
                 sh 'go vet ./...'
             }
         }
         stage('Build') {
             environment {
-                // Extract version information from tags named as vX.Y.Z.
-                // Other tags and branches are defaulted to v0.0.1.
-                VERSION = sh(script: 'if [[ $TAG_NAME =~ ^v[0-9]+.[0-9]+.[0-9]+$ ]]; then echo ${TAG_NAME:1}; else echo 0.0.1; fi', returnStdout: true).trim()
+                // Extract version information from tags named as vX.Y.Z. Other
+                // tags and branches are defaulted to v0.0.1.
+                PROVIDER_VERSION = env.TAG_NAME ==~ /^v[0-9]+.[0-9]+.[0-9]+$/ ? env.TAG_NAME.substring(1) : '0.0.1'
             }
             steps {
                 sh 'make clean all'

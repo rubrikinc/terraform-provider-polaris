@@ -20,8 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-VERSION ?= 0.0.1
-PROVIDER = terraform.rubrik.com/rubrik/polaris/$(VERSION)
+PROVIDER_VERSION ?= 0.0.1
+PROVIDER = terraform.rubrik.com/rubrik/polaris/$(PROVIDER_VERSION)
 
 GOOS   = $(shell go env GOOS)
 GOARCH = $(shell go env GOARCH)
@@ -37,7 +37,7 @@ install: build
 	cp -r build/*/ ~/.terraform.d/plugins/
 
 test:
-	CGO_ENABLED=0 go test -cover ./...
+	CGO_ENABLED=0 go test -cover -v ./...
 
 clean:
 	-@rm -r ./build
