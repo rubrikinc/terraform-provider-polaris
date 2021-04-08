@@ -59,6 +59,8 @@ pipeline {
     }
 }
 
+// Trick to allow groovy script to be evaluated when assigning a value to an
+// environment variable.
 def eval(expr) {
     return expr
 }
