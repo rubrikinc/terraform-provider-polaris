@@ -40,7 +40,7 @@ pipeline {
             environment {
                 // Extract version information from tags named as vX.Y.Z. Other
                 // tags and branches are defaulted to v0.0.1.
-                PROVIDER_VERSION = env.TAG_NAME ==~ /^v[0-9]+.[0-9]+.[0-9]+$/ ? env.TAG_NAME.substring(1) : '0.0.1'
+                PROVIDER_VERSION = eval(env.TAG_NAME ==~ /^v[0-9]+.[0-9]+.[0-9]+$/ ? env.TAG_NAME.substring(1) : '0.0.1')
             }
             steps {
                 sh 'make clean all'
@@ -57,4 +57,8 @@ pipeline {
             archiveArtifacts artifacts: 'build/terraform-provider-polaris.*', onlyIfSuccessful: true
         }
     }
+}
+
+def eval(expr) {
+    return expr
 }
