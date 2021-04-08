@@ -63,7 +63,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 
 	// Create the Polaris client.
-	polClient, err := polaris.NewClient(polConfig, log.StandardLogger{})
+	polClient, err := polaris.NewClient(polConfig, &log.StandardLogger{})
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}
