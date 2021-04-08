@@ -25,14 +25,15 @@ pipeline {
     tools {
         go 'go-1.16.2'
     }
-    environment {
-        // Install GitHub token, required to access private repositories using
-        // go get.
-        NETRC = credentials('provider-netrc-file')
-    }
     stages {
         stage('Lint') {
+            environment {
+                // Install tokens required to access private repositories using
+                // go get.
+                PROVIDER_NETRC = credentials('provider-netrc-file')
+            }
             steps {
+                sh 'cp -f ${PROVIDER_NETRC} ~/.netrc'
                 sh 'go vet ./...'
             }
         }
@@ -49,6 +50,7 @@ pipeline {
         stage('Test') {
             steps {
                 sh 'make test'
+                sh 'rm ~/.netrc'
             }
         }
     }
