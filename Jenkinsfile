@@ -56,7 +56,7 @@ pipeline {
     }
     post {
         always {
-            archiveArtifacts artifacts: 'build/terraform-provider-polaris.*', onlyIfSuccessful: true
+            archiveArtifacts artifacts: 'build/terraform-provider-polaris*', onlyIfSuccessful: true
         }
     }
 }

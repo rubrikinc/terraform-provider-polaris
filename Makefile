@@ -45,17 +45,17 @@ clean:
 # Build for all supported OS/ARCH pairs and create a zip file with the
 # resulting binaries.
 all: build_darwin_amd64 build_linux_amd64 build_windows_amd64
-	cd build; zip -r terraform-provider-polaris.zip terraform.rubrik.com
+	cd build; zip -r terraform-provider-polaris-$(PROVIDER_VERSION).zip terraform.rubrik.com
 
 # Build for specific OS/ARCH
 build_darwin_amd64:
 	CGO_ENABLED=0 GOOS="darwin" GOARCH="amd64" go build -o build/$(PROVIDER)/darwin_amd64/ ./cmd/terraform-provider-polaris
-	@cd build; sha256sum $(PROVIDER)/darwin_amd64/terraform-provider-polaris >> terraform-provider-polaris.sha256
+	@cd build; sha256sum $(PROVIDER)/darwin_amd64/terraform-provider-polaris >> terraform-provider-polaris-$(PROVIDER_VERSION).sha256
 
 build_linux_amd64:
 	CGO_ENABLED=0 GOOS="linux" GOARCH="amd64" go build -o build/$(PROVIDER)/linux_amd64/ ./cmd/terraform-provider-polaris
-	@cd build; sha256sum $(PROVIDER)/linux_amd64/terraform-provider-polaris >> terraform-provider-polaris.sha256
+	@cd build; sha256sum $(PROVIDER)/linux_amd64/terraform-provider-polaris >> terraform-provider-polaris-$(PROVIDER_VERSION).sha256
 
 build_windows_amd64:
 	CGO_ENABLED=0 GOOS="windows" GOARCH="amd64" go build -o build/$(PROVIDER)/windows_amd64/ ./cmd/terraform-provider-polaris
-	@cd build; sha256sum $(PROVIDER)/windows_amd64/terraform-provider-polaris.exe >> terraform-provider-polaris.sha256
+	@cd build; sha256sum $(PROVIDER)/windows_amd64/terraform-provider-polaris.exe >> terraform-provider-polaris-$(PROVIDER_VERSION).sha256
