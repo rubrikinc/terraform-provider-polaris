@@ -26,7 +26,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -52,12 +51,6 @@ var awsRegions = []string{
 	"us-east-2",
 	"us-west-1",
 	"us-west-2",
-}
-
-// cleanRegionName makes sure that the region is all lower case letters and
-// uses hyphens to separate the parts of the region name.
-func cleanRegionName(name string) string {
-	return strings.ReplaceAll(strings.ToLower(name), "_", "-")
 }
 
 // fromAccountResourceID converts an account resource ID to a Polaris account
@@ -86,6 +79,11 @@ func resourceAwsAccount() *schema.Resource {
 		DeleteContext: awsDeleteAccount,
 
 		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Account name in Polaris.",
+			},
 			"profile": {
 				Type:        schema.TypeString,
 				Required:    true,
@@ -109,38 +107,34 @@ func resourceAwsAccount() *schema.Resource {
 func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsCreateAccount")
 
-	polClient := m.(*polaris.Client)
-
-	// Get resource arguments.
+	client := m.(*polaris.Client)
 	profile := d.Get("profile").(string)
-	var regions []string
-	for _, region := range d.Get("regions").(*schema.Set).List() {
-		regions = append(regions, region.(string))
-	}
-
-	// Load AWS configuration.
-	awsConfig, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
-	if err != nil {
-		return diag.FromErr(err)
-	}
 
 	// Check if the account already exist in Polaris.
-	account, err := polClient.AwsAccountFromConfig(ctx, awsConfig)
+	account, err := client.AwsAccount(ctx, polaris.FromAwsProfile(profile))
 	if err == nil {
-		return diag.Errorf("Account %q already added to Polaris", account.NativeID)
+		return diag.Errorf("Account %q already added to Polaris", profile)
 	}
 	if err != polaris.ErrAccountNotFound {
 		return diag.FromErr(err)
 	}
 
+	var withOpts []*polaris.WithOption
+	if name, ok := d.GetOk("name"); ok {
+		withOpts = append(withOpts, polaris.WithName(name.(string)))
+	}
+	for _, region := range d.Get("regions").(*schema.Set).List() {
+		withOpts = append(withOpts, polaris.WithRegion(region.(string)))
+	}
+
 	// Add the account.
-	if err := polClient.AwsAccountAdd(ctx, awsConfig, regions); err != nil {
+	if err := client.AwsAccountAdd(ctx, polaris.FromAwsProfile(profile), withOpts...); err != nil {
 		return diag.FromErr(err)
 	}
 
 	// Lookup the ID and AWS account ID of the newly added account. Note that
 	// the resource ID is created from both.
-	account, err = polClient.AwsAccountFromConfig(ctx, awsConfig)
+	account, err = client.AwsAccount(ctx, polaris.FromAwsProfile(profile))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -157,7 +151,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadAccount")
 
-	polClient := m.(*polaris.Client)
+	client := m.(*polaris.Client)
 
 	// Get the AWS account ID from the local resource ID.
 	_, awsAccountID, err := fromAccountResourceID(d.Id())
@@ -166,7 +160,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	}
 
 	// Lookup the Polaris cloud account using the AWS account ID.
-	account, err := polClient.AwsAccountFromID(ctx, awsAccountID)
+	account, err := client.AwsAccount(ctx, polaris.WithAwsID(awsAccountID))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -179,7 +173,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		}
 
 		for _, region := range feature.AwsRegions {
-			regions.Add(cleanRegionName(region))
+			regions.Add(region)
 		}
 		if err := d.Set("regions", &regions); err != nil {
 			return diag.FromErr(err)
@@ -195,7 +189,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsUpdateAccount")
 
-	polClient := m.(*polaris.Client)
+	client := m.(*polaris.Client)
 
 	// Get the AWS account ID from the local resource ID.
 	_, awsAccountID, err := fromAccountResourceID(d.Id())
@@ -210,7 +204,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 			regions = append(regions, region.(string))
 		}
 
-		polClient.AwsAccountSetRegions(ctx, awsAccountID, regions)
+		client.AwsAccountSetRegions(ctx, polaris.WithAwsID(awsAccountID), regions...)
 	}
 
 	return nil
@@ -221,26 +215,14 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsDeleteAccount")
 
-	polClient := m.(*polaris.Client)
-
-	// Get the AWS account ID from the local resource ID.
-	_, awsAccountID, err := fromAccountResourceID(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	client := m.(*polaris.Client)
 
 	// Get the old resource arguments.
 	oldProfile, _ := d.GetChange("profile")
 	profile := oldProfile.(string)
 
-	// Load AWS configuration.
-	awsConfig, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
 	// Remove the account.
-	if err := polClient.AwsAccountRemove(ctx, awsConfig, awsAccountID); err != nil {
+	if err := client.AwsAccountRemove(ctx, polaris.FromAwsProfile(profile)); err != nil {
 		return diag.FromErr(err)
 	}
 	d.SetId("")

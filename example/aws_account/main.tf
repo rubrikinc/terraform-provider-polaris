@@ -22,18 +22,19 @@ terraform {
   required_providers {
     polaris = {
       source  = "terraform.rubrik.com/rubrik/polaris"
-      version = "~> 0.0.3"
     }
   }
 }
 
 provider "polaris" {
-  account = "default"
+  account = "rubrik-trinity-lab"
 }
 
 resource "polaris_aws_account" "default" {
+  name = "Trinity-TPM-DevOps"
   profile = "default"
   regions = [
-    "us-east-2"
+    "us-east-2",
+    "us-west-2"
   ]
 }

@@ -40,7 +40,7 @@ func Provider() *schema.Provider {
 				Required:         true,
 				DefaultFunc:      schema.EnvDefaultFunc("RUBRIK_POLARIS_ACCOUNT", "default"),
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotEmpty),
-				Description:      "The account name to use when accessing Rubrik Polaris.",
+				Description:      "The account to use when accessing Rubrik Polaris.",
 			},
 		},
 
