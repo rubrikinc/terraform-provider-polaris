@@ -28,6 +28,8 @@ pipeline {
     stages {
         stage('Lint') {
             environment {
+                GOPRIVATE = 'github.com/trinity-team'
+
                 // Install tokens required to access private repositories using
                 // go get.
                 PROVIDER_NETRC = credentials('provider-netrc-file')
