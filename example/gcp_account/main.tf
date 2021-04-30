@@ -31,6 +31,6 @@ provider "polaris" {
 }
 
 resource "polaris_gcp_project" "default" {
-    credentials = "trinity-fdse-3f88757a02a4.json"
-    project     = "trinity-fdse"
+  credentials = "trinity-fdse-3f88757a02a4.json"
+  project     = "trinity-fdse"
 }
