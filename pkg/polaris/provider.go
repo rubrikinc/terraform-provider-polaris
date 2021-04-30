@@ -22,6 +22,8 @@ package polaris
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -30,6 +32,23 @@ import (
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// fromResourceID converts a resource id to a Polaris cloud account id and
+// a native id. Native id in this context means CSP specific id.
+func fromResourceID(resourceID string) (cloudAccountID string, nativeID string, err error) {
+	parts := strings.Split(resourceID, ":")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("polaris: invalid resource id: %s", resourceID)
+	}
+
+	return parts[0], parts[1], nil
+}
+
+// toResourceID converts a Polaris cloud account id and a native id to a
+// resource id. Native id in this context means CSP specific id.
+func toResourceID(cloudAccountID, nativeID string) string {
+	return fmt.Sprintf("%s:%s", cloudAccountID, nativeID)
+}
 
 // Provider defines the schema and resource map for the Polaris provider.
 func Provider() *schema.Provider {
@@ -46,6 +65,7 @@ func Provider() *schema.Provider {
 
 		ResourcesMap: map[string]*schema.Resource{
 			"polaris_aws_account": resourceAwsAccount(),
+			"polaris_gcp_project": resourceGcpProject(),
 		},
 
 		ConfigureContextFunc: providerConfigure,

@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.2.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.2.0 // indirect
+	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.4.4
-	github.com/trinity-team/rubrik-polaris-sdk-for-go v0.0.5
+	github.com/trinity-team/rubrik-polaris-sdk-for-go v0.0.9
 )
