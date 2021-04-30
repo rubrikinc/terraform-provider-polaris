@@ -56,10 +56,17 @@ func Provider() *schema.Provider {
 		Schema: map[string]*schema.Schema{
 			"account": {
 				Type:             schema.TypeString,
-				Required:         true,
-				DefaultFunc:      schema.EnvDefaultFunc("RUBRIK_POLARIS_ACCOUNT", "default"),
+				Optional:         true,
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotEmpty),
-				Description:      "The account to use when accessing Rubrik Polaris.",
+				Description:      "The account name to use when accessing Rubrik Polaris.",
+				ExactlyOneOf:     []string{"account", "service_account"},
+			},
+			"service_account": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotEmpty),
+				Description:      "The service account file to use when accessing Rubrik Polaris.",
+				ExactlyOneOf:     []string{"account", "service_account"},
 			},
 		},
 
@@ -75,18 +82,34 @@ func Provider() *schema.Provider {
 // providerConfigure configures the Polaris provider.
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	account := d.Get("account").(string)
+	if account != "" {
+		polAccount, err := polaris.DefaultAccount(account)
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
 
-	// Load default configuration from the users home folder.
-	polConfig, err := polaris.DefaultConfig(account)
-	if err != nil {
-		return nil, diag.FromErr(err)
+		client, err := polaris.NewClient(polAccount, &log.StandardLogger{})
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+
+		return client, nil
 	}
 
-	// Create the Polaris client.
-	polClient, err := polaris.NewClient(polConfig, &log.StandardLogger{})
-	if err != nil {
-		return nil, diag.FromErr(err)
+	serviceAccount := d.Get("service_account").(string)
+	if serviceAccount != "" {
+		polAccount, err := polaris.ServiceAccountFromFile(serviceAccount)
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+
+		client, err := polaris.NewClientFromServiceAccount(polAccount, &log.StandardLogger{})
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+
+		return client, nil
 	}
 
-	return polClient, nil
+	return nil, diag.Errorf("account or service_account must be given")
 }
