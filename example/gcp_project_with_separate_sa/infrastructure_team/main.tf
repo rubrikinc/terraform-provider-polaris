@@ -18,6 +18,7 @@
 #  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 
+# Terraform configuration. Points Terraform to the Polaris provider.
 terraform {
   required_providers {
     polaris = {
@@ -26,11 +27,17 @@ terraform {
   }
 }
 
+# Polaris provider configuration. Points the provider to the Polaris service
+# account to use.
 provider "polaris" {
-  account = "rubrik-trinity-lab"
+  credentials = "${path.module}/polaris-service-account.json"
 }
 
+# Resource configuration. Add the GCP project trinity-fdse to Polaris. Requires
+# that a service account with has been added previously.
 resource "polaris_gcp_project" "default" {
-  credentials = "trinity-fdse-3f88757a02a4.json"
-  project     = "trinity-fdse"
+  organization_name = "Trinity Organization"
+  project = "trinity-fdse"
+  project_name = "Trinity FDSE"
+  project_number = 994761414559
 }

@@ -33,14 +33,9 @@ provider "polaris" {
   credentials = "${path.module}/polaris-service-account.json"
 }
 
-# Resource configuration. Add the AWS account identified by the default profile
-# to Polaris. Polaris will authenticate to AWS using an IAM role setup in a
-# CloudFormation stack.
-resource "polaris_aws_account" "default" {
-  name = "Trinity-AWS-FDSE"
-  profile = "default"
-  regions = [
-    "us-east-2",
-    "us-west-2"
-  ]
+# Resource configuration. Add the GCP project trinity-fdse to Polaris. Polaris
+# will authenticate to GCP using the provided GCP service account key file.
+resource "polaris_gcp_project" "default" {
+  credentials = "${path.module}/trinity-fdse-3f88757a02a4.json"
+  project     = "trinity-fdse"
 }

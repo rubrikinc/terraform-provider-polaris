@@ -62,9 +62,10 @@ func resourceAwsAccount() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Account name in Polaris.",
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "Account name in Polaris.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,
@@ -72,9 +73,10 @@ func resourceAwsAccount() *schema.Resource {
 				Description: "What should happen to snapshots when the account is removed from Polaris.",
 			},
 			"profile": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "AWS shared credentials file.",
+				Type:             schema.TypeString,
+				Required:         true,
+				Description:      "AWS shared credentials file.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"regions": {
 				Type: schema.TypeSet,
@@ -89,7 +91,7 @@ func resourceAwsAccount() *schema.Resource {
 	}
 }
 
-// awsCreateAccount run the Create operation for the AWS schema resource. This
+// awsCreateAccount run the Create operation for the AWS account resource. This
 // adds the AWS account to the Polaris platform.
 func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsCreateAccount")
@@ -134,7 +136,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
-// awsReadAccount run the Read operation for the AWS schema resource. This
+// awsReadAccount run the Read operation for the AWS account resource. This
 // reads the state of the AWS account in Polaris.
 func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadAccount")
@@ -172,7 +174,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	return nil
 }
 
-// awsUpdateAccount run the Update operation for the AWS schema resource. This
+// awsUpdateAccount run the Update operation for the AWS account resource. This
 // updates the state of the AWS account in Polaris.
 func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsUpdateAccount")
@@ -198,7 +200,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
-// awsDeleteAccount run the Delete operation for the AWS schema resource. This
+// awsDeleteAccount run the Delete operation for the AWS account resource. This
 // removes the AWS account from Polaris.
 func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsDeleteAccount")
