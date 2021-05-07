@@ -22,9 +22,8 @@ package polaris
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -51,23 +50,6 @@ var awsRegions = []string{
 	"us-east-2",
 	"us-west-1",
 	"us-west-2",
-}
-
-// fromAccountResourceID converts an account resource ID to a Polaris account
-// ID and a native cloud account ID.
-func fromAccountResourceID(accountResourceID string) (accountID string, nativeID string, err error) {
-	parts := strings.Split(accountResourceID, ":")
-	if len(parts) != 2 {
-		return "", "", fmt.Errorf("polaris: invalid account resource id: %s", accountResourceID)
-	}
-
-	return parts[0], parts[1], nil
-}
-
-// toAccountResourceID converts a Polaris account ID and a native cloud account
-// ID to a account resource ID.
-func toAccountResourceID(accountID, nativeID string) string {
-	return fmt.Sprintf("%s:%s", accountID, nativeID)
 }
 
 // resourceAwsAccount defines the schema for the AWS account resource.
@@ -117,10 +99,11 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	// Check if the account already exist in Polaris.
 	account, err := client.AwsAccount(ctx, polaris.FromAwsProfile(profile))
-	if err == nil {
-		return diag.Errorf("Account %q already added to Polaris", profile)
-	}
-	if err != polaris.ErrAccountNotFound {
+	switch {
+	case errors.Is(err, polaris.ErrNotFound):
+	case err == nil:
+		return diag.Errorf("account %q already added to polaris", profile)
+	case err != nil:
 		return diag.FromErr(err)
 	}
 
@@ -132,7 +115,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		withOpts = append(withOpts, polaris.WithRegion(region.(string)))
 	}
 
-	// Add the account.
+	// Add account to Polaris.
 	if err := client.AwsAccountAdd(ctx, polaris.FromAwsProfile(profile), withOpts...); err != nil {
 		return diag.FromErr(err)
 	}
@@ -143,9 +126,9 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(toAccountResourceID(account.ID, account.NativeID))
+	d.SetId(toResourceID(account.ID, account.NativeID))
 
-	// Populate local Terraform state.
+	// Populate the local Terraform state.
 	awsReadAccount(ctx, d, m)
 
 	return nil
@@ -159,7 +142,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	client := m.(*polaris.Client)
 
 	// Get the AWS account ID from the local resource ID.
-	_, awsAccountID, err := fromAccountResourceID(d.Id())
+	_, awsAccountID, err := fromResourceID(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -197,7 +180,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	client := m.(*polaris.Client)
 
 	// Get the AWS account ID from the local resource ID.
-	_, awsAccountID, err := fromAccountResourceID(d.Id())
+	_, awsAccountID, err := fromResourceID(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
