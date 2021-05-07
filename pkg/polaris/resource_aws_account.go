@@ -66,10 +66,15 @@ func resourceAwsAccount() *schema.Resource {
 				Optional:    true,
 				Description: "Account name in Polaris.",
 			},
+			"delete_snapshots_on_destroy": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "What should happen to snapshots when the account is removed from Polaris.",
+			},
 			"profile": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "AWS shared credentials file profile.",
+				Description: "AWS shared credentials file.",
 			},
 			"regions": {
 				Type: schema.TypeSet,
@@ -78,7 +83,7 @@ func resourceAwsAccount() *schema.Resource {
 					ValidateFunc: validation.StringInSlice(awsRegions, true),
 				},
 				Required:    true,
-				Description: "AWS regions to use with Polaris.",
+				Description: "Polaris will auto-discover instances to be protected from the specified regions.",
 			},
 		},
 	}
@@ -204,8 +209,11 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	oldProfile, _ := d.GetChange("profile")
 	profile := oldProfile.(string)
 
-	// Remove the account from Polaris.
-	if err := client.AwsAccountRemove(ctx, polaris.FromAwsProfile(profile), false); err != nil {
+	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
+	deleteSnapshots := oldSnapshots.(bool)
+
+	// Remove the account.
+	if err := client.AwsAccountRemove(ctx, polaris.FromAwsProfile(profile), deleteSnapshots); err != nil {
 		return diag.FromErr(err)
 	}
 	d.SetId("")
