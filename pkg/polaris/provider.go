@@ -22,8 +22,7 @@ package polaris
 
 import (
 	"context"
-	"fmt"
-	"strings"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -33,46 +32,22 @@ import (
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// fromResourceID converts a resource id to a Polaris cloud account id and
-// a native id. Native id in this context means CSP specific id.
-func fromResourceID(resourceID string) (cloudAccountID string, nativeID string, err error) {
-	parts := strings.Split(resourceID, ":")
-	if len(parts) != 2 {
-		return "", "", fmt.Errorf("polaris: invalid resource id: %s", resourceID)
-	}
-
-	return parts[0], parts[1], nil
-}
-
-// toResourceID converts a Polaris cloud account id and a native id to a
-// resource id. Native id in this context means CSP specific id.
-func toResourceID(cloudAccountID, nativeID string) string {
-	return fmt.Sprintf("%s:%s", cloudAccountID, nativeID)
-}
-
 // Provider defines the schema and resource map for the Polaris provider.
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			"account": {
+			"credentials": {
 				Type:             schema.TypeString,
-				Optional:         true,
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotEmpty),
-				Description:      "The account name to use when accessing Rubrik Polaris.",
-				ExactlyOneOf:     []string{"account", "service_account"},
-			},
-			"service_account": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotEmpty),
-				Description:      "The service account file to use when accessing Rubrik Polaris.",
-				ExactlyOneOf:     []string{"account", "service_account"},
+				Required:         true,
+				Description:      "The account name or service account file to use when accessing Rubrik Polaris.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"polaris_aws_account": resourceAwsAccount(),
-			"polaris_gcp_project": resourceGcpProject(),
+			"polaris_aws_account":         resourceAwsAccount(),
+			"polaris_gcp_project":         resourceGcpProject(),
+			"polaris_gcp_service_account": resourceGcpServiceAccount(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
@@ -81,29 +56,17 @@ func Provider() *schema.Provider {
 
 // providerConfigure configures the Polaris provider.
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	account := d.Get("account").(string)
-	if account != "" {
-		polAccount, err := polaris.DefaultAccount(account)
+	credentials := d.Get("credentials").(string)
+
+	// When credentials doesn't refer to an existing file we assume that
+	// it's an account name.
+	if _, err := os.Stat(credentials); err != nil {
+		account, err := polaris.DefaultAccount(credentials)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
 
-		client, err := polaris.NewClient(polAccount, &log.StandardLogger{})
-		if err != nil {
-			return nil, diag.FromErr(err)
-		}
-
-		return client, nil
-	}
-
-	serviceAccount := d.Get("service_account").(string)
-	if serviceAccount != "" {
-		polAccount, err := polaris.ServiceAccountFromFile(serviceAccount)
-		if err != nil {
-			return nil, diag.FromErr(err)
-		}
-
-		client, err := polaris.NewClientFromServiceAccount(polAccount, &log.StandardLogger{})
+		client, err := polaris.NewClient(account, &log.StandardLogger{})
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
@@ -111,5 +74,16 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return client, nil
 	}
 
-	return nil, diag.Errorf("account or service_account must be given")
+	// Otherwise we load the file as a service account.
+	account, err := polaris.ServiceAccountFromFile(credentials)
+	if err != nil {
+		return nil, diag.FromErr(err)
+	}
+
+	client, err := polaris.NewClientFromServiceAccount(account, &log.StandardLogger{})
+	if err != nil {
+		return nil, diag.FromErr(err)
+	}
+
+	return client, nil
 }
