@@ -1,4 +1,4 @@
-package polaris
+package provider
 
 import (
 	"errors"

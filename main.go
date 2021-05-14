@@ -21,13 +21,13 @@
 package main
 
 import (
-	"github.com/trinity-team/terraform-provider-polaris/pkg/polaris"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
+	"github.com/trinity-team/terraform-provider-polaris/internal/provider"
 )
 
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 func main() {
 	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: polaris.Provider,
+		ProviderFunc: provider.Provider,
 	})
 }
