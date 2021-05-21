@@ -94,6 +94,8 @@ func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 // resource. This only removes the local state of the GCP service account since
 // the service account cannot be removed using the Polaris API.
 func gcpDeleteServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] gcpDeleteServiceAccount")
+
 	d.SetId("")
 	return nil
 }

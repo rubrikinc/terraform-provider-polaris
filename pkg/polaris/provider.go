@@ -45,9 +45,11 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"polaris_aws_account":         resourceAwsAccount(),
-			"polaris_gcp_project":         resourceGcpProject(),
-			"polaris_gcp_service_account": resourceGcpServiceAccount(),
+			"polaris_aws_account":             resourceAwsAccount(),
+			"polaris_azure_service_principal": resourceAzureServicePrincipal(),
+			"polaris_azure_subscription":      resourceAzureSubcription(),
+			"polaris_gcp_project":             resourceGcpProject(),
+			"polaris_gcp_service_account":     resourceGcpServiceAccount(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
