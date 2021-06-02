@@ -27,44 +27,25 @@ pipeline {
     }
     stages {
         stage('Lint') {
-            environment {
-                GOPRIVATE = 'github.com/trinity-team'
-
-                // Install tokens required to access private repositories using
-                // go get.
-                PROVIDER_NETRC = credentials('provider-netrc-file')
-            }
             steps {
-                sh 'cp -f ${PROVIDER_NETRC} ~/.netrc'
+                sh 'go mod tidy'
                 sh 'go vet ./...'
             }
         }
         stage('Build') {
-            environment {
-                // Extract version information from tags named as vX.Y.Z. Other
-                // tags and branches are defaulted to v0.0.1.
-                PROVIDER_VERSION = eval(env.TAG_NAME ==~ /^v[0-9]+.[0-9]+.[0-9]+$/ ? env.TAG_NAME.substring(1) : '0.0.1')
-            }
             steps {
-                sh 'make clean all'
+                sh 'goreleaser --snapshot --skip-publish --skip-sign --rm-dist'
             }
         }
         stage('Test') {
             steps {
-                sh 'make test'
-                sh 'rm ~/.netrc'
+                sh 'CGO_ENABLED=0 go test ./...'
             }
         }
     }
     post {
         always {
-            archiveArtifacts artifacts: 'build/terraform-provider-polaris*', onlyIfSuccessful: true
+            archiveArtifacts artifacts: 'dist/terraform-provider-polaris_v*', onlyIfSuccessful: true
         }
     }
-}
-
-// Trick to allow groovy script to be evaluated when assigning a value to an
-// environment variable.
-def eval(expr) {
-    return expr
 }
