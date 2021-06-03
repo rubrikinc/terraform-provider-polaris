@@ -34,7 +34,7 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'goreleaser --snapshot --skip-publish --skip-sign --rm-dist'
+                sh 'curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --skip-sign --rm-dist'
             }
         }
         stage('Test') {
