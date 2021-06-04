@@ -28,7 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 )
 
 var awsRegions = []string{

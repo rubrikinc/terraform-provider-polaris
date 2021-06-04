@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Provider defines the schema and resource map for the Polaris provider.
