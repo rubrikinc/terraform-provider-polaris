@@ -39,7 +39,7 @@ func Provider() *schema.Provider {
 			"credentials": {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "The account name or service account file to use when accessing Rubrik Polaris.",
+				Description:      "The local user account name or service account file to use when accessing Rubrik Polaris.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},

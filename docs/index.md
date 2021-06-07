@@ -13,6 +13,12 @@ description: |-
 ## Example Usage
 
 ```terraform
+# With local user account
+provider "polaris" {
+  credentials = "my-account-name"
+}
+
+# With service account
 provider "polaris" {
   credentials = "${path.module}/polaris-service-account.json"
 }
@@ -23,4 +29,4 @@ provider "polaris" {
 
 ### Required
 
-- **credentials** (String) The account name or service account file to use when accessing Rubrik Polaris.
+- **credentials** (String) The local user account name or service account file to use when accessing Rubrik Polaris.

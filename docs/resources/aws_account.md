@@ -14,7 +14,6 @@ description: |-
 
 ```terraform
 resource "polaris_aws_account" "default" {
-  name = "Trinity-AWS-FDSE"
   profile = "default"
   regions = [
     "us-east-2",
@@ -28,13 +27,13 @@ resource "polaris_aws_account" "default" {
 
 ### Required
 
-- **profile** (String) AWS shared credentials file.
-- **regions** (Set of String) Polaris will auto-discover instances to be protected from the specified regions.
+- **profile** (String) AWS named profile.
+- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
 
 ### Optional
 
-- **delete_snapshots_on_destroy** (Boolean) What should happen to snapshots when the account is removed from Polaris.
+- **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
 - **id** (String) The ID of this resource.
-- **name** (String) Account name in Polaris.
+- **name** (String) Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.
 
 

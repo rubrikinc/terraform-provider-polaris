@@ -14,10 +14,13 @@ description: |-
 
 ```terraform
 resource "polaris_azure_subscription" "default" {
-    subscription_id   = "8fa81a5e-a236-4a73-8e28-e1dcf863c56d"
-    subscription_name = "Trinity-FDSE"
-    tenant_domain     = "rubriktrinity.onmicrosoft.com"
-    regions           = ["eastus2"]
+    subscription_id   = "31be1bb0-c76c-11eb-9217-afdffe83a002"
+    subscription_name = "My Subscription"
+    tenant_domain     = "my-domain.onmicrosoft.com"
+    regions           = [
+        "eastus2",
+        "westus2"
+    ]
 }
 ```
 
@@ -26,14 +29,14 @@ resource "polaris_azure_subscription" "default" {
 
 ### Required
 
-- **regions** (Set of String) Polaris will auto-discover instances to be protected from the specified regions.
+- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+- **subscription_id** (String) Subscription id.
 - **subscription_name** (String) Subscription name.
 - **tenant_domain** (String) Tenant directory/domain name.
 
 ### Optional
 
-- **delete_snapshots_on_destroy** (Boolean) What should happen to snapshots when the project is removed from Polaris.
+- **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
 - **id** (String) The ID of this resource.
-- **subscription_id** (String) Subscription id.
 
 

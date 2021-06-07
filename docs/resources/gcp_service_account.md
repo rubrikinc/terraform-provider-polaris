@@ -14,7 +14,7 @@ description: |-
 
 ```terraform
 resource "polaris_gcp_service_account" "default" {
-  credentials = "${path.module}/trinity-fdse-3f88757a02a4.json"
+  credentials = "${path.module}/my-project-3f88757a02a4.json"
 }
 ```
 
@@ -23,11 +23,11 @@ resource "polaris_gcp_service_account" "default" {
 
 ### Required
 
-- **credentials** (String) Path to Google Cloud Platform service account file.
+- **credentials** (String) Path to GCP service account key file.
 
 ### Optional
 
 - **id** (String) The ID of this resource.
-- **name** (String) Service account name in Polaris.
+- **name** (String) Service account name in Polaris. If not given the name of the service account key file is used.
 
 

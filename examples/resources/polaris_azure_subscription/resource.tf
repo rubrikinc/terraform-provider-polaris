@@ -1,6 +1,9 @@
 resource "polaris_azure_subscription" "default" {
-    subscription_id   = "8fa81a5e-a236-4a73-8e28-e1dcf863c56d"
-    subscription_name = "Trinity-FDSE"
-    tenant_domain     = "rubriktrinity.onmicrosoft.com"
-    regions           = ["eastus2"]
+    subscription_id   = "31be1bb0-c76c-11eb-9217-afdffe83a002"
+    subscription_name = "My Subscription"
+    tenant_domain     = "my-domain.onmicrosoft.com"
+    regions           = [
+        "eastus2",
+        "westus2"
+    ]
 }

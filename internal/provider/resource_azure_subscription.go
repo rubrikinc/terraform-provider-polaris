@@ -32,7 +32,8 @@ func resourceAzureSubcription() *schema.Resource {
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				Description: "What should happen to snapshots when the project is removed from Polaris.",
+				Default:     false,
+				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
 			"regions": {
 				Type: schema.TypeSet,
@@ -41,11 +42,11 @@ func resourceAzureSubcription() *schema.Resource {
 					ValidateDiagFunc: validateAzureRegion,
 				},
 				Required:    true,
-				Description: "Polaris will auto-discover instances to be protected from the specified regions.",
+				Description: "Regions that Polaris will monitor for instances to automatically protect.",
 			},
 			"subscription_id": {
 				Type:             schema.TypeString,
-				Optional:         true,
+				Required:         true,
 				ForceNew:         true,
 				Description:      "Subscription id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),

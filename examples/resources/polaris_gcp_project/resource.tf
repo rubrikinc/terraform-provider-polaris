@@ -1,13 +1,13 @@
-# With service account
+# With GCP service account key file
 resource "polaris_gcp_project" "default" {
-  credentials = "${path.module}/trinity-fdse-3f88757a02a4.json"
-  project     = "trinity-fdse"
+  credentials = "${path.module}/my-project-3f88757a02a4.json"
+  project     = "my-project"
 }
 
-# Without service account
+# Without GCP service account key file
 resource "polaris_gcp_project" "default" {
-  organization_name = "Trinity Organization"
-  project = "trinity-fdse"
-  project_name = "Trinity FDSE"
-  project_number = 994761414559
+  organization_name = "My Organization"
+  project = "my-project"
+  project_name = "My Project"
+  project_number = 123456789012
 }

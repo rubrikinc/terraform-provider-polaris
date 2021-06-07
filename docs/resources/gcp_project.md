@@ -13,18 +13,18 @@ description: |-
 ## Example Usage
 
 ```terraform
-# With service account
+# With GCP service account key file
 resource "polaris_gcp_project" "default" {
-  credentials = "${path.module}/trinity-fdse-3f88757a02a4.json"
-  project     = "trinity-fdse"
+  credentials = "${path.module}/my-project-3f88757a02a4.json"
+  project     = "my-project"
 }
 
-# Without service account
+# Without GCP service account key file
 resource "polaris_gcp_project" "default" {
-  organization_name = "Trinity Organization"
-  project = "trinity-fdse"
-  project_name = "Trinity FDSE"
-  project_number = 994761414559
+  organization_name = "My Organization"
+  project = "my-project"
+  project_name = "My Project"
+  project_number = 123456789012
 }
 ```
 
@@ -33,12 +33,12 @@ resource "polaris_gcp_project" "default" {
 
 ### Optional
 
-- **credentials** (String) Path to Google Cloud Platform service account file.
-- **delete_snapshots_on_destroy** (Boolean) What should happen to snapshots when the project is removed from Polaris.
+- **credentials** (String) Path to GCP service account key file.
+- **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
 - **id** (String) The ID of this resource.
-- **organization_name** (String) Google Cloud Platform organization name.
+- **organization_name** (String) GCP organization name.
 - **project** (String) GCP project id.
-- **project_name** (String) Google Cloud Platform project name.
-- **project_number** (String) Google Cloud Platform project number.
+- **project_name** (String) GCP project name.
+- **project_number** (String) GCP project number.
 
 
