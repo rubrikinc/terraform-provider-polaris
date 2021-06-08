@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package polaris
+package provider
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 )
 
 var awsRegions = []string{
@@ -64,18 +64,19 @@ func resourceAwsAccount() *schema.Resource {
 			"name": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				Description:      "Account name in Polaris.",
+				Description:      "Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				Description: "What should happen to snapshots when the account is removed from Polaris.",
+				Default:     false,
+				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
 			"profile": {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "AWS shared credentials file.",
+				Description:      "AWS named profile.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"regions": {
@@ -85,7 +86,7 @@ func resourceAwsAccount() *schema.Resource {
 					ValidateFunc: validation.StringInSlice(awsRegions, true),
 				},
 				Required:    true,
-				Description: "Polaris will auto-discover instances to be protected from the specified regions.",
+				Description: "Regions that Polaris will monitor for instances to automatically protect.",
 			},
 		},
 	}

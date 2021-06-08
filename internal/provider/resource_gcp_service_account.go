@@ -1,4 +1,4 @@
-package polaris
+package provider
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 )
 
 // resourceGcpServiceAccount defines the schema for the GCP service account
@@ -27,13 +27,13 @@ func resourceGcpServiceAccount() *schema.Resource {
 				Type:             schema.TypeString,
 				Required:         true,
 				ValidateDiagFunc: credentialsFileExists,
-				Description:      "Path to Google Cloud Platform service account file.",
+				Description:      "Path to GCP service account key file.",
 			},
 			"name": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
-				Description:      "Service account name in Polaris.",
+				Description:      "Service account name in Polaris. If not given the name of the service account key file is used.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},

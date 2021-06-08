@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package polaris
+package provider
 
 import (
 	"context"
@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Provider defines the schema and resource map for the Polaris provider.
@@ -39,7 +39,7 @@ func Provider() *schema.Provider {
 			"credentials": {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "The account name or service account file to use when accessing Rubrik Polaris.",
+				Description:      "The local user account name or service account file to use when accessing Rubrik Polaris.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},

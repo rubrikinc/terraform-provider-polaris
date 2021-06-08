@@ -1,4 +1,4 @@
-package polaris
+package provider
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 )
 
 // stringIsInteger assumes m is a string holding an integer and returns nil if
@@ -40,13 +40,14 @@ func resourceGcpProject() *schema.Resource {
 				Optional:         true,
 				ForceNew:         true,
 				AtLeastOneOf:     []string{"credentials", "project"},
-				Description:      "Path to Google Cloud Platform service account file.",
+				Description:      "Path to GCP service account key file.",
 				ValidateDiagFunc: credentialsFileExists,
 			},
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				Description: "What should happen to snapshots when the project is removed from Polaris.",
+				Default:     false,
+				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
 			"organization_name": {
 				Type:             schema.TypeString,
@@ -55,7 +56,7 @@ func resourceGcpProject() *schema.Resource {
 				Computed:         true,
 				ConflictsWith:    []string{"credentials"},
 				RequiredWith:     []string{"organization_name", "project", "project_number"},
-				Description:      "Google Cloud Platform organization name.",
+				Description:      "GCP organization name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"project": {
@@ -73,7 +74,7 @@ func resourceGcpProject() *schema.Resource {
 				Computed:         true,
 				ConflictsWith:    []string{"credentials"},
 				RequiredWith:     []string{"organization_name", "project", "project_number"},
-				Description:      "Google Cloud Platform project name.",
+				Description:      "GCP project name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"project_number": {
@@ -83,7 +84,7 @@ func resourceGcpProject() *schema.Resource {
 				Computed:         true,
 				ConflictsWith:    []string{"credentials"},
 				RequiredWith:     []string{"organization_name", "project", "project_number"},
-				Description:      "Google Cloud Platform project number.",
+				Description:      "GCP project number.",
 				ValidateDiagFunc: stringIsInteger,
 			},
 		},

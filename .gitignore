@@ -1,3 +1,2 @@
-/build
-/cmd/terraform-provider-polaris/terraform-provider-polaris
+/dist
 /terraform-provider-polaris
