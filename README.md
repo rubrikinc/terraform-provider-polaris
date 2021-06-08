@@ -17,12 +17,13 @@ To install the newly built provider on your machine you first need to create the
 $ mkdir -p ~/.terraform.d/plugins
 ```
 
-Next you need to copy the provider binary into a subdirectory of `~/.terraform.d/plugins`, the exact subdirectory depends on your machines OS and hardware architecture. For Linux/AMD64 the subdirectory would be `terraform.rubrik.com/rubrikinc/polaris/0.0.1/linux_amd64`, where `0.0.1` is the version of the provider binary. This can either be `0.0.1` or the release tag closest to the commit you built. For the release tag `v0.1.0` you would use `0.1.0`. So the command for copying a build of the `v0.1.0` release tag on a Linux/AMD64 machine would be:
+Next you need to copy the provider binary into a subdirectory of `~/.terraform.d/plugins`, the exact subdirectory depends on your machines OS and hardware architecture. For Linux/AMD64 the subdirectory would be `terraform.rubrik.com/rubrikinc/polaris/0.0.1/linux_amd64`, where `0.0.1` is the version of the provider binary. This can either be `0.0.1` or the release tag closest to the commit you built. For the release tag `v0.1.0` you would use `0.1.0`. So the commands for copying a build of the `v0.1.0` release tag on a Linux/AMD64 machine would be:
 ```
-cp terraform-provider-polaris ~/.terraform.d/plugins/terraform.rubrik.com/rubrikinc/polaris/0.1.0/linux_amd64
+$ mkdir ~/.terraform.d/plugins/terraform.rubrik.com/rubrikinc/polaris/0.1.0/linux_amd64
+$ cp terraform-provider-polaris ~/.terraform.d/plugins/terraform.rubrik.com/rubrikinc/polaris/0.1.0/linux_amd64
 ```
 
-After the above `cp` command the directory structure under `~/.terraform.d` would be:
+After the above commands the directory structure under `~/.terraform.d` would be:
 ```
 .terraform.d/
 └── plugins/
