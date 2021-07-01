@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
@@ -10,12 +11,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	graphql_azure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// validateAzureRegion -
 func validateAzureRegion(m interface{}, p cty.Path) diag.Diagnostics {
-	_, err := graphql.AzureParseRegion(m.(string))
+	_, err := graphql_azure.ParseRegion(m.(string))
 	return diag.FromErr(err)
 }
 
@@ -53,7 +56,7 @@ func resourceAzureSubcription() *schema.Resource {
 			},
 			"subscription_name": {
 				Type:             schema.TypeString,
-				Required:         true,
+				Optional:         true,
 				Description:      "Subscription name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
@@ -65,6 +68,13 @@ func resourceAzureSubcription() *schema.Resource {
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},
+
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceAzureSubcriptionV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureProjectStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
@@ -80,29 +90,35 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
-	regions := make([]graphql.AzureRegion, 0, 10)
-	for _, region := range d.Get("regions").(*schema.Set).List() {
-		azureRegion, err := graphql.AzureParseRegion(region.(string))
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		regions = append(regions, azureRegion)
+	// Check if the subscription already exist in Polaris.
+	account, err := client.Azure().Subscription(ctx, azure.SubscriptionID(subscriptionID), core.CloudNativeProtection)
+	switch {
+	case errors.Is(err, graphql.ErrNotFound):
+	case err == nil:
+		return diag.Errorf("subscription %q already added to polaris", account.NativeID)
+	case err != nil:
+		return diag.FromErr(err)
 	}
 
-	err = client.AzureSubscriptionAdd(ctx, polaris.AzureSubscriptionIn{
-		Cloud:        graphql.AzurePublic,
-		ID:           subscriptionID,
-		Name:         d.Get("subscription_name").(string),
-		TenantDomain: d.Get("tenant_domain").(string),
-		Regions:      regions,
-	})
+	var opts []azure.OptionFunc
+	if name, ok := d.GetOk("name"); ok {
+		opts = append(opts, azure.Name(name.(string)))
+	}
+	for _, region := range d.Get("regions").(*schema.Set).List() {
+		opts = append(opts, azure.Region(region.(string)))
+	}
+
+	tenantDomain := d.Get("tenant_domain").(string)
+	id, err := client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain), opts...)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(subscriptionID.String())
+	d.SetId(id.String())
 
-	return azureReadSubscription(ctx, d, m)
+	// Populate the local Terraform state.
+	azureReadSubscription(ctx, d, m)
+
+	return nil
 }
 
 // azureReadSubscription run the Read operation for the Azure subscription
@@ -112,17 +128,25 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m interf
 
 	client := m.(*polaris.Client)
 
-	subscription, err := client.AzureSubscription(ctx, polaris.WithAzureSubscriptionID(d.Id()))
+	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.Set("subscription_name", subscription.Name)
-	d.Set("tenant_domain", subscription.TenantDomain)
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if len(account.Features) != 1 {
+		return diag.Errorf("expected a single feature got multiple")
+	}
+
+	d.Set("subscription_name", account.Name)
+	d.Set("tenant_domain", account.TenantDomain)
 
 	regions := schema.Set{F: schema.HashString}
-	for _, region := range subscription.Feature.Regions {
-		regions.Add(graphql.AzureFormatRegion(region))
+	for _, region := range account.Features[0].Regions {
+		regions.Add(region)
 	}
 	if err := d.Set("regions", &regions); err != nil {
 		return diag.FromErr(err)
@@ -138,30 +162,25 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 
 	client := m.(*polaris.Client)
 
-	// Update subscription name.
+	id, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	var opts []azure.OptionFunc
 	if d.HasChange("subscription_name") {
-		name := d.Get("subscription_name").(string)
-		err := client.AzureSubscriptionSetName(ctx, polaris.WithAzureSubscriptionID(d.Id()), name)
-		if err != nil {
-			return diag.FromErr(err)
+		opts = append(opts, azure.Name(d.Get("subscription_name").(string)))
+
+	}
+	if d.HasChange("regions") {
+		for _, region := range d.Get("regions").(*schema.Set).List() {
+			opts = append(opts, azure.Region(region.(string)))
 		}
 	}
 
-	// Update regions.
-	if d.HasChange("regions") {
-		regions := make([]graphql.AzureRegion, 0, 10)
-		for _, region := range d.Get("regions").(*schema.Set).List() {
-			azureRegion, err := graphql.AzureParseRegion(region.(string))
-			if err != nil {
-				return diag.FromErr(err)
-			}
-			regions = append(regions, azureRegion)
-		}
-
-		err := client.AzureSubscriptionSetRegions(ctx, polaris.WithAzureSubscriptionID(d.Id()), regions...)
-		if err != nil {
-			return diag.FromErr(err)
-		}
+	err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection, opts...)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
 	return nil
@@ -174,18 +193,20 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m inte
 
 	client := m.(*polaris.Client)
 
-	// Get the old resource arguments.
-	oldSubscriptionID, _ := d.GetChange("subscription_id")
-	subscriptionID := oldSubscriptionID.(string)
-
-	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
-	deleteSnapshots := oldSnapshots.(bool)
-
-	err := client.AzureSubscriptionRemove(ctx, polaris.WithAzureSubscriptionID(subscriptionID), deleteSnapshots)
+	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
+	// Get the old resource arguments.
+	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
+	deleteSnapshots := oldSnapshots.(bool)
+
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), deleteSnapshots)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	d.SetId("")
+
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 )
 
 // resourceGcpServiceAccount defines the schema for the GCP service account
@@ -55,7 +56,7 @@ func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m interf
 
 	client := m.(*polaris.Client)
 
-	name, err := client.GcpServiceAccount(ctx)
+	name, err := client.GCP().ServiceAccount(ctx)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -81,7 +82,8 @@ func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 	}
 
 	// Set service account in Polaris.
-	if err := client.GcpServiceAccountSet(ctx, polaris.FromGcpKeyFile(credentials), polaris.WithName(name)); err != nil {
+	err := client.GCP().SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
+	if err != nil {
 		return diag.FromErr(err)
 	}
 	d.SetId(name)

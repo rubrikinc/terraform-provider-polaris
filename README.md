@@ -1,9 +1,101 @@
-| :warning: Code in this repository is in BETA and should NOT be used in a production system! |
-:---
+<p align="center">
+&#9888;&#65039; Code in this repository is in BETA and should NOT be used in a production system! &#9888;&#65039;
+</p>
 
 # Terraform Provider for Rubrik Polaris
+For documentation of all resources and their parameters head over to the [Terraform Registry Docs](https://registry.terraform.io/providers/rubrikinc/polaris/latest/docs). Note that the provider requires Terraform version 0.15.x or newer.
 
-## Build
+## Use the Official Build
+To use the official version of the provider built by Rubrik and published to the Terraform Registry, use the following snippet at the top of your Terraform configuration:
+```
+terraform {
+  required_providers {
+    polaris = {
+      source = "rubrikinc/polaris"
+    }
+  }
+}
+```
+This will pull down the latest version of the provider from the Terraform Registry. Terraform will also validate the authenticity of the provider using cryptographically signed checksums.
+
+### Environment Variables
+The following environmental variables can be used to override the default behaviour of the provider:
+  * *RUBRIK_POLARIS_LOGLEVEL* &mdash; Overrides the log level of the provider. Valid log levels are: *FATAL*, *ERROR*, *WARN*, *INFO*, *DEBUG*, *TRACE* and *OFF*. The default log level of the provider is *WARN*.
+
+### Provider Credentials
+The provider supports both local user accounts and service accounts. For documentation on how to create either using Polaris see the [Rubrik Support Portal](http://support.rubrik.com).
+
+#### Local User Account
+To use a local user account with the provider first create a directory called `.rubrik` in your home directory. In that directory create a file called `polaris-accounts.json`. This JSON file can hold one or more local user accounts as per this pattern:
+```
+{
+  "<my-account>": {
+    "username": "<my-username>",
+    "password": "<my-password>",
+    "url": "<my-polaris-url>",
+  }
+}
+```
+Where _my-account_ is an arbitrary name used to refer to the account when configuring the provider in the Terraform configuration. _my-username_ and _my-password_ are the username and password of the local user account. _my-polaris-url_ is the URL of the Polaris API. The URL normally follows the pattern `https://{polaris-domain}.my.rubrik.com/api`. Which is the same URL as for accessing the Polaris UI but with `/api` added to the end.
+
+As an example, assume our Polaris domain is `my-polaris-domain` and that the username and password of our local user account is `john.doe@example.org` and `password123` the content of the `polaris-accounts.json` file then should be:
+```
+{
+  "johndoe": {
+    "username": "john.doe@example.org",
+    "password": "password123",
+    "url": "https://my-polaris-domain.my.rubrik.com/api"
+  }
+}
+```
+
+Where `johndoe` will be used to refer to this account from our Terraform configuration:
+```
+terraform {
+  required_providers {
+    polaris = {
+      source = "rubrikinc/polaris"
+    }
+  }
+}
+
+provider "polaris" {
+  credentials = "johndoe"
+}
+```
+##### Environment Variables for Local User Accounts
+When using a local user account the following environmental variables can be used to override the default local user account behaviour:
+  * *RUBRIK_POLARIS_ACCOUNT_FILE* &mdash; Overrides the name and path of the file to read local user accounts from.
+  * *RUBRIK_POLARIS_ACCOUNT_NAME* &mdash; Overrides the name of the local user account given to the credentials parameter in the provider configuration.
+  * *RUBRIK_POLARIS_ACCOUNT_USERNAME* &mdash; Overrides the username of the local user account.
+  * *RUBRIK_POLARIS_ACCOUNT_PASSWORD* &mdash; Overrides the password of the local user account.
+  * *RUBRIK_POLARIS_ACCOUNT_URL* &mdash; Overrides the Polaris API URL.
+
+#### Service Account
+To use a service account with the provider first download the service account credentials as a JSON file from the Polaris User Management UI page. Next, configure the provider to use the the downloaded credentials file in the Terraform configuration:
+```
+terraform {
+  required_providers {
+    polaris = {
+      source = "rubrikinc/polaris"
+    }
+  }
+}
+
+provider "polaris" {
+  credentials = "/path/to/credentials.json"
+}
+```
+##### Environment Variables for Service Accounts
+When using a service account the following environmental variables can be used to override the default service account behaviour:
+  * *RUBRIK_POLARIS_SERVICEACCOUNT_FILE* &mdash; Overrides the name and path of the service account credentials file.
+  * *RUBRIK_POLARIS_SERVICEACCOUNT_NAME* &mdash; Overrides the name of the service account.
+  * *RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID* &mdash; Overrides the client id of the service account.
+  * *RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET* &mdash; Overrides the client secret of the service account.
+  * *RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI* &mdash; Overrides the service account access token URI. When using a service account the Polaris API URL is derived from this URI.
+
+## Use Your Own Build
+### Build
 To build the provider for your machines OS and hardware architecture run the following command in the root of the repository:
 ```
 $ go build
@@ -11,7 +103,7 @@ $ go build
 
 After the build finishes you should have a binary named `terraform-provider-polaris` in the root of the repository.
 
-## Install
+### Install
 To install the newly built provider on your machine you first need to create the directory where Terraform looks for local providers:
 ```
 $ mkdir -p ~/.terraform.d/plugins
@@ -35,8 +127,8 @@ After the above commands the directory structure under `~/.terraform.d` would be
                         └── terraform-provider-polaris
 ```
 
-## Use
-When using the installed local provider in a Terraform configuration file you need to explicitly tell Terraform about it using the following snippet at the top of the file:
+### Use
+To use the local provider in a Terraform configuration use the following snippet at the top of the file:
 ```
 terraform {
   required_providers {
@@ -46,7 +138,3 @@ terraform {
   }
 }
 ```
-
-Note that the provider requires Terraform version 0.15.x or newer.
-
-For details on how to configure the provider or how to use different resources have a look in the `docs/` and `examples/` subdirectories.

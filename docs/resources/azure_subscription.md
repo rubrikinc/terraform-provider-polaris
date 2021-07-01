@@ -31,12 +31,12 @@ resource "polaris_azure_subscription" "default" {
 
 - **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
 - **subscription_id** (String) Subscription id.
-- **subscription_name** (String) Subscription name.
 - **tenant_domain** (String) Tenant directory/domain name.
 
 ### Optional
 
 - **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
 - **id** (String) The ID of this resource.
+- **subscription_name** (String) Subscription name.
 
 
