@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
@@ -32,15 +33,16 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// resourceAzureSubcriptionV0 defines the schema for version 0 of the Azure
+// resourceAzureSubcriptionV0 defines the schema for version 1 of the Azure
 // subscription resource.
-func resourceAzureSubcriptionV0() *schema.Resource {
+func resourceAzureSubcriptionV1() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"delete_snapshots_on_destroy": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
 			"regions": {
 				Type: schema.TypeSet,
@@ -48,33 +50,37 @@ func resourceAzureSubcriptionV0() *schema.Resource {
 					Type:             schema.TypeString,
 					ValidateDiagFunc: validateAzureRegion,
 				},
-				Required: true,
+				Required:    true,
+				Description: "Regions that Polaris will monitor for instances to automatically protect.",
 			},
 			"subscription_id": {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
+				Description:      "Subscription id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
 			},
 			"subscription_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
+				Description:      "Subscription name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"tenant_domain": {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
+				Description:      "Tenant directory/domain name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},
 	}
 }
 
-// resourceAzureProjectStateUpgradeV0 migrates the resource id from the Azure
-// subscription id to the Polaris cloud account id.
-func resourceAzureProjectStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAzureProjectStateUpgradeV0")
+// resourceAzureProjectStateUpgradeV1 introduces a cloud native protection
+// feature block.
+func resourceAzureProjectStateUpgradeV1(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
+	log.Print("[TRACE] resourceAzureProjectStateUpgradeV1")
 
 	client := m.(*polaris.Client)
 
@@ -83,12 +89,27 @@ func resourceAzureProjectStateUpgradeV0(ctx context.Context, state map[string]in
 		return state, err
 	}
 
-	account, err := client.Azure().Subscription(ctx, azure.SubscriptionID(id), core.FeatureCloudNativeProtection)
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return nil, err
 	}
 
-	// Migrate the id to the Polaris cloud account id.
-	state["id"] = account.ID.String()
+	// Add the new cloud native protection feature block. Takes ownership
+	// of the resource's regions.
+	cnpFeature, ok := account.Feature(core.FeatureExocompute)
+	if !ok {
+		return nil, errors.New("azure subscription missing cloud native protection")
+	}
+
+	state["cloud_native_protection"] = []interface{}{
+		map[string]interface{}{
+			"regions": state["regions"],
+			"status":  cnpFeature.Status,
+		},
+	}
+
+	// Remove regions from the resource.
+	delete(state, "regions")
+
 	return state, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+// validateAzureRegion verifies that the name is a valid Azure region name.
 func validateAzureRegion(m interface{}, p cty.Path) diag.Diagnostics {
 	_, err := graphql_azure.ParseRegion(m.(string))
 	return diag.FromErr(err)
@@ -32,20 +33,35 @@ func resourceAzureSubcription() *schema.Resource {
 		DeleteContext: azureDeleteSubscription,
 
 		Schema: map[string]*schema.Schema{
+			"cloud_native_protection": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"regions": {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:             schema.TypeString,
+								ValidateDiagFunc: validateAzureRegion,
+							},
+							Required:    true,
+							Description: "Regions that Polaris will monitor for instances to automatically protect.",
+						},
+						"status": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cloud Native Protection feature.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Required:    true,
+				Description: "Enable the Cloud Native Protection feature for the GCP project.",
+			},
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 				Description: "Should snapshots be deleted when the resource is destroyed.",
-			},
-			"regions": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{
-					Type:             schema.TypeString,
-					ValidateDiagFunc: validateAzureRegion,
-				},
-				Required:    true,
-				Description: "Regions that Polaris will monitor for instances to automatically protect.",
 			},
 			"subscription_id": {
 				Type:             schema.TypeString,
@@ -69,11 +85,15 @@ func resourceAzureSubcription() *schema.Resource {
 			},
 		},
 
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceAzureSubcriptionV0().CoreConfigSchema().ImpliedType(),
 			Upgrade: resourceAzureProjectStateUpgradeV0,
 			Version: 0,
+		}, {
+			Type:    resourceAzureSubcriptionV1().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureProjectStateUpgradeV1,
+			Version: 1,
 		}},
 	}
 }
@@ -90,34 +110,45 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
-	// Check if the subscription already exist in Polaris.
-	account, err := client.Azure().Subscription(ctx, azure.SubscriptionID(subscriptionID), core.CloudNativeProtection)
-	switch {
-	case errors.Is(err, graphql.ErrNotFound):
-	case err == nil:
-		return diag.Errorf("subscription %q already added to polaris", account.NativeID)
-	case err != nil:
-		return diag.FromErr(err)
-	}
+	tenantDomain := d.Get("tenant_domain").(string)
 
 	var opts []azure.OptionFunc
 	if name, ok := d.GetOk("name"); ok {
 		opts = append(opts, azure.Name(name.(string)))
 	}
-	for _, region := range d.Get("regions").(*schema.Set).List() {
-		opts = append(opts, azure.Region(region.(string)))
-	}
 
-	tenantDomain := d.Get("tenant_domain").(string)
-	id, err := client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain), opts...)
-	if err != nil {
+	// Check if the subscription already exist in Polaris.
+	account, err := client.Azure().Subscription(ctx, azure.SubscriptionID(subscriptionID), core.FeatureAll)
+	if err == nil {
+		return diag.Errorf("subscription %q already added to polaris", account.NativeID)
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
 		return diag.FromErr(err)
 	}
+
+	// Polaris Cloud Account id. Returned when the account is added for the
+	// cloud native protection feature.
+	var id uuid.UUID
+
+	cnpBlock, ok := d.GetOk("cloud_native_protection")
+	if ok {
+		block := cnpBlock.([]interface{})[0].(map[string]interface{})
+
+		var cnpOpts []azure.OptionFunc
+		for _, region := range block["regions"].(*schema.Set).List() {
+			cnpOpts = append(cnpOpts, azure.Region(region.(string)))
+		}
+
+		cnpOpts = append(cnpOpts, opts...)
+		id, err = client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain), core.FeatureCloudNativeProtection, cnpOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	d.SetId(id.String())
 
-	// Populate the local Terraform state.
 	azureReadSubscription(ctx, d, m)
-
 	return nil
 }
 
@@ -133,22 +164,39 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.FromErr(err)
 	}
 
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection)
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if len(account.Features) != 1 {
-		return diag.Errorf("expected a single feature got multiple")
+
+	cnpFeature, ok := account.Feature(core.FeatureCloudNativeProtection)
+	if ok {
+		regions := schema.Set{F: schema.HashString}
+		for _, region := range cnpFeature.Regions {
+			regions.Add(region)
+		}
+
+		status := core.FormatStatus(cnpFeature.Status)
+		err := d.Set("cloud_native_protection", []interface{}{
+			map[string]interface{}{
+				"regions": &regions,
+				"status":  &status,
+			},
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set("cloud_native_protection", nil); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
-	d.Set("subscription_name", account.Name)
-	d.Set("tenant_domain", account.TenantDomain)
-
-	regions := schema.Set{F: schema.HashString}
-	for _, region := range account.Features[0].Regions {
-		regions.Add(region)
+	if err := d.Set("subscription_name", account.Name); err != nil {
+		return diag.FromErr(err)
 	}
-	if err := d.Set("regions", &regions); err != nil {
+
+	if err := d.Set("tenant_domain", account.TenantDomain); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -171,16 +219,30 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 	if d.HasChange("subscription_name") {
 		opts = append(opts, azure.Name(d.Get("subscription_name").(string)))
 
-	}
-	if d.HasChange("regions") {
-		for _, region := range d.Get("regions").(*schema.Set).List() {
-			opts = append(opts, azure.Region(region.(string)))
+		err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...)
+		if err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
-	err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection, opts...)
-	if err != nil {
-		return diag.FromErr(err)
+	if d.HasChange("cloud_native_protection") {
+		cnpBlock, ok := d.GetOk("cloud_native_protection")
+		if ok {
+			block := cnpBlock.([]interface{})[0].(map[string]interface{})
+
+			var opts []azure.OptionFunc
+			for _, region := range block["regions"].(*schema.Set).List() {
+				opts = append(opts, azure.Region(region.(string)))
+			}
+
+			if err := client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...); err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			if err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, false); err != nil {
+				return diag.FromErr(err)
+			}
+		}
 	}
 
 	return nil
@@ -202,7 +264,7 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m inte
 	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
 	deleteSnapshots := oldSnapshots.(bool)
 
-	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), deleteSnapshots)
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}

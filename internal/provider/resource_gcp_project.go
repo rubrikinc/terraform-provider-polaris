@@ -38,6 +38,21 @@ func resourceGcpProject() *schema.Resource {
 		DeleteContext: gcpDeleteProject,
 
 		Schema: map[string]*schema.Schema{
+			"cloud_native_protection": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"status": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cloud Native Protection feature.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Required:    true,
+				Description: "Enable the Cloud Native Protection feature for the GCP project.",
+			},
 			"credentials": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -58,9 +73,16 @@ func resourceGcpProject() *schema.Resource {
 				ForceNew:         true,
 				Computed:         true,
 				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"organization_name", "project", "project_number"},
+				RequiredWith:     []string{"project_name", "project", "project_number"},
 				Description:      "GCP organization name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			},
+			"permissions_hash": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "Signals that the permissions has been updated.",
+				RequiredWith:     []string{"credentials"},
+				ValidateDiagFunc: validateHash,
 			},
 			"project": {
 				Type:             schema.TypeString,
@@ -76,7 +98,7 @@ func resourceGcpProject() *schema.Resource {
 				ForceNew:         true,
 				Computed:         true,
 				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"organization_name", "project", "project_number"},
+				RequiredWith:     []string{"project", "project_number"},
 				Description:      "GCP project name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
@@ -86,17 +108,21 @@ func resourceGcpProject() *schema.Resource {
 				ForceNew:         true,
 				Computed:         true,
 				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"organization_name", "project", "project_number"},
+				RequiredWith:     []string{"project", "project_name"},
 				Description:      "GCP project number.",
 				ValidateDiagFunc: stringIsInteger,
 			},
 		},
 
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceGcpProjectV0().CoreConfigSchema().ImpliedType(),
 			Upgrade: resourceGcpProjectStateUpgradeV0,
 			Version: 0,
+		}, {
+			Type:    resourceGcpProjectV1().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceGcpProjectStateUpgradeV1,
+			Version: 1,
 		}},
 	}
 }
@@ -141,26 +167,23 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 		project = gcp.Project(projectID, projectNumber)
 	}
 
-	// Check if the project already exist in Polaris.
-	account, err := client.GCP().Project(ctx, gcp.ID(project), core.CloudNativeProtection)
-	switch {
-	case errors.Is(err, graphql.ErrNotFound):
-	case err == nil:
-		return diag.Errorf("project %q has already been added to polaris", account.NativeID)
-	case err != nil:
+	account, err := client.GCP().Project(ctx, gcp.ID(project), core.FeatureAll)
+	if err == nil {
+		return diag.Errorf("project %q already added to polaris", account.NativeID)
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
 		return diag.FromErr(err)
 	}
 
-	// Add project to Polaris.
-	id, err := client.GCP().AddProject(ctx, project, opts...)
+	// At this time GCP only supports the CNP feature.
+	id, err := client.GCP().AddProject(ctx, project, core.FeatureCloudNativeProtection, opts...)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	d.SetId(id.String())
 
-	// Populate the local Terraform state.
 	gcpReadProject(ctx, d, m)
-
 	return nil
 }
 
@@ -177,13 +200,26 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	}
 
 	// Lookup the GCP project in Polaris and update the local state.
-	project, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.CloudNativeProtection)
+	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.Set("organization_name", project.OrganizationName)
-	d.Set("project_name", project.Name)
-	d.Set("project_number", strconv.FormatInt(project.ProjectNumber, 10))
+	d.Set("project", account.NativeID)
+	d.Set("organization_name", account.OrganizationName)
+	d.Set("project_name", account.Name)
+	d.Set("project_number", strconv.FormatInt(account.ProjectNumber, 10))
+
+	if feature, ok := account.Feature(core.FeatureCloudNativeProtection); ok {
+		status := core.FormatStatus(feature.Status)
+		err := d.Set("cloud_native_protection", []interface{}{
+			map[string]interface{}{
+				"status": &status,
+			},
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	return nil
 }
@@ -191,7 +227,41 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 // gcpUpdateProject run the Update operation for the GCP project resource. This
 // only updates the local delete_snapshots_on_destroy parameter.
 func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpDeleteProject")
+	log.Print("[TRACE] gcpUpdateProject")
+
+	client := m.(*polaris.Client)
+
+	if d.HasChange("permissions_hash") {
+		id, err := uuid.Parse(d.Id())
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		var features []core.Feature
+		for _, feature := range account.Features {
+			features = append(features, feature.Name)
+		}
+
+		credentials := d.Get("credentials").(string)
+		projectID := d.Get("project").(string)
+
+		var project gcp.ProjectFunc
+		if projectID == "" {
+			project = gcp.KeyFile(credentials)
+		} else {
+			project = gcp.KeyFileAndProject(credentials, projectID)
+		}
+
+		err = client.GCP().PermissionsUpdated(ctx, project, features)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	return nil
 }
@@ -213,7 +283,7 @@ func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	deleteSnapshots := oldSnapshots.(bool)
 
 	// Remove the project from Polaris.
-	err = client.GCP().RemoveProject(ctx, gcp.CloudAccountID(id), deleteSnapshots)
+	err = client.GCP().RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}

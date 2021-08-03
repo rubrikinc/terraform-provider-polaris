@@ -29,7 +29,7 @@ resource "polaris_azure_subscription" "default" {
 
 ### Required
 
-- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+- **cloud_native_protection** (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the GCP project. (see [below for nested schema](#nestedblock--cloud_native_protection))
 - **subscription_id** (String) Subscription id.
 - **tenant_domain** (String) Tenant directory/domain name.
 
@@ -38,5 +38,16 @@ resource "polaris_azure_subscription" "default" {
 - **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
 - **id** (String) The ID of this resource.
 - **subscription_name** (String) Subscription name.
+
+<a id="nestedblock--cloud_native_protection"></a>
+### Nested Schema for `cloud_native_protection`
+
+Required:
+
+- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+
+Read-Only:
+
+- **status** (String) Status of the Cloud Native Protection feature.
 
 

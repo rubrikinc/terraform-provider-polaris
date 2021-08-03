@@ -114,11 +114,11 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.Exocompute)
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.FeatureExocompute)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	cnpFeature, ok := account.Feature(core.Exocompute)
+	cnpFeature, ok := account.Feature(core.FeatureExocompute)
 	if !ok {
 		return diag.Errorf("exocompute not enabled on account")
 	}

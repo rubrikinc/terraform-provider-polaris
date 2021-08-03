@@ -27,8 +27,8 @@ resource "polaris_aws_account" "default" {
 
 ### Required
 
+- **cloud_native_protection** (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the GCP project. (see [below for nested schema](#nestedblock--cloud_native_protection))
 - **profile** (String) AWS named profile.
-- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
 
 ### Optional
 
@@ -36,12 +36,29 @@ resource "polaris_aws_account" "default" {
 - **exocompute** (Block List, Max: 1) Enable the exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
 - **id** (String) The ID of this resource.
 - **name** (String) Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.
+- **permissions** (String) When set to 'update' feature permissions can be updated by applying the configuration.
+
+<a id="nestedblock--cloud_native_protection"></a>
+### Nested Schema for `cloud_native_protection`
+
+Required:
+
+- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+
+Read-Only:
+
+- **status** (String) Status of the Cloud Native Protection feature.
+
 
 <a id="nestedblock--exocompute"></a>
 ### Nested Schema for `exocompute`
 
 Required:
 
-- **regions** (Set of String) Regions to enable the exocompute feature in.
+- **regions** (Set of String) Regions to enable the Exocompute feature in.
+
+Read-Only:
+
+- **status** (String) Status of the Exocompute feature.
 
 

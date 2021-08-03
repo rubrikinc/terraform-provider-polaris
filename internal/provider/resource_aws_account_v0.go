@@ -34,6 +34,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+// resourceAwsAccountV0 defines the schema for version 0 of the AWS account
+// resource.
 func resourceAwsAccountV0() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -74,7 +76,7 @@ func resourceAwsAccountStateUpgradeV0(ctx context.Context, state map[string]inte
 	// Split the id into Polaris cloud account id and AWS account id.
 	parts := strings.Split(state["id"].(string), ":")
 	if len(parts) != 2 {
-		return state, errors.New("invalid id format for v0 resource state")
+		return state, errors.New("invalid id format for v0 resource")
 	}
 
 	id, err := uuid.Parse(parts[0])
@@ -83,13 +85,13 @@ func resourceAwsAccountStateUpgradeV0(ctx context.Context, state map[string]inte
 	}
 
 	// Retrieve the account using the Polaris cloud account id.
-	account1, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.CloudNativeProtection)
+	account1, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		return nil, err
 	}
 
 	// Retrieve the account using the AWS account id.
-	account2, err := client.AWS().Account(ctx, aws.AccountID(parts[1]), core.CloudNativeProtection)
+	account2, err := client.AWS().Account(ctx, aws.AccountID(parts[1]), core.FeatureCloudNativeProtection)
 	if err != nil {
 		return nil, err
 	}

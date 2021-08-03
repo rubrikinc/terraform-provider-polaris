@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // credentialsFileExists assumes m is a file path and returns nil if the file
@@ -24,4 +25,19 @@ func credentialsFileExists(m interface{}, p cty.Path) diag.Diagnostics {
 	}
 
 	return nil
+}
+
+// validateFeature verifies that m contains a valid Polaris feature name.
+func validateFeature(m interface{}, p cty.Path) diag.Diagnostics {
+	_, err := core.ParseFeature(m.(string))
+	return diag.FromErr(err)
+}
+
+// validateHash verifies that m contains a valid SHA-256 hash.
+func validateHash(m interface{}, p cty.Path) diag.Diagnostics {
+	if hash, ok := m.(string); ok && len(hash) == 64 {
+		return nil
+	}
+
+	return diag.Errorf("invalid hash value")
 }

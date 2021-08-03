@@ -24,7 +24,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -34,9 +33,9 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// resourceGcpProjectV0 defines the schema for version 0 of the GCP project
+// resourceGcpProjectV1 defines the schema for version 1 of the GCP project
 // resource.
-func resourceGcpProjectV0() *schema.Resource {
+func resourceGcpProjectV1() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"credentials": {
@@ -89,42 +88,34 @@ func resourceGcpProjectV0() *schema.Resource {
 	}
 }
 
-// resourceGcpProjectStateUpgradeV0 simplifies the resource id to consist of
-// only the Polaris cloud account id.
-func resourceGcpProjectStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceGcpProjectStateUpgradeV0")
+// resourceAwsAccountStateUpgradeV1 introduces a cloud native protection
+// feature block.
+func resourceGcpProjectStateUpgradeV1(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
+	log.Print("[TRACE] resourceGcpProjectStateUpgradeV1")
 
 	client := m.(*polaris.Client)
 
-	// Split the id into Polaris cloud account id and GCP project id.
-	parts := strings.Split(state["id"].(string), ":")
-	if len(parts) != 2 {
-		return state, errors.New("invalid id format for v0 resource state")
-	}
-
-	id, err := uuid.Parse(parts[0])
-	if err != nil {
-		return state, err
-	}
-
-	// Retrieve the account using the Polaris cloud account id.
-	account1, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	id, err := uuid.Parse(state["id"].(string))
 	if err != nil {
 		return nil, err
 	}
 
-	// Retrieve the account using the GCP project id.
-	account2, err := client.GCP().Project(ctx, gcp.ProjectID(parts[1]), core.FeatureCloudNativeProtection)
+	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return nil, err
 	}
 
-	// Make sure the two ids refer to the same Polaris cloud account.
-	if account1.ID != account2.ID {
-		return state, errors.New("v0 id refers to two different accounts")
+	// Add the new cloud native protection feature block.
+	cnpFeature, ok := account.Feature(core.FeatureExocompute)
+	if !ok {
+		return nil, errors.New("aws account missing cloud native protection")
 	}
 
-	// Update the id to consist of only the Polaris cloud account id.
-	state["id"] = account1.ID.String()
+	state["cloud_native_protection"] = []interface{}{
+		map[string]interface{}{
+			"status": cnpFeature.Status,
+		},
+	}
+
 	return state, nil
 }
