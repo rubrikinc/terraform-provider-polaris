@@ -36,7 +36,15 @@ resource "polaris_azure_subscription" "default" {
 ### Optional
 
 - **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
+- **exocompute** (Block List, Max: 1) Enable the exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
 - **id** (String) The ID of this resource.
 - **subscription_name** (String) Subscription name.
+
+<a id="nestedblock--exocompute"></a>
+### Nested Schema for `exocompute`
+
+Required:
+
+- **regions** (Set of String) Regions to enable the exocompute feature in.
 
 

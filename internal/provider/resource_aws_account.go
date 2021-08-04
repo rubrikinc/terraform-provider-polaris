@@ -75,6 +75,7 @@ func resourceAwsAccount() *schema.Resource {
 								Type:             schema.TypeString,
 								ValidateDiagFunc: validateAwsRegion,
 							},
+							MinItems:    1,
 							Required:    true,
 							Description: "Regions to enable the exocompute feature in.",
 						},
