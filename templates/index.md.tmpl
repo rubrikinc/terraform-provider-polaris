@@ -16,11 +16,11 @@ First create a directory called `.rubrik` in your home directory. Next, create a
   "<my-account>": {
     "username": "<my-username>",
     "password": "<my-password>",
-    "url": "<my-polaris-url>",
+    "url": "<my-polaris-url>"
   }
 }
 ```
-Where *my-account* is an arbitary name used to refer to the account when configuring the provider. *my-username* and *my-password* are the username and password of the local user account. *my-polaris-url* is the URL of the Polaris API. The URL follows the pattern `https://{polaris-domain}.my.rubrik.com/api`. Which is the same URL as for accessing the Polaris UI but with `/api` added to the end.
+Where *my-account* is an arbitrary name used to refer to the account when configuring the provider. *my-username* and *my-password* are the username and password of the local user account. *my-polaris-url* is the URL of the Polaris API. The URL follows the pattern `https://{polaris-domain}.my.rubrik.com/api`. Which is the same URL as for accessing the Polaris UI but with `/api` added to the end.
 
 To configure the provider to use a local user account specify the name as the provider credentials:
 ```terraform
@@ -30,7 +30,7 @@ provider "polaris" {
 ```
 
 ## With Service Account
-First download the service account credentials as a JSON file from the Polaris User Management UI page. Next, configure the provider to use the the downloaded credentials file in the Terraform configuration:
+First download the service account credentials as a JSON file from the Polaris User Management UI page. Next, configure the provider to use the downloaded credentials file in the Terraform configuration:
 ```terraform
 provider "polaris" {
   credentials = "/path/to/service-account-credentials.json"
