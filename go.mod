@@ -10,5 +10,5 @@ require (
 	github.com/hashicorp/terraform-plugin-docs v0.4.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.4.4
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
-	github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.0.16-0.20210804114207-f475871b061f
+	github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.0.17-0.20210812091816-68f6d14f4143
 )
