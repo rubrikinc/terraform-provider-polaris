@@ -1,4 +1,4 @@
-module github.com/trinity-team/terraform-provider-polaris
+module github.com/rubrikinc/terraform-provider-polaris
 
 go 1.16
 

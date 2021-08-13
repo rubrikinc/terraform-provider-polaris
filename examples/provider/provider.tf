@@ -1,9 +1,9 @@
 # With local user account
 provider "polaris" {
-  credentials = "my-account-name"
+  credentials = "my-account"
 }
 
 # With service account
 provider "polaris" {
-  credentials = "${path.module}/polaris-service-account.json"
+  credentials = "/path/to/service-account-credentials.json"
 }
