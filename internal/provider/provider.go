@@ -81,7 +81,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		}
 	}
 
-	client, err := polaris.NewClient(account, &log.StandardLogger{})
+	client, err := polaris.NewClient(ctx, account, &log.StandardLogger{})
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}

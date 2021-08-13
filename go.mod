@@ -4,9 +4,6 @@ go 1.16
 
 require (
 	github.com/Azure/azure-sdk-for-go v55.7.0+incompatible // indirect
-	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
-	github.com/Azure/go-autorest/autorest v0.11.19 // indirect
-	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.2.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.2.0 // indirect
 	github.com/google/uuid v1.2.0
@@ -14,7 +11,5 @@ require (
 	github.com/hashicorp/terraform-plugin-docs v0.4.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.7.0
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
-	github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.0.16-0.20210701130916-40718a455645
+	github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.0.17-0.20210812142546-a195d951f414
 )
-
-replace github.com/rubrikinc/rubrik-polaris-sdk-for-go => ../rubrik-polaris-sdk-for-go
