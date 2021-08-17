@@ -113,7 +113,7 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 	tenantDomain := d.Get("tenant_domain").(string)
 
 	var opts []azure.OptionFunc
-	if name, ok := d.GetOk("name"); ok {
+	if name, ok := d.GetOk("subscription_name"); ok {
 		opts = append(opts, azure.Name(name.(string)))
 	}
 
