@@ -43,9 +43,4 @@ pipeline {
             }
         }
     }
-    post {
-        always {
-            archiveArtifacts artifacts: 'dist/terraform-provider-polaris_v*', onlyIfSuccessful: true
-        }
-    }
 }
