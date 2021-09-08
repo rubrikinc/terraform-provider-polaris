@@ -82,7 +82,7 @@ type testAWSAccount struct {
 // environment variables.
 func loadAWSTestConfig() (testConfig, testAWSAccount, error) {
 	account := testAWSAccount{}
-	config, err := loadTestConfig("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "SDK_AWSACCOUNT_FILE", &account)
+	config, err := loadTestConfig("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "TEST_AWSACCOUNT_FILE", &account)
 
 	// Note that this will update both project and config.
 	if account.Profile == "" {
@@ -109,7 +109,7 @@ type testAzureSubscription struct {
 // environment variables.
 func loadAzureTestConfig() (testConfig, testAzureSubscription, error) {
 	subscription := testAzureSubscription{}
-	config, err := loadTestConfig("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "SDK_AZURESUBSCRIPTION_FILE", &subscription)
+	config, err := loadTestConfig("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "TEST_AZURESUBSCRIPTION_FILE", &subscription)
 
 	if subscription.Credentials == "" {
 		subscription.Credentials = os.Getenv("AZURE_SERVICEPRINCIPAL_LOCATION")
@@ -134,7 +134,7 @@ type testGCPProject struct {
 // environment variables.
 func loadGCPTestConfig() (testConfig, testGCPProject, error) {
 	project := testGCPProject{}
-	config, err := loadTestConfig("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "SDK_GCPPROJECT_FILE", &project)
+	config, err := loadTestConfig("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "TEST_GCPPROJECT_FILE", &project)
 
 	// Note that this will update both project and config.
 	if project.Credentials == "" {

@@ -38,8 +38,23 @@ pipeline {
             }
         }
         stage('Test') {
+            environment {
+                // Polaris
+                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials("tf-polaris-service-account")
+
+                // AWS
+                TEST_AWSACCOUNT_FILE = credentials("tf-sdk-test-aws-account")
+
+                // Azure
+                TEST_AZURESUBSCRIPTION_FILE     = credentials("tf-sdk-test-azure-subscription")
+                AZURE_SERVICEPRINCIPAL_LOCATION = credentials("tf-sdk-test-azure-service-principal")
+
+                // GCP
+                TEST_GCPPROJECT_FILE           = credentials("tf-sdk-test-gcp-project")
+                GOOGLE_APPLICATION_CREDENTIALS = credentials("tf-sdk-test-gcp-service-account")
+            }
             steps {
-                sh 'CGO_ENABLED=0 go test ./...'
+                sh 'CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
             }
         }
     }
