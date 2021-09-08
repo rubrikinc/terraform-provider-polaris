@@ -44,6 +44,8 @@ pipeline {
 
                 // AWS
                 TEST_AWSACCOUNT_FILE = credentials("tf-sdk-test-aws-account")
+                AWS_CREDENTIALS      = credentials("tf-sdk-test-aws-credentials")
+                AWS_CONFIG           = credentials("tf-sdk-test-aws-config")
 
                 // Azure
                 TEST_AZURESUBSCRIPTION_FILE     = credentials("tf-sdk-test-azure-subscription")
@@ -54,7 +56,9 @@ pipeline {
                 GOOGLE_APPLICATION_CREDENTIALS = credentials("tf-sdk-test-gcp-service-account")
             }
             steps {
+                sh 'mkdir -p ~/.aws && ln -sf $AWS_CREDENTIALS ~/.aws/credentials && ln -sf $AWS_CONFIG ~/.aws/config'
                 sh 'CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
+                sh 'rm -r ~/.aws'
             }
         }
     }
