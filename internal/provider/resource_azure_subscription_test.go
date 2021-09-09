@@ -74,6 +74,7 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "tenant_domain", subscription.TenantDomain),
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "regions.*", "eastus2"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
 			),
 		}, {
 			Config: subscriptionTwoRegions,
@@ -83,6 +84,7 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "tenant_domain", subscription.TenantDomain),
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "regions.*", "eastus2"),
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "regions.*", "westus2"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
 			),
 		}, {
 			Config: subscriptionOneRegion,
@@ -91,6 +93,7 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "tenant_domain", subscription.TenantDomain),
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "regions.*", "eastus2"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
 			),
 		}},
 	})

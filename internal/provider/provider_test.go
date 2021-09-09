@@ -75,7 +75,15 @@ func makeTerraformConfig(config testConfig, terraformTemplate string) (string, e
 type testAWSAccount struct {
 	Profile     string `json:"profile"`
 	AccountID   string `json:"accountId"`
-	AccountName string `json:"name"`
+	AccountName string `json:"accountName"`
+
+	Exocompute struct {
+		VPCID   string `json:"vpcId"`
+		Subnets []struct {
+			ID               string `json:"id"`
+			AvailabilityZone string `json:"availabilityZone"`
+		} `json:"subnets"`
+	} `json:"exocompute"`
 }
 
 // loadAWSTestConfig loads an AWS test configuration using the default
@@ -97,12 +105,16 @@ func loadAWSTestConfig() (testConfig, testAWSAccount, error) {
 type testAzureSubscription struct {
 	Credentials      string `json:"credentials"`
 	SubscriptionID   string `json:"subscriptionId"`
-	SubscriptionName string `json:"name"`
+	SubscriptionName string `json:"subscriptionName"`
 	TenantID         string `json:"tenantId"`
 	TenantDomain     string `json:"tenantDomain"`
 	PrincipalID      string `json:"principalId"`
 	PrincipalName    string `json:"principalName"`
 	PrincipalSecret  string `json:"principalSecret"`
+
+	Exocompute struct {
+		SubnetID string `json:"subnetId"`
+	} `json:"exocompute"`
 }
 
 // loadAzureTestConfig loads an Azure test configuration using the default
@@ -114,8 +126,6 @@ func loadAzureTestConfig() (testConfig, testAzureSubscription, error) {
 	if subscription.Credentials == "" {
 		subscription.Credentials = os.Getenv("AZURE_SERVICEPRINCIPAL_LOCATION")
 	}
-
-	os.Getenv("AZURE_SUBSCRIPTION_LOCATION")
 
 	return config, subscription, err
 }
