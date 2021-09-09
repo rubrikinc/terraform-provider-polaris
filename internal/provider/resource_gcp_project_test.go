@@ -1,8 +1,6 @@
 package provider
 
 import (
-	"fmt"
-	"regexp"
 	"strconv"
 	"testing"
 
@@ -45,11 +43,6 @@ func TestAccPolarisGCPProject_basic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id, err := regexp.Compile(fmt.Sprintf("^.+:%s$", project.ProjectID))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	projectCredentials, err := makeTerraformConfig(config, gcpProjectTmpl)
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +53,6 @@ func TestAccPolarisGCPProject_basic(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: projectCredentials,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestMatchResourceAttr("polaris_gcp_project.default", "id", id),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "credentials", project.Credentials),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_name", project.ProjectName),
@@ -81,7 +73,6 @@ func TestAccPolarisGCPProject_basic(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: projectValues,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestMatchResourceAttr("polaris_gcp_project.default", "id", id),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_name", project.ProjectName),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_number", strconv.FormatInt(project.ProjectNumber, 10)),

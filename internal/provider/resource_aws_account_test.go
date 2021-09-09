@@ -1,8 +1,6 @@
 package provider
 
 import (
-	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -43,11 +41,6 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id, err := regexp.Compile(fmt.Sprintf("^.+:%s$", account.AccountID))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	accountOneRegion, err := makeTerraformConfig(config, awsAccountOneRegionTmpl)
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +56,6 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestMatchResourceAttr("polaris_aws_account.default", "id", id),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "regions.*", "us-east-2"),
@@ -72,7 +64,6 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 		}, {
 			Config: accountTwoRegions,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestMatchResourceAttr("polaris_aws_account.default", "id", id),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "regions.*", "us-east-2"),
@@ -82,7 +73,6 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 		}, {
 			Config: accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestMatchResourceAttr("polaris_aws_account.default", "id", id),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "regions.*", "us-east-2"),
