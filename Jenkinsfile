@@ -25,6 +25,9 @@ pipeline {
     tools {
         go 'go-1.16.2'
     }
+    triggers {
+        cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
+    }
     stages {
         stage('Lint') {
             steps {
@@ -40,25 +43,30 @@ pipeline {
         stage('Test') {
             environment {
                 // Polaris
-                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials("tf-polaris-service-account")
+                RUBRIK_POLARIS_ACCOUNT_FILE        = credentials('tf-polaris-account')
+                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = 'default'
 
                 // AWS
-                TEST_AWSACCOUNT_FILE = credentials("tf-sdk-test-aws-account")
-                AWS_CREDENTIALS      = credentials("tf-sdk-test-aws-credentials")
-                AWS_CONFIG           = credentials("tf-sdk-test-aws-config")
+                TEST_AWSACCOUNT_FILE = credentials('tf-sdk-test-aws-account')
+                AWS_CREDENTIALS      = credentials('tf-sdk-test-aws-credentials')
+                AWS_CONFIG           = credentials('tf-sdk-test-aws-config')
 
                 // Azure
-                TEST_AZURESUBSCRIPTION_FILE     = credentials("tf-sdk-test-azure-subscription")
-                AZURE_SERVICEPRINCIPAL_LOCATION = credentials("tf-sdk-test-azure-service-principal")
+                TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
+                AZURE_SERVICEPRINCIPAL_LOCATION = credentials('tf-sdk-test-azure-service-principal')
 
                 // GCP
-                TEST_GCPPROJECT_FILE           = credentials("tf-sdk-test-gcp-project")
-                GOOGLE_APPLICATION_CREDENTIALS = credentials("tf-sdk-test-gcp-service-account")
+                TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
+                GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
+
+                // Run acceptance tests with the nightly build.
+                TF_ACC = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
             }
             steps {
                 sh 'mkdir -p ~/.aws && ln -sf $AWS_CREDENTIALS ~/.aws/credentials && ln -sf $AWS_CONFIG ~/.aws/config'
-                sh 'CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
-                sh 'rm -r ~/.aws'
+                sh 'mkdir -p ~/.rubrik && ln -sf $RUBRIK_POLARIS_ACCOUNT_FILE ~/.rubrik/polaris-accounts.json'
+                sh 'if [ "$TF_ACC" != "1" ]; then unset TF_ACC; fi; CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
+                sh 'rm -r ~/.aws ~/.rubrik'
             }
         }
     }
