@@ -65,8 +65,7 @@ pipeline {
             steps {
                 sh 'mkdir -p ~/.aws && ln -sf $AWS_CREDENTIALS ~/.aws/credentials && ln -sf $AWS_CONFIG ~/.aws/config'
                 sh 'mkdir -p ~/.rubrik && ln -sf $RUBRIK_POLARIS_ACCOUNT_FILE ~/.rubrik/polaris-accounts.json'
-                sh 'if [ "$TF_ACC" != "1" ]; then unset TF_ACC; fi'
-                sh 'CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
+                sh 'if [ "$TF_ACC" != "1" ]; then unset TF_ACC; fi; CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
                 sh 'rm -r ~/.aws ~/.rubrik'
             }
         }
