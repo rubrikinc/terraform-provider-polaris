@@ -307,19 +307,26 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 	}
 
-	if d.HasChange("exocompute") && len(exoRegions) > 0 {
-		var regions []string
-		for region := range exoRegions {
-			regions = append(regions, region)
-		}
+	if d.HasChange("exocompute") {
+		if _, ok := d.GetOk("exocompute"); ok {
+			var regions []string
+			for region := range exoRegions {
+				regions = append(regions, region)
+			}
 
-		err := client.AWS().EnableExocompute(ctx, aws.Profile(profile), regions...)
-		if errors.Is(err, graphql.ErrAlreadyEnabled) {
-			err = client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.Exocompute,
-				aws.Regions(regions...))
-		}
-		if err != nil {
-			return diag.FromErr(err)
+			err := client.AWS().EnableExocompute(ctx, aws.Profile(profile), regions...)
+			if errors.Is(err, graphql.ErrAlreadyEnabled) {
+				err = client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.Exocompute,
+					aws.Regions(regions...))
+			}
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			err := client.AWS().DisableExocompute(ctx, aws.Profile(profile))
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
 	}
 
