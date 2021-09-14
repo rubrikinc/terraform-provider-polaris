@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 )
 
 // resourceAzureServicePrincipal defines the schema for the Azure service
@@ -90,23 +90,20 @@ func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 // Polaris.
 func azureReadServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureReadServicePrincipal")
+
 	return nil
 }
 
-// gcpUpdateServiceAccount run the Update operation for the GCP service account
-// resource. This updates the Azure service principal in Polaris.
+// azureUpdateServiceAccount run the Update operation for the Azure service
+// principal resource. This updates the Azure service principal in Polaris.
 func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureUpdateServicePrincipal")
 
 	client := m.(*polaris.Client)
 
-	var principal polaris.AzureServicePrincipal
+	var principal azure.ServicePrincipalFunc
 	if credentials := d.Get("credentials").(string); credentials != "" {
-		var err error
-		principal, err = polaris.AzureServicePrincipalFromFile(credentials)
-		if err != nil {
-			return diag.FromErr(err)
-		}
+		principal = azure.KeyFile(credentials)
 	} else {
 		appID, err := uuid.Parse(d.Get("app_id").(string))
 		if err != nil {
@@ -118,21 +115,16 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 			return diag.FromErr(err)
 		}
 
-		principal = polaris.AzureServicePrincipal{
-			Cloud:        graphql.AzurePublic,
-			AppID:        appID,
-			AppName:      d.Get("app_name").(string),
-			AppSecret:    d.Get("app_secret").(string),
-			TenantID:     tenantID,
-			TenantDomain: d.Get("tenant_domain").(string),
-		}
+		principal = azure.ServicePrincipal(appID, d.Get("app_name").(string), d.Get("app_secret").(string),
+			tenantID, d.Get("tenant_domain").(string))
 	}
 
 	// Set service principal in Polaris.
-	if err := client.AzureServicePrincipalSet(ctx, principal); err != nil {
+	id, err := client.Azure().SetServicePrincipal(ctx, principal)
+	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(principal.AppID.String())
+	d.SetId(id.String())
 
 	return nil
 }

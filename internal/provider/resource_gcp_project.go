@@ -5,13 +5,16 @@ import (
 	"errors"
 	"log"
 	"strconv"
-	"strings"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // stringIsInteger assumes m is a string holding an integer and returns nil if
@@ -87,6 +90,13 @@ func resourceGcpProject() *schema.Resource {
 				ValidateDiagFunc: stringIsInteger,
 			},
 		},
+
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceGcpProjectV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceGcpProjectStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
@@ -97,11 +107,16 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	client := m.(*polaris.Client)
 
-	// Resource parameters.
 	credentials := d.Get("credentials").(string)
-	organizationName := d.Get("organization_name").(string)
 	projectID := d.Get("project").(string)
-	projectName := d.Get("project_name").(string)
+
+	var opts []gcp.OptionFunc
+	if name, ok := d.GetOk("project_name"); ok {
+		opts = append(opts, gcp.Name(name.(string)))
+	}
+	if orgName, ok := d.GetOk("organization_name"); ok {
+		opts = append(opts, gcp.Organization(orgName.(string)))
+	}
 
 	// Terraform schema integers are restricted to int and hence cannot handle
 	// a GCP project number when running on a 32-bit platform.
@@ -115,38 +130,36 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Determine how the project details should be passed on to Polaris.
-	gcpConfig := polaris.FromGcpProject(projectID, projectName, projectNumber, organizationName)
+	var project gcp.ProjectFunc
 	switch {
 	case credentials != "" && projectID == "":
-		gcpConfig = polaris.FromGcpKeyFile(credentials)
+		project = gcp.KeyFile(credentials)
 	case credentials != "" && projectID != "":
-		gcpConfig = polaris.FromGcpKeyFileWithProjectID(credentials, projectID)
+		project = gcp.KeyFileAndProject(credentials, projectID)
+	case credentials == "" && projectID != "":
+		project = gcp.Project(projectID, projectNumber)
 	}
 
 	// Check if the project already exist in Polaris.
-	project, err := client.GcpProject(ctx, gcpConfig)
+	account, err := client.GCP().Project(ctx, gcp.ID(project), core.CloudNativeProtection)
 	switch {
-	case errors.Is(err, polaris.ErrNotFound):
+	case errors.Is(err, graphql.ErrNotFound):
 	case err == nil:
-		return diag.Errorf("project %q has already been added to polaris", project.ProjectID)
+		return diag.Errorf("project %q has already been added to polaris", account.NativeID)
 	case err != nil:
 		return diag.FromErr(err)
 	}
 
 	// Add project to Polaris.
-	if err := client.GcpProjectAdd(ctx, gcpConfig); err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Lookup the id and GCP project id of the newly added project. Note that
-	// the resource id is created from both.
-	project, err = client.GcpProject(ctx, gcpConfig)
+	id, err := client.GCP().AddProject(ctx, project, opts...)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(toResourceID(project.ID, strings.ToLower(project.ProjectID)))
+	d.SetId(id.String())
 
+	// Populate the local Terraform state.
 	gcpReadProject(ctx, d, m)
+
 	return nil
 }
 
@@ -157,19 +170,18 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 
 	client := m.(*polaris.Client)
 
-	// Extract the GCP project id from the resource id.
-	_, projectID, err := fromResourceID(d.Id())
+	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	// Lookup the GCP project in Polaris and update the local state.
-	project, err := client.GcpProject(ctx, polaris.WithGcpProjectID(projectID))
+	project, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.CloudNativeProtection)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	d.Set("organization_name", project.OrganizationName)
-	d.Set("project_name", project.ProjectName)
+	d.Set("project_name", project.Name)
 	d.Set("project_number", strconv.FormatInt(project.ProjectNumber, 10))
 
 	return nil
@@ -190,15 +202,18 @@ func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	client := m.(*polaris.Client)
 
-	// Get the old resource arguments.
-	oldProject, _ := d.GetChange("project")
-	projectID := oldProject.(string)
+	id, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
+	// Get the old resource arguments.
 	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
 	deleteSnapshots := oldSnapshots.(bool)
 
 	// Remove the project from Polaris.
-	if err := client.GcpProjectRemove(ctx, polaris.WithGcpProjectID(projectID), deleteSnapshots); err != nil {
+	err = client.GCP().RemoveProject(ctx, gcp.CloudAccountID(id), deleteSnapshots)
+	if err != nil {
 		return diag.FromErr(err)
 	}
 	d.SetId("")

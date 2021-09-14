@@ -46,6 +46,8 @@ func Provider() *schema.Provider {
 
 		ResourcesMap: map[string]*schema.Resource{
 			"polaris_aws_account":             resourceAwsAccount(),
+			"polaris_aws_exocompute":          resourceAwsExocompute(),
+			"polaris_azure_exocompute":        resourceAzureExocompute(),
 			"polaris_azure_service_principal": resourceAzureServicePrincipal(),
 			"polaris_azure_subscription":      resourceAzureSubcription(),
 			"polaris_gcp_project":             resourceGcpProject(),
@@ -63,7 +65,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	// When credentials doesn't refer to an existing file we assume that
 	// it's an account name.
 	if _, err := os.Stat(credentials); err != nil {
-		account, err := polaris.DefaultAccount(credentials)
+		account, err := polaris.DefaultAccount(credentials, true)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
@@ -77,7 +79,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 
 	// Otherwise we load the file as a service account.
-	account, err := polaris.ServiceAccountFromFile(credentials)
+	account, err := polaris.ServiceAccountFromFile(credentials, true)
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}

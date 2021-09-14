@@ -31,12 +31,20 @@ resource "polaris_azure_subscription" "default" {
 
 - **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
 - **subscription_id** (String) Subscription id.
-- **subscription_name** (String) Subscription name.
 - **tenant_domain** (String) Tenant directory/domain name.
 
 ### Optional
 
 - **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
+- **exocompute** (Block List, Max: 1) Enable the exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
 - **id** (String) The ID of this resource.
+- **subscription_name** (String) Subscription name.
+
+<a id="nestedblock--exocompute"></a>
+### Nested Schema for `exocompute`
+
+Required:
+
+- **regions** (Set of String) Regions to enable the exocompute feature in.
 
 
