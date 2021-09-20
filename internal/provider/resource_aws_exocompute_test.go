@@ -52,7 +52,8 @@ func TestAccPolarisAWSExocompute_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: exocompute,
+			PreConfig: testStepDelay,
+			Config:    exocompute,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),

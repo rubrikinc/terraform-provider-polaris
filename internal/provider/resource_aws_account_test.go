@@ -54,7 +54,8 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: accountOneRegion,
+			PreConfig: testStepDelay,
+			Config:    accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
@@ -62,7 +63,8 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
 			),
 		}, {
-			Config: accountTwoRegions,
+			PreConfig: testStepDelay,
+			Config:    accountTwoRegions,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
@@ -71,7 +73,8 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
 			),
 		}, {
-			Config: accountOneRegion,
+			PreConfig: testStepDelay,
+			Config:    accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),

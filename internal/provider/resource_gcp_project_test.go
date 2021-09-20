@@ -51,7 +51,8 @@ func TestAccPolarisGCPProject_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: projectCredentials,
+			PreConfig: testStepDelay,
+			Config:    projectCredentials,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "credentials", project.Credentials),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
@@ -71,7 +72,8 @@ func TestAccPolarisGCPProject_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: projectValues,
+			PreConfig: testStepDelay,
+			Config:    projectValues,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_name", project.ProjectName),

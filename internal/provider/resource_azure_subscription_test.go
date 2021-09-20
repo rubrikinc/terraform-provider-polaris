@@ -68,7 +68,8 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: subscriptionOneRegion,
+			PreConfig: testStepDelay,
+			Config:    subscriptionOneRegion,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
@@ -77,7 +78,8 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
 			),
 		}, {
-			Config: subscriptionTwoRegions,
+			PreConfig: testStepDelay,
+			Config:    subscriptionTwoRegions,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
@@ -87,7 +89,8 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
 			),
 		}, {
-			Config: subscriptionOneRegion,
+			PreConfig: testStepDelay,
+			Config:    subscriptionOneRegion,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),

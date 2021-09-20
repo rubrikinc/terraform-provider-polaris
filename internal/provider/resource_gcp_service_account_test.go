@@ -35,7 +35,8 @@ func TestAccPolarisGCPServiceAccount_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: serviceAccount,
+			PreConfig: testStepDelay,
+			Config:    serviceAccount,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_gcp_service_account.default", "id", id),
 				resource.TestCheckResourceAttr("polaris_gcp_service_account.default", "credentials", project.Credentials),

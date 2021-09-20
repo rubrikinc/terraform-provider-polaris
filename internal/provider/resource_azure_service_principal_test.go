@@ -44,7 +44,8 @@ func TestAccPolarisAzureServicePrincipal_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: servicePrincipal,
+			PreConfig: testStepDelay,
+			Config:    servicePrincipal,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_azure_service_principal.default", "id", subscription.PrincipalID),
 				resource.TestCheckResourceAttr("polaris_azure_service_principal.default", "credentials", subscription.Credentials),
@@ -65,7 +66,8 @@ func TestAccPolarisAzureServicePrincipal_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: servicePrincipal,
+			PreConfig: testStepDelay,
+			Config:    servicePrincipal,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_azure_service_principal.default", "id", subscription.PrincipalID),
 				resource.TestCheckResourceAttr("polaris_azure_service_principal.default", "app_id", subscription.PrincipalID),
