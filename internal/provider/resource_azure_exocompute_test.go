@@ -53,7 +53,8 @@ func TestAccPolarisAzureExocompute_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: exocompute,
+			PreConfig: testStepDelay,
+			Config:    exocompute,
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
