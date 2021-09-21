@@ -71,6 +71,7 @@ func resourceAwsAccount() *schema.Resource {
 								Type:             schema.TypeString,
 								ValidateDiagFunc: validateAwsRegion,
 							},
+							MinItems:    1,
 							Required:    true,
 							Description: "Regions that Polaris will monitor for instances to automatically protect.",
 						},
@@ -101,6 +102,7 @@ func resourceAwsAccount() *schema.Resource {
 								Type:             schema.TypeString,
 								ValidateDiagFunc: validateAwsRegion,
 							},
+							MinItems:    1,
 							Required:    true,
 							Description: "Regions to enable the Exocompute feature in.",
 						},
@@ -292,7 +294,6 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		if err := d.Set("permissions", "update-required"); err != nil {
 			return diag.FromErr(err)
 		}
-		break
 	}
 
 	return nil
@@ -336,7 +337,12 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				return diag.FromErr(err)
 			}
 		} else {
-			if err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, false); err != nil {
+			if _, ok := d.GetOk("exocompute"); ok {
+				return diag.Errorf("cloud native protection is required by exocompute")
+			}
+
+			snapshots := d.Get("delete_snapshots_on_destroy").(bool)
+			if err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, snapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -355,13 +361,11 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 			if err := client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureExocompute, opts...); err != nil {
 				return diag.FromErr(err)
 			}
+		} else {
+			if err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureExocompute, false); err != nil {
+				return diag.FromErr(err)
+			}
 		}
-		// // TODO: Not possible to disable exocompute at this point in time.
-		// else {
-		// 	if err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureExocompute, false); err != nil {
-		// 		return diag.FromErr(err)
-		// 	}
-		// }
 	}
 
 	if d.HasChange("permissions") {
@@ -416,19 +420,10 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.Errorf("id and profile refer to different accounts")
 	}
 
-	// // TODO: Not possible to disable exocompute at this point in time.
-	// if d.HasChange("exocompute") {
-	// 	err = client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureExocompute, deleteSnapshots)
-	// 	if err != nil {
-	// 		return diag.FromErr(err)
-	// 	}
-	// }
-
-	if d.HasChange("cloud_native_protection") {
-		err = client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, deleteSnapshots)
-		if err != nil {
-			return diag.FromErr(err)
-		}
+	// Removing Cloud Native Protection also removes Exocompute.
+	err = client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, deleteSnapshots)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
 	d.SetId("")

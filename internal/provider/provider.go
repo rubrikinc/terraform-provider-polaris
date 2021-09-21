@@ -47,6 +47,7 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"polaris_aws_account":             resourceAwsAccount(),
 			"polaris_aws_exocompute":          resourceAwsExocompute(),
+			"polaris_azure_exocompute":        resourceAzureExocompute(),
 			"polaris_azure_service_principal": resourceAzureServicePrincipal(),
 			"polaris_azure_subscription":      resourceAzureSubcription(),
 			"polaris_gcp_project":             resourceGcpProject(),

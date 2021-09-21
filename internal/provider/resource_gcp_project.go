@@ -68,14 +68,13 @@ func resourceGcpProject() *schema.Resource {
 				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
 			"organization_name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				Computed:         true,
-				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"project_name", "project", "project_number"},
-				Description:      "GCP organization name.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				Computed:      true,
+				ConflictsWith: []string{"credentials"},
+				RequiredWith:  []string{"organization_name", "project", "project_number"},
+				Description:   "GCP organization name.",
 			},
 			"permissions_hash": {
 				Type:             schema.TypeString,
@@ -183,7 +182,9 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	d.SetId(id.String())
 
+	// Populate the local Terraform state.
 	gcpReadProject(ctx, d, m)
+
 	return nil
 }
 

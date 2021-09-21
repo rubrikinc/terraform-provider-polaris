@@ -26,7 +26,6 @@ func credentialsFileExists(m interface{}, p cty.Path) diag.Diagnostics {
 
 	return nil
 }
-
 // validateFeature verifies that m contains a valid Polaris feature name.
 func validateFeature(m interface{}, p cty.Path) diag.Diagnostics {
 	_, err := core.ParseFeature(m.(string))
