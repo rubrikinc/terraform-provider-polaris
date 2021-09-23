@@ -49,7 +49,7 @@ func Provider() *schema.Provider {
 			"polaris_aws_exocompute":          resourceAwsExocompute(),
 			"polaris_azure_exocompute":        resourceAzureExocompute(),
 			"polaris_azure_service_principal": resourceAzureServicePrincipal(),
-			"polaris_azure_subscription":      resourceAzureSubcription(),
+			"polaris_azure_subscription":      resourceAzureSubscription(),
 			"polaris_gcp_project":             resourceGcpProject(),
 			"polaris_gcp_service_account":     resourceGcpServiceAccount(),
 		},

@@ -59,7 +59,7 @@ func resourceGcpProject() *schema.Resource {
 				ForceNew:         true,
 				AtLeastOneOf:     []string{"credentials", "project"},
 				Description:      "Path to GCP service account key file.",
-				ValidateDiagFunc: credentialsFileExists,
+				ValidateDiagFunc: fileExists,
 			},
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,

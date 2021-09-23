@@ -33,9 +33,9 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// resourceAzureSubcriptionV0 defines the schema for version 1 of the Azure
+// resourceAzureSubscriptionV0 defines the schema for version 1 of the Azure
 // subscription resource.
-func resourceAzureSubcriptionV1() *schema.Resource {
+func resourceAzureSubscriptionV1() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"delete_snapshots_on_destroy": {
@@ -77,10 +77,10 @@ func resourceAzureSubcriptionV1() *schema.Resource {
 	}
 }
 
-// resourceAzureProjectStateUpgradeV1 introduces a cloud native protection
+// resourceAzureSubscriptionStateUpgradeV1 introduces a cloud native protection
 // feature block.
-func resourceAzureProjectStateUpgradeV1(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAzureProjectStateUpgradeV1")
+func resourceAzureSubscriptionStateUpgradeV1(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
+	log.Print("[TRACE] resourceAzureSubscriptionStateUpgradeV1")
 
 	client := m.(*polaris.Client)
 

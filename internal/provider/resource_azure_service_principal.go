@@ -23,18 +23,11 @@ func resourceAzureServicePrincipal() *schema.Resource {
 		DeleteContext: azureDeleteServicePrincipal,
 
 		Schema: map[string]*schema.Schema{
-			"credentials": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				AtLeastOneOf:     []string{"credentials", "app_id"},
-				Description:      "Path to Azure service principal file.",
-				ValidateDiagFunc: credentialsFileExists,
-			},
 			"app_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ConflictsWith:    []string{"credentials"},
+				AtLeastOneOf:     []string{"app_id", "credentials", "sdk_auth"},
+				ConflictsWith:    []string{"credentials", "sdk_auth"},
 				RequiredWith:     []string{"app_name", "app_secret", "tenant_id"},
 				Description:      "App registration application id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
@@ -42,7 +35,6 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			"app_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ConflictsWith:    []string{"credentials"},
 				RequiredWith:     []string{"app_id", "app_secret", "tenant_id"},
 				Description:      "App registration display name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
@@ -51,10 +43,25 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Sensitive:        true,
-				ConflictsWith:    []string{"credentials"},
 				RequiredWith:     []string{"app_id", "app_name", "tenant_id"},
 				Description:      "App registration client secret.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			},
+			"credentials": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				ConflictsWith:    []string{"app_id", "sdk_auth"},
+				Description:      "Path to Azure service principal file.",
+				ValidateDiagFunc: fileExists,
+			},
+			"sdk_auth": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				ConflictsWith:    []string{"app_id", "credentials"},
+				Description:      "Path to Azure service principal created with the Azure SDK using the --sdk-auth parameter",
+				ValidateDiagFunc: fileExists,
 			},
 			"permissions_hash": {
 				Type:             schema.TypeString,
@@ -65,18 +72,25 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			"tenant_domain": {
 				Type:             schema.TypeString,
 				Required:         true,
+				ForceNew:         true,
 				Description:      "Tenant directory/domain name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"tenant_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ConflictsWith:    []string{"credentials"},
+				ForceNew:         true,
 				RequiredWith:     []string{"app_id", "app_name", "app_secret"},
 				Description:      "Tenant/domain id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
 			},
 		},
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceAzureServicePrincipalV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureServicePrincipalStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
@@ -87,25 +101,27 @@ func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 	log.Print("[TRACE] azureCreateServicePrincipal")
 
 	client := m.(*polaris.Client)
+	tenantDomain := d.Get("tenant_domain").(string)
 
 	var principal azure.ServicePrincipalFunc
-	if credentials := d.Get("credentials").(string); credentials != "" {
-		principal = azure.SDKAuthFile(credentials, d.Get("tenant_domain").(string))
-	} else {
+	switch {
+	case d.Get("credentials").(string) != "":
+		principal = azure.KeyFile(d.Get("credentials").(string), tenantDomain)
+	case d.Get("sdk_auth").(string) != "":
+		principal = azure.SDKAuthFile(d.Get("sdk_auth").(string), tenantDomain)
+	default:
 		appID, err := uuid.Parse(d.Get("app_id").(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
-
 		tenantID, err := uuid.Parse(d.Get("tenant_id").(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		principal = azure.ServicePrincipal(appID, d.Get("app_secret").(string), tenantID, d.Get("tenant_domain").(string))
+		principal = azure.ServicePrincipal(appID, d.Get("app_secret").(string), tenantID, tenantDomain)
 	}
 
-	// Set service principal in Polaris.
 	id, err := client.Azure().SetServicePrincipal(ctx, principal)
 	if err != nil {
 		return diag.FromErr(err)
@@ -134,42 +150,11 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 	client := m.(*polaris.Client)
 
 	if d.HasChange("permissions_hash") {
-		err := client.Azure().PermissionsUpdated(ctx)
+		err := client.Azure().PermissionsUpdatedForTenantDomain(ctx, d.Get("tenant_domain").(string), nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
-
-	var principal azure.ServicePrincipalFunc
-	if d.HasChange("credentials") || d.HasChange("tenant_domain") {
-		if credentials := d.Get("credentials").(string); credentials != "" {
-			principal = azure.SDKAuthFile(credentials, d.Get("tenant_domain").(string))
-		}
-	}
-
-	if d.HasChange("app_id") || d.HasChange("app_secret") || d.HasChange("tenant_id") || d.HasChange("tenant_domain") {
-		if id := d.Get("app_id").(string); id != "" {
-			appID, err := uuid.Parse(id)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-
-			tenantID, err := uuid.Parse(d.Get("tenant_id").(string))
-			if err != nil {
-				return diag.FromErr(err)
-			}
-
-			principal = azure.ServicePrincipal(appID, d.Get("app_secret").(string), tenantID, d.Get("tenant_domain").(string))
-		}
-	}
-
-	// Set service principal in Polaris.
-	id, err := client.Azure().SetServicePrincipal(ctx, principal)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	d.SetId(id.String())
 
 	return nil
 }

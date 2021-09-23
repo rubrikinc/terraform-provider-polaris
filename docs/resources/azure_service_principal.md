@@ -43,6 +43,7 @@ resource "polaris_azure_service_principal" "default" {
 - **credentials** (String) Path to Azure service principal file.
 - **id** (String) The ID of this resource.
 - **permissions_hash** (String) Signals that the permissions has been updated.
+- **sdk_auth** (String) Path to Azure service principal created with the Azure SDK using the --sdk-auth parameter
 - **tenant_id** (String) Tenant/domain id.
 
 

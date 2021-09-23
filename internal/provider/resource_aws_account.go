@@ -374,6 +374,9 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		if oldPerms == "update-required" && newPerms == "update" {
 			var features []core.Feature
 			for _, feature := range account.Features {
+				if feature.Status != core.StatusMissingPermissions {
+					continue
+				}
 				features = append(features, feature.Name)
 			}
 

@@ -23,9 +23,9 @@ func validateAzureRegion(m interface{}, p cty.Path) diag.Diagnostics {
 	return diag.FromErr(err)
 }
 
-// resourceAzureSubcription defines the schema for the Azure subscription
+// resourceAzureSubscription defines the schema for the Azure subscription
 // resource.
-func resourceAzureSubcription() *schema.Resource {
+func resourceAzureSubscription() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateSubscription,
 		ReadContext:   azureReadSubscription,
@@ -113,12 +113,12 @@ func resourceAzureSubcription() *schema.Resource {
 
 		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
-			Type:    resourceAzureSubcriptionV0().CoreConfigSchema().ImpliedType(),
-			Upgrade: resourceAzureProjectStateUpgradeV0,
+			Type:    resourceAzureSubscriptionV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureSubscriptionStateUpgradeV0,
 			Version: 0,
 		}, {
-			Type:    resourceAzureSubcriptionV1().CoreConfigSchema().ImpliedType(),
-			Upgrade: resourceAzureProjectStateUpgradeV1,
+			Type:    resourceAzureSubscriptionV1().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureSubscriptionStateUpgradeV1,
 			Version: 1,
 		}},
 	}
@@ -309,20 +309,43 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 	}
 
 	if d.HasChange("exocompute") {
-		exoBlock, ok := d.GetOk("exocompute")
-		if ok {
-			block := exoBlock.([]interface{})[0].(map[string]interface{})
+		oldExoBlock, newExoBlock := d.GetChange("exocompute")
+		oldExoList := oldExoBlock.([]interface{})
+		newExoList := newExoBlock.([]interface{})
 
+		// Determine whether we are adding, removing or updating the Exocompute
+		// feature.
+		switch {
+		case len(oldExoList) == 0:
 			var opts []azure.OptionFunc
-			for _, region := range block["regions"].(*schema.Set).List() {
+			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
 				opts = append(opts, azure.Region(region.(string)))
 			}
 
-			if err := client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, opts...); err != nil {
+			subscriptionID, err := uuid.Parse(d.Get("subscription_id").(string))
+			if err != nil {
 				return diag.FromErr(err)
 			}
-		} else {
-			if err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, false); err != nil {
+
+			tenantDomain := d.Get("tenant_domain").(string)
+			_, err = client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
+				core.FeatureExocompute, opts...)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		case len(newExoList) == 0:
+			err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, false)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		default:
+			var opts []azure.OptionFunc
+			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
+				opts = append(opts, azure.Region(region.(string)))
+			}
+
+			err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, opts...)
+			if err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -336,6 +359,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 		}
 	}
 
+	azureReadSubscription(ctx, d, m)
 	return nil
 }
 

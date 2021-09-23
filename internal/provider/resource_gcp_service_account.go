@@ -27,7 +27,7 @@ func resourceGcpServiceAccount() *schema.Resource {
 			"credentials": {
 				Type:             schema.TypeString,
 				Required:         true,
-				ValidateDiagFunc: credentialsFileExists,
+				ValidateDiagFunc: fileExists,
 				Description:      "Path to GCP service account key file.",
 			},
 			"name": {

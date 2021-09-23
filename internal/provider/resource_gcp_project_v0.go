@@ -44,7 +44,7 @@ func resourceGcpProjectV0() *schema.Resource {
 				Optional:         true,
 				ForceNew:         true,
 				AtLeastOneOf:     []string{"credentials", "project"},
-				ValidateDiagFunc: credentialsFileExists,
+				ValidateDiagFunc: fileExists,
 			},
 			"delete_snapshots_on_destroy": {
 				Type:     schema.TypeBool,

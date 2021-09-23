@@ -32,9 +32,9 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// resourceAzureSubcriptionV0 defines the schema for version 0 of the Azure
+// resourceAzureSubscriptionV0 defines the schema for version 0 of the Azure
 // subscription resource.
-func resourceAzureSubcriptionV0() *schema.Resource {
+func resourceAzureSubscriptionV0() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"delete_snapshots_on_destroy": {
@@ -71,10 +71,10 @@ func resourceAzureSubcriptionV0() *schema.Resource {
 	}
 }
 
-// resourceAzureProjectStateUpgradeV0 migrates the resource id from the Azure
-// subscription id to the Polaris cloud account id.
-func resourceAzureProjectStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAzureProjectStateUpgradeV0")
+// resourceAzureSubscriptionStateUpgradeV0 migrates the resource id from the
+// Azure subscription id to the Polaris cloud account id.
+func resourceAzureSubscriptionStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
+	log.Print("[TRACE] resourceAzureSubscriptionStateUpgradeV0")
 
 	client := m.(*polaris.Client)
 
