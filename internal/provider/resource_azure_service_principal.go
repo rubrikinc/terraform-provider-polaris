@@ -26,7 +26,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			"app_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				AtLeastOneOf:     []string{"app_id", "credentials", "sdk_auth"},
+				ExactlyOneOf:     []string{"app_id", "credentials", "sdk_auth"},
 				ConflictsWith:    []string{"credentials", "sdk_auth"},
 				RequiredWith:     []string{"app_name", "app_secret", "tenant_id"},
 				Description:      "App registration application id.",
@@ -156,6 +156,7 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 		}
 	}
 
+	azureReadServicePrincipal(ctx, d, m)
 	return nil
 }
 

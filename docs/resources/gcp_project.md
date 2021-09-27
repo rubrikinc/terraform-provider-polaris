@@ -40,11 +40,11 @@ resource "polaris_gcp_project" "default" {
 - **credentials** (String) Path to GCP service account key file.
 - **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
 - **id** (String) The ID of this resource.
-- **organization_name** (String) GCP organization name.
+- **organization_name** (String) Organization name.
 - **permissions_hash** (String) Signals that the permissions has been updated.
-- **project** (String) GCP project id.
-- **project_name** (String) GCP project name.
-- **project_number** (String) GCP project number.
+- **project** (String) Project id.
+- **project_name** (String) Project name.
+- **project_number** (String) Project number.
 
 <a id="nestedblock--cloud_native_protection"></a>
 ### Nested Schema for `cloud_native_protection`

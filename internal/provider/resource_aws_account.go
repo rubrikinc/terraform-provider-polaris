@@ -296,6 +296,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		}
 	}
 
+	awsReadAccount(ctx, d, m)
 	return nil
 }
 
@@ -305,7 +306,6 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	log.Print("[TRACE] awsUpdateAccount")
 
 	client := m.(*polaris.Client)
-
 	profile := d.Get("profile").(string)
 
 	id, err := uuid.Parse(d.Id())
@@ -349,20 +349,36 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	if d.HasChange("exocompute") {
-		exoBlock, ok := d.GetOk("exocompute")
-		if ok {
-			block := exoBlock.([]interface{})[0].(map[string]interface{})
+		oldExoBlock, newExoBlock := d.GetChange("exocompute")
+		oldExoList := oldExoBlock.([]interface{})
+		newExoList := newExoBlock.([]interface{})
 
+		// Determine whether we are adding, removing or updating the Exocompute
+		// feature.
+		switch {
+		case len(oldExoList) == 0:
 			var opts []aws.OptionFunc
-			for _, region := range block["regions"].(*schema.Set).List() {
+			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			if err := client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureExocompute, opts...); err != nil {
+			_, err = client.AWS().AddAccount(ctx, aws.Profile(profile), core.FeatureExocompute, opts...)
+			if err != nil {
 				return diag.FromErr(err)
 			}
-		} else {
-			if err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureExocompute, false); err != nil {
+		case len(newExoList) == 0:
+			err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureExocompute, false)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		default:
+			var opts []aws.OptionFunc
+			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
+				opts = append(opts, aws.Region(region.(string)))
+			}
+
+			err = client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureExocompute, opts...)
+			if err != nil {
 				return diag.FromErr(err)
 			}
 		}

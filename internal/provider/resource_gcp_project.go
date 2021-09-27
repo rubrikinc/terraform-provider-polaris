@@ -57,7 +57,7 @@ func resourceGcpProject() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				AtLeastOneOf:     []string{"credentials", "project"},
+				ExactlyOneOf:     []string{"credentials", "project_number"},
 				Description:      "Path to GCP service account key file.",
 				ValidateDiagFunc: fileExists,
 			},
@@ -68,47 +68,38 @@ func resourceGcpProject() *schema.Resource {
 				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
 			"organization_name": {
-				Type:          schema.TypeString,
-				Optional:      true,
-				ForceNew:      true,
-				Computed:      true,
-				ConflictsWith: []string{"credentials"},
-				RequiredWith:  []string{"organization_name", "project", "project_number"},
-				Description:   "GCP organization name.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				RequiredWith: []string{"project_number"},
+				Description:  "Organization name.",
 			},
 			"permissions_hash": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Description:      "Signals that the permissions has been updated.",
-				RequiredWith:     []string{"credentials"},
 				ValidateDiagFunc: validateHash,
 			},
 			"project": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				Computed:         true,
-				Description:      "GCP project id.",
+				RequiredWith:     []string{"project_number"},
+				Description:      "Project id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"project_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ForceNew:         true,
-				Computed:         true,
-				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"project", "project_number"},
-				Description:      "GCP project name.",
+				RequiredWith:     []string{"project_number"},
+				Description:      "Project name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"project_number": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				Computed:         true,
 				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"project", "project_name"},
-				Description:      "GCP project number.",
+				Description:      "Project number.",
 				ValidateDiagFunc: stringIsInteger,
 			},
 		},
@@ -132,7 +123,6 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	log.Print("[TRACE] gcpCreateProject")
 
 	client := m.(*polaris.Client)
-
 	credentials := d.Get("credentials").(string)
 	projectID := d.Get("project").(string)
 
@@ -162,7 +152,7 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 		project = gcp.KeyFile(credentials)
 	case credentials != "" && projectID != "":
 		project = gcp.KeyFileAndProject(credentials, projectID)
-	case credentials == "" && projectID != "":
+	default:
 		project = gcp.Project(projectID, projectNumber)
 	}
 
@@ -182,9 +172,7 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	d.SetId(id.String())
 
-	// Populate the local Terraform state.
 	gcpReadProject(ctx, d, m)
-
 	return nil
 }
 
@@ -205,8 +193,8 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.Set("project", account.NativeID)
 	d.Set("organization_name", account.OrganizationName)
+	d.Set("project", account.NativeID)
 	d.Set("project_name", account.Name)
 	d.Set("project_number", strconv.FormatInt(account.ProjectNumber, 10))
 
@@ -232,38 +220,19 @@ func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	client := m.(*polaris.Client)
 
+	id, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	if d.HasChange("permissions_hash") {
-		id, err := uuid.Parse(d.Id())
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		var features []core.Feature
-		for _, feature := range account.Features {
-			features = append(features, feature.Name)
-		}
-
-		credentials := d.Get("credentials").(string)
-		projectID := d.Get("project").(string)
-
-		var project gcp.ProjectFunc
-		if projectID == "" {
-			project = gcp.KeyFile(credentials)
-		} else {
-			project = gcp.KeyFileAndProject(credentials, projectID)
-		}
-
-		err = client.GCP().PermissionsUpdated(ctx, project, features)
+		err = client.GCP().PermissionsUpdated(ctx, gcp.CloudAccountID(id), nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
+	gcpReadProject(ctx, d, m)
 	return nil
 }
 
