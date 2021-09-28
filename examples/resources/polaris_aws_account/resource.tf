@@ -9,11 +9,9 @@ resource "polaris_aws_account" "default" {
   }
 }
 
-# Enable Cloud Native Protection and Exocompte. Generates a diff when
-# permissions are missing for the enabled features.
+# Enable Cloud Native Protection and Exocompte.
 resource "polaris_aws_account" "default" {
-  permissions = "update"
-  profile     = "default"
+  profile = "default"
 
   cloud_native_protection {
     regions = [

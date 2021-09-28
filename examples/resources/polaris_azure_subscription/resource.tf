@@ -1,7 +1,7 @@
 # Enable Cloud Native Protection
 resource "polaris_azure_subscription" "default" {
   subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
-  tenant_domain   = "my-domain.onmicrosoft.com"
+  tenant_domain   = "mydomain.onmicrosoft.com"
 
   cloud_native_protection {
     regions = [
@@ -13,7 +13,7 @@ resource "polaris_azure_subscription" "default" {
 # Enable Cloud Native Protection and Exocompte. 
 resource "polaris_azure_subscription" "default" {
   subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
-  tenant_domain   = "my-domain.onmicrosoft.com"
+  tenant_domain   = "mydomain.onmicrosoft.com"
 
   cloud_native_protection {
     regions = [

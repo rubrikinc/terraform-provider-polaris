@@ -96,7 +96,7 @@ func resourceAzureSubscriptionStateUpgradeV1(ctx context.Context, state map[stri
 
 	// Add the new cloud native protection feature block. Takes ownership
 	// of the resource's regions.
-	cnpFeature, ok := account.Feature(core.FeatureExocompute)
+	cnpFeature, ok := account.Feature(core.FeatureCloudNativeProtection)
 	if !ok {
 		return nil, errors.New("azure subscription missing cloud native protection")
 	}

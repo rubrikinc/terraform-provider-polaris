@@ -1,9 +1,9 @@
-# With GCP service account key file
+# With service account key file
 resource "polaris_gcp_project" "default" {
   credentials = "${path.module}/my-project-3f88757a02a4.json"
 }
 
-# Without GCP service account key file
+# Without service account key file
 resource "polaris_gcp_project" "default" {
   project        = "my-project"
   project_number = 123456789012
