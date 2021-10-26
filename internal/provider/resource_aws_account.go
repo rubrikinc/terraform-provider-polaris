@@ -296,7 +296,6 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		}
 	}
 
-	awsReadAccount(ctx, d, m)
 	return nil
 }
 
@@ -407,6 +406,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 	}
 
+	awsReadAccount(ctx, d, m)
 	return nil
 }
 

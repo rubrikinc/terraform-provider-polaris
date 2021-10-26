@@ -57,7 +57,7 @@ func resourceGcpProject() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				ExactlyOneOf:     []string{"credentials, project_number"},
+				ExactlyOneOf:     []string{"credentials", "project_number"},
 				Description:      "Path to GCP service account key file.",
 				ValidateDiagFunc: fileExists,
 			},

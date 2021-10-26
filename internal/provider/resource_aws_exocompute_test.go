@@ -14,9 +14,12 @@ provider "polaris" {
 resource "polaris_aws_account" "default" {
 	name    = "{{ .Resource.AccountName }}"
 	profile = "{{ .Resource.Profile }}"
-	regions = [
-		"us-east-2",
-	]
+
+	cloud_native_protection {
+		regions = [
+			"us-east-2",
+		]
+	}
   
 	exocompute {
 		regions = [
@@ -55,14 +58,22 @@ func TestAccPolarisAWSExocompute_basic(t *testing.T) {
 			PreConfig: testStepDelay,
 			Config:    exocompute,
 			Check: resource.ComposeTestCheckFunc(
+				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
-				resource.TestCheckResourceAttr("polaris_aws_account.default", "regions.#", "1"),
-				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "regions.*", "us-east-2"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
+
+				// Exocompute feature
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "exocompute.0.status", "connected"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "exocompute.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "exocompute.0.regions.*", "us-east-2"),
 
+				// Exocompute resource
 				resource.TestCheckResourceAttrPair("polaris_aws_exocompute.default", "account_id", "polaris_aws_account.default", "id"),
 				resource.TestCheckResourceAttr("polaris_aws_exocompute.default", "region", "us-east-2"),
 				resource.TestCheckResourceAttr("polaris_aws_exocompute.default", "vpc_id", account.Exocompute.VPCID),

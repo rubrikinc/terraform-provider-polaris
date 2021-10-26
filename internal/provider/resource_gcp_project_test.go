@@ -15,6 +15,9 @@ provider "polaris" {
 resource "polaris_gcp_project" "default" {
 	credentials = "{{ .Resource.Credentials }}"
 	project     = "{{ .Resource.ProjectID }}"
+
+	cloud_native_protection {
+	}
 }
 `
 
@@ -32,6 +35,9 @@ resource "polaris_gcp_project" "default" {
 	project           = "{{ .Resource.ProjectID }}"
 	project_name      = "{{ .Resource.ProjectName }}"
 	project_number    = {{ .Resource.ProjectNumber }}
+
+	cloud_native_protection {
+	}
 
 	depends_on = [polaris_gcp_service_account.default]
 }
@@ -54,12 +60,16 @@ func TestAccPolarisGCPProject_basic(t *testing.T) {
 			PreConfig: testStepDelay,
 			Config:    projectCredentials,
 			Check: resource.ComposeTestCheckFunc(
+				// Project resource
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "credentials", project.Credentials),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_name", project.ProjectName),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_number", strconv.FormatInt(project.ProjectNumber, 10)),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "organization_name", project.OrganizationName),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "cloud_native_protection.0.status", "connected"),
 			),
 		}},
 	})
@@ -75,11 +85,15 @@ func TestAccPolarisGCPProject_basic(t *testing.T) {
 			PreConfig: testStepDelay,
 			Config:    projectValues,
 			Check: resource.ComposeTestCheckFunc(
+				// Project resource
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_name", project.ProjectName),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_number", strconv.FormatInt(project.ProjectNumber, 10)),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "organization_name", project.OrganizationName),
 				resource.TestCheckResourceAttr("polaris_gcp_project.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "cloud_native_protection.0.status", "connected"),
 			),
 		}},
 	})
