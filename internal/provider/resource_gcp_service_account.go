@@ -34,6 +34,7 @@ func resourceGcpServiceAccount() *schema.Resource {
 			"name": {
 				Type:             schema.TypeString,
 				Optional:         true,
+				Computed:         true,
 				Description:      "Service account name in Polaris. If not given the name of the service account key file is used.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
