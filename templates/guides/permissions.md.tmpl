@@ -3,7 +3,7 @@ page_title: "Manage Permissions"
 ---
 
 # Manage Permissions
-Polaris require permissions to operate and as new features are added to Polaris the set of required permissions
+Polaris requires permissions to operate and as new features are added to Polaris the set of required permissions
 changes. This guide explains how Terraform can be used to keep this set of permissions up to date.
 
 ## AWS
@@ -29,7 +29,7 @@ provider will not attempt to update the CloudFormation stack.
 ## Azure
 For Azure permissions are managed through a service principal. When the status of a subscription feature is
 `missing-permissions` the permissions of the service principal must be updated for the feature to continue to
-function. This can be managed by Terraform using the the
+function. This can be managed by Terraform using the
 [azurerm](https://registry.terraform.io/providers/hashicorp/azurerm/latest) provider:
 ```hcl
 data "polaris_azure_permissions" "default" {
@@ -75,7 +75,7 @@ principal's role definition and then notify Polaris about the update.
 ## GCP
 For GCP permissions are managed through a service account. When the status of a project feature is `missing-permissions`
 the permissions of the service account must be updated for the feature to continue to function. This can be managed by
-Terraform using the the [google](https://registry.terraform.io/providers/hashicorp/google/latest) provider.
+Terraform using the [google](https://registry.terraform.io/providers/hashicorp/google/latest) provider.
 
 ### Project Service Account
 When the service account is specified as part of the project resource:
