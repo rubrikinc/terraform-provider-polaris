@@ -14,9 +14,12 @@ provider "polaris" {
 resource "polaris_aws_account" "default" {
 	name    = "{{ .Resource.AccountName }}"
 	profile = "{{ .Resource.Profile }}"
-	regions = [
-		"us-east-2",
-	]
+
+	cloud_native_protection {
+		regions = [
+			"us-east-2",
+		]
+	}
 }
 `
 
@@ -28,10 +31,13 @@ provider "polaris" {
 resource "polaris_aws_account" "default" {
 	name    = "{{ .Resource.AccountName }}"
 	profile = "{{ .Resource.Profile }}"
-	regions = [
-		"us-east-2",
-		"us-west-2",
-	]
+
+	cloud_native_protection {
+		regions = [
+			"us-east-2",
+			"us-west-2",
+		]
+	}
 }
 `
 
@@ -57,29 +63,44 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 			PreConfig: testStepDelay,
 			Config:    accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
+				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
-				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "regions.*", "us-east-2"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
 			),
 		}, {
 			PreConfig: testStepDelay,
 			Config:    accountTwoRegions,
 			Check: resource.ComposeTestCheckFunc(
+				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
-				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "regions.*", "us-east-2"),
-				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "regions.*", "us-west-2"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "2"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-west-2"),
 			),
 		}, {
 			PreConfig: testStepDelay,
 			Config:    accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
+				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
-				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "regions.*", "us-east-2"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
 			),
 		}},
 	})

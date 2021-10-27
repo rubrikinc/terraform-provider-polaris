@@ -12,16 +12,20 @@ provider "polaris" {
 }
 
 resource "polaris_azure_service_principal" "default" {
-	credentials = "{{ .Resource.Credentials }}"
+	credentials   = "{{ .Resource.Credentials }}"
+	tenant_domain = "{{ .Resource.TenantDomain }}"
 }
 
 resource "polaris_azure_subscription" "default" {
 	subscription_id   = "{{ .Resource.SubscriptionID }}"
 	subscription_name = "{{ .Resource.SubscriptionName }}"
 	tenant_domain     = "{{ .Resource.TenantDomain }}"
-	regions           = [
-		"eastus2",
-	]
+
+	cloud_native_protection {
+		regions = [
+			"eastus2",
+		]
+	}
   
 	depends_on = [polaris_azure_service_principal.default]
 }
@@ -33,18 +37,22 @@ provider "polaris" {
 }
 
 resource "polaris_azure_service_principal" "default" {
-	credentials = "{{ .Resource.Credentials }}"
+	credentials   = "{{ .Resource.Credentials }}"
+	tenant_domain = "{{ .Resource.TenantDomain }}"
 }
 
 resource "polaris_azure_subscription" "default" {
 	subscription_id   = "{{ .Resource.SubscriptionID }}"
 	subscription_name = "{{ .Resource.SubscriptionName }}"
 	tenant_domain     = "{{ .Resource.TenantDomain }}"
-	regions           = [
-		"eastus2",
-		"westus2",
-	]
-  
+
+	cloud_native_protection {
+		regions = [
+			"eastus2",
+			"westus2",
+		]
+	}
+
 	depends_on = [polaris_azure_service_principal.default]
 }
 `
@@ -71,32 +79,47 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 			PreConfig: testStepDelay,
 			Config:    subscriptionOneRegion,
 			Check: resource.ComposeTestCheckFunc(
+				// Subscription resource
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "tenant_domain", subscription.TenantDomain),
-				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "regions.*", "eastus2"),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.#", "1"),
+				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "eastus2"),
 			),
 		}, {
 			PreConfig: testStepDelay,
 			Config:    subscriptionTwoRegions,
 			Check: resource.ComposeTestCheckFunc(
+				// Subscription resource
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "tenant_domain", subscription.TenantDomain),
-				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "regions.*", "eastus2"),
-				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "regions.*", "westus2"),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.#", "2"),
+				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "eastus2"),
+				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "westus2"),
 			),
 		}, {
 			PreConfig: testStepDelay,
 			Config:    subscriptionOneRegion,
 			Check: resource.ComposeTestCheckFunc(
+				// Subscription resource
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "tenant_domain", subscription.TenantDomain),
-				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "regions.*", "eastus2"),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
+
+				// Cloud Native Protection feature
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.#", "1"),
+				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "eastus2"),
 			),
 		}},
 	})

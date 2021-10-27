@@ -23,27 +23,19 @@ func resourceAzureServicePrincipal() *schema.Resource {
 		DeleteContext: azureDeleteServicePrincipal,
 
 		Schema: map[string]*schema.Schema{
-			"credentials": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				AtLeastOneOf:     []string{"credentials", "app_id"},
-				Description:      "Path to Azure service principal file.",
-				ValidateDiagFunc: credentialsFileExists,
-			},
 			"app_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"app_name", "app_secret", "tenant_domain", "tenant_id"},
+				ExactlyOneOf:     []string{"app_id", "credentials", "sdk_auth"},
+				ConflictsWith:    []string{"credentials", "sdk_auth"},
+				RequiredWith:     []string{"app_name", "app_secret", "tenant_id"},
 				Description:      "App registration application id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
 			},
 			"app_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"app_id", "app_secret", "tenant_domain", "tenant_id"},
+				RequiredWith:     []string{"app_id", "app_secret", "tenant_id"},
 				Description:      "App registration display name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
@@ -51,28 +43,54 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Sensitive:        true,
-				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"app_id", "app_name", "tenant_domain", "tenant_id"},
+				RequiredWith:     []string{"app_id", "app_name", "tenant_id"},
 				Description:      "App registration client secret.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
-			"tenant_domain": {
+			"credentials": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"app_id", "app_name", "app_secret", "tenant_id"},
+				ForceNew:         true,
+				ConflictsWith:    []string{"app_id", "sdk_auth"},
+				Description:      "Path to Azure service principal file.",
+				ValidateDiagFunc: fileExists,
+			},
+			"sdk_auth": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				ConflictsWith:    []string{"app_id", "credentials"},
+				Description:      "Path to Azure service principal created with the Azure SDK using the --sdk-auth parameter",
+				ValidateDiagFunc: fileExists,
+			},
+			"permissions_hash": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "Signals that the permissions has been updated.",
+				ValidateDiagFunc: validateHash,
+			},
+			"tenant_domain": {
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
 				Description:      "Tenant directory/domain name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"tenant_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"app_id", "app_name", "app_secret", "tenant_domain"},
+				ForceNew:         true,
+				RequiredWith:     []string{"app_id", "app_name", "app_secret"},
 				Description:      "Tenant/domain id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
 			},
 		},
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceAzureServicePrincipalV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureServicePrincipalStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
@@ -82,7 +100,37 @@ func resourceAzureServicePrincipal() *schema.Resource {
 func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureCreateServicePrincipal")
 
-	return azureUpdateServicePrincipal(ctx, d, m)
+	client := m.(*polaris.Client)
+	tenantDomain := d.Get("tenant_domain").(string)
+
+	var principal azure.ServicePrincipalFunc
+	switch {
+	case d.Get("credentials").(string) != "":
+		principal = azure.KeyFile(d.Get("credentials").(string), tenantDomain)
+	case d.Get("sdk_auth").(string) != "":
+		principal = azure.SDKAuthFile(d.Get("sdk_auth").(string), tenantDomain)
+	default:
+		appID, err := uuid.Parse(d.Get("app_id").(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		tenantID, err := uuid.Parse(d.Get("tenant_id").(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		principal = azure.ServicePrincipal(appID, d.Get("app_secret").(string), tenantID, tenantDomain)
+	}
+
+	id, err := client.Azure().SetServicePrincipal(ctx, principal)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	d.SetId(id.String())
+
+	azureReadServicePrincipal(ctx, d, m)
+	return nil
 }
 
 // azureReadServicePrincipal run the Read operation for the Azure service
@@ -101,31 +149,14 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 
 	client := m.(*polaris.Client)
 
-	var principal azure.ServicePrincipalFunc
-	if credentials := d.Get("credentials").(string); credentials != "" {
-		principal = azure.KeyFile(credentials)
-	} else {
-		appID, err := uuid.Parse(d.Get("app_id").(string))
+	if d.HasChange("permissions_hash") {
+		err := client.Azure().PermissionsUpdatedForTenantDomain(ctx, d.Get("tenant_domain").(string), nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-
-		tenantID, err := uuid.Parse(d.Get("tenant_id").(string))
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		principal = azure.ServicePrincipal(appID, d.Get("app_name").(string), d.Get("app_secret").(string),
-			tenantID, d.Get("tenant_domain").(string))
 	}
 
-	// Set service principal in Polaris.
-	id, err := client.Azure().SetServicePrincipal(ctx, principal)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	d.SetId(id.String())
-
+	azureReadServicePrincipal(ctx, d, m)
 	return nil
 }
 

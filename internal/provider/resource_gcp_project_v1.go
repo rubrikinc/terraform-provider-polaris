@@ -22,73 +22,100 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// resourceAzureSubscriptionV0 defines the schema for version 0 of the Azure
-// subscription resource.
-func resourceAzureSubscriptionV0() *schema.Resource {
+// resourceGcpProjectV1 defines the schema for version 1 of the GCP project
+// resource.
+func resourceGcpProjectV1() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
+			"credentials": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				AtLeastOneOf:     []string{"credentials", "project"},
+				ValidateDiagFunc: fileExists,
+			},
 			"delete_snapshots_on_destroy": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
 			},
-			"regions": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{
-					Type:             schema.TypeString,
-					ValidateDiagFunc: validateAzureRegion,
-				},
-				Required: true,
-			},
-			"subscription_id": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
-			},
-			"subscription_name": {
+			"organization_name": {
 				Type:             schema.TypeString,
 				Optional:         true,
+				ForceNew:         true,
+				Computed:         true,
+				ConflictsWith:    []string{"credentials"},
+				RequiredWith:     []string{"organization_name", "project", "project_number"},
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
-			"tenant_domain": {
+			"project": {
 				Type:             schema.TypeString,
-				Required:         true,
+				Optional:         true,
 				ForceNew:         true,
+				Computed:         true,
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			},
+			"project_name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				Computed:         true,
+				ConflictsWith:    []string{"credentials"},
+				RequiredWith:     []string{"organization_name", "project", "project_number"},
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			},
+			"project_number": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				Computed:         true,
+				ConflictsWith:    []string{"credentials"},
+				RequiredWith:     []string{"organization_name", "project", "project_number"},
+				ValidateDiagFunc: stringIsInteger,
 			},
 		},
 	}
 }
 
-// resourceAzureSubscriptionStateUpgradeV0 migrates the resource id from the
-// Azure subscription id to the Polaris cloud account id.
-func resourceAzureSubscriptionStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAzureSubscriptionStateUpgradeV0")
+// resourceAwsAccountStateUpgradeV1 introduces a cloud native protection
+// feature block.
+func resourceGcpProjectStateUpgradeV1(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
+	log.Print("[TRACE] resourceGcpProjectStateUpgradeV1")
 
 	client := m.(*polaris.Client)
 
 	id, err := uuid.Parse(state["id"].(string))
 	if err != nil {
-		return state, err
+		return nil, err
 	}
 
-	account, err := client.Azure().Subscription(ctx, azure.SubscriptionID(id), core.FeatureCloudNativeProtection)
+	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return nil, err
 	}
 
-	// Migrate the id to the Polaris cloud account id.
-	state["id"] = account.ID.String()
+	// Add the new cloud native protection feature block.
+	cnpFeature, ok := account.Feature(core.FeatureExocompute)
+	if !ok {
+		return nil, errors.New("aws account missing cloud native protection")
+	}
+
+	state["cloud_native_protection"] = []interface{}{
+		map[string]interface{}{
+			"status": cnpFeature.Status,
+		},
+	}
+
 	return state, nil
 }

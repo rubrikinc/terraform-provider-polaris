@@ -13,14 +13,35 @@ description: |-
 ## Example Usage
 
 ```terraform
+# Enable Cloud Native Protection
 resource "polaris_azure_subscription" "default" {
-    subscription_id   = "31be1bb0-c76c-11eb-9217-afdffe83a002"
-    subscription_name = "My Subscription"
-    tenant_domain     = "my-domain.onmicrosoft.com"
-    regions           = [
-        "eastus2",
-        "westus2"
+  subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
+  tenant_domain   = "mydomain.onmicrosoft.com"
+
+  cloud_native_protection {
+    regions = [
+      "eastus2",
     ]
+  }
+}
+
+# Enable Cloud Native Protection and Exocompte. 
+resource "polaris_azure_subscription" "default" {
+  subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
+  tenant_domain   = "mydomain.onmicrosoft.com"
+
+  cloud_native_protection {
+    regions = [
+      "eastus2",
+      "westus2",
+    ]
+  }
+
+  exocompute {
+    regions = [
+      "eastus2",
+    ]
+  }
 }
 ```
 
@@ -29,7 +50,7 @@ resource "polaris_azure_subscription" "default" {
 
 ### Required
 
-- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+- **cloud_native_protection** (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the GCP project. (see [below for nested schema](#nestedblock--cloud_native_protection))
 - **subscription_id** (String) Subscription id.
 - **tenant_domain** (String) Tenant directory/domain name.
 
@@ -40,11 +61,27 @@ resource "polaris_azure_subscription" "default" {
 - **id** (String) The ID of this resource.
 - **subscription_name** (String) Subscription name.
 
+<a id="nestedblock--cloud_native_protection"></a>
+### Nested Schema for `cloud_native_protection`
+
+Required:
+
+- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+
+Read-Only:
+
+- **status** (String) Status of the Cloud Native Protection feature.
+
+
 <a id="nestedblock--exocompute"></a>
 ### Nested Schema for `exocompute`
 
 Required:
 
 - **regions** (Set of String) Regions to enable the exocompute feature in.
+
+Read-Only:
+
+- **status** (String) Status of the Exocompute feature.
 
 

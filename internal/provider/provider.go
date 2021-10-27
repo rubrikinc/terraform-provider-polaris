@@ -49,9 +49,14 @@ func Provider() *schema.Provider {
 			"polaris_aws_exocompute":          resourceAwsExocompute(),
 			"polaris_azure_exocompute":        resourceAzureExocompute(),
 			"polaris_azure_service_principal": resourceAzureServicePrincipal(),
-			"polaris_azure_subscription":      resourceAzureSubcription(),
+			"polaris_azure_subscription":      resourceAzureSubscription(),
 			"polaris_gcp_project":             resourceGcpProject(),
 			"polaris_gcp_service_account":     resourceGcpServiceAccount(),
+		},
+
+		DataSourcesMap: map[string]*schema.Resource{
+			"polaris_azure_permissions": dataSourceAzurePermissions(),
+			"polaris_gcp_permissions":   dataSourceGcpPermissions(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
@@ -62,29 +67,22 @@ func Provider() *schema.Provider {
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	credentials := d.Get("credentials").(string)
 
-	// When credentials doesn't refer to an existing file we assume that
-	// it's an account name.
+	// When credentials refer to an existing file we load the file as a service
+	// account, otherwise we assume that it's an account name
+	var account polaris.Account
 	if _, err := os.Stat(credentials); err != nil {
-		account, err := polaris.DefaultAccount(credentials, true)
+		account, err = polaris.DefaultUserAccount(credentials, true)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
-
-		client, err := polaris.NewClient(ctx, account, &log.StandardLogger{})
+	} else {
+		account, err = polaris.ServiceAccountFromFile(credentials, true)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
-
-		return client, nil
 	}
 
-	// Otherwise we load the file as a service account.
-	account, err := polaris.ServiceAccountFromFile(credentials, true)
-	if err != nil {
-		return nil, diag.FromErr(err)
-	}
-
-	client, err := polaris.NewClientFromServiceAccount(ctx, account, &log.StandardLogger{})
+	client, err := polaris.NewClient(ctx, account, &log.StandardLogger{})
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}

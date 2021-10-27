@@ -86,7 +86,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.Exocompute)
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute)
 	if errors.Is(err, graphql.ErrNotFound) {
 		return diag.Errorf("exocompute not enabled on account")
 	}

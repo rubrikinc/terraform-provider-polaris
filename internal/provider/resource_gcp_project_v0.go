@@ -34,6 +34,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+// resourceGcpProjectV0 defines the schema for version 0 of the GCP project
+// resource.
 func resourceGcpProjectV0() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -42,7 +44,7 @@ func resourceGcpProjectV0() *schema.Resource {
 				Optional:         true,
 				ForceNew:         true,
 				AtLeastOneOf:     []string{"credentials", "project"},
-				ValidateDiagFunc: credentialsFileExists,
+				ValidateDiagFunc: fileExists,
 			},
 			"delete_snapshots_on_destroy": {
 				Type:     schema.TypeBool,
@@ -106,13 +108,13 @@ func resourceGcpProjectStateUpgradeV0(ctx context.Context, state map[string]inte
 	}
 
 	// Retrieve the account using the Polaris cloud account id.
-	account1, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.CloudNativeProtection)
+	account1, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		return nil, err
 	}
 
 	// Retrieve the account using the GCP project id.
-	account2, err := client.GCP().Project(ctx, gcp.ProjectID(parts[1]), core.CloudNativeProtection)
+	account2, err := client.GCP().Project(ctx, gcp.ProjectID(parts[1]), core.FeatureCloudNativeProtection)
 	if err != nil {
 		return nil, err
 	}

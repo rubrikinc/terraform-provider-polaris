@@ -27,7 +27,8 @@ func resourceGcpServiceAccount() *schema.Resource {
 			"credentials": {
 				Type:             schema.TypeString,
 				Required:         true,
-				ValidateDiagFunc: credentialsFileExists,
+				ForceNew:         true,
+				ValidateDiagFunc: fileExists,
 				Description:      "Path to GCP service account key file.",
 			},
 			"name": {
@@ -36,6 +37,12 @@ func resourceGcpServiceAccount() *schema.Resource {
 				Computed:         true,
 				Description:      "Service account name in Polaris. If not given the name of the service account key file is used.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			},
+			"permissions_hash": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "Signals that the permissions has been updated.",
+				ValidateDiagFunc: validateHash,
 			},
 		},
 	}
@@ -46,7 +53,24 @@ func resourceGcpServiceAccount() *schema.Resource {
 func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] gcpCreateServiceAccount")
 
-	return gcpUpdateServiceAccount(ctx, d, m)
+	client := m.(*polaris.Client)
+	credentials := d.Get("credentials").(string)
+
+	// Derive name from credentials filename if missing.
+	name := d.Get("name").(string)
+	if name == "" {
+		name = strings.TrimSuffix(filepath.Base(credentials), filepath.Ext(credentials))
+	}
+
+	err := client.GCP().SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	d.SetId(name)
+
+	gcpReadServiceAccount(ctx, d, m)
+	return nil
 }
 
 // gcpReadServiceAccount run the Read operation for the GCP service account
@@ -72,23 +96,18 @@ func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 
 	client := m.(*polaris.Client)
 
-	// Resource parameters.
-	credentials := d.Get("credentials").(string)
-	name := d.Get("name").(string)
-
-	// Derive name from credentials filename.
-	if name == "" {
-		name = strings.TrimSuffix(filepath.Base(credentials), filepath.Ext(credentials))
+	if d.HasChange("name") {
+		d.Set("name", d.Get("name").(string))
 	}
 
-	// Set service account in Polaris.
-	err := client.GCP().SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
-	if err != nil {
-		return diag.FromErr(err)
+	if d.HasChange("permissions_hash") {
+		err := client.GCP().PermissionsUpdatedForDefault(ctx, nil)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 	}
-	d.SetId(name)
-	d.Set("name", name)
 
+	gcpReadServiceAccount(ctx, d, m)
 	return nil
 }
 

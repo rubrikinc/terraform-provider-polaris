@@ -12,7 +12,8 @@ provider "polaris" {
 }
 
 resource "polaris_azure_service_principal" "default" {
-	credentials = "{{ .Resource.Credentials }}"
+	credentials   = "{{ .Resource.Credentials }}"
+	tenant_domain = "{{ .Resource.TenantDomain }}"
 }
 `
 
@@ -49,11 +50,11 @@ func TestAccPolarisAzureServicePrincipal_basic(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				resource.TestCheckResourceAttr("polaris_azure_service_principal.default", "id", subscription.PrincipalID),
 				resource.TestCheckResourceAttr("polaris_azure_service_principal.default", "credentials", subscription.Credentials),
+				resource.TestCheckResourceAttr("polaris_azure_service_principal.default", "tenant_domain", subscription.TenantDomain),
 				resource.TestCheckNoResourceAttr("polaris_azure_service_principal.default", "app_id"),
 				resource.TestCheckNoResourceAttr("polaris_azure_service_principal.default", "app_name"),
 				resource.TestCheckNoResourceAttr("polaris_azure_service_principal.default", "app_secret"),
 				resource.TestCheckNoResourceAttr("polaris_azure_service_principal.default", "tenant_id"),
-				resource.TestCheckNoResourceAttr("polaris_azure_service_principal.default", "tenant_domain"),
 			),
 		}},
 	})

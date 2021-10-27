@@ -17,14 +17,15 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+// validateAzureRegion verifies that the name is a valid Azure region name.
 func validateAzureRegion(m interface{}, p cty.Path) diag.Diagnostics {
 	_, err := graphql_azure.ParseRegion(m.(string))
 	return diag.FromErr(err)
 }
 
-// resourceAzureSubcription defines the schema for the Azure subscription
+// resourceAzureSubscription defines the schema for the Azure subscription
 // resource.
-func resourceAzureSubcription() *schema.Resource {
+func resourceAzureSubscription() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateSubscription,
 		ReadContext:   azureReadSubscription,
@@ -32,6 +33,31 @@ func resourceAzureSubcription() *schema.Resource {
 		DeleteContext: azureDeleteSubscription,
 
 		Schema: map[string]*schema.Schema{
+			"cloud_native_protection": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"regions": {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:             schema.TypeString,
+								ValidateDiagFunc: validateAzureRegion,
+							},
+							MinItems:    1,
+							Required:    true,
+							Description: "Regions that Polaris will monitor for instances to automatically protect.",
+						},
+						"status": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cloud Native Protection feature.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Required:    true,
+				Description: "Enable the Cloud Native Protection feature for the GCP project.",
+			},
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -52,20 +78,16 @@ func resourceAzureSubcription() *schema.Resource {
 							Required:    true,
 							Description: "Regions to enable the exocompute feature in.",
 						},
+						"status": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Exocompute feature.",
+						},
 					},
 				},
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the exocompute feature for the account.",
-			},
-			"regions": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{
-					Type:             schema.TypeString,
-					ValidateDiagFunc: validateAzureRegion,
-				},
-				Required:    true,
-				Description: "Regions that Polaris will monitor for instances to automatically protect.",
 			},
 			"subscription_id": {
 				Type:             schema.TypeString,
@@ -89,11 +111,15 @@ func resourceAzureSubcription() *schema.Resource {
 			},
 		},
 
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
-			Type:    resourceAzureSubcriptionV0().CoreConfigSchema().ImpliedType(),
-			Upgrade: resourceAzureProjectStateUpgradeV0,
+			Type:    resourceAzureSubscriptionV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureSubscriptionStateUpgradeV0,
 			Version: 0,
+		}, {
+			Type:    resourceAzureSubscriptionV1().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureSubscriptionStateUpgradeV1,
+			Version: 1,
 		}},
 	}
 }
@@ -110,57 +136,55 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
+	tenantDomain := d.Get("tenant_domain").(string)
+
 	var opts []azure.OptionFunc
 	if name, ok := d.GetOk("subscription_name"); ok {
 		opts = append(opts, azure.Name(name.(string)))
 	}
 
-	regions := d.Get("regions").(*schema.Set)
-	for _, region := range regions.List() {
-		opts = append(opts, azure.Region(region.(string)))
-	}
-
-	// Exocompute parameter, optional. Verify the regions specified and
-	// guarantee that it's nil if it's not specified.
-	exocompute, ok := d.GetOk("exocompute")
-	if ok {
-		block := exocompute.([]interface{})[0].(map[string]interface{})
-		for _, region := range block["regions"].(*schema.Set).List() {
-			if !regions.Contains(region) {
-				return diag.Errorf("exocompute can only have a subset of the subscription regions")
-			}
-		}
-	} else {
-		exocompute = nil
-	}
-
-	tenantDomain := d.Get("tenant_domain").(string)
-
 	// Check if the subscription already exist in Polaris.
-	account, err := client.Azure().Subscription(ctx, azure.SubscriptionID(subscriptionID), core.CloudNativeProtection)
-	switch {
-	case errors.Is(err, graphql.ErrNotFound):
-	case err == nil:
+	account, err := client.Azure().Subscription(ctx, azure.SubscriptionID(subscriptionID), core.FeatureAll)
+	if err == nil {
 		return diag.Errorf("subscription %q already added to polaris", account.NativeID)
-	case err != nil:
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
 		return diag.FromErr(err)
 	}
 
-	id, err := client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain), opts...)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	// Polaris Cloud Account id. Returned when the account is added for the
+	// cloud native protection feature.
+	var id uuid.UUID
 
-	// Enable the Exocompute feature if specified.
-	if exocompute != nil {
-		block := exocompute.([]interface{})[0].(map[string]interface{})
+	cnpBlock, ok := d.GetOk("cloud_native_protection")
+	if ok {
+		block := cnpBlock.([]interface{})[0].(map[string]interface{})
 
-		var regions []string
+		var cnpOpts []azure.OptionFunc
 		for _, region := range block["regions"].(*schema.Set).List() {
-			regions = append(regions, region.(string))
+			cnpOpts = append(cnpOpts, azure.Region(region.(string)))
 		}
 
-		err := client.Azure().EnableExocompute(ctx, azure.SubscriptionID(subscriptionID), regions...)
+		cnpOpts = append(cnpOpts, opts...)
+		id, err = client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
+			core.FeatureCloudNativeProtection, cnpOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	exoBlock, ok := d.GetOk("exocompute")
+	if ok {
+		block := exoBlock.([]interface{})[0].(map[string]interface{})
+
+		var exoOpts []azure.OptionFunc
+		for _, region := range block["regions"].(*schema.Set).List() {
+			exoOpts = append(exoOpts, azure.Region(region.(string)))
+		}
+
+		exoOpts = append(exoOpts, opts...)
+		_, err := client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
+			core.FeatureExocompute, exoOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -184,12 +208,56 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.FromErr(err)
 	}
 
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection)
+	// Lookup the Polaris cloud account using the cloud account id.
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if len(account.Features) != 1 {
-		return diag.Errorf("expected a single feature got multiple")
+
+	cnpFeature, ok := account.Feature(core.FeatureCloudNativeProtection)
+	if ok {
+		regions := schema.Set{F: schema.HashString}
+		for _, region := range cnpFeature.Regions {
+			regions.Add(region)
+		}
+
+		status := core.FormatStatus(cnpFeature.Status)
+		err := d.Set("cloud_native_protection", []interface{}{
+			map[string]interface{}{
+				"regions": &regions,
+				"status":  &status,
+			},
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set("cloud_native_protection", nil); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	exoFeature, ok := account.Feature(core.FeatureExocompute)
+	if ok {
+		regions := schema.Set{F: schema.HashString}
+		for _, region := range exoFeature.Regions {
+			regions.Add(region)
+		}
+
+		status := core.FormatStatus(exoFeature.Status)
+		err := d.Set("exocompute", []interface{}{
+			map[string]interface{}{
+				"regions": &regions,
+				"status":  &status,
+			},
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set("exocompute", nil); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if err := d.Set("subscription_name", account.Name); err != nil {
@@ -198,40 +266,6 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m interf
 
 	if err := d.Set("tenant_domain", account.TenantDomain); err != nil {
 		return diag.FromErr(err)
-	}
-
-	cnpRegions := schema.Set{F: schema.HashString}
-	for _, region := range account.Features[0].Regions {
-		cnpRegions.Add(region)
-	}
-	if err := d.Set("regions", &cnpRegions); err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Read the exocompute feature.
-	account, err = client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.Exocompute)
-	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return diag.FromErr(err)
-	}
-	if err == nil {
-		if len(account.Features[0].Regions) > 0 {
-			exoRegions := schema.Set{F: schema.HashString}
-			for _, region := range account.Features[0].Regions {
-				exoRegions.Add(region)
-			}
-			block := []interface{}{
-				map[string]interface{}{
-					"regions": &exoRegions,
-				},
-			}
-			if err := d.Set("exocompute", block); err != nil {
-				return diag.FromErr(err)
-			}
-		} else {
-			if err := d.Set("exocompute", nil); err != nil {
-				return diag.FromErr(err)
-			}
-		}
 	}
 
 	return nil
@@ -249,88 +283,83 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
-	subscriptionID, err := uuid.Parse(d.Get("subscription_id").(string))
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	if d.HasChange("cloud_native_protection") {
+		cnpBlock, ok := d.GetOk("cloud_native_protection")
+		if ok {
+			block := cnpBlock.([]interface{})[0].(map[string]interface{})
 
-	// Regions needed due to the existing exocompute resources.
-	exoConfigs, err := client.Azure().ExocomputeConfigs(ctx, azure.CloudAccountID(id))
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	exoConfigRegions := make(map[string]struct{})
-	for _, exoConfig := range exoConfigs {
-		exoConfigRegions[exoConfig.Region] = struct{}{}
-	}
-
-	// Regions specified by the exocompute feature.
-	exoRegions := make(map[string]struct{})
-	if exocompute, ok := d.GetOk("exocompute"); ok {
-		block := exocompute.([]interface{})[0].(map[string]interface{})
-		for _, r := range block["regions"].(*schema.Set).List() {
-			exoRegions[r.(string)] = struct{}{}
-		}
-	}
-	for region := range exoConfigRegions {
-		if _, ok := exoRegions[region]; !ok {
-			return diag.Errorf("exocompute feature regions must be a superset of exocompute resource regions")
-		}
-	}
-
-	// Regions specified by the cloud native protection feature.
-	cnpRegions := make(map[string]struct{})
-	for _, region := range d.Get("regions").(*schema.Set).List() {
-		cnpRegions[region.(string)] = struct{}{}
-	}
-	for region := range exoRegions {
-		if _, ok := cnpRegions[region]; !ok {
-			return diag.Errorf("subscription regions must be a superset of exocompute feature regions")
-		}
-	}
-
-	if d.HasChange("subscription_name") || d.HasChange("regions") {
-		var opts []azure.OptionFunc
-		if d.HasChange("subscription_name") {
-			opts = append(opts, azure.Name(d.Get("subscription_name").(string)))
-
-		}
-
-		if d.HasChange("regions") {
-			for _, region := range d.Get("regions").(*schema.Set).List() {
+			var opts []azure.OptionFunc
+			for _, region := range block["regions"].(*schema.Set).List() {
 				opts = append(opts, azure.Region(region.(string)))
 			}
-		}
 
-		err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection, opts...)
+			if err := client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...); err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			if _, ok := d.GetOk("exocompute"); ok {
+				return diag.Errorf("cloud native protection is required by exocompute")
+			}
+
+			snapshots := d.Get("delete_snapshots_on_destroy").(bool)
+			if err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, snapshots); err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	}
+
+	if d.HasChange("exocompute") {
+		oldExoBlock, newExoBlock := d.GetChange("exocompute")
+		oldExoList := oldExoBlock.([]interface{})
+		newExoList := newExoBlock.([]interface{})
+
+		// Determine whether we are adding, removing or updating the Exocompute
+		// feature.
+		switch {
+		case len(oldExoList) == 0:
+			var opts []azure.OptionFunc
+			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
+				opts = append(opts, azure.Region(region.(string)))
+			}
+
+			subscriptionID, err := uuid.Parse(d.Get("subscription_id").(string))
+			if err != nil {
+				return diag.FromErr(err)
+			}
+
+			tenantDomain := d.Get("tenant_domain").(string)
+			_, err = client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
+				core.FeatureExocompute, opts...)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		case len(newExoList) == 0:
+			err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, false)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		default:
+			var opts []azure.OptionFunc
+			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
+				opts = append(opts, azure.Region(region.(string)))
+			}
+
+			err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, opts...)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	}
+
+	if d.HasChange("subscription_name") {
+		opts := []azure.OptionFunc{azure.Name(d.Get("subscription_name").(string))}
+		err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	if d.HasChange("exocompute") {
-		if _, ok := d.GetOk("exocompute"); ok {
-			var regions []string
-			for region := range exoRegions {
-				regions = append(regions, region)
-			}
-
-			err := client.Azure().EnableExocompute(ctx, azure.SubscriptionID(subscriptionID), regions...)
-			if errors.Is(err, graphql.ErrAlreadyEnabled) {
-				err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.Exocompute,
-					azure.Regions(regions...))
-			}
-			if err != nil {
-				return diag.FromErr(err)
-			}
-		} else {
-			err := client.Azure().DisableExocompute(ctx, azure.SubscriptionID(subscriptionID))
-			if err != nil {
-				return diag.FromErr(err)
-			}
-		}
-	}
-
+	azureReadSubscription(ctx, d, m)
 	return nil
 }
 
@@ -350,10 +379,12 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m inte
 	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
 	deleteSnapshots := oldSnapshots.(bool)
 
-	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), deleteSnapshots)
+	// Removing Cloud Native Protection also removes Exocompute.
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	d.SetId("")
 
 	return nil

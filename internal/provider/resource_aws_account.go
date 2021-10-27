@@ -37,10 +37,19 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// validateAwsRegion validates the region name.
+// validateAwsRegion verifies that the name is a valid AWS region name.
 func validateAwsRegion(m interface{}, p cty.Path) diag.Diagnostics {
 	_, err := graphql_aws.ParseRegion(m.(string))
 	return diag.FromErr(err)
+}
+
+// validatePermissions verifies that the permissions value is valid.
+func validatePermissions(m interface{}, p cty.Path) diag.Diagnostics {
+	if m.(string) != "update" {
+		return diag.Errorf("invalid permissions value")
+	}
+
+	return nil
 }
 
 // resourceAwsAccount defines the schema for the AWS account resource.
@@ -52,12 +61,30 @@ func resourceAwsAccount() *schema.Resource {
 		DeleteContext: awsDeleteAccount,
 
 		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Computed:         true,
-				Description:      "Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			"cloud_native_protection": {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"regions": {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:             schema.TypeString,
+								ValidateDiagFunc: validateAwsRegion,
+							},
+							MinItems:    1,
+							Required:    true,
+							Description: "Regions that Polaris will monitor for instances to automatically protect.",
+						},
+						"status": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cloud Native Protection feature.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Required:    true,
+				Description: "Enable the Cloud Native Protection feature for the GCP project.",
 			},
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,
@@ -77,7 +104,12 @@ func resourceAwsAccount() *schema.Resource {
 							},
 							MinItems:    1,
 							Required:    true,
-							Description: "Regions to enable the exocompute feature in.",
+							Description: "Regions to enable the Exocompute feature in.",
+						},
+						"status": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Exocompute feature.",
 						},
 					},
 				},
@@ -85,28 +117,37 @@ func resourceAwsAccount() *schema.Resource {
 				Optional:    true,
 				Description: "Enable the exocompute feature for the account.",
 			},
+			"name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Computed:         true,
+				Description:      "Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			},
+			"permissions": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Computed:         true,
+				Description:      "When set to 'update' feature permissions can be updated by applying the configuration.",
+				ValidateDiagFunc: validatePermissions,
+			},
 			"profile": {
 				Type:             schema.TypeString,
 				Required:         true,
 				Description:      "AWS named profile.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
-			"regions": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{
-					Type:             schema.TypeString,
-					ValidateDiagFunc: validateAwsRegion,
-				},
-				Required:    true,
-				Description: "Regions that Polaris will monitor for instances to automatically protect.",
-			},
 		},
 
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceAwsAccountV0().CoreConfigSchema().ImpliedType(),
 			Upgrade: resourceAwsAccountStateUpgradeV0,
 			Version: 0,
+		}, {
+			Type:    resourceAwsAccountV1().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAwsAccountStateUpgradeV1,
+			Version: 1,
 		}},
 	}
 }
@@ -118,67 +159,60 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	client := m.(*polaris.Client)
 
-	// Profile parameter, required.
 	profile := d.Get("profile").(string)
 
-	// Name parameter, optional.
 	var opts []aws.OptionFunc
 	if name, ok := d.GetOk("name"); ok {
 		opts = append(opts, aws.Name(name.(string)))
 	}
 
-	// Regions parameter, required.
-	regions := d.Get("regions").(*schema.Set)
-	for _, region := range regions.List() {
-		opts = append(opts, aws.Region(region.(string)))
-	}
-
-	// Exocompute parameter, optional. Verify the regions specified and
-	// guarantee that it's nil if it's not specified.
-	exocompute, ok := d.GetOk("exocompute")
-	if ok {
-		block := exocompute.([]interface{})[0].(map[string]interface{})
-		for _, region := range block["regions"].(*schema.Set).List() {
-			if !regions.Contains(region) {
-				return diag.Errorf("exocompute can only have a subset of the account regions")
-			}
-		}
-	} else {
-		exocompute = nil
-	}
-
 	// Check if the account already exist in Polaris.
-	account, err := client.AWS().Account(ctx, aws.ID(aws.Profile(profile)), core.CloudNativeProtection)
-	switch {
-	case errors.Is(err, graphql.ErrNotFound):
-	case err == nil:
+	account, err := client.AWS().Account(ctx, aws.ID(aws.Profile(profile)), core.FeatureAll)
+	if err == nil {
 		return diag.Errorf("account %q already added to polaris", account.NativeID)
-	case err != nil:
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
 		return diag.FromErr(err)
 	}
 
-	// Add account to Polaris. Implicitly enables the Cloud Native Protection feature.
-	id, err := client.AWS().AddAccount(ctx, aws.Profile(profile), opts...)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	// Polaris Cloud Account id. Returned when the account is added for the
+	// cloud native protection feature.
+	var id uuid.UUID
 
-	// Enable the Exocompute feature if specified.
-	if exocompute != nil {
-		block := exocompute.([]interface{})[0].(map[string]interface{})
+	cnpBlock, ok := d.GetOk("cloud_native_protection")
+	if ok {
+		block := cnpBlock.([]interface{})[0].(map[string]interface{})
 
-		var regions []string
+		var cnpOpts []aws.OptionFunc
 		for _, region := range block["regions"].(*schema.Set).List() {
-			regions = append(regions, region.(string))
+			cnpOpts = append(cnpOpts, aws.Region(region.(string)))
 		}
 
-		err := client.AWS().EnableExocompute(ctx, aws.Profile(profile), regions...)
+		cnpOpts = append(cnpOpts, opts...)
+		id, err = client.AWS().AddAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, cnpOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	exoBlock, ok := d.GetOk("exocompute")
+	if ok {
+		block := exoBlock.([]interface{})[0].(map[string]interface{})
+
+		var exoOpts []aws.OptionFunc
+		for _, region := range block["regions"].(*schema.Set).List() {
+			exoOpts = append(exoOpts, aws.Region(region.(string)))
+		}
+
+		exoOpts = append(exoOpts, opts...)
+		_, err := client.AWS().AddAccount(ctx, aws.Profile(profile), core.FeatureExocompute, exoOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	d.SetId(id.String())
+
 	awsReadAccount(ctx, d, m)
 	return nil
 }
@@ -195,50 +229,70 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		return diag.FromErr(err)
 	}
 
-	// Lookup the Polaris cloud account using the cloud account ID.
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.AllFeatures)
+	// Lookup the Polaris cloud account using the cloud account id.
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Read the name parameter.
-	if err := d.Set("name", account.Name); err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Read the regions parmeter.
-	cnpFeature, ok := account.Feature(core.CloudNativeProtection)
+	cnpFeature, ok := account.Feature(core.FeatureCloudNativeProtection)
 	if ok {
 		regions := schema.Set{F: schema.HashString}
 		for _, region := range cnpFeature.Regions {
 			regions.Add(region)
 		}
-		err := d.Set("regions", &regions)
+
+		status := core.FormatStatus(cnpFeature.Status)
+		err := d.Set("cloud_native_protection", []interface{}{
+			map[string]interface{}{
+				"regions": &regions,
+				"status":  &status,
+			},
+		})
 		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set("cloud_native_protection", nil); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	// Read the exocompute parameter.
-	exoFeature, ok := account.Feature(core.Exocompute)
+	exoFeature, ok := account.Feature(core.FeatureExocompute)
 	if ok {
-		if len(exoFeature.Regions) > 0 {
-			regions := schema.Set{F: schema.HashString}
-			for _, region := range exoFeature.Regions {
-				regions.Add(region)
-			}
-			block := []interface{}{
-				map[string]interface{}{
-					"regions": &regions,
-				},
-			}
-			if err := d.Set("exocompute", block); err != nil {
-				return diag.FromErr(err)
-			}
-		} else {
-			if err := d.Set("exocompute", nil); err != nil {
-				return diag.FromErr(err)
-			}
+		regions := schema.Set{F: schema.HashString}
+		for _, region := range exoFeature.Regions {
+			regions.Add(region)
+		}
+
+		status := core.FormatStatus(exoFeature.Status)
+		err := d.Set("exocompute", []interface{}{
+			map[string]interface{}{
+				"regions": &regions,
+				"status":  &status,
+			},
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set("exocompute", nil); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if err := d.Set("name", account.Name); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Check if any feature is missing permissions.
+	for _, feature := range account.Features {
+		if feature.Status != core.StatusMissingPermissions {
+			continue
+		}
+
+		if err := d.Set("permissions", "update-required"); err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
@@ -251,85 +305,108 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	log.Print("[TRACE] awsUpdateAccount")
 
 	client := m.(*polaris.Client)
+	profile := d.Get("profile").(string)
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	profile := d.Get("profile").(string)
-
-	// Regions needed due to the existing exocompute resources.
-	exoConfigs, err := client.AWS().ExocomputeConfigs(ctx, aws.CloudAccountID(id))
+	// Make sure that the resource id and account profile refers to the same
+	// account.
+	account, err := client.AWS().Account(ctx, aws.ID(aws.Profile(profile)), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	exoConfigRegions := make(map[string]struct{})
-	for _, exoConfig := range exoConfigs {
-		exoConfigRegions[exoConfig.Region] = struct{}{}
+	if account.ID != id {
+		return diag.Errorf("id and profile refer to different accounts")
 	}
 
-	// Regions specified by the exocompute feature.
-	exoRegions := make(map[string]struct{})
-	if exocompute, ok := d.GetOk("exocompute"); ok {
-		block := exocompute.([]interface{})[0].(map[string]interface{})
-		for _, r := range block["regions"].(*schema.Set).List() {
-			exoRegions[r.(string)] = struct{}{}
-		}
-	}
-	for region := range exoConfigRegions {
-		if _, ok := exoRegions[region]; !ok {
-			return diag.Errorf("exocompute feature regions must be a superset of exocompute resource regions")
-		}
-	}
+	if d.HasChange("cloud_native_protection") {
+		cnpBlock, ok := d.GetOk("cloud_native_protection")
+		if ok {
+			block := cnpBlock.([]interface{})[0].(map[string]interface{})
 
-	// Regions specified by the cloud native protection feature.
-	cnpRegions := make(map[string]struct{})
-	for _, region := range d.Get("regions").(*schema.Set).List() {
-		cnpRegions[region.(string)] = struct{}{}
-	}
-	for region := range exoRegions {
-		if _, ok := cnpRegions[region]; !ok {
-			return diag.Errorf("account regions must be a superset of exocompute feature regions")
-		}
-	}
+			var opts []aws.OptionFunc
+			for _, region := range block["regions"].(*schema.Set).List() {
+				opts = append(opts, aws.Region(region.(string)))
+			}
 
-	if d.HasChange("regions") {
-		var regions []string
-		for region := range cnpRegions {
-			regions = append(regions, region)
-		}
+			if err := client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...); err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			if _, ok := d.GetOk("exocompute"); ok {
+				return diag.Errorf("cloud native protection is required by exocompute")
+			}
 
-		err = client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.CloudNativeProtection,
-			aws.Regions(regions...))
-		if err != nil {
-			return diag.FromErr(err)
+			snapshots := d.Get("delete_snapshots_on_destroy").(bool)
+			if err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, snapshots); err != nil {
+				return diag.FromErr(err)
+			}
 		}
 	}
 
 	if d.HasChange("exocompute") {
-		if _, ok := d.GetOk("exocompute"); ok {
-			var regions []string
-			for region := range exoRegions {
-				regions = append(regions, region)
+		oldExoBlock, newExoBlock := d.GetChange("exocompute")
+		oldExoList := oldExoBlock.([]interface{})
+		newExoList := newExoBlock.([]interface{})
+
+		// Determine whether we are adding, removing or updating the Exocompute
+		// feature.
+		switch {
+		case len(oldExoList) == 0:
+			var opts []aws.OptionFunc
+			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
+				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			err := client.AWS().EnableExocompute(ctx, aws.Profile(profile), regions...)
-			if errors.Is(err, graphql.ErrAlreadyEnabled) {
-				err = client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.Exocompute,
-					aws.Regions(regions...))
-			}
+			_, err = client.AWS().AddAccount(ctx, aws.Profile(profile), core.FeatureExocompute, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
-		} else {
-			err := client.AWS().DisableExocompute(ctx, aws.Profile(profile))
+		case len(newExoList) == 0:
+			err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureExocompute, false)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		default:
+			var opts []aws.OptionFunc
+			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
+				opts = append(opts, aws.Region(region.(string)))
+			}
+
+			err = client.AWS().UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureExocompute, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
 		}
 	}
 
+	if d.HasChange("permissions") {
+		oldPerms, newPerms := d.GetChange("permissions")
+
+		if oldPerms == "update-required" && newPerms == "update" {
+			var features []core.Feature
+			for _, feature := range account.Features {
+				if feature.Status != core.StatusMissingPermissions {
+					continue
+				}
+				features = append(features, feature.Name)
+			}
+
+			err := client.AWS().UpdatePermissions(ctx, aws.Profile(profile), features)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+
+			if err := d.Set("permissions", "update"); err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	}
+
+	awsReadAccount(ctx, d, m)
 	return nil
 }
 
@@ -354,7 +431,7 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	// Make sure that the resource id and account profile refers to the same
 	// account.
-	account, err := client.AWS().Account(ctx, aws.ID(aws.Profile(profile)), core.CloudNativeProtection)
+	account, err := client.AWS().Account(ctx, aws.ID(aws.Profile(profile)), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -362,11 +439,12 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.Errorf("id and profile refer to different accounts")
 	}
 
-	// Remove the account.
-	err = client.AWS().RemoveAccount(ctx, aws.Profile(profile), deleteSnapshots)
+	// Removing Cloud Native Protection also removes Exocompute.
+	err = client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	d.SetId("")
 
 	return nil

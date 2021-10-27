@@ -29,5 +29,6 @@ resource "polaris_gcp_service_account" "default" {
 
 - **id** (String) The ID of this resource.
 - **name** (String) Service account name in Polaris. If not given the name of the service account key file is used.
+- **permissions_hash** (String) Signals that the permissions has been updated.
 
 
