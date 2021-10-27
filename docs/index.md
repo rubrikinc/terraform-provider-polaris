@@ -2,11 +2,12 @@
 page_title: "Provider: Polaris"
 ---
 
-# Polaris Provider
-The Polaris provider provides resources to interact with the Rubrik Polaris platform.
+~> Please note that the Polaris provider is in BETA and should NOT be used in a production system.
 
-~> **Warning**
-Upgrading from v0.2.0 to v0.3.0 requires that the definition of certain resources are updated on disk. Please see the upgrade guide for more information.
+# Polaris Provider
+The Polaris provider provides resources to interact with the Rubrik Polaris platform. Additional examples on how to use the provider are available in the [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples) GitHub repository.
+
+~> Upgrading from v0.2.0 to v0.3.0 requires that the definition of certain resources are updated on disk. Please see the upgrade guide for more information.
 
 ## Configuration
 The provider supports both local user accounts and service accounts. For documentation on how to create either using Polaris see the [Rubrik Support Portal](http://support.rubrik.com).
