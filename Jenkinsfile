@@ -43,8 +43,7 @@ pipeline {
         stage('Test') {
             environment {
                 // Polaris
-                RUBRIK_POLARIS_ACCOUNT_FILE        = credentials('tf-polaris-account')
-                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = 'default'
+                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
 
                 // AWS
                 TEST_AWSACCOUNT_FILE = credentials('tf-sdk-test-aws-account')
@@ -64,9 +63,8 @@ pipeline {
             }
             steps {
                 sh 'mkdir -p ~/.aws && ln -sf $AWS_CREDENTIALS ~/.aws/credentials && ln -sf $AWS_CONFIG ~/.aws/config'
-                sh 'mkdir -p ~/.rubrik && ln -sf $RUBRIK_POLARIS_ACCOUNT_FILE ~/.rubrik/polaris-accounts.json'
                 sh 'if [ "$TF_ACC" != "1" ]; then unset TF_ACC; fi; CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
-                sh 'rm -r ~/.aws ~/.rubrik'
+                sh 'rm -r ~/.aws'
             }
         }
     }
