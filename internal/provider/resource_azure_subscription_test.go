@@ -76,8 +76,7 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			PreConfig: testStepDelay,
-			Config:    subscriptionOneRegion,
+			Config: subscriptionOneRegion,
 			Check: resource.ComposeTestCheckFunc(
 				// Subscription resource
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
@@ -91,8 +90,7 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "eastus2"),
 			),
 		}, {
-			PreConfig: testStepDelay,
-			Config:    subscriptionTwoRegions,
+			Config: subscriptionTwoRegions,
 			Check: resource.ComposeTestCheckFunc(
 				// Subscription resource
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
@@ -107,8 +105,7 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "westus2"),
 			),
 		}, {
-			PreConfig: testStepDelay,
-			Config:    subscriptionOneRegion,
+			Config: subscriptionOneRegion,
 			Check: resource.ComposeTestCheckFunc(
 				// Subscription resource
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),

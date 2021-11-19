@@ -6,22 +6,16 @@ import (
 	"os"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+var provider *schema.Provider = Provider()
+
 var providerFactories = map[string]func() (*schema.Provider, error){
 	"polaris": func() (*schema.Provider, error) {
-		return Provider(), nil
+		return provider, nil
 	},
-}
-
-// testStepDelay is the idle time between each test step. Executing the test
-// steps too fast in succession causes the auth service to respond with status
-// code 503.
-var testStepDelay = func() {
-	time.Sleep(10 * time.Second)
 }
 
 // testConfig holds the configuration for a test, i.e. the actaul values to

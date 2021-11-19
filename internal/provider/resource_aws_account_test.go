@@ -60,8 +60,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			PreConfig: testStepDelay,
-			Config:    accountOneRegion,
+			Config: accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
 				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
@@ -74,8 +73,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
 			),
 		}, {
-			PreConfig: testStepDelay,
-			Config:    accountTwoRegions,
+			Config: accountTwoRegions,
 			Check: resource.ComposeTestCheckFunc(
 				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
@@ -89,8 +87,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-west-2"),
 			),
 		}, {
-			PreConfig: testStepDelay,
-			Config:    accountOneRegion,
+			Config: accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
 				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
