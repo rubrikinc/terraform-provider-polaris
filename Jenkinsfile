@@ -26,7 +26,7 @@ pipeline {
         go 'go-1.16.2'
     }
     triggers {
-        cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
+        cron(env.BRANCH_NAME == 'main' ? 'H 01 * * *' : '')
     }
     stages {
         stage('Lint') {
