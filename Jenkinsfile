@@ -60,6 +60,9 @@ pipeline {
 
                 // Run acceptance tests with the nightly build.
                 TF_ACC = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+
+                // Enable logging from the terraform cli binary used by acceptance tests
+                TF_ACC_LOG_PATH="terraform_cli.log"
             }
             steps {
                 sh 'mkdir -p ~/.aws && ln -sf $AWS_CREDENTIALS ~/.aws/credentials && ln -sf $AWS_CONFIG ~/.aws/config'
@@ -69,6 +72,9 @@ pipeline {
         }
     }
     post {
+        always {
+            archiveArtifacts artifacts: 'terraform_cli.log', allowEmptyArchive: true
+        }
         success {
             script {
                 if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
