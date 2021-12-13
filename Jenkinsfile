@@ -46,9 +46,9 @@ pipeline {
                 RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
 
                 // AWS
-                TEST_AWSACCOUNT_FILE = credentials('tf-sdk-test-aws-account')
-                AWS_CREDENTIALS      = credentials('tf-sdk-test-aws-credentials')
-                AWS_CONFIG           = credentials('tf-sdk-test-aws-config')
+                TEST_AWSACCOUNT_FILE        = credentials('tf-sdk-test-aws-account')
+                AWS_SHARED_CREDENTIALS_FILE = credentials('tf-sdk-test-aws-credentials')
+                AWS_CONFIG_FILE             = credentials('tf-sdk-test-aws-config')
 
                 // Azure
                 TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
@@ -58,22 +58,20 @@ pipeline {
                 TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
                 GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
 
-                // Run acceptance tests with the nightly build.
-                TF_ACC = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+                // Run acceptance tests with the nightly build or when triggered manually.
+                TF_ACC = "${(currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) || (currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').size() > 0) ? '1' : ''}"
 
                 // Enable logging from the terraform cli binary used by acceptance tests
-                TF_ACC_LOG_PATH='**/terraform_cli.log'
+                TF_ACC_LOG_PATH='terraform_cli.log'
             }
             steps {
-                sh 'mkdir -p ~/.aws && ln -sf $AWS_CREDENTIALS ~/.aws/credentials && ln -sf $AWS_CONFIG ~/.aws/config'
                 sh 'if [ "$TF_ACC" != "1" ]; then unset TF_ACC; fi; CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
-                sh 'rm -r ~/.aws'
             }
         }
     }
     post {
         always {
-            archiveArtifacts artifacts: 'terraform_cli.log', allowEmptyArchive: true
+            archiveArtifacts artifacts: '**/terraform_cli.log', allowEmptyArchive: true
         }
         success {
             script {
