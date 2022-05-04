@@ -49,7 +49,7 @@ pipeline {
         GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
 
         // Run acceptance tests with the nightly build or when triggered manually.
-        TF_ACC = "${(currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'true' : params.RUN_ACCEPTANCE_TEST}"
+        TF_ACC = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'true' : params.RUN_ACCEPTANCE_TEST}"
 
         // Enable logging from the terraform cli binary used by acceptance tests
         TF_ACC_LOG_PATH='terraform_cli.log'
