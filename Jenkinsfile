@@ -23,16 +23,44 @@
 pipeline {
     agent any
     tools {
-        go 'go-1.16.2'
+        go 'go-1.18'
     }
     triggers {
         cron(env.BRANCH_NAME == 'main' ? 'H 01 * * *' : '')
+    }
+    parameters {
+        booleanParam(name: 'RUN_ACCEPTANCE_TEST', defaultValue: false)
+    }
+    environment {
+        // Polaris
+        RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
+
+        // AWS
+        TEST_AWSACCOUNT_FILE        = credentials('tf-sdk-test-aws-account')
+        AWS_SHARED_CREDENTIALS_FILE = credentials('tf-sdk-test-aws-credentials')
+        AWS_CONFIG_FILE             = credentials('tf-sdk-test-aws-config')
+
+        // Azure
+        TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
+        AZURE_SERVICEPRINCIPAL_LOCATION = credentials('tf-sdk-test-azure-service-principal')
+
+        // GCP
+        TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
+
+        // Run acceptance tests with the nightly build or when triggered manually.
+        TF_ACC = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'true' : params.RUN_ACCEPTANCE_TEST}"
+
+        // Enable logging from the terraform cli binary used by acceptance tests
+        TF_ACC_LOG_PATH='terraform_cli.log'
     }
     stages {
         stage('Lint') {
             steps {
                 sh 'go mod tidy'
                 sh 'go vet ./...'
+                sh 'go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
+                sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
         stage('Build') {
@@ -40,38 +68,26 @@ pipeline {
                 sh 'curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --skip-sign --rm-dist'
             }
         }
-        stage('Test') {
-            environment {
-                // Polaris
-                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
-
-                // AWS
-                TEST_AWSACCOUNT_FILE        = credentials('tf-sdk-test-aws-account')
-                AWS_SHARED_CREDENTIALS_FILE = credentials('tf-sdk-test-aws-credentials')
-                AWS_CONFIG_FILE             = credentials('tf-sdk-test-aws-config')
-
-                // Azure
-                TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
-                AZURE_SERVICEPRINCIPAL_LOCATION = credentials('tf-sdk-test-azure-service-principal')
-
-                // GCP
-                TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
-                GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
-
-                // Run acceptance tests with the nightly build or when triggered manually.
-                TF_ACC = "${(currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) || (currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').size() > 0) ? '1' : ''}"
-
-                // Enable logging from the terraform cli binary used by acceptance tests
-                TF_ACC_LOG_PATH='terraform_cli.log'
-            }
+        stage('Pre-test') {
+            when { expression { env.TF_ACC == "true" } }
             steps {
-                sh 'if [ "$TF_ACC" != "1" ]; then unset TF_ACC; fi; CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
+                sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.4.7 -precheck'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'if [ "$TF_ACC" != "true" ]; then unset TF_ACC; fi; CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
             }
         }
     }
     post {
         always {
             archiveArtifacts artifacts: '**/terraform_cli.log', allowEmptyArchive: true
+            script {
+                if (env.TF_ACC == "true") {
+                    sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.4.7 -cleanup'
+                }
+            }
         }
         success {
             script {
