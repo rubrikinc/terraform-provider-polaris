@@ -71,7 +71,7 @@ pipeline {
         stage('Pre-test') {
             when { expression { env.TF_ACC == "true" } }
             steps {
-                sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.4.7 -precheck'
+                sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@latest -precheck'
             }
         }
         stage('Test') {
@@ -85,7 +85,7 @@ pipeline {
             archiveArtifacts artifacts: '**/terraform_cli.log', allowEmptyArchive: true
             script {
                 if (env.TF_ACC == "true") {
-                    sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.4.7 -cleanup'
+                    sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@latest -cleanup'
                 }
             }
         }
