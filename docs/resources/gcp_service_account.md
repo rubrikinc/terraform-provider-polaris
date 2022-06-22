@@ -23,12 +23,15 @@ resource "polaris_gcp_service_account" "default" {
 
 ### Required
 
-- **credentials** (String) Path to GCP service account key file.
+- `credentials` (String) Path to GCP service account key file.
 
 ### Optional
 
-- **id** (String) The ID of this resource.
-- **name** (String) Service account name in Polaris. If not given the name of the service account key file is used.
-- **permissions_hash** (String) Signals that the permissions has been updated.
+- `name` (String) Service account name in Polaris. If not given the name of the service account key file is used.
+- `permissions_hash` (String) Signals that the permissions has been updated.
+
+### Read-Only
+
+- `id` (String) The ID of this resource.
 
 

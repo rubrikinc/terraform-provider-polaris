@@ -45,16 +45,19 @@ resource "polaris_aws_exocompute" "default" {
 
 ### Required
 
-- **account_id** (String) Polaris account id
-- **region** (String) AWS region to run the exocompute instance in.
-- **subnets** (Set of String) AWS subnet ids for the cluster subnets.
-- **vpc_id** (String) AWS VPC id for the cluster network.
+- `account_id` (String) Polaris account id
+- `region` (String) AWS region to run the exocompute instance in.
+- `subnets` (Set of String) AWS subnet ids for the cluster subnets.
+- `vpc_id` (String) AWS VPC id for the cluster network.
 
 ### Optional
 
-- **cluster_security_group_id** (String) AWS security group id for the cluster.
-- **id** (String) The ID of this resource.
-- **node_security_group_id** (String) AWS security group id for the nodes.
-- **polaris_managed** (Boolean) If true the security groups are managed by Polaris.
+- `cluster_security_group_id` (String) AWS security group id for the cluster.
+- `node_security_group_id` (String) AWS security group id for the nodes.
+- `polaris_managed` (Boolean) If true the security groups are managed by Polaris.
+
+### Read-Only
+
+- `id` (String) The ID of this resource.
 
 
