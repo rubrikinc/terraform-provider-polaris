@@ -25,13 +25,16 @@ resource "polaris_azure_exocompute" "default" {
 
 ### Required
 
-- **region** (String) Azure region to run the exocompute instance in.
-- **subnet** (String) Azure subnet id.
-- **subscription_id** (String) Polaris subscription id
+- `region` (String) Azure region to run the exocompute instance in.
+- `subnet` (String) Azure subnet id.
+- `subscription_id` (String) Polaris subscription id
 
 ### Optional
 
-- **id** (String) The ID of this resource.
-- **polaris_managed** (Boolean) If true the security groups are managed by Polaris.
+- `polaris_managed` (Boolean) If true the security groups are managed by Polaris.
+
+### Read-Only
+
+- `id` (String) The ID of this resource.
 
 

@@ -50,27 +50,30 @@ resource "polaris_azure_subscription" "default" {
 
 ### Required
 
-- **cloud_native_protection** (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the GCP project. (see [below for nested schema](#nestedblock--cloud_native_protection))
-- **subscription_id** (String) Subscription id.
-- **tenant_domain** (String) Tenant directory/domain name.
+- `cloud_native_protection` (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the GCP project. (see [below for nested schema](#nestedblock--cloud_native_protection))
+- `subscription_id` (String) Subscription id.
+- `tenant_domain` (String) Tenant directory/domain name.
 
 ### Optional
 
-- **delete_snapshots_on_destroy** (Boolean) Should snapshots be deleted when the resource is destroyed.
-- **exocompute** (Block List, Max: 1) Enable the exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
-- **id** (String) The ID of this resource.
-- **subscription_name** (String) Subscription name.
+- `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed.
+- `exocompute` (Block List, Max: 1) Enable the exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
+- `subscription_name` (String) Subscription name.
+
+### Read-Only
+
+- `id` (String) The ID of this resource.
 
 <a id="nestedblock--cloud_native_protection"></a>
 ### Nested Schema for `cloud_native_protection`
 
 Required:
 
-- **regions** (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+- `regions` (Set of String) Regions that Polaris will monitor for instances to automatically protect.
 
 Read-Only:
 
-- **status** (String) Status of the Cloud Native Protection feature.
+- `status` (String) Status of the Cloud Native Protection feature.
 
 
 <a id="nestedblock--exocompute"></a>
@@ -78,10 +81,10 @@ Read-Only:
 
 Required:
 
-- **regions** (Set of String) Regions to enable the exocompute feature in.
+- `regions` (Set of String) Regions to enable the exocompute feature in.
 
 Read-Only:
 
-- **status** (String) Status of the Exocompute feature.
+- `status` (String) Status of the Exocompute feature.
 
 

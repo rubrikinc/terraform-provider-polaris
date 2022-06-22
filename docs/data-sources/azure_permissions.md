@@ -25,18 +25,15 @@ data "polaris_azure_permissions" "default" {
 
 ### Required
 
-- **features** (Set of String) Enabled features.
-
-### Optional
-
-- **id** (String) The ID of this resource.
+- `features` (Set of String) Enabled features.
 
 ### Read-Only
 
-- **actions** (List of String) Allowed actions.
-- **data_actions** (List of String) Allowed data actions.
-- **hash** (String) SHA-256 hash of the permissions, can be used to detect changes to the permissions.
-- **not_actions** (List of String) Disallowed actions.
-- **not_data_actions** (List of String) Disallowed data actions.
+- `actions` (List of String) Allowed actions.
+- `data_actions` (List of String) Allowed data actions.
+- `hash` (String) SHA-256 hash of the permissions, can be used to detect changes to the permissions.
+- `id` (String) The ID of this resource.
+- `not_actions` (List of String) Disallowed actions.
+- `not_data_actions` (List of String) Disallowed data actions.
 
 

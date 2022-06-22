@@ -25,15 +25,12 @@ data "polaris_gcp_permissions" "default" {
 
 ### Required
 
-- **features** (Set of String) Enabled features.
-
-### Optional
-
-- **id** (String) The ID of this resource.
+- `features` (Set of String) Enabled features.
 
 ### Read-Only
 
-- **hash** (String) SHA-256 hash of the permissions, can be used to detect changes to the permissions.
-- **permissions** (List of String) Permissions required for the features enabled.
+- `hash` (String) SHA-256 hash of the permissions, can be used to detect changes to the permissions.
+- `id` (String) The ID of this resource.
+- `permissions` (List of String) Permissions required for the features enabled.
 
 
