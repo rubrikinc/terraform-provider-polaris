@@ -141,7 +141,7 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set("polaris_managed", exoConfig.PolarisManaged); err != nil {
+	if err := d.Set("polaris_managed", exoConfig.ManagedByRubrik); err != nil {
 		return diag.FromErr(err)
 	}
 
