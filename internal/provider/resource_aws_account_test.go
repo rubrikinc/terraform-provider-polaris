@@ -41,6 +41,41 @@ resource "polaris_aws_account" "default" {
 }
 `
 
+const awsCrossAccountOneRegionTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_aws_account" "default" {
+	assume_role = "{{ .Resource.CrossAccountRole }}"
+	name        = "{{ .Resource.CrossAccountName }}"
+
+	cloud_native_protection {
+		regions = [
+			"us-east-2",
+		]
+	}
+}
+`
+
+const awsCrossAccountTwoRegionsTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_aws_account" "default" {
+	assume_role = "{{ .Resource.CrossAccountRole }}"
+	name        = "{{ .Resource.CrossAccountName }}"
+
+	cloud_native_protection {
+		regions = [
+			"us-east-2",
+			"us-west-2",
+		]
+	}
+}
+`
+
 func TestAccPolarisAWSAccount_basic(t *testing.T) {
 	config, account, err := loadAWSTestConfig()
 	if err != nil {
@@ -51,23 +86,21 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	accountTwoRegions, err := makeTerraformConfig(config, awsAccountTwoRegionsTmpl)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Add and update account using a profile
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
 			Config: accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
-				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
-
-				// Cloud Native Protection feature
+				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "assume_role"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
@@ -75,12 +108,10 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 		}, {
 			Config: accountTwoRegions,
 			Check: resource.ComposeTestCheckFunc(
-				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
-
-				// Cloud Native Protection feature
+				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "assume_role"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "2"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
@@ -89,12 +120,60 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 		}, {
 			Config: accountOneRegion,
 			Check: resource.ComposeTestCheckFunc(
-				// Account resource
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "profile", account.Profile),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
+				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "assume_role"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
+			),
+		}},
+	})
 
-				// Cloud Native Protection feature
+	crossAccountOneRegion, err := makeTerraformConfig(config, awsCrossAccountOneRegionTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	crossAccountTwoRegions, err := makeTerraformConfig(config, awsCrossAccountTwoRegionsTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add and update account using cross account role. This test uses the
+	// default profile to assume the role.
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: crossAccountOneRegion,
+			Check: resource.ComposeTestCheckFunc(
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.CrossAccountName),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "assume_role", account.CrossAccountRole),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
+				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "profile"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
+			),
+		}, {
+			Config: crossAccountTwoRegions,
+			Check: resource.ComposeTestCheckFunc(
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.CrossAccountName),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "assume_role", account.CrossAccountRole),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
+				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "profile"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "2"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-west-2"),
+			),
+		}, {
+			Config: crossAccountOneRegion,
+			Check: resource.ComposeTestCheckFunc(
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.CrossAccountName),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "assume_role", account.CrossAccountRole),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "delete_snapshots_on_destroy", "false"),
+				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "profile"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),

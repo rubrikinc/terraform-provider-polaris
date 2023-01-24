@@ -3,11 +3,12 @@ module github.com/rubrikinc/terraform-provider-polaris
 go 1.18
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.3.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/terraform-plugin-docs v0.10.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.10.0
-	github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.4.12
+	github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.5.0
 )
 
 require (
@@ -30,7 +31,6 @@ require (
 	github.com/apparentlymart/go-textseg v1.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.3.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.1.3 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.1.3 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.0.4 // indirect
