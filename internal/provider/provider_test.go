@@ -18,7 +18,7 @@ var providerFactories = map[string]func() (*schema.Provider, error){
 	},
 }
 
-// testConfig holds the configuration for a test, i.e. the actaul values to
+// testConfig holds the configuration for a test, i.e. the actual values to
 // give to a terraform template.
 type testConfig struct {
 	Provider struct {
@@ -75,9 +75,12 @@ func makeTerraformConfig(config testConfig, terraformTemplate string) (string, e
 // testAWSAccount holds information about an AWS account used in one or more
 // acceptance tests.
 type testAWSAccount struct {
-	Profile     string `json:"profile"`
-	AccountID   string `json:"accountId"`
-	AccountName string `json:"accountName"`
+	Profile          string `json:"profile"`
+	AccountID        string `json:"accountId"`
+	AccountName      string `json:"accountName"`
+	CrossAccountID   string `json:"crossAccountId"`
+	CrossAccountName string `json:"crossAccountName"`
+	CrossAccountRole string `json:"crossAccountRole"`
 
 	Exocompute struct {
 		VPCID   string `json:"vpcId"`

@@ -25,6 +25,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -52,6 +53,15 @@ func validatePermissions(m interface{}, p cty.Path) diag.Diagnostics {
 	return nil
 }
 
+// validateRoleARN verifies that the role ARN is a valid AWS ARN.
+func validateRoleARN(m interface{}, p cty.Path) diag.Diagnostics {
+	if _, err := arn.Parse(m.(string)); err != nil {
+		return diag.Errorf("failed to parse role ARN: %v", err)
+	}
+
+	return nil
+}
+
 // resourceAwsAccount defines the schema for the AWS account resource.
 func resourceAwsAccount() *schema.Resource {
 	return &schema.Resource{
@@ -61,6 +71,13 @@ func resourceAwsAccount() *schema.Resource {
 		DeleteContext: awsDeleteAccount,
 
 		Schema: map[string]*schema.Schema{
+			"assume_role": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				AtLeastOneOf:     []string{"profile"},
+				Description:      "Role ARN of role to assume.",
+				ValidateDiagFunc: validateRoleARN,
+			},
 			"cloud_native_protection": {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -133,7 +150,8 @@ func resourceAwsAccount() *schema.Resource {
 			},
 			"profile": {
 				Type:             schema.TypeString,
-				Required:         true,
+				Optional:         true,
+				AtLeastOneOf:     []string{"assume_role"},
 				Description:      "AWS named profile.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
@@ -159,7 +177,19 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	client := m.(*polaris.Client)
 
-	profile := d.Get("profile").(string)
+	// Initialize to empty string if missing from the configuration.
+	profile, _ := d.Get("profile").(string)
+	roleARN, _ := d.Get("assume_role").(string)
+
+	var account aws.AccountFunc
+	switch {
+	case profile != "" && roleARN == "":
+		account = aws.Profile(profile)
+	case profile != "" && roleARN != "":
+		account = aws.ProfileWithRole(profile, roleARN)
+	default:
+		account = aws.DefaultWithRole(roleARN)
+	}
 
 	var opts []aws.OptionFunc
 	if name, ok := d.GetOk("name"); ok {
@@ -167,9 +197,9 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Check if the account already exist in Polaris.
-	account, err := client.AWS().Account(ctx, aws.ID(aws.Profile(profile)), core.FeatureAll)
+	cloudAccount, err := client.AWS().Account(ctx, aws.ID(account), core.FeatureAll)
 	if err == nil {
-		return diag.Errorf("account %q already added to polaris", account.NativeID)
+		return diag.Errorf("account %q already added to polaris", cloudAccount.NativeID)
 	}
 	if !errors.Is(err, graphql.ErrNotFound) {
 		return diag.FromErr(err)
@@ -189,7 +219,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		cnpOpts = append(cnpOpts, opts...)
-		id, err = client.AWS().AddAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, cnpOpts...)
+		id, err = client.AWS().AddAccount(ctx, account, core.FeatureCloudNativeProtection, cnpOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -205,7 +235,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		exoOpts = append(exoOpts, opts...)
-		_, err := client.AWS().AddAccount(ctx, aws.Profile(profile), core.FeatureExocompute, exoOpts...)
+		_, err := client.AWS().AddAccount(ctx, account, core.FeatureExocompute, exoOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -305,21 +335,37 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	log.Print("[TRACE] awsUpdateAccount")
 
 	client := m.(*polaris.Client)
-	profile := d.Get("profile").(string)
+
+	// Initialize to empty string if missing from the configuration.
+	profile, _ := d.Get("profile").(string)
+	roleARN, _ := d.Get("assume_role").(string)
+
+	var account aws.AccountFunc
+	switch {
+	case profile != "" && roleARN == "":
+		account = aws.Profile(profile)
+	case profile != "" && roleARN != "":
+		account = aws.ProfileWithRole(profile, roleARN)
+	default:
+		account = aws.DefaultWithRole(roleARN)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Make sure that the resource id and account profile refers to the same
+	// Make sure that the resource id and AWS profile refers to the same
 	// account.
-	account, err := client.AWS().Account(ctx, aws.ID(aws.Profile(profile)), core.FeatureAll)
+	cloudAccount, err := client.AWS().Account(ctx, aws.ID(account), core.FeatureAll)
+	if errors.Is(err, graphql.ErrNotFound) {
+		return diag.Errorf("account identified by profile/role could not be found")
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if account.ID != id {
-		return diag.Errorf("id and profile refer to different accounts")
+	if cloudAccount.ID != id {
+		return diag.Errorf("resource id and profile/role refer to different accounts")
 	}
 
 	if d.HasChange("cloud_native_protection") {
@@ -341,7 +387,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 			}
 
 			snapshots := d.Get("delete_snapshots_on_destroy").(bool)
-			if err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, snapshots); err != nil {
+			if err := client.AWS().RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, snapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -361,12 +407,12 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			_, err = client.AWS().AddAccount(ctx, aws.Profile(profile), core.FeatureExocompute, opts...)
+			_, err = client.AWS().AddAccount(ctx, account, core.FeatureExocompute, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
 		case len(newExoList) == 0:
-			err := client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureExocompute, false)
+			err := client.AWS().RemoveAccount(ctx, account, core.FeatureExocompute, false)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -388,14 +434,14 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 		if oldPerms == "update-required" && newPerms == "update" {
 			var features []core.Feature
-			for _, feature := range account.Features {
+			for _, feature := range cloudAccount.Features {
 				if feature.Status != core.StatusMissingPermissions {
 					continue
 				}
 				features = append(features, feature.Name)
 			}
 
-			err := client.AWS().UpdatePermissions(ctx, aws.Profile(profile), features)
+			err := client.AWS().UpdatePermissions(ctx, account, features)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -422,25 +468,41 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 
-	// Get the old resource arguments.
+	// Get the old resource arguments. Initialize to empty string if missing
+	// from the configuration.
 	oldProfile, _ := d.GetChange("profile")
-	profile := oldProfile.(string)
+	oldRoleARN, _ := d.GetChange("assume_role")
+	profile, _ := oldProfile.(string)
+	roleARN, _ := oldRoleARN.(string)
+
+	var account aws.AccountFunc
+	switch {
+	case profile != "" && roleARN == "":
+		account = aws.Profile(profile)
+	case profile != "" && roleARN != "":
+		account = aws.ProfileWithRole(profile, roleARN)
+	default:
+		account = aws.DefaultWithRole(roleARN)
+	}
 
 	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
 	deleteSnapshots := oldSnapshots.(bool)
 
 	// Make sure that the resource id and account profile refers to the same
 	// account.
-	account, err := client.AWS().Account(ctx, aws.ID(aws.Profile(profile)), core.FeatureAll)
+	cloudAccount, err := client.AWS().Account(ctx, aws.ID(account), core.FeatureAll)
+	if errors.Is(err, graphql.ErrNotFound) {
+		return diag.Errorf("account identified by profile/role could not be found")
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if account.ID != id {
-		return diag.Errorf("id and profile refer to different accounts")
+	if cloudAccount.ID != id {
+		return diag.Errorf("resource id and profile/role refer to different accounts")
 	}
 
 	// Removing Cloud Native Protection also removes Exocompute.
-	err = client.AWS().RemoveAccount(ctx, aws.Profile(profile), core.FeatureCloudNativeProtection, deleteSnapshots)
+	err = client.AWS().RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}

@@ -152,7 +152,7 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	case credentials != "" && projectID == "":
 		project = gcp.KeyFile(credentials)
 	case credentials != "" && projectID != "":
-		project = gcp.KeyFileAndProject(credentials, projectID)
+		project = gcp.KeyFileWithProject(credentials, projectID)
 	default:
 		project = gcp.Project(projectID, projectNumber)
 	}
