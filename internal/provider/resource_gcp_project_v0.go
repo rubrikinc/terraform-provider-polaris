@@ -108,13 +108,13 @@ func resourceGcpProjectStateUpgradeV0(ctx context.Context, state map[string]inte
 	}
 
 	// Retrieve the account using the Polaris cloud account id.
-	account1, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account1, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		return nil, err
 	}
 
 	// Retrieve the account using the GCP project id.
-	account2, err := client.GCP().Project(ctx, gcp.ProjectID(parts[1]), core.FeatureCloudNativeProtection)
+	account2, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.ProjectID(parts[1]), core.FeatureCloudNativeProtection)
 	if err != nil {
 		return nil, err
 	}

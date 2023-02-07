@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
@@ -110,7 +111,7 @@ func azurePermissionsRead(ctx context.Context, d *schema.ResourceData, m interfa
 		features = append(features, feature)
 	}
 
-	perms, err := client.Azure().Permissions(ctx, features)
+	perms, err := azure.NewAPI(client.GQL).Permissions(ctx, features)
 	if err != nil {
 		return diag.FromErr(err)
 	}

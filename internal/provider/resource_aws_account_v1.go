@@ -101,7 +101,7 @@ func resourceAwsAccountStateUpgradeV1(ctx context.Context, state map[string]inte
 		return nil, err
 	}
 
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	account, err := aws.NewAPI(client.GQL).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return nil, err
 	}
