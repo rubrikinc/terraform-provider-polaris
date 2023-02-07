@@ -77,4 +77,4 @@ provider "polaris" {
 
 ### Required
 
-- `credentials` (String) The local user account name or service account file to use when accessing Rubrik Polaris.
+- `credentials` (String) The local user account name or service account file to use when accessing RSC.
