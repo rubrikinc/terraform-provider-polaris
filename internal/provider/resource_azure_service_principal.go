@@ -142,7 +142,7 @@ func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 		principal = azure.ServicePrincipal(appID, d.Get("app_secret").(string), tenantID, tenantDomain)
 	}
 
-	id, err := client.Azure().SetServicePrincipal(ctx, principal)
+	id, err := azure.NewAPI(client.GQL).SetServicePrincipal(ctx, principal)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -170,7 +170,7 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 	client := m.(*polaris.Client)
 
 	if d.HasChange("permissions_hash") {
-		err := client.Azure().PermissionsUpdatedForTenantDomain(ctx, d.Get("tenant_domain").(string), nil)
+		err := azure.NewAPI(client.GQL).PermissionsUpdatedForTenantDomain(ctx, d.Get("tenant_domain").(string), nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}
