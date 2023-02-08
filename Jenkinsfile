@@ -34,6 +34,7 @@ pipeline {
     environment {
         // Polaris
         RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
+        TEST_RSCCONFIG_FILE                = credentials('tf-sdk-test-rsc-config')
 
         // AWS
         TEST_AWSACCOUNT_FILE        = credentials('tf-sdk-test-aws-account')
