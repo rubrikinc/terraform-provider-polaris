@@ -178,3 +178,18 @@ func loadGCPTestConfig() (testConfig, testGCPProject, error) {
 
 	return config, project, err
 }
+
+// testRSCConfig holds RSC configuration information used in one or more
+// acceptance tests.
+type testRSCConfig struct {
+	UserEmail string `json:"userEmail"`
+}
+
+// loadRSCTestConfig loads an RSC test configuration using the default
+// environment variables.
+func loadRSCTestConfig() (testConfig, testRSCConfig, error) {
+	rsc := testRSCConfig{}
+	config, err := loadTestConfig("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "TEST_RSCCONFIG_FILE", &rsc)
+
+	return config, rsc, err
+}

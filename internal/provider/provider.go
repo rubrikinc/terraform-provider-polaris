@@ -55,6 +55,7 @@ func Provider() *schema.Provider {
 			"polaris_custom_role":             resourceCustomRole(),
 			"polaris_gcp_project":             resourceGcpProject(),
 			"polaris_gcp_service_account":     resourceGcpServiceAccount(),
+			"polaris_role_assignment":         resourceRoleAssignment(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{

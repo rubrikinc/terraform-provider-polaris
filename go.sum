@@ -439,8 +439,8 @@ github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.6.1 h1:/FiVV8dS/e+YqF2JvO3yXRFbBLTIuSDkuC7aBOAvL+k=
-github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.5.2-0.20230203122457-9a3331b91c99 h1:D8Fuoi4js9Nkn3lWw1gukzIuBYKWvtcmO4xsHxSMBXc=
-github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.5.2-0.20230203122457-9a3331b91c99/go.mod h1:lAIPjyLAxLMgYHUqH7Sj1G8wk8FyOFuaSMOSYkuqlm4=
+github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.5.2-0.20230208134300-bfcee759ead3 h1:o8CG7ZL8Stsprw299AEGsTqWkwz7fGJom2h+VtJ7imM=
+github.com/rubrikinc/rubrik-polaris-sdk-for-go v0.5.2-0.20230208134300-bfcee759ead3/go.mod h1:lAIPjyLAxLMgYHUqH7Sj1G8wk8FyOFuaSMOSYkuqlm4=
 github.com/russross/blackfriday v1.6.0 h1:KqfZb0pUVN2lYqZUYRddxF4OR8ZMURnJIG5Y3VRLtww=
 github.com/russross/blackfriday v1.6.0/go.mod h1:ti0ldHuxg49ri4ksnFxlkCfN+hvslNlmVHqNRXXJNAY=
 github.com/sebdah/goldie v1.0.0/go.mod h1:jXP4hmWywNEwZzhMuv2ccnqTSFpuq8iyQhtQdkkZBH4=
