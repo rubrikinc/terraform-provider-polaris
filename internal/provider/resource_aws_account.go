@@ -196,15 +196,6 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		opts = append(opts, aws.Name(name.(string)))
 	}
 
-	// Check if the account already exist in Polaris.
-	cloudAccount, err := client.AWS().Account(ctx, aws.ID(account), core.FeatureAll)
-	if err == nil {
-		return diag.Errorf("account %q already added to polaris", cloudAccount.NativeID)
-	}
-	if !errors.Is(err, graphql.ErrNotFound) {
-		return diag.FromErr(err)
-	}
-
 	// Polaris Cloud Account id. Returned when the account is added for the
 	// cloud native protection feature.
 	var id uuid.UUID
@@ -218,6 +209,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 			cnpOpts = append(cnpOpts, aws.Region(region.(string)))
 		}
 
+		var err error
 		cnpOpts = append(cnpOpts, opts...)
 		id, err = client.AWS().AddAccount(ctx, account, core.FeatureCloudNativeProtection, cnpOpts...)
 		if err != nil {
