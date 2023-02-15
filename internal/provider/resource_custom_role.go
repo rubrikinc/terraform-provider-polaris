@@ -99,7 +99,7 @@ func resourceCustomRole() *schema.Resource {
 }
 
 // createCustomRole run the Create operation for the custom role resource.
-func createCustomRole(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func createCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] createCustomRole")
 
 	client := m.(*polaris.Client)
@@ -120,7 +120,7 @@ func createCustomRole(ctx context.Context, d *schema.ResourceData, m interface{}
 }
 
 // readCustomRole run the Read operation for the custom role resource.
-func readCustomRole(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func readCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] readCustomRole")
 
 	client := m.(*polaris.Client)
@@ -149,7 +149,7 @@ func readCustomRole(ctx context.Context, d *schema.ResourceData, m interface{}) 
 }
 
 // updateCustomRole run the Update operation for the custom role resource.
-func updateCustomRole(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func updateCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] updateCustomRole")
 
 	client := m.(*polaris.Client)
@@ -174,7 +174,7 @@ func updateCustomRole(ctx context.Context, d *schema.ResourceData, m interface{}
 }
 
 // deleteCustomRole run the Delete operation for the custom role resource.
-func deleteCustomRole(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func deleteCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] deleteCustomRole")
 
 	client := m.(*polaris.Client)

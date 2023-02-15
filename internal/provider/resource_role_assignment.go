@@ -61,7 +61,7 @@ func resourceRoleAssignment() *schema.Resource {
 
 // createRoleAssignment run the Create operation for the role assignment
 // resource.
-func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] createRoleAssignment")
 
 	client := m.(*polaris.Client)
@@ -83,7 +83,7 @@ func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m interfa
 }
 
 // readRoleAssignment run the Read operation for the role assignment resource.
-func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] readRoleAssignment")
 
 	client := m.(*polaris.Client)
@@ -107,7 +107,7 @@ func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m interface
 
 // deleteRoleAssignment run the Delete operation for the role assignment
 // resource.
-func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] deleteRoleAssignment")
 
 	client := m.(*polaris.Client)

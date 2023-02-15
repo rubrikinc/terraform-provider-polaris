@@ -94,7 +94,7 @@ func dataSourceRole() *schema.Resource {
 }
 
 // roleRead run the Read operation for the role data source.
-func roleRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func roleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] roleRead")
 
 	client := m.(*polaris.Client)

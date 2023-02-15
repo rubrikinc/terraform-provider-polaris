@@ -89,7 +89,7 @@ func dataSourceRoleTemplate() *schema.Resource {
 }
 
 // roleTemplateRead run the Read operation for the role template data source.
-func roleTemplateRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func roleTemplateRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] roleTemplateRead")
 
 	client := m.(*polaris.Client)

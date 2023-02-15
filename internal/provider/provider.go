@@ -70,7 +70,7 @@ func Provider() *schema.Provider {
 }
 
 // providerConfigure configures the RSC provider.
-func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 	credentials := d.Get("credentials").(string)
 
 	// When credentials refer to an existing file we load the file as a service
@@ -101,8 +101,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 //
 // Note that the standard validation.StringIsNotWhiteSpace does not always work
 // with the validation.ToDiagFunc.
-func validateStringIsNotWhiteSpace(m interface{}, p cty.Path) diag.Diagnostics {
-	if s := m.(string); strings.TrimSpace(s) == "" {
+func validateStringIsNotWhiteSpace(m any, p cty.Path) diag.Diagnostics {
+	if s, ok := m.(string); ok && strings.TrimSpace(s) == "" {
 		return diag.Errorf("expected %q to not be an empty string or whitespace", s)
 	}
 
