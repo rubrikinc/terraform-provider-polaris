@@ -60,7 +60,7 @@ pipeline {
             steps {
                 sh 'go mod tidy'
                 sh 'go vet ./...'
-                sh 'go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
+                sh 'go run honnef.co/go/tools/cmd/staticcheck@v0.4.1 ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
@@ -72,7 +72,7 @@ pipeline {
         stage('Pre-test') {
             when { expression { env.TF_ACC == "true" } }
             steps {
-                sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.4.7 -precheck'
+                sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.6.1 -precheck'
             }
         }
         stage('Test') {
@@ -86,7 +86,7 @@ pipeline {
             archiveArtifacts artifacts: '**/terraform_cli.log', allowEmptyArchive: true
             script {
                 if (env.TF_ACC == "true") {
-                    sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.4.7 -cleanup'
+                    sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.6.1 -cleanup'
                 }
             }
         }

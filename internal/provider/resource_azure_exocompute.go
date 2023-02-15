@@ -103,6 +103,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 	if d.Get("polaris_managed").(bool) {
 		config = azure.Managed(region, d.Get("subnet").(string))
 	} else {
+		//lint:ignore SA1019 unmanaged exocompute configuration will not be supported in the next release
 		config = azure.Unmanaged(region, d.Get("subnet").(string))
 	}
 
