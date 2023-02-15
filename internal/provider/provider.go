@@ -23,7 +23,9 @@ package provider
 import (
 	"context"
 	"os"
+	"strings"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -32,14 +34,14 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Provider defines the schema and resource map for the Polaris provider.
+// Provider defines the schema and resource map for the RSC provider.
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"credentials": {
 				Type:             schema.TypeString,
 				Required:         true,
-				Description:      "The local user account name or service account file to use when accessing Rubrik Polaris.",
+				Description:      "The local user account name or service account file to use when accessing RSC.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},
@@ -50,21 +52,25 @@ func Provider() *schema.Provider {
 			"polaris_azure_exocompute":        resourceAzureExocompute(),
 			"polaris_azure_service_principal": resourceAzureServicePrincipal(),
 			"polaris_azure_subscription":      resourceAzureSubscription(),
+			"polaris_custom_role":             resourceCustomRole(),
 			"polaris_gcp_project":             resourceGcpProject(),
 			"polaris_gcp_service_account":     resourceGcpServiceAccount(),
+			"polaris_role_assignment":         resourceRoleAssignment(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
 			"polaris_azure_permissions": dataSourceAzurePermissions(),
 			"polaris_gcp_permissions":   dataSourceGcpPermissions(),
+			"polaris_role":              dataSourceRole(),
+			"polaris_role_template":     dataSourceRoleTemplate(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
 	}
 }
 
-// providerConfigure configures the Polaris provider.
-func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+// providerConfigure configures the RSC provider.
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 	credentials := d.Get("credentials").(string)
 
 	// When credentials refer to an existing file we load the file as a service
@@ -88,4 +94,17 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 
 	return client, nil
+}
+
+// validateStringIsNotWhiteSpace validates that the specified string is not
+// empty or consisting entirely of whitespace characters.
+//
+// Note that the standard validation.StringIsNotWhiteSpace does not always work
+// with the validation.ToDiagFunc.
+func validateStringIsNotWhiteSpace(m any, p cty.Path) diag.Diagnostics {
+	if s, ok := m.(string); ok && strings.TrimSpace(s) == "" {
+		return diag.Errorf("expected %q to not be an empty string or whitespace", s)
+	}
+
+	return nil
 }

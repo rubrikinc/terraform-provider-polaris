@@ -89,7 +89,7 @@ func resourceAzureSubscriptionStateUpgradeV1(ctx context.Context, state map[stri
 		return state, err
 	}
 
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
+	account, err := azure.NewAPI(client.GQL).Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return nil, err
 	}

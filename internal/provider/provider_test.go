@@ -1,3 +1,23 @@
+// Copyright 2021 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 package provider
 
 import (
@@ -19,7 +39,7 @@ var providerFactories = map[string]func() (*schema.Provider, error){
 }
 
 // testConfig holds the configuration for a test, i.e. the actual values to
-// give to a terraform template.
+// give to a Terraform template.
 type testConfig struct {
 	Provider struct {
 		Credentials string
@@ -57,7 +77,7 @@ func loadTestConfig(credentialsEnv, resourceFileEnv string, resource interface{}
 }
 
 // makeTerraformConfig returns a Terraform configuration given a test
-// configuration and a terraform template.
+// configuration and a Terraform template.
 func makeTerraformConfig(config testConfig, terraformTemplate string) (string, error) {
 	tmpl, err := template.New("resource").Parse(terraformTemplate)
 	if err != nil {
@@ -157,4 +177,19 @@ func loadGCPTestConfig() (testConfig, testGCPProject, error) {
 	}
 
 	return config, project, err
+}
+
+// testRSCConfig holds RSC configuration information used in one or more
+// acceptance tests.
+type testRSCConfig struct {
+	UserEmail string `json:"userEmail"`
+}
+
+// loadRSCTestConfig loads an RSC test configuration using the default
+// environment variables.
+func loadRSCTestConfig() (testConfig, testRSCConfig, error) {
+	rsc := testRSCConfig{}
+	config, err := loadTestConfig("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "TEST_RSCCONFIG_FILE", &rsc)
+
+	return config, rsc, err
 }

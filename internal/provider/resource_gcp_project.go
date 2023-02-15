@@ -1,3 +1,23 @@
+// Copyright 2021 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 package provider
 
 import (
@@ -157,7 +177,7 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 		project = gcp.Project(projectID, projectNumber)
 	}
 
-	account, err := client.GCP().Project(ctx, gcp.ID(project), core.FeatureAll)
+	account, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.ID(project), core.FeatureAll)
 	if err == nil {
 		return diag.Errorf("project %q already added to polaris", account.NativeID)
 	}
@@ -166,7 +186,7 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// At this time GCP only supports the CNP feature.
-	id, err := client.GCP().AddProject(ctx, project, core.FeatureCloudNativeProtection, opts...)
+	id, err := gcp.NewAPI(client.GQL).AddProject(ctx, project, core.FeatureCloudNativeProtection, opts...)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -190,7 +210,7 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	}
 
 	// Lookup the GCP project in Polaris and update the local state.
-	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
+	account, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -227,7 +247,7 @@ func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	if d.HasChange("permissions_hash") {
-		err = client.GCP().PermissionsUpdated(ctx, gcp.CloudAccountID(id), nil)
+		err = gcp.NewAPI(client.GQL).PermissionsUpdated(ctx, gcp.CloudAccountID(id), nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -254,7 +274,7 @@ func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	deleteSnapshots := oldSnapshots.(bool)
 
 	// Remove the project from Polaris.
-	err = client.GCP().RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
+	err = gcp.NewAPI(client.GQL).RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}

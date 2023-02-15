@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2023 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -21,33 +21,42 @@
 package provider
 
 import (
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-const gcpServiceAccountTmpl = `
+const roleAssignmentTmpl = `
 provider "polaris" {
 	credentials = "{{ .Provider.Credentials }}"
 }
 
-resource "polaris_gcp_service_account" "default" {
-	credentials = "{{ .Resource.Credentials }}"
+resource "polaris_custom_role" "default" {
+	name        = "View Cluster Role"
+    description = "View Cluster Role Description"
+
+	permission {
+		operation = "VIEW_CLUSTER"
+		hierarchy {
+			snappable_type = "AllSubHierarchyType"
+			object_ids     = ["CLUSTER_ROOT"]
+		}
+	}
+}
+
+resource "polaris_role_assignment" "default" {
+  role_id = polaris_custom_role.default.id
+  user_email = "{{ .Resource.UserEmail }}"
 }
 `
 
-func TestAccPolarisGCPServiceAccount_basic(t *testing.T) {
-	config, project, err := loadGCPTestConfig()
+func TestAccPolarisRoleAssignment_basic(t *testing.T) {
+	config, rscConfig, err := loadRSCTestConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// When name isn't specified the file name, without extension, is used.
-	id := strings.TrimSuffix(filepath.Base(project.Credentials), filepath.Ext(project.Credentials))
-
-	serviceAccount, err := makeTerraformConfig(config, gcpServiceAccountTmpl)
+	roleAssignment, err := makeTerraformConfig(config, roleAssignmentTmpl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,10 +64,10 @@ func TestAccPolarisGCPServiceAccount_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: serviceAccount,
+			Config: roleAssignment,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestCheckResourceAttr("polaris_gcp_service_account.default", "id", id),
-				resource.TestCheckResourceAttr("polaris_gcp_service_account.default", "credentials", project.Credentials),
+				resource.TestCheckResourceAttrPair("polaris_role_assignment.default", "role_id", "polaris_custom_role.default", "id"),
+				resource.TestCheckResourceAttr("polaris_role_assignment.default", "user_email", rscConfig.UserEmail),
 			),
 		}},
 	})

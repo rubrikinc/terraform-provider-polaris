@@ -1,3 +1,23 @@
+// Copyright 2021 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 package provider
 
 import (
@@ -145,7 +165,7 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 	}
 
 	// Check if the subscription already exist in Polaris.
-	account, err := client.Azure().Subscription(ctx, azure.SubscriptionID(subscriptionID), core.FeatureAll)
+	account, err := azure.NewAPI(client.GQL).Subscription(ctx, azure.SubscriptionID(subscriptionID), core.FeatureAll)
 	if err == nil {
 		return diag.Errorf("subscription %q already added to polaris", account.NativeID)
 	}
@@ -167,7 +187,7 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 		}
 
 		cnpOpts = append(cnpOpts, opts...)
-		id, err = client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
+		id, err = azure.NewAPI(client.GQL).AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
 			core.FeatureCloudNativeProtection, cnpOpts...)
 		if err != nil {
 			return diag.FromErr(err)
@@ -184,7 +204,7 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 		}
 
 		exoOpts = append(exoOpts, opts...)
-		_, err := client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
+		_, err := azure.NewAPI(client.GQL).AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
 			core.FeatureExocompute, exoOpts...)
 		if err != nil {
 			return diag.FromErr(err)
@@ -210,7 +230,7 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m interf
 	}
 
 	// Lookup the Polaris cloud account using the cloud account id.
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
+	account, err := azure.NewAPI(client.GQL).Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -294,7 +314,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 				opts = append(opts, azure.Region(region.(string)))
 			}
 
-			if err := client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...); err != nil {
+			if err := azure.NewAPI(client.GQL).UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...); err != nil {
 				return diag.FromErr(err)
 			}
 		} else {
@@ -303,7 +323,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 			}
 
 			snapshots := d.Get("delete_snapshots_on_destroy").(bool)
-			if err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, snapshots); err != nil {
+			if err := azure.NewAPI(client.GQL).RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, snapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -329,13 +349,13 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 			}
 
 			tenantDomain := d.Get("tenant_domain").(string)
-			_, err = client.Azure().AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
+			_, err = azure.NewAPI(client.GQL).AddSubscription(ctx, azure.Subscription(subscriptionID, tenantDomain),
 				core.FeatureExocompute, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
 		case len(newExoList) == 0:
-			err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, false)
+			err := azure.NewAPI(client.GQL).RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, false)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -345,7 +365,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 				opts = append(opts, azure.Region(region.(string)))
 			}
 
-			err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, opts...)
+			err = azure.NewAPI(client.GQL).UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -354,7 +374,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m inte
 
 	if d.HasChange("subscription_name") {
 		opts := []azure.OptionFunc{azure.Name(d.Get("subscription_name").(string))}
-		err = client.Azure().UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...)
+		err = azure.NewAPI(client.GQL).UpdateSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -381,14 +401,14 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m inte
 	deleteSnapshots := oldSnapshots.(bool)
 
 	if _, ok := d.GetOk("exocompute"); ok {
-		err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, deleteSnapshots)
+		err = azure.NewAPI(client.GQL).RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureExocompute, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	if _, ok := d.GetOk("cloud_native_protection"); ok {
-		err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
+		err = azure.NewAPI(client.GQL).RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}

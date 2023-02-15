@@ -1,3 +1,23 @@
+// Copyright 2021 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 package provider
 
 import (
@@ -62,7 +82,7 @@ func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 		name = strings.TrimSuffix(filepath.Base(credentials), filepath.Ext(credentials))
 	}
 
-	err := client.GCP().SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
+	err := gcp.NewAPI(client.GQL).SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -80,7 +100,7 @@ func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m interf
 
 	client := m.(*polaris.Client)
 
-	name, err := client.GCP().ServiceAccount(ctx)
+	name, err := gcp.NewAPI(client.GQL).ServiceAccount(ctx)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -101,7 +121,7 @@ func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 	}
 
 	if d.HasChange("permissions_hash") {
-		err := client.GCP().PermissionsUpdatedForDefault(ctx, nil)
+		err := gcp.NewAPI(client.GQL).PermissionsUpdatedForDefault(ctx, nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}
