@@ -182,7 +182,8 @@ func loadGCPTestConfig() (testConfig, testGCPProject, error) {
 // testRSCConfig holds RSC configuration information used in one or more
 // acceptance tests.
 type testRSCConfig struct {
-	UserEmail string `json:"userEmail"`
+	ExistingUserEmail string `json:"existingUserEmail"`
+	NewUserEmail      string `json:"newUserEmail"`
 }
 
 // loadRSCTestConfig loads an RSC test configuration using the default
