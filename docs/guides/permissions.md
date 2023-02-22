@@ -3,8 +3,8 @@ page_title: "Manage Permissions"
 ---
 
 # Manage Permissions
-Polaris requires permissions to operate and as new features are added to Polaris the set of required permissions
-changes. This guide explains how Terraform can be used to keep this set of permissions up to date.
+RSC requires permissions to operate and as new features are added to RSC the set of required permissions changes. This
+guide explains how Terraform can be used to keep this set of permissions up to date.
 
 ## AWS
 For AWS this is managed through a CloudFormation stack. When the status of an account feature is `missing-permissions`
@@ -70,7 +70,7 @@ resource "polaris_azure_service_principal" "default" {
 ```
 When the permissions for a feature changes the permissions data source will reflect this generating a diff for the
 role definition and service principal resources. Applying the diff will first update the permissions of the service
-principal's role definition and then notify Polaris about the update.
+principal's role definition and then notify RSC about the update.
 
 ## GCP
 For GCP permissions are managed through a service account. When the status of a project feature is `missing-permissions`
@@ -113,7 +113,7 @@ resource "polaris_gcp_project" "default" {
 ```
 When the permissions for a feature changes the permissions data source will reflect this generating a diff for the
 custom role and the project resources. Applying the diff will first update the permissions of the service account's
-custom role and then notify Polaris about the update.
+custom role and then notify RSC about the update.
 
 ### Default Service Account
 When the service account is specified as part of the service account resource:
@@ -147,4 +147,4 @@ resource "polaris_gcp_service_account" "default" {
 ```
 When the permissions for a feature changes the permissions data source will reflect this generating a diff for the
 custom role and the project resources. Applying the diff will first update the permissions of the service account's
-custom role and then notify Polaris about the update.
+custom role and then notify RSC about the update.
