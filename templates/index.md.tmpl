@@ -2,8 +2,6 @@
 page_title: "Provider: RSC"
 ---
 
-~> Please note that the RSC provider is in **BETA** and should **NOT** be used in a production system.
-
 # RSC Provider
 The RSC provider, formerly known as the Polaris provider, provides resources to interact with the Rubrik RSC platform.
 Additional examples on how to use the provider are available in the [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples)
