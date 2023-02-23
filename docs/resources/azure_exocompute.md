@@ -31,7 +31,7 @@ resource "polaris_azure_exocompute" "default" {
 
 ### Optional
 
-- `polaris_managed` (Boolean) If true the security groups are managed by Polaris.
+- `polaris_managed` (Boolean, Deprecated) If true the security groups are managed by Polaris.
 
 ### Read-Only
 
