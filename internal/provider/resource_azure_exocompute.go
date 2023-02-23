@@ -55,6 +55,7 @@ func resourceAzureExocompute() *schema.Resource {
 				Optional:    true,
 				Default:     true,
 				ForceNew:    true,
+				Deprecated:  "Has no effect on the exocompute configuration, follow the upgrade guide for v0.6.0, when released, to remove.",
 				Description: "If true the security groups are managed by Polaris.",
 			},
 			"region": {
