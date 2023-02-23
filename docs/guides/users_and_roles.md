@@ -1,18 +1,22 @@
 ---
-page_title: "Custom Roles"
+page_title: "Users and Roles"
 ---
 
-# Managing RSC roles using Terraform
+# Managing RSC users and roles using Terraform
 In v0.5.0, support for custom roles has been added through two new resources and two new data sources:
  * `polaris_custom_role` _(Resource)_
  * `polaris_role_assignment` _(Resource)_
  * `polaris_role` _(Data Source)_
  * `polaris_role_template` _(Data Source)_
 
-The `polaris_custom_role` resource is used to define custom roles. The `polaris_role_assignment` resource is used to
-assign a role, custom or builtin, to a user. The `polaris_role` data source is used to refer to a role, custom or
-builtin, by name. And finally, the `polaris_role_template` data source is used to refer to a builtin RSC role template
-by name.
+And in v0.6.0, support for users has been added through a single new resource:
+ * `polaris_user` _(Resource)_
+
+The `polaris_user` and `polaris_custom_role` resources are used to define users and custom roles. The `polaris_role_assignment`
+resource is used to assign roles, custom or builtin, to a user managed outside of Terraform, e.g. the UI. If the user
+is managed by Terraform, assign all roles using the `polaris_user` resource. The `polaris_role` data source is used to
+refer to a role, custom or builtin, by name. And finally, the `polaris_role_template` data source is used to refer to a
+builtin RSC role template by name.
 
 ## Creating a custom role
 Custom roles can be created in two different ways, either by specifying the permissions of the role manually or by
@@ -80,8 +84,8 @@ resource "polaris_custom_role" "compliance_auditor" {
 ```
 
 ## Assigning a role to a user
-Assigning a role to a user is done using the `polaris_role_assignment` resource. The resource take to arguments, the id
-of the role and the email address of the user. For builtin roles or roles being defined elsewhere the `polaris_role`
+Assigning a role to a user is done using the `polaris_role_assignment` resource. The resource takes two arguments, the
+id of the role and the email address of the user. For builtin roles or roles being defined elsewhere the `polaris_role`
 data source can be used to refer to the role by name.
 
 ## Assigning a role
@@ -89,7 +93,7 @@ Here we have a custom role defined in the same Terraform configuration with the 
 refer to.
 ```terraform
 resource "polaris_role_assignment" "compliance_auditor" {
-  role_id = polaris_custom_role.compliance_auditor.id
+  role_id    = polaris_custom_role.compliance_auditor.id
   user_email = "name@example.com"
 }
 ```
@@ -107,3 +111,23 @@ resource "polaris_role_assignment" "compliance_auditor" {
   user_email = "name@example.com"
 }
 ```
+
+## Creating a user
+Creating a user is done using the `polaris_user` resource. The resource takes two arguments, the email address of the
+user and the ids of the roles to assign to the user. For builtin roles or roles being defined elsewhere the `polaris_role`
+data source can be used to refer to roles by name.
+```terraform
+data "polaris_role" "compliance_auditor" {
+    name = "Compliance Auditor"
+}
+
+resource "polaris_user" "auditor" {
+  email    = "name@example.com"
+  role_ids = [
+    data.polaris_role.compliance_auditor.id
+  ]
+}
+```
+Note, you should not assign roles to a user managed by Terraform using the `polaris_role_assignment` resource, as it
+will cause a conflict with the roles assigned in the `polaris_user` resource. Instead, update the `role_ids` argument of
+the `polaris_user` resource.

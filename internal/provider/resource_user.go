@@ -60,7 +60,7 @@ func resourceUser() *schema.Resource {
 					ValidateDiagFunc: validateStringIsNotWhiteSpace,
 				},
 				Required:    true,
-				Description: "Roles assigned to user.",
+				Description: "Roles assigned to the user.",
 			},
 			"status": {
 				Type:        schema.TypeString,
