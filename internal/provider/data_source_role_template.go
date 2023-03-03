@@ -22,7 +22,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -95,11 +94,7 @@ func roleTemplateRead(ctx context.Context, d *schema.ResourceData, m any) diag.D
 	client := m.(*polaris.Client)
 
 	name := d.Get("name").(string)
-	roleTemplates, err := access.Wrap(client).RoleTemplates(ctx, name)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	roleTemplate, err := findNamedRoleTemplate(roleTemplates, name)
+	roleTemplate, err := access.Wrap(client).RoleTemplateByName(ctx, name)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -113,20 +108,4 @@ func roleTemplateRead(ctx context.Context, d *schema.ResourceData, m any) diag.D
 
 	d.SetId(roleTemplate.ID.String())
 	return nil
-}
-
-// findNamedRoleTemplate returns the role template with a name exactly matching
-// the specified name.
-func findNamedRoleTemplate(roles []access.RoleTemplate, name string) (access.RoleTemplate, error) {
-	if len(roles) == 0 {
-		return access.RoleTemplate{}, fmt.Errorf("no role template named %q found", name)
-	}
-
-	for _, role := range roles {
-		if role.Name == name {
-			return role, nil
-		}
-	}
-
-	return access.RoleTemplate{}, fmt.Errorf("no role template named exactly %q found", name)
 }

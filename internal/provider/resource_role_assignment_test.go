@@ -31,7 +31,7 @@ provider "polaris" {
 	credentials = "{{ .Provider.Credentials }}"
 }
 
-resource "polaris_custom_role" "default" {
+resource "polaris_custom_role" "view_cluster" {
 	name        = "View Cluster Role"
     description = "View Cluster Role Description"
 
@@ -44,9 +44,9 @@ resource "polaris_custom_role" "default" {
 	}
 }
 
-resource "polaris_role_assignment" "default" {
-  role_id = polaris_custom_role.default.id
-  user_email = "{{ .Resource.UserEmail }}"
+resource "polaris_role_assignment" "user_view_cluster" {
+  role_id    = polaris_custom_role.view_cluster.id
+  user_email = "{{ .Resource.ExistingUserEmail }}"
 }
 `
 
@@ -66,8 +66,8 @@ func TestAccPolarisRoleAssignment_basic(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: roleAssignment,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestCheckResourceAttrPair("polaris_role_assignment.default", "role_id", "polaris_custom_role.default", "id"),
-				resource.TestCheckResourceAttr("polaris_role_assignment.default", "user_email", rscConfig.UserEmail),
+				resource.TestCheckResourceAttrPair("polaris_role_assignment.user_view_cluster", "role_id", "polaris_custom_role.view_cluster", "id"),
+				resource.TestCheckResourceAttr("polaris_role_assignment.user_view_cluster", "user_email", rscConfig.ExistingUserEmail),
 			),
 		}},
 	})
