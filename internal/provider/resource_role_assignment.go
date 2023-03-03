@@ -72,7 +72,7 @@ func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 	}
 	userEmail := d.Get("user_email").(string)
 
-	if err := access.Wrap(client).AssignRole(ctx, roleID, userEmail); err != nil {
+	if err := access.Wrap(client).AssignRole(ctx, userEmail, roleID); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -118,7 +118,7 @@ func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 	}
 	userEmail := d.Get("user_email").(string)
 
-	if err := access.Wrap(client).UnassignRole(ctx, roleID, userEmail); err != nil {
+	if err := access.Wrap(client).UnassignRole(ctx, userEmail, roleID); err != nil {
 		return diag.FromErr(err)
 	}
 

@@ -22,7 +22,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -100,11 +99,7 @@ func roleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 	client := m.(*polaris.Client)
 
 	name := d.Get("name").(string)
-	roles, err := access.Wrap(client).Roles(ctx, name)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	role, err := findNamedRole(roles, name)
+	role, err := access.Wrap(client).RoleByName(ctx, name)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -121,20 +116,4 @@ func roleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 
 	d.SetId(role.ID.String())
 	return nil
-}
-
-// findNamedRole returns the role with a name exactly matching the specified
-// name.
-func findNamedRole(roles []access.Role, name string) (access.Role, error) {
-	if len(roles) == 0 {
-		return access.Role{}, fmt.Errorf("no role named %q found", name)
-	}
-
-	for _, role := range roles {
-		if role.Name == name {
-			return role, nil
-		}
-	}
-
-	return access.Role{}, fmt.Errorf("no role named exactly %q found", name)
 }
