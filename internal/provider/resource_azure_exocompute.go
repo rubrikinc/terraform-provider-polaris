@@ -50,14 +50,6 @@ func resourceAzureExocompute() *schema.Resource {
 				Description:      "Polaris subscription id",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
-			"polaris_managed": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
-				ForceNew:    true,
-				Deprecated:  "This argument has no effect on the exocompute configuration. Follow the upgrade guide for v0.6.0, when released, to remove.",
-				Description: "If true the security groups are managed by Polaris.",
-			},
 			"region": {
 				Type:             schema.TypeString,
 				Required:         true,
@@ -72,6 +64,12 @@ func resourceAzureExocompute() *schema.Resource {
 				Description: "Azure subnet id.",
 			},
 		},
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceAzureExocomputeV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAzureExocomputeStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
@@ -100,14 +98,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.Errorf("region %q not available with exocompute feature", region)
 	}
 
-	var config azure.ExoConfigFunc
-	if d.Get("polaris_managed").(bool) {
-		config = azure.Managed(region, d.Get("subnet").(string))
-	} else {
-		//lint:ignore SA1019 unmanaged exocompute configuration will not be supported in the next release
-		config = azure.Unmanaged(region, d.Get("subnet").(string))
-	}
-
+	config := azure.Managed(region, d.Get("subnet").(string))
 	id, err := azure.NewAPI(client.GQL).AddExocomputeConfig(ctx, azure.CloudAccountID(accountID), config)
 	if err != nil {
 		return diag.FromErr(err)
@@ -138,12 +129,7 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	if err := d.Set("region", exoConfig.Region); err != nil {
 		return diag.FromErr(err)
 	}
-
 	if err := d.Set("subnet", exoConfig.SubnetID); err != nil {
-		return diag.FromErr(err)
-	}
-
-	if err := d.Set("polaris_managed", exoConfig.ManagedByRubrik); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -167,5 +153,6 @@ func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.FromErr(err)
 	}
 
+	d.SetId("")
 	return nil
 }

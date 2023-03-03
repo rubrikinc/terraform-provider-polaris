@@ -93,7 +93,7 @@ func resourceAzureServicePrincipalV0() *schema.Resource {
 // resourceAzureServicePrincipalStateUpgradeV0 makes the tenant domain
 // parameter required.
 func resourceAzureServicePrincipalStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAzureProjectStateUpgradeV0")
+	log.Print("[TRACE] resourceAzureServicePrincipalStateUpgradeV0")
 
 	// Tenant domain is only missing when the principal has been given as a
 	// credentials file.

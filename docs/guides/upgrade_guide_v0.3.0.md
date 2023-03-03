@@ -3,20 +3,20 @@ page_title: "Upgrade Guide: v0.3.0 "
 subcategory: "Upgrade"
 ---
 
-# v0.3.0 of the Polaris Provider
+# RSC provider version v0.3.0
 v0.3.0 introduces breaking changes to the following resources:
 * `polaris_aws_account`
 * `polaris_azure_subscription`
 * `polaris_azure_service_principal`
 * `polaris_gcp_project`
 
-After the Terraform configuration files has been updated according to the instructions in this guide first validate
-their correctness by running:
+After the Terraform configuration files has been updated according to the instructions in this guide, validate their
+correctness by running:
 ```bash
 $ terraform plan
 ```
 
-If this doesn't produce any error proceed by running:
+If this doesn't produce any error, proceed by running:
 ```bash
 $ terraform refresh
 ```

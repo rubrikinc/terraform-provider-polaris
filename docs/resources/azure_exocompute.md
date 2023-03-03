@@ -29,10 +29,6 @@ resource "polaris_azure_exocompute" "default" {
 - `subnet` (String) Azure subnet id.
 - `subscription_id` (String) Polaris subscription id
 
-### Optional
-
-- `polaris_managed` (Boolean, Deprecated) If true the security groups are managed by Polaris.
-
 ### Read-Only
 
 - `id` (String) The ID of this resource.

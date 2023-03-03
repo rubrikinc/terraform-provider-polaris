@@ -1,29 +1,38 @@
 ---
-page_title: "Provider: Polaris"
+page_title: "Provider: RSC"
 ---
 
-~> Please note that the Polaris provider is in BETA and should NOT be used in a production system.
+# RSC Provider
+The RSC provider, formerly known as the Polaris provider, provides resources to interact with the Rubrik RSC platform.
+Additional examples on how to use the provider are available in the [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples)
+GitHub repository.
 
-# Polaris Provider
-The Polaris provider provides resources to interact with the Rubrik Polaris platform. Additional examples on how to use the provider are available in the [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples) GitHub repository.
+~> Upgrading from v0.2.0 to v0.3.0 requires that the definition of certain resources are updated on disk. Please see the
+upgrade guide for more information.
 
-~> Upgrading from v0.2.0 to v0.3.0 requires that the definition of certain resources are updated on disk. Please see the upgrade guide for more information.
+~> Upgrading from v0.5.0 to v0.6.0 requires that the definition of certain resources are updated on disk. Please see the
+upgrade guide for more information.
 
 ## Configuration
-The provider supports both local user accounts and service accounts. For documentation on how to create either using Polaris see the [Rubrik Support Portal](http://support.rubrik.com).
+The provider supports both local user accounts and service accounts. For documentation on how to create either using RSC
+see the [Rubrik Support Portal](http://support.rubrik.com).
 
 ### With Local User Account
-First create a directory called `.rubrik` in your home directory. Next, create a file called `polaris-accounts.json` in that directory. This JSON file holds one or more local user accounts:
+First create a directory called `.rubrik` in your home directory. Next, create a file called `polaris-accounts.json` in
+that directory. This JSON file holds one or more local user accounts:
 ```json
 {
   "<my-account>": {
     "username": "<my-username>",
     "password": "<my-password>",
-    "url": "<my-polaris-url>"
+    "url": "<my-rsc-url>"
   }
 }
 ```
-Where *my-account* is an arbitrary name used to refer to the account when configuring the provider. *my-username* and *my-password* are the username and password of the local user account. *my-polaris-url* is the URL of the Polaris API. The URL follows the pattern `https://{polaris-domain}.my.rubrik.com/api`. Which is the same URL as for accessing the Polaris UI but with `/api` added to the end.
+Where *my-account* is an arbitrary name used to refer to the account when configuring the provider. *my-username* and
+*my-password* are the username and password of the local user account. *my-rsc-url* is the URL of the RSC API. The
+URL follows the pattern `https://{rsc-domain}.my.rubrik.com/api`. Which is the same URL as for accessing the RSC UI but
+with `/api` added to the end.
 
 To configure the provider to use a local user account specify the name as the provider credentials:
 ```terraform
@@ -33,7 +42,8 @@ provider "polaris" {
 ```
 
 ### With Service Account
-First download the service account credentials as a JSON file from the Polaris User Management UI page. Next, configure the provider to use the downloaded credentials file in the Terraform configuration:
+First download the service account credentials as a JSON file from the RSC User Management UI page. Next, configure the
+provider to use the downloaded credentials file in the Terraform configuration:
 ```terraform
 provider "polaris" {
   credentials = "/path/to/service-account-credentials.json"
@@ -42,21 +52,26 @@ provider "polaris" {
 
 ### Environment Variables
 The following environmental variables can be used to override the default behavior of the provider:
-* `RUBRIK_POLARIS_LOGLEVEL` - Overrides the log level of the provider. Valid log levels are: `FATAL`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` and `OFF`. The default log level of the provider is `WARN`.
+* `RUBRIK_POLARIS_LOGLEVEL` - Overrides the log level of the provider. Valid log levels are: `FATAL`, `ERROR`, `WARN`,
+  `INFO`, `DEBUG`, `TRACE` and `OFF`. The default log level of the provider is `WARN`.
 
-When using a local user account the following environmental variables can be used to override the default local user account behavior:
+When using a local user account the following environmental variables can be used to override the default local user
+account behavior:
 * `RUBRIK_POLARIS_ACCOUNT_FILE` - Overrides the name and path of the file to read local user accounts from.
-* `RUBRIK_POLARIS_ACCOUNT_NAME` - Overrides the name of the local user account given to the credentials parameter in the provider configuration.
+* `RUBRIK_POLARIS_ACCOUNT_NAME` - Overrides the name of the local user account given to the credentials parameter in the
+  provider configuration.
 * `RUBRIK_POLARIS_ACCOUNT_USERNAME` - Overrides the username of the local user account.
 * `RUBRIK_POLARIS_ACCOUNT_PASSWORD` - Overrides the password of the local user account.
-* `RUBRIK_POLARIS_ACCOUNT_URL` - Overrides the Polaris API URL.
+* `RUBRIK_POLARIS_ACCOUNT_URL` - Overrides the RSC API URL.
 
-When using a service account the following environmental variables can be used to override the default service account behavior:
+When using a service account the following environmental variables can be used to override the default service account
+behavior:
 * `RUBRIK_POLARIS_SERVICEACCOUNT_FILE` - Overrides the name and path of the service account credentials file.
 * `RUBRIK_POLARIS_SERVICEACCOUNT_NAME` - Overrides the name of the service account.
 * `RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID` - Overrides the client id of the service account.
 * `RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET` - Overrides the client secret of the service account.
-* `RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI` - Overrides the service account access token URI. When using a service account the Polaris API URL is derived from this URI.
+* `RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI` - Overrides the service account access token URI. When using a service
+  account the RSC API URL is derived from this URI.
 
 ## Example Usage
 
