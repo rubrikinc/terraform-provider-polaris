@@ -1,9 +1,5 @@
 ![Go version](https://img.shields.io/github/go-mod/go-version/rubrikinc/terraform-provider-polaris) ![License MIT](https://img.shields.io/github/license/rubrikinc/terraform-provider-polaris) ![Latest tag](https://img.shields.io/github/v/tag/rubrikinc/terraform-provider-polaris)
 
-<p align="center">
-&#9888;&#65039; Code in this repository is in BETA and should NOT be used in a production system! &#9888;&#65039;
-</p>
-
 # Terraform Provider for Rubrik Polaris
 For documentation of all resources and their parameters head over to the [Terraform Registry Docs](https://registry.terraform.io/providers/rubrikinc/polaris/latest/docs). Note that the provider requires Terraform version 0.15.x or newer.
 
