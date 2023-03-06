@@ -211,7 +211,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 		var err error
 		cnpOpts = append(cnpOpts, opts...)
-		id, err = aws.NewAPI(client.GQL).AddAccount(ctx, account, core.FeatureCloudNativeProtection, cnpOpts...)
+		id, err = aws.Wrap(client).AddAccount(ctx, account, core.FeatureCloudNativeProtection, cnpOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -227,7 +227,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		exoOpts = append(exoOpts, opts...)
-		_, err := aws.NewAPI(client.GQL).AddAccount(ctx, account, core.FeatureExocompute, exoOpts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, core.FeatureExocompute, exoOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -252,7 +252,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	}
 
 	// Lookup the Polaris cloud account using the cloud account id.
-	account, err := aws.NewAPI(client.GQL).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -349,7 +349,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	// Make sure that the resource id and AWS profile refers to the same
 	// account.
-	cloudAccount, err := aws.NewAPI(client.GQL).Account(ctx, aws.ID(account), core.FeatureAll)
+	cloudAccount, err := aws.Wrap(client).Account(ctx, aws.ID(account), core.FeatureAll)
 	if errors.Is(err, graphql.ErrNotFound) {
 		return diag.Errorf("account identified by profile/role could not be found")
 	}
@@ -370,7 +370,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			if err := aws.NewAPI(client.GQL).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...); err != nil {
+			if err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...); err != nil {
 				return diag.FromErr(err)
 			}
 		} else {
@@ -379,7 +379,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 			}
 
 			snapshots := d.Get("delete_snapshots_on_destroy").(bool)
-			if err := aws.NewAPI(client.GQL).RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, snapshots); err != nil {
+			if err := aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, snapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -399,12 +399,12 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			_, err = aws.NewAPI(client.GQL).AddAccount(ctx, account, core.FeatureExocompute, opts...)
+			_, err = aws.Wrap(client).AddAccount(ctx, account, core.FeatureExocompute, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
 		case len(newExoList) == 0:
-			err := aws.NewAPI(client.GQL).RemoveAccount(ctx, account, core.FeatureExocompute, false)
+			err := aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureExocompute, false)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -414,7 +414,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			err = aws.NewAPI(client.GQL).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureExocompute, opts...)
+			err = aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureExocompute, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -433,7 +433,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				features = append(features, feature.Name)
 			}
 
-			err := aws.NewAPI(client.GQL).UpdatePermissions(ctx, account, features)
+			err := aws.Wrap(client).UpdatePermissions(ctx, account, features)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -482,7 +482,7 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	// Make sure that the resource id and account profile refers to the same
 	// account.
-	cloudAccount, err := aws.NewAPI(client.GQL).Account(ctx, aws.ID(account), core.FeatureAll)
+	cloudAccount, err := aws.Wrap(client).Account(ctx, aws.ID(account), core.FeatureAll)
 	if errors.Is(err, graphql.ErrNotFound) {
 		return diag.Errorf("account identified by profile/role could not be found")
 	}
@@ -494,7 +494,7 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Removing Cloud Native Protection also removes Exocompute.
-	err = aws.NewAPI(client.GQL).RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, deleteSnapshots)
+	err = aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}

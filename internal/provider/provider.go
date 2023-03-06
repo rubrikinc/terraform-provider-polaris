@@ -89,7 +89,9 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 		}
 	}
 
-	client, err := polaris.NewClient(ctx, account, &log.StandardLogger{})
+	logger := log.NewStandardLogger()
+	polaris.SetLogLevelFromEnv(logger)
+	client, err := polaris.NewClientWithLogger(account, logger)
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}

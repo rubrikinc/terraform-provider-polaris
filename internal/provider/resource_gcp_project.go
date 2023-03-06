@@ -177,7 +177,7 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 		project = gcp.Project(projectID, projectNumber)
 	}
 
-	account, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.ID(project), core.FeatureAll)
+	account, err := gcp.Wrap(client).Project(ctx, gcp.ID(project), core.FeatureAll)
 	if err == nil {
 		return diag.Errorf("project %q already added to polaris", account.NativeID)
 	}
@@ -186,7 +186,7 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// At this time GCP only supports the CNP feature.
-	id, err := gcp.NewAPI(client.GQL).AddProject(ctx, project, core.FeatureCloudNativeProtection, opts...)
+	id, err := gcp.Wrap(client).AddProject(ctx, project, core.FeatureCloudNativeProtection, opts...)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -210,7 +210,7 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	}
 
 	// Lookup the GCP project in Polaris and update the local state.
-	account, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
+	account, err := gcp.Wrap(client).Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -247,7 +247,7 @@ func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	if d.HasChange("permissions_hash") {
-		err = gcp.NewAPI(client.GQL).PermissionsUpdated(ctx, gcp.CloudAccountID(id), nil)
+		err = gcp.Wrap(client).PermissionsUpdated(ctx, gcp.CloudAccountID(id), nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -274,7 +274,7 @@ func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	deleteSnapshots := oldSnapshots.(bool)
 
 	// Remove the project from Polaris.
-	err = gcp.NewAPI(client.GQL).RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
+	err = gcp.Wrap(client).RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}

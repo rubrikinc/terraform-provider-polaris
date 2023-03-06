@@ -111,7 +111,7 @@ func azurePermissionsRead(ctx context.Context, d *schema.ResourceData, m interfa
 		features = append(features, feature)
 	}
 
-	perms, err := azure.NewAPI(client.GQL).Permissions(ctx, features)
+	perms, err := azure.Wrap(client).Permissions(ctx, features)
 	if err != nil {
 		return diag.FromErr(err)
 	}
