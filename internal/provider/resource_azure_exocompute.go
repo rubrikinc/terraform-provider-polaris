@@ -85,7 +85,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	account, err := azure.NewAPI(client.GQL).Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute)
+	account, err := azure.Wrap(client).Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute)
 	if errors.Is(err, graphql.ErrNotFound) {
 		return diag.Errorf("exocompute not enabled on account")
 	}
@@ -99,7 +99,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 	}
 
 	config := azure.Managed(region, d.Get("subnet").(string))
-	id, err := azure.NewAPI(client.GQL).AddExocomputeConfig(ctx, azure.CloudAccountID(accountID), config)
+	id, err := azure.Wrap(client).AddExocomputeConfig(ctx, azure.CloudAccountID(accountID), config)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -121,7 +121,7 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	exoConfig, err := azure.NewAPI(client.GQL).ExocomputeConfig(ctx, id)
+	exoConfig, err := azure.Wrap(client).ExocomputeConfig(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -148,7 +148,7 @@ func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.FromErr(err)
 	}
 
-	err = azure.NewAPI(client.GQL).RemoveExocomputeConfig(ctx, id)
+	err = azure.Wrap(client).RemoveExocomputeConfig(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}

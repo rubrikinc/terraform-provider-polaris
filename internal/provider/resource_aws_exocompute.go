@@ -114,7 +114,7 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	account, err := aws.NewAPI(client.GQL).Account(ctx, aws.CloudAccountID(accountID), core.FeatureExocompute)
+	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(accountID), core.FeatureExocompute)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -145,7 +145,7 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		config = aws.Unmanaged(region, vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID)
 	}
 
-	id, err := aws.NewAPI(client.GQL).AddExocomputeConfig(ctx, aws.CloudAccountID(accountID), config)
+	id, err := aws.Wrap(client).AddExocomputeConfig(ctx, aws.CloudAccountID(accountID), config)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -167,7 +167,7 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		return diag.FromErr(err)
 	}
 
-	exoConfig, err := aws.NewAPI(client.GQL).ExocomputeConfig(ctx, id)
+	exoConfig, err := aws.Wrap(client).ExocomputeConfig(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -215,7 +215,7 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	err = aws.NewAPI(client.GQL).RemoveExocomputeConfig(ctx, id)
+	err = aws.Wrap(client).RemoveExocomputeConfig(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}

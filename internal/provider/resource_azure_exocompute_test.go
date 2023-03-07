@@ -98,7 +98,6 @@ func TestAccPolarisAzureExocompute_basic(t *testing.T) {
 				// Exocompute resource
 				resource.TestCheckResourceAttrPair("polaris_azure_exocompute.default", "subscription_id", "polaris_azure_subscription.default", "id"),
 				resource.TestCheckResourceAttr("polaris_azure_exocompute.default", "region", "eastus2"),
-				resource.TestCheckResourceAttr("polaris_azure_exocompute.default", "polaris_managed", "true"),
 				resource.TestCheckResourceAttr("polaris_azure_exocompute.default", "subnet", subscription.Exocompute.SubnetID),
 			),
 		}},

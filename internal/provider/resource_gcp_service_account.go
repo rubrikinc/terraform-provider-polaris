@@ -82,7 +82,7 @@ func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 		name = strings.TrimSuffix(filepath.Base(credentials), filepath.Ext(credentials))
 	}
 
-	err := gcp.NewAPI(client.GQL).SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
+	err := gcp.Wrap(client).SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -100,7 +100,7 @@ func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m interf
 
 	client := m.(*polaris.Client)
 
-	name, err := gcp.NewAPI(client.GQL).ServiceAccount(ctx)
+	name, err := gcp.Wrap(client).ServiceAccount(ctx)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -121,7 +121,7 @@ func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 	}
 
 	if d.HasChange("permissions_hash") {
-		err := gcp.NewAPI(client.GQL).PermissionsUpdatedForDefault(ctx, nil)
+		err := gcp.Wrap(client).PermissionsUpdatedForDefault(ctx, nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}

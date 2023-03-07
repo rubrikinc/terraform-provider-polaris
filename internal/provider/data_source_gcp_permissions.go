@@ -87,7 +87,7 @@ func gcpPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 		features = append(features, feature)
 	}
 
-	perms, err := gcp.NewAPI(client.GQL).Permissions(ctx, features)
+	perms, err := gcp.Wrap(client).Permissions(ctx, features)
 	if err != nil {
 		return diag.FromErr(err)
 	}

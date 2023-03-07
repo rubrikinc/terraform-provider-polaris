@@ -85,13 +85,13 @@ func resourceAwsAccountStateUpgradeV0(ctx context.Context, state map[string]inte
 	}
 
 	// Retrieve the account using the Polaris cloud account id.
-	account1, err := aws.NewAPI(client.GQL).Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account1, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		return nil, err
 	}
 
 	// Retrieve the account using the AWS account id.
-	account2, err := aws.NewAPI(client.GQL).Account(ctx, aws.AccountID(parts[1]), core.FeatureCloudNativeProtection)
+	account2, err := aws.Wrap(client).Account(ctx, aws.AccountID(parts[1]), core.FeatureCloudNativeProtection)
 	if err != nil {
 		return nil, err
 	}

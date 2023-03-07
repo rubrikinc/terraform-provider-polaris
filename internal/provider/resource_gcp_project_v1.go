@@ -100,7 +100,7 @@ func resourceGcpProjectStateUpgradeV1(ctx context.Context, state map[string]inte
 		return nil, err
 	}
 
-	account, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
+	account, err := gcp.Wrap(client).Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		return nil, err
 	}
