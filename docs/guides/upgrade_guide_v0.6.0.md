@@ -7,15 +7,20 @@ subcategory: "Upgrade"
 v0.6.0 introduces breaking changes to the following resources:
 * `polaris_azure_exocompute`
 
-After the Terraform configuration files has been updated according to the instructions in this guide, validate their
-correctness by running:
+After the Terraform configuration files have been updated according to the instructions in this guide and the version
+number has been bumped, update the RSC Terraform provider by running:
+```bash
+$ terraform init -upgrade
+```
+
+Next, validate the correctness of the Terraform configuration files by running:
 ```bash
 $ terraform plan
 ```
 
 If this doesn't produce any error, proceed by running:
 ```bash
-$ terraform refresh
+$ terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to v0.6.0.
 
