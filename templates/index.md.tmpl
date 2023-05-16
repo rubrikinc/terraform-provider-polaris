@@ -22,10 +22,10 @@ First create a directory called `.rubrik` in your home directory. Next, create a
 that directory. This JSON file holds one or more local user accounts:
 ```json
 {
-  "<my-account>": {
-    "username": "<my-username>",
-    "password": "<my-password>",
-    "url": "<my-rsc-url>"
+  "&lt;my-account&gt;": {
+    "username": "&lt;my-username&gt;",
+    "password": "&lt;my-password&gt;",
+    "url": "&lt;my-rsc-url&gt;"
   }
 }
 ```
