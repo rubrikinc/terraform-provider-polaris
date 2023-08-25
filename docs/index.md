@@ -4,14 +4,18 @@ page_title: "Provider: RSC"
 
 # RSC Provider
 The RSC provider, formerly known as the Polaris provider, provides resources to interact with the Rubrik RSC platform.
-Additional examples on how to use the provider are available in the [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples)
-GitHub repository.
+Additional examples on how to use the provider are available in the
+[terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples) GitHub
+repository.
 
 ~> Upgrading from v0.2.0 to v0.3.0 requires that the definition of certain resources are updated on disk. Please see the
 upgrade guide for more information.
 
 ~> Upgrading from v0.5.0 to v0.6.0 requires that the definition of certain resources are updated on disk. Please see the
 upgrade guide for more information.
+
+~> Since v0.7.0 RSC authentication tokens are cached by default. This default behavior can be turned off by setting the
+*RUBRIK_POLARIS_TOKEN_CACHE* environment variable to `FALSE`. Tokens are encrypted before being stored in the cache.
 
 ## Configuration
 The provider supports both local user accounts and service accounts. For documentation on how to create either using RSC
@@ -54,6 +58,14 @@ provider "polaris" {
 The following environmental variables can be used to override the default behavior of the provider:
 * `RUBRIK_POLARIS_LOGLEVEL` - Overrides the log level of the provider. Valid log levels are: `FATAL`, `ERROR`, `WARN`,
   `INFO`, `DEBUG`, `TRACE` and `OFF`. The default log level of the provider is `WARN`.
+* `RUBRIK_POLARIS_TOKEN_CACHE` - Overrides whether the token cache should be used or not. By default, the token
+  cache is used.
+* `RUBRIK_POLARIS_TOKEN_CACHE_DIR` - Overrides the directory where cached authentication tokens are be stored. By
+  default, the OS default directory for temporary files are used.
+* `RUBRIK_POLARIS_TOKEN_CACHE_KEY` - Overrides the encryption key used to encrypt authentication tokens. The
+  encryption key needs to be exactly 32 bytes long and base64 encoded. By default, the encryption key is derived from
+  the local user account or the service account.
+
 
 When using a local user account the following environmental variables can be used to override the default local user
 account behavior:
