@@ -88,7 +88,7 @@ account behaviour:
 parameter in the provider configuration.
 * *RUBRIK_POLARIS_ACCOUNT_USERNAME* — Overrides the username of the local user account.
 * *RUBRIK_POLARIS_ACCOUNT_PASSWORD* — Overrides the password of the local user account.
-* *RUBRIK_POLARIS_ACCOUNT_URL* &mdash; Overrides the Polaris API URL.
+* *RUBRIK_POLARIS_ACCOUNT_URL* — Overrides the Polaris API URL.
 
 #### Service Account
 To use a service account with the provider first download the service account credentials as a JSON file from the
