@@ -4,8 +4,9 @@ page_title: "Provider: RSC"
 
 # RSC Provider
 The RSC provider, formerly known as the Polaris provider, provides resources to interact with the Rubrik RSC platform.
-Additional examples on how to use the provider are available in the [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples)
-GitHub repository.
+Additional examples on how to use the provider are available in the
+[terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples) GitHub
+repository.
 
 ~> Upgrading from v0.2.0 to v0.3.0 requires that the definition of certain resources are updated on disk. Please see the
 upgrade guide for more information.
@@ -13,11 +14,22 @@ upgrade guide for more information.
 ~> Upgrading from v0.5.0 to v0.6.0 requires that the definition of certain resources are updated on disk. Please see the
 upgrade guide for more information.
 
-## Configuration
-The provider supports both local user accounts and service accounts. For documentation on how to create either using RSC
-see the [Rubrik Support Portal](http://support.rubrik.com).
+!> Since v0.7.0, all RSC authentication tokens are cached on disk by default. This default behavior can be turned off by
+setting the `RUBRIK_POLARIS_TOKEN_CACHE` environment variable to `FALSE`.
 
-### With Local User Account
+## Configuration
+
+### Authentication Token Cache
+Since v0.7.0, all RSC authentication tokens are cached on disk by default. Tokens, by default, are cached under the
+operating system's default directory for temporary files (`$TMPDIR` or `/tmp` on Linux and `%TMP%`, `%TEMP%` or
+`%USERPROFILE%` on Windows), this can be overridden using the `RUBRIK_POLARIS_TOKEN_CACHE_DIR` environmental variable.
+Each authentication token written to the cache is encrypted using 256-bit AES encryption. By default, the encryption key
+is derived from the RSC account information passed to the provider, this can be overriden using the
+`RUBRIK_POLARIS_TOKEN_CACHE_SECRET` environmental variable. When a secret is provided, the encryption key will be
+derived from the secret instead of the account information. The cache can be disabled by setting the
+`RUBRIK_POLARIS_TOKEN_CACHE` environmental variable to `FALSE`.
+
+### Local User Account
 First create a directory called `.rubrik` in your home directory. Next, create a file called `polaris-accounts.json` in
 that directory. This JSON file holds one or more local user accounts:
 ```json
@@ -40,8 +52,10 @@ provider "polaris" {
   credentials = "my-account"
 }
 ```
+For documentation on how to create a local user account using RSC see the
+[Rubrik Support Portal](http://support.rubrik.com).
 
-### With Service Account
+### Service Account
 First download the service account credentials as a JSON file from the RSC User Management UI page. Next, configure the
 provider to use the downloaded credentials file in the Terraform configuration:
 ```terraform
@@ -49,11 +63,19 @@ provider "polaris" {
   credentials = "/path/to/service-account-credentials.json"
 }
 ```
+For documentation on how to create a service account using RSC see the
+[Rubrik Support Portal](http://support.rubrik.com).
 
 ### Environment Variables
 The following environmental variables can be used to override the default behavior of the provider:
 * `RUBRIK_POLARIS_LOGLEVEL` - Overrides the log level of the provider. Valid log levels are: `FATAL`, `ERROR`, `WARN`,
   `INFO`, `DEBUG`, `TRACE` and `OFF`. The default log level of the provider is `WARN`.
+* `RUBRIK_POLARIS_TOKEN_CACHE` - Overrides whether the token cache should be used or not. By default, the token
+  cache is used.
+* `RUBRIK_POLARIS_TOKEN_CACHE_DIR` - Overrides the directory where cached authentication tokens are be stored. By
+  default, the OS default directory for temporary files are used.
+* `RUBRIK_POLARIS_TOKEN_CACHE_SECRET` - Overrides the secret used as input when generating an encryption key for the
+  authentication token.
 
 When using a local user account the following environmental variables can be used to override the default local user
 account behavior:
