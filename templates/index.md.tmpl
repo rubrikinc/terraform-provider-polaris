@@ -14,14 +14,22 @@ upgrade guide for more information.
 ~> Upgrading from v0.5.0 to v0.6.0 requires that the definition of certain resources are updated on disk. Please see the
 upgrade guide for more information.
 
-~> Since v0.7.0 RSC authentication tokens are cached by default. This default behavior can be turned off by setting the
-*RUBRIK_POLARIS_TOKEN_CACHE* environment variable to `FALSE`. Tokens are encrypted before being stored in the cache.
+!> Since v0.7.0, all RSC authentication tokens are cached on disk by default. This default behavior can be turned off by
+setting the `RUBRIK_POLARIS_TOKEN_CACHE` environment variable to `FALSE`.
 
 ## Configuration
-The provider supports both local user accounts and service accounts. For documentation on how to create either using RSC
-see the [Rubrik Support Portal](http://support.rubrik.com).
 
-### With Local User Account
+### Authentication Token Cache
+Since v0.7.0, all RSC authentication tokens are cached on disk by default. By default, tokens are cached under the
+operating system's default directory for temporary files (`$TMPDIR` or `/tmp` on Linux and `%TMP%`, `%TEMP%` or
+`%USERPROFILE%` on Windows), this can be overridden using the `RUBRIK_POLARIS_TOKEN_CACHE_DIR` environmental variable.
+Each authentication token written to the cache is encrypted using 256-bit AES encryption. By default, the encryption key
+is derived from the RSC account information passed to the provider, this can be overriden using the
+`RUBRIK_POLARIS_TOKEN_CACHE_KEY` environmental variable. The key passed to `RUBRIK_POLARIS_TOKEN_CACHE_KEY` must be
+exactly 32-bytes long and base64 encoded. The cache can be disabled by setting the `RUBRIK_POLARIS_TOKEN_CACHE`
+environmental variable to `FALSE`.
+
+### Local User Account
 First create a directory called `.rubrik` in your home directory. Next, create a file called `polaris-accounts.json` in
 that directory. This JSON file holds one or more local user accounts:
 ```json
@@ -44,8 +52,10 @@ provider "polaris" {
   credentials = "my-account"
 }
 ```
+For documentation on how to create a local user account using RSC see the
+[Rubrik Support Portal](http://support.rubrik.com).
 
-### With Service Account
+### Service Account
 First download the service account credentials as a JSON file from the RSC User Management UI page. Next, configure the
 provider to use the downloaded credentials file in the Terraform configuration:
 ```terraform
@@ -53,6 +63,8 @@ provider "polaris" {
   credentials = "/path/to/service-account-credentials.json"
 }
 ```
+For documentation on how to create a service account using RSC see the
+[Rubrik Support Portal](http://support.rubrik.com).
 
 ### Environment Variables
 The following environmental variables can be used to override the default behavior of the provider:
