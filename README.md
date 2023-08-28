@@ -26,11 +26,10 @@ The following environmental variables can be used to override the default behavi
   *WARN*, *INFO*, *DEBUG*, *TRACE* and *OFF*. The default log level of the provider is *WARN*.
 * *RUBRIK_POLARIS_TOKEN_CACHE* — Overrides whether the token cache should be used or not. By default, the token
   cache is used.
-* *RUBRIK_POLARIS_TOKEN_CACHE_DIR* — Overrides the directory where cached authentication tokens are be stored. By
-  default, the OS default directory for temporary files are used.
-* *RUBRIK_POLARIS_TOKEN_CACHE_KEY* — Overrides the encryption key used to encrypt authentication tokens. The
-  encryption key needs to be exactly 32 bytes long and base64 encoded. By default, the encryption key is derived from
-  the local user account or the service account.
+* *RUBRIK_POLARIS_TOKEN_CACHE_DIR* — Overrides the directory where cached authentication tokens are stored. By default,
+  the OS default directory for temporary files are used.
+* *RUBRIK_POLARIS_TOKEN_CACHE_SECRET* — Overrides the secret used as input when generating an encryption key for the
+  authentication token.
 
 ### Provider Credentials
 The provider supports both local user accounts and service accounts. For documentation on how to create either using

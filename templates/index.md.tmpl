@@ -20,14 +20,14 @@ setting the `RUBRIK_POLARIS_TOKEN_CACHE` environment variable to `FALSE`.
 ## Configuration
 
 ### Authentication Token Cache
-Since v0.7.0, all RSC authentication tokens are cached on disk by default. By default, tokens are cached under the
+Since v0.7.0, all RSC authentication tokens are cached on disk by default. Tokens, by default, are cached under the
 operating system's default directory for temporary files (`$TMPDIR` or `/tmp` on Linux and `%TMP%`, `%TEMP%` or
 `%USERPROFILE%` on Windows), this can be overridden using the `RUBRIK_POLARIS_TOKEN_CACHE_DIR` environmental variable.
 Each authentication token written to the cache is encrypted using 256-bit AES encryption. By default, the encryption key
 is derived from the RSC account information passed to the provider, this can be overriden using the
-`RUBRIK_POLARIS_TOKEN_CACHE_KEY` environmental variable. The key passed to `RUBRIK_POLARIS_TOKEN_CACHE_KEY` must be
-exactly 32-bytes long and base64 encoded. The cache can be disabled by setting the `RUBRIK_POLARIS_TOKEN_CACHE`
-environmental variable to `FALSE`.
+`RUBRIK_POLARIS_TOKEN_CACHE_SECRET` environmental variable. When a secret is provided, the encryption key will be
+derived from the secret instead of the account information. The cache can be disabled by setting the
+`RUBRIK_POLARIS_TOKEN_CACHE` environmental variable to `FALSE`.
 
 ### Local User Account
 First create a directory called `.rubrik` in your home directory. Next, create a file called `polaris-accounts.json` in
@@ -74,10 +74,8 @@ The following environmental variables can be used to override the default behavi
   cache is used.
 * `RUBRIK_POLARIS_TOKEN_CACHE_DIR` - Overrides the directory where cached authentication tokens are be stored. By
   default, the OS default directory for temporary files are used.
-* `RUBRIK_POLARIS_TOKEN_CACHE_KEY` - Overrides the encryption key used to encrypt authentication tokens. The
-  encryption key needs to be exactly 32 bytes long and base64 encoded. By default, the encryption key is derived from
-  the local user account or the service account.
-
+* `RUBRIK_POLARIS_TOKEN_CACHE_SECRET` - Overrides the secret used as input when generating an encryption key for the
+  authentication token.
 
 When using a local user account the following environmental variables can be used to override the default local user
 account behavior:
