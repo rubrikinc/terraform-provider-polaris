@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
@@ -76,13 +75,17 @@ func resourceUser() *schema.Resource {
 func createUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] createUser")
 
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	userEmail := d.Get("email").(string)
 	roleIDs, err := parseRoleIDs(d.Get("role_ids").(*schema.Set))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	client := m.(*polaris.Client)
 	if err := access.Wrap(client).AddUser(ctx, userEmail, roleIDs); err != nil {
 		return diag.FromErr(err)
 	}
@@ -97,7 +100,11 @@ func createUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] readUser")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	user, err := access.Wrap(client).User(ctx, d.Id())
 	if err != nil {
 		return diag.FromErr(err)
@@ -131,7 +138,11 @@ func updateUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 		return diag.FromErr(err)
 	}
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	if err := access.Wrap(client).ReplaceRoles(ctx, d.Id(), roleIDs); err != nil {
 		return diag.FromErr(err)
 	}
@@ -144,7 +155,11 @@ func updateUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 func deleteUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] deleteUser")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	if err := access.Wrap(client).RemoveUser(ctx, d.Id()); err != nil {
 		return diag.FromErr(err)
 	}

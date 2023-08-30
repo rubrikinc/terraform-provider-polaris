@@ -23,13 +23,19 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
+	"net/mail"
 	"os"
+	"time"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/cdm"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -55,6 +61,9 @@ func Provider() *schema.Provider {
 			"polaris_azure_exocompute":             resourceAzureExocompute(),
 			"polaris_azure_service_principal":      resourceAzureServicePrincipal(),
 			"polaris_azure_subscription":           resourceAzureSubscription(),
+			"polaris_cdm_bootstrap":                resourceCDMBootstrap(),
+			"polaris_cdm_bootstrap_cces_aws":       resourceCDMBootstrapCCESAWS(),
+			"polaris_cdm_bootstrap_cces_azure":     resourceCDMBootstrapCCESAzure(),
 			"polaris_custom_role":                  resourceCustomRole(),
 			"polaris_gcp_project":                  resourceGcpProject(),
 			"polaris_gcp_service_account":          resourceGcpServiceAccount(),
@@ -76,41 +85,100 @@ func Provider() *schema.Provider {
 	}
 }
 
+type client struct {
+	cdmClient     *cdm.BootstrapClient
+	polarisClient *polaris.Client
+}
+
+func (c *client) cdm() (*cdm.BootstrapClient, error) {
+	if c.cdmClient == nil {
+		return nil, errors.New("cdm functionality has not been configured in the provider block")
+	}
+
+	return c.cdmClient, nil
+}
+
+func (c *client) polaris() (*polaris.Client, error) {
+	if c.polarisClient == nil {
+		return nil, errors.New("polaris functionality has not been configured in the provider block")
+	}
+
+	return c.polarisClient, nil
+}
+
 // providerConfigure configures the RSC provider.
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
-	credentials := d.Get("credentials").(string)
+	logger := log.NewStandardLogger()
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		return nil, diag.FromErr(err)
+	}
+
+	client := &client{
+		cdmClient: cdm.NewBootstrapClientWithLogger(true, logger),
+	}
 
 	var account polaris.Account
-	if credentials != "" {
+	if c, ok := d.GetOk("credentials"); ok {
+		credentials := c.(string)
+
 		// When credentials refer to an existing file we load the file as a
-		// service account, otherwise we assume that it's an account name.
+		// service account, otherwise we assume that it's a user account name.
 		if _, err := os.Stat(credentials); err == nil {
-			account, err = polaris.ServiceAccountFromFile(credentials, true)
-			if err != nil {
+			if account, err = polaris.ServiceAccountFromFile(credentials, true); err != nil {
 				return nil, diag.FromErr(err)
 			}
 		} else {
-			account, err = polaris.DefaultUserAccount(credentials, true)
-			if err != nil {
+			if account, err = polaris.DefaultUserAccount(credentials, true); err != nil {
 				return nil, diag.FromErr(err)
 			}
 		}
 	} else {
 		var err error
-		account, err = polaris.ServiceAccountFromEnv()
+		if account, err = polaris.ServiceAccountFromEnv(); err != nil {
+			if !errors.Is(err, graphql.ErrNotFound) {
+				return nil, diag.FromErr(err)
+			}
+
+			// Make sure interface value is an untyped nil, see SA4023 for
+			// details.
+			account = nil
+		}
+	}
+	if account != nil {
+		polarisClient, err := polaris.NewClientWithLogger(account, logger)
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}
-	}
-
-	logger := log.NewStandardLogger()
-	polaris.SetLogLevelFromEnv(logger)
-	client, err := polaris.NewClientWithLogger(account, logger)
-	if err != nil {
-		return nil, diag.FromErr(err)
+		client.polarisClient = polarisClient
 	}
 
 	return client, nil
+}
+
+// validateDuration verifies that i contains a valid duration.
+func validateDuration(i interface{}, k string) ([]string, []error) {
+	v, ok := i.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+	}
+	if _, err := time.ParseDuration(v); err != nil {
+		return nil, []error{fmt.Errorf("%q is not a valid duration", v)}
+	}
+
+	return nil, nil
+}
+
+// validateEmailAddress verifies that i contains a valid email address.
+func validateEmailAddress(i interface{}, k string) ([]string, []error) {
+	v, ok := i.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+	}
+	if _, err := mail.ParseAddress(v); err != nil {
+		return nil, []error{fmt.Errorf("%q is not a valid email address", v)}
+	}
+
+	return nil, nil
 }
 
 // fileExists assumes m is a file path and returns nil if the file exists,

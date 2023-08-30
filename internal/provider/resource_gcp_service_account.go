@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 )
 
@@ -73,7 +72,11 @@ func resourceGcpServiceAccount() *schema.Resource {
 func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] gcpCreateServiceAccount")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	credentials := d.Get("credentials").(string)
 
 	// Derive name from credentials filename if missing.
@@ -82,7 +85,7 @@ func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 		name = strings.TrimSuffix(filepath.Base(credentials), filepath.Ext(credentials))
 	}
 
-	err := gcp.Wrap(client).SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
+	err = gcp.Wrap(client).SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -98,7 +101,10 @@ func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] gcpReadServiceAccount")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	name, err := gcp.Wrap(client).ServiceAccount(ctx)
 	if err != nil {
@@ -114,7 +120,10 @@ func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m interf
 func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] gcpUpdateServiceAccount")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	if d.HasChange("name") {
 		d.Set("name", d.Get("name").(string))

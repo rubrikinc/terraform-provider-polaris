@@ -31,7 +31,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -143,7 +142,11 @@ func resourceGcpProject() *schema.Resource {
 func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] gcpCreateProject")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	credentials := d.Get("credentials").(string)
 	projectID := d.Get("project").(string)
 
@@ -202,7 +205,10 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] gcpReadProject")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
@@ -239,7 +245,10 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] gcpUpdateProject")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
@@ -262,7 +271,10 @@ func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] gcpDeleteProject")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
