@@ -214,6 +214,12 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
+	if d.HasChange("name") {
+		if err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureAll, aws.Name(name)); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if d.HasChange("features") {
 		oldAttr, newAttr := d.GetChange("features")
 		var oldFeatures []core.Feature
