@@ -27,6 +27,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
@@ -41,16 +42,16 @@ func resourceCustomRole() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"description": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Description:      "Role description.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "Role description.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"name": {
-				Type:             schema.TypeString,
-				Required:         true,
-				Description:      "Role name.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "Role name.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"permission": {
 				Type: schema.TypeSet,
@@ -63,18 +64,18 @@ func resourceCustomRole() *schema.Resource {
 									"object_ids": {
 										Type: schema.TypeSet,
 										Elem: &schema.Schema{
-											Type:             schema.TypeString,
-											ValidateDiagFunc: validateStringIsNotWhiteSpace,
+											Type:         schema.TypeString,
+											ValidateFunc: validation.StringIsNotWhiteSpace,
 										},
 										Required:    true,
 										MinItems:    1,
 										Description: "Object/workload identifiers.",
 									},
 									"snappable_type": {
-										Type:             schema.TypeString,
-										Required:         true,
-										Description:      "Snappable/workload type.",
-										ValidateDiagFunc: validateStringIsNotWhiteSpace,
+										Type:         schema.TypeString,
+										Required:     true,
+										Description:  "Snappable/workload type.",
+										ValidateFunc: validation.StringIsNotWhiteSpace,
 									},
 								},
 							},
@@ -83,10 +84,10 @@ func resourceCustomRole() *schema.Resource {
 							Description: "Snappable hierarchy.",
 						},
 						"operation": {
-							Type:             schema.TypeString,
-							Required:         true,
-							Description:      "Operation to allow on object ids under the snappable hierarchy.",
-							ValidateDiagFunc: validateStringIsNotWhiteSpace,
+							Type:         schema.TypeString,
+							Required:     true,
+							Description:  "Operation to allow on object ids under the snappable hierarchy.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 					},
 				},

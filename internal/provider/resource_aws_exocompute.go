@@ -45,7 +45,7 @@ func resourceAwsExocompute() *schema.Resource {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
-				Description:      "Polaris account id",
+				Description:      "RSC account id",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"cluster_security_group_id": {

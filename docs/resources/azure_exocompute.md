@@ -27,7 +27,7 @@ resource "polaris_azure_exocompute" "default" {
 
 - `region` (String) Azure region to run the exocompute instance in.
 - `subnet` (String) Azure subnet id.
-- `subscription_id` (String) Polaris subscription id
+- `subscription_id` (String) RSC subscription id
 
 ### Read-Only
 

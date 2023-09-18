@@ -34,13 +34,13 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	graphql_aws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	graphqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // validateAwsRegion verifies that the name is a valid AWS region name.
 func validateAwsRegion(m interface{}, p cty.Path) diag.Diagnostics {
-	_, err := graphql_aws.ParseRegion(m.(string))
+	_, err := graphqlaws.ParseRegion(m.(string))
 	return diag.FromErr(err)
 }
 
@@ -211,7 +211,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 		var err error
 		cnpOpts = append(cnpOpts, opts...)
-		id, err = aws.Wrap(client).AddAccount(ctx, account, core.FeatureCloudNativeProtection, cnpOpts...)
+		id, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, cnpOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -227,7 +227,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		exoOpts = append(exoOpts, opts...)
-		_, err := aws.Wrap(client).AddAccount(ctx, account, core.FeatureExocompute, exoOpts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{core.FeatureExocompute}, exoOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -379,7 +379,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 			}
 
 			snapshots := d.Get("delete_snapshots_on_destroy").(bool)
-			if err := aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, snapshots); err != nil {
+			if err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, snapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -399,12 +399,12 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			_, err = aws.Wrap(client).AddAccount(ctx, account, core.FeatureExocompute, opts...)
+			_, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{core.FeatureExocompute}, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
 		case len(newExoList) == 0:
-			err := aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureExocompute, false)
+			err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureExocompute}, false)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -494,7 +494,7 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Removing Cloud Native Protection also removes Exocompute.
-	err = aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, deleteSnapshots)
+	err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, deleteSnapshots)
 	if err != nil {
 		return diag.FromErr(err)
 	}
