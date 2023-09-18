@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"regexp"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -203,14 +202,6 @@ func awsDeleteCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 
 	return nil
 }
-
-// roleExternalID holds the name of the role whose trust policy contains the
-// external ID.
-const roleExternalID = "CROSSACCOUNT"
-
-// rexExternalID is a regular expression to extract the external ID from a role
-// trust policy.
-var rexExternalID = regexp.MustCompile(`(?s)"sts:ExternalId":\[.*"(.*)".*]`)
 
 // trustPolicy returns the external ID and the trust policy for the specified
 // role key.
