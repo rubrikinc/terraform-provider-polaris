@@ -35,6 +35,40 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+var instanceProfileResource = &schema.Resource{
+	Schema: map[string]*schema.Schema{
+		"key": {
+			Type:         schema.TypeString,
+			Required:     true,
+			Description:  "Instance profile key.",
+			ValidateFunc: validation.StringIsNotWhiteSpace,
+		},
+		"name": {
+			Type:         schema.TypeString,
+			Required:     true,
+			Description:  "AWS instance profile name.",
+			ValidateFunc: validation.StringIsNotWhiteSpace,
+		},
+	},
+}
+
+var roleResource = &schema.Resource{
+	Schema: map[string]*schema.Schema{
+		"key": {
+			Type:         schema.TypeString,
+			Required:     true,
+			Description:  "Role key.",
+			ValidateFunc: validation.StringIsNotWhiteSpace,
+		},
+		"arn": {
+			Type:         schema.TypeString,
+			Required:     true,
+			Description:  "AWS role ARN.",
+			ValidateFunc: validation.StringIsNotWhiteSpace,
+		},
+	},
+}
+
 func resourceAwsCnpAccountAttachments() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateCnpAccountAttachments,
@@ -61,44 +95,14 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 				Description: "RSC features.",
 			},
 			"instance_profile": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"key": {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "Instance profile key.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-						"name": {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "AWS instance profile name.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-					},
-				},
+				Type:        schema.TypeSet,
+				Elem:        instanceProfileResource,
 				Optional:    true,
 				Description: "Instance profiles to attach to the cloud account.",
 			},
 			"role": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"key": {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "Role key.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-						"arn": {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "AWS role ARN.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-					},
-				},
+				Type:        schema.TypeSet,
+				Elem:        roleResource,
 				Required:    true,
 				Description: "Roles to attach to the cloud account.",
 			},
@@ -169,8 +173,30 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 		features.Add(string(feature.Name))
 	}
 
+	// Request the cloud account artifacts.
+	instanceProfiles, roles, err := aws.Wrap(client).AccountArtifacts(ctx, aws.CloudAccountID(id))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	// Set attributes.
 	if err := d.Set("features", features); err != nil {
+		return diag.FromErr(err)
+	}
+
+	instanceProfilesAttr := &schema.Set{F: schema.HashResource(instanceProfileResource)}
+	for key, name := range instanceProfiles {
+		instanceProfilesAttr.Add(map[string]any{"key": key, "name": name})
+	}
+	if err := d.Set("instance_profile", instanceProfilesAttr); err != nil {
+		return diag.FromErr(err)
+	}
+
+	rolesAttr := &schema.Set{F: schema.HashResource(roleResource)}
+	for key, arn := range roles {
+		rolesAttr.Add(map[string]any{"key": key, "arn": arn})
+	}
+	if err := d.Set("role", rolesAttr); err != nil {
 		return diag.FromErr(err)
 	}
 
