@@ -29,6 +29,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
@@ -42,18 +43,18 @@ func resourceRoleAssignment() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"role_id": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "Role identifier.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "Role identifier.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"user_email": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "User email address.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "User email address.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
 	}

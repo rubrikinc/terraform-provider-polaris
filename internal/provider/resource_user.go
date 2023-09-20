@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
@@ -42,11 +43,11 @@ func resourceUser() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"email": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "User email address.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "User email address.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"is_account_owner": {
 				Type:        schema.TypeBool,
@@ -56,8 +57,8 @@ func resourceUser() *schema.Resource {
 			"role_ids": {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
-					Type:             schema.TypeString,
-					ValidateDiagFunc: validateStringIsNotWhiteSpace,
+					Type:         schema.TypeString,
+					ValidateFunc: validation.StringIsNotWhiteSpace,
 				},
 				Required:    true,
 				Description: "Roles assigned to the user.",

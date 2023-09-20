@@ -22,14 +22,14 @@ package provider
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
-	"strings"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -47,23 +47,29 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"polaris_aws_account":             resourceAwsAccount(),
-			"polaris_aws_exocompute":          resourceAwsExocompute(),
-			"polaris_azure_exocompute":        resourceAzureExocompute(),
-			"polaris_azure_service_principal": resourceAzureServicePrincipal(),
-			"polaris_azure_subscription":      resourceAzureSubscription(),
-			"polaris_custom_role":             resourceCustomRole(),
-			"polaris_gcp_project":             resourceGcpProject(),
-			"polaris_gcp_service_account":     resourceGcpServiceAccount(),
-			"polaris_role_assignment":         resourceRoleAssignment(),
-			"polaris_user":                    resourceUser(),
+			"polaris_aws_account":                  resourceAwsAccount(),
+			"polaris_aws_cnp_account":              resourceAwsCnpAccount(),
+			"polaris_aws_cnp_account_attachments":  resourceAwsCnpAccountAttachments(),
+			"polaris_aws_cnp_account_trust_policy": resourceAwsCnpAccountTrustPolicy(),
+			"polaris_aws_exocompute":               resourceAwsExocompute(),
+			"polaris_azure_exocompute":             resourceAzureExocompute(),
+			"polaris_azure_service_principal":      resourceAzureServicePrincipal(),
+			"polaris_azure_subscription":           resourceAzureSubscription(),
+			"polaris_custom_role":                  resourceCustomRole(),
+			"polaris_gcp_project":                  resourceGcpProject(),
+			"polaris_gcp_service_account":          resourceGcpServiceAccount(),
+			"polaris_role_assignment":              resourceRoleAssignment(),
+			"polaris_user":                         resourceUser(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
-			"polaris_azure_permissions": dataSourceAzurePermissions(),
-			"polaris_gcp_permissions":   dataSourceGcpPermissions(),
-			"polaris_role":              dataSourceRole(),
-			"polaris_role_template":     dataSourceRoleTemplate(),
+			"polaris_aws_cnp_artifacts":   dataSourceAwsArtifacts(),
+			"polaris_aws_cnp_permissions": dataSourceAwsPermissions(),
+			"polaris_azure_permissions":   dataSourceAzurePermissions(),
+			"polaris_features":            dataSourceFeatures(),
+			"polaris_gcp_permissions":     dataSourceGcpPermissions(),
+			"polaris_role":                dataSourceRole(),
+			"polaris_role_template":       dataSourceRoleTemplate(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
@@ -99,15 +105,28 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 	return client, nil
 }
 
-// validateStringIsNotWhiteSpace validates that the specified string is not
-// empty or consisting entirely of whitespace characters.
-//
-// Note that the standard validation.StringIsNotWhiteSpace does not always work
-// with the validation.ToDiagFunc.
-func validateStringIsNotWhiteSpace(m any, p cty.Path) diag.Diagnostics {
-	if s, ok := m.(string); ok && strings.TrimSpace(s) == "" {
-		return diag.Errorf("expected %q to not be an empty string or whitespace", s)
+// fileExists assumes m is a file path and returns nil if the file exists,
+// otherwise a diagnostic message is returned.
+func fileExists(m interface{}, p cty.Path) diag.Diagnostics {
+	if _, err := os.Stat(m.(string)); err != nil {
+		details := "unknown error"
+
+		var pathErr *fs.PathError
+		if errors.As(err, &pathErr) {
+			details = pathErr.Err.Error()
+		}
+
+		return diag.Errorf("failed to access file: %s", details)
 	}
 
 	return nil
+}
+
+// validateHash verifies that m contains a valid SHA-256 hash.
+func validateHash(m interface{}, p cty.Path) diag.Diagnostics {
+	if hash, ok := m.(string); ok && len(hash) == 64 {
+		return nil
+	}
+
+	return diag.Errorf("invalid hash value")
 }

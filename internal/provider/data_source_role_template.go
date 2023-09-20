@@ -26,6 +26,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
@@ -42,10 +43,10 @@ func dataSourceRoleTemplate() *schema.Resource {
 				Description: "Role description.",
 			},
 			"name": {
-				Type:             schema.TypeString,
-				Required:         true,
-				Description:      "Role name.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "Role name.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"permission": {
 				Type: schema.TypeSet,

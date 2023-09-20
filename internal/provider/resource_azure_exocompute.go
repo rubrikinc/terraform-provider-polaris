@@ -47,7 +47,7 @@ func resourceAzureExocompute() *schema.Resource {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
-				Description:      "Polaris subscription id",
+				Description:      "RSC subscription id",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"region": {
