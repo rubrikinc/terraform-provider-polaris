@@ -96,5 +96,3 @@ Required:
 
 - `object_ids` (Set of String) Object/workload identifiers.
 - `snappable_type` (String) Snappable/workload type.
-
-

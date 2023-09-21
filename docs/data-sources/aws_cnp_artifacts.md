@@ -32,5 +32,3 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 - `id` (String) The ID of this resource.
 - `instance_profile_keys` (Set of String) Instance profile keys for the RSC features.
 - `role_keys` (Set of String) Role keys for the RSC features.
-
-

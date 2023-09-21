@@ -23,5 +23,3 @@ data "polaris_features" "features" {}
 
 - `features` (List of String) Enabled features.
 - `id` (String) The ID of this resource.
-
-

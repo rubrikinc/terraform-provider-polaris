@@ -32,5 +32,3 @@ data "polaris_gcp_permissions" "default" {
 - `hash` (String) SHA-256 hash of the permissions, can be used to detect changes to the permissions.
 - `id` (String) The ID of this resource.
 - `permissions` (List of String) Permissions required for the features enabled.
-
-

@@ -37,5 +37,3 @@ resource "polaris_role_assignment" "compliance_auditor" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-
-

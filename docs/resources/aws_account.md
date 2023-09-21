@@ -85,5 +85,3 @@ Required:
 Read-Only:
 
 - `status` (String) Status of the Exocompute feature.
-
-

@@ -68,5 +68,3 @@ Required:
 
 - `key` (String) Instance profile key.
 - `name` (String) AWS instance profile name.
-
-
