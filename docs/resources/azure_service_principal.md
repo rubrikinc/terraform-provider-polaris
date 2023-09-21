@@ -30,7 +30,7 @@ resource "polaris_azure_service_principal" "default" {
 resource "polaris_azure_service_principal" "default" {
   app_id        = "25c2b42a-c76b-11eb-9767-6ff6b5b7e72b"
   app_name      = "My App"
-  app_secret    = "&lt;my-apps-secret&gt;"
+  app_secret    = "<my-app-secret>"
   tenant_domain = "mydomain.onmicrosoft.com"
   tenant_id     = "2bfdaef8-c76b-11eb-8d3d-4706c14a88f0"
 }
@@ -56,5 +56,3 @@ resource "polaris_azure_service_principal" "default" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-
-

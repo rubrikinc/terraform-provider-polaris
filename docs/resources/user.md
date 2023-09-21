@@ -35,5 +35,3 @@ resource "polaris_user" "auditor" {
 - `id` (String) The ID of this resource.
 - `is_account_owner` (Boolean) True if the user is the account owner.
 - `status` (String) User status.
-
-

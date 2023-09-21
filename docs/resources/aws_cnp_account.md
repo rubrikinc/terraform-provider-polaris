@@ -41,5 +41,3 @@ resource "polaris_aws_cnp_account" "account" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-
-

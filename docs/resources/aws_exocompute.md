@@ -59,5 +59,3 @@ resource "polaris_aws_exocompute" "default" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-
-

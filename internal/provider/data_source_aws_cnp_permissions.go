@@ -64,7 +64,7 @@ func dataSourceAwsPermissions() *schema.Resource {
 						"policy": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Policy",
+							Description: "Policy.",
 						},
 					},
 				},

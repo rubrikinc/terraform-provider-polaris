@@ -39,5 +39,3 @@ resource "polaris_aws_cnp_account_trust_policy" "trust_policy" {
 
 - `id` (String) The ID of this resource.
 - `policy` (String) Trust policy.
-
-
