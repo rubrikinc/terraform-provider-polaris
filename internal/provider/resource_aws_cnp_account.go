@@ -45,8 +45,9 @@ func resourceAwsCnpAccount() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"cloud": {
 				Type:         schema.TypeString,
-				Required:     true,
+				Optional:     true,
 				ForceNew:     true,
+				Default:      "STANDARD",
 				Description:  "Cloud type.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
@@ -56,7 +57,9 @@ func resourceAwsCnpAccount() *schema.Resource {
 				Default:     false,
 				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
-			"external_id": { // needed to force full recreation of account if external id is changed.
+			// Needed to force full recreation of account if external id is
+			// changed.
+			"external_id": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				ForceNew:    true,
