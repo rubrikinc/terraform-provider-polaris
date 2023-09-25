@@ -43,7 +43,8 @@ func dataSourceAwsPermissions() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"cloud": {
 				Type:         schema.TypeString,
-				Required:     true,
+				Optional:     true,
+				Default:      "STANDARD",
 				Description:  "AWS cloud type.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},

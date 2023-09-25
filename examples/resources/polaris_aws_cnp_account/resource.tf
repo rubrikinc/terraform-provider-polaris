@@ -1,5 +1,4 @@
 resource "polaris_aws_cnp_account" "account" {
-  cloud     = "STANDARD"
   features  = ["CLOUD_NATIVE_PROTECTION"]
   name      = "My Account"
   native_id = "123456789123"

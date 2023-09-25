@@ -14,7 +14,6 @@ description: |-
 
 ```terraform
 resource "polaris_aws_cnp_account" "account" {
-  cloud     = "STANDARD"
   features  = ["CLOUD_NATIVE_PROTECTION"]
   name      = "My Account"
   native_id = "123456789123"
@@ -27,13 +26,13 @@ resource "polaris_aws_cnp_account" "account" {
 
 ### Required
 
-- `cloud` (String) Cloud type.
 - `features` (Set of String) RSC features.
 - `native_id` (String) AWS account id.
 - `regions` (Set of String) Regions.
 
 ### Optional
 
+- `cloud` (String) Cloud type.
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed.
 - `external_id` (String) External id.
 - `name` (String) Account name.

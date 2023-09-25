@@ -14,7 +14,6 @@ description: |-
 
 ```terraform
 data "polaris_aws_cnp_artifacts" "artifacts" {
-  cloud    = "STANDARD"
   features = ["CLOUD_NATIVE_PROTECTION"]
 }
 ```
@@ -24,8 +23,11 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 
 ### Required
 
-- `cloud` (String) AWS cloud type.
 - `features` (Set of String) RSC features.
+
+### Optional
+
+- `cloud` (String) AWS cloud type.
 
 ### Read-Only
 
