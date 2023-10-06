@@ -6,7 +6,7 @@ page_title: "Provider: RSC"
 The RSC provider, formerly known as the Polaris provider, provides resources to interact with the Rubrik RSC platform.
 Additional examples on how to use the provider are available in the
 [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples) GitHub
-repository.
+repository. Documentation for the Rubrik Security Cloud is available at https://docs.rubrik.com/en-us/saas/index.html.
 
 ~> Upgrading from v0.2.0 to v0.3.0 requires that the definition of certain resources are updated on disk. Please see the
 upgrade guide for more information.
