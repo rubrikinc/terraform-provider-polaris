@@ -89,7 +89,7 @@ func resourceAwsExocompute() *schema.Resource {
 				MaxItems:    2,
 				Required:    true,
 				ForceNew:    true,
-				Description: "AWS subnet ids for the cluster subnets.",
+				Description: "AWS subnet ids for the cluster subnets. Two subnets must be specified and they must be in different availability zones.",
 			},
 			"vpc_id": {
 				Type:             schema.TypeString,

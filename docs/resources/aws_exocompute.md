@@ -47,7 +47,7 @@ resource "polaris_aws_exocompute" "default" {
 
 - `account_id` (String) Polaris account id
 - `region` (String) AWS region to run the exocompute instance in.
-- `subnets` (Set of String) AWS subnet ids for the cluster subnets.
+- `subnets` (Set of String) AWS subnet ids for the cluster subnets. Two subnets must be specified and they must be in different availability zones.
 - `vpc_id` (String) AWS VPC id for the cluster network.
 
 ### Optional
