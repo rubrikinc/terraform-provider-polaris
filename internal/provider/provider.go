@@ -39,10 +39,10 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"credentials": {
-				Type:             schema.TypeString,
-				Required:         true,
-				Description:      "The local user account name or service account file to use when accessing RSC.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "The service account file or local user account name to use when accessing RSC.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
 
@@ -80,16 +80,25 @@ func Provider() *schema.Provider {
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 	credentials := d.Get("credentials").(string)
 
-	// When credentials refer to an existing file we load the file as a service
-	// account, otherwise we assume that it's an account name
+	// If no credentials are given or the credentials refer to an existing file,
+	// we load the credentials as a service account, otherwise we assume that
+	// it's an account name.
 	var account polaris.Account
-	if _, err := os.Stat(credentials); err != nil {
-		account, err = polaris.DefaultUserAccount(credentials, true)
-		if err != nil {
-			return nil, diag.FromErr(err)
+	if credentials != "" {
+		if _, err := os.Stat(credentials); err == nil {
+			account, err = polaris.ServiceAccountFromFile(credentials, true)
+			if err != nil {
+				return nil, diag.FromErr(err)
+			}
+		} else {
+			account, err = polaris.DefaultUserAccount(credentials, true)
+			if err != nil {
+				return nil, diag.FromErr(err)
+			}
 		}
 	} else {
-		account, err = polaris.ServiceAccountFromFile(credentials, true)
+		var err error
+		account, err = polaris.ServiceAccountFromEnv()
 		if err != nil {
 			return nil, diag.FromErr(err)
 		}

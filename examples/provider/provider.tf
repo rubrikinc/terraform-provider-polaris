@@ -1,9 +1,13 @@
-# With local user account
+# Service account from the current environment.
 provider "polaris" {
-  credentials = "my-account"
 }
 
-# With service account
+# Service account from file.
 provider "polaris" {
   credentials = "/path/to/service-account-credentials.json"
+}
+
+# Local user account.
+provider "polaris" {
+  credentials = "my-account"
 }
