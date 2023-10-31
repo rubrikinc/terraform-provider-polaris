@@ -38,13 +38,13 @@ provider "polaris" {
 }
 ```
 The service account can also be passed to the provider using the `RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS` environment
-variable. When passing the service account using the environment variable, leave the provider conifguration empty:
+variable. When passing the service account using the environment variable, leave the provider configuration empty:
 ```terraform
 provider "polaris" {
 }
 ```
 
-For documentation on how to create a service account using RSC see the
+For documentation on how to create a service account using RSC, visit the
 [Rubrik Support Portal](http://support.rubrik.com).
 
 ### Local User Account
@@ -70,7 +70,7 @@ provider "polaris" {
   credentials = "my-account"
 }
 ```
-For documentation on how to create a local user account using RSC see the
+For documentation on how to create a local user account using RSC, visit the
 [Rubrik Support Portal](http://support.rubrik.com).
 
 ### Environment Variables
