@@ -61,8 +61,8 @@ func TestAccProviderCredentialsFromEnv_basic(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: credentialsFromEnv,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestCheckTypeSetElemAttr("polaris_role.admin", "id", "00000000-0000-0000-0000-000000000000"),
-				resource.TestCheckTypeSetElemAttr("polaris_role.admin", "name", "Administrator"),
+				resource.TestCheckResourceAttr("data.polaris_role.admin", "id", "00000000-0000-0000-0000-000000000000"),
+				resource.TestCheckResourceAttr("data.polaris_role.admin", "name", "Administrator"),
 			),
 		}},
 	})
