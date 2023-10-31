@@ -80,11 +80,10 @@ func Provider() *schema.Provider {
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 	credentials := d.Get("credentials").(string)
 
-	// If no credentials are given or the credentials refer to an existing file,
-	// we load the credentials as a service account, otherwise we assume that
-	// it's an account name.
 	var account polaris.Account
 	if credentials != "" {
+		// When credentials refer to an existing file we load the file as a
+		// service account, otherwise we assume that it's an account name.
 		if _, err := os.Stat(credentials); err == nil {
 			account, err = polaris.ServiceAccountFromFile(credentials, true)
 			if err != nil {
