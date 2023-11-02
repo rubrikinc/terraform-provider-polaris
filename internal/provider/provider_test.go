@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"text/template"
@@ -49,12 +50,13 @@ data "polaris_role" "admin" {
 }
 `
 
-func TestAccProviderCredentialsFromEnv_basic(t *testing.T) {
+func TestAccProviderCredentialsInEnv_basic(t *testing.T) {
 	credentials, err := loadTestCredentials("RUBRIK_POLARIS_SERVICEACCOUNT_FILE")
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Valid service account in env.
 	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS", credentials)
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
@@ -64,6 +66,40 @@ func TestAccProviderCredentialsFromEnv_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("data.polaris_role.admin", "id", "00000000-0000-0000-0000-000000000000"),
 				resource.TestCheckResourceAttr("data.polaris_role.admin", "name", "Administrator"),
 			),
+		}},
+	})
+
+	// Invalid service account in env.
+	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS", "invalid")
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config:      credentialsFromEnv,
+			ExpectError: regexp.MustCompile("failed to unmarshal RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS: invalid character 'i' looking for beginning of value"),
+		}},
+	})
+}
+
+func TestAccProviderMissingCredentialsInEnv_basic(t *testing.T) {
+	// No service account in env. This could happen if the provider is used to
+	// bootstrap a CDM cluster without RSC credentials, but an RSC resource is
+	// used.
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config:      credentialsFromEnv,
+			ExpectError: regexp.MustCompile("polaris functionality has not been configured in the provider block"),
+		}},
+	})
+
+	// Partial service account in env. This could happen if the service account
+	// is given in parts and one of the parts is missing.
+	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME", "name")
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config:      credentialsFromEnv,
+			ExpectError: regexp.MustCompile("invalid service account client id"),
 		}},
 	})
 }
