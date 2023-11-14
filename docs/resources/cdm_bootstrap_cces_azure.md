@@ -19,7 +19,6 @@ resource "polaris_cdm_bootstrap_cces_azure" "default" {
     "my-cluster-node-2" = "10.1.100.101",
     "my-cluster-node-3" = "10.1.100.102",
   }
-  connection_string      = ""
   container_name         = "my-cluster"
   dns_search_domain      = ["example.org"]
   dns_name_servers       = ["10.1.150.100", "10.1.150.200"]
