@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -105,7 +104,10 @@ func resourceAwsCnpAccount() *schema.Resource {
 func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsCreateCnpAccount")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	cloud := d.Get("cloud").(string)
@@ -136,7 +138,10 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadCnpAccount")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	id, err := uuid.Parse(d.Id())
@@ -187,7 +192,10 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsUpdateCnpAccount")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	id, err := uuid.Parse(d.Id())
@@ -270,7 +278,10 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsDeleteCnpAccount")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	id, err := uuid.Parse(d.Id())
