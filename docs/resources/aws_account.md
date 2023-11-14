@@ -19,7 +19,7 @@ resource "polaris_aws_account" "default" {
 
   cloud_native_protection {
     regions = [
-      "us-east-2",
+      "us-east-2"
     ]
   }
 }
@@ -31,13 +31,13 @@ resource "polaris_aws_account" "default" {
   cloud_native_protection {
     regions = [
       "us-east-2",
-      "us-west-2",
+      "us-west-2"
     ]
   }
 
   exocompute {
     regions = [
-      "us-west-2",
+      "us-west-2"
     ]
   }
 }
@@ -48,7 +48,7 @@ resource "polaris_aws_account" "default" {
 
 ### Required
 
-- `cloud_native_protection` (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the GCP project. (see [below for nested schema](#nestedblock--cloud_native_protection))
+- `cloud_native_protection` (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the AWS account. (see [below for nested schema](#nestedblock--cloud_native_protection))
 
 ### Optional
 
