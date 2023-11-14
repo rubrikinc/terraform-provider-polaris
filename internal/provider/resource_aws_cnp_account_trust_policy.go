@@ -86,7 +86,10 @@ func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsCreateCnpAccountTrustPolicy")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	accountID := d.Get("account_id").(string)
@@ -116,7 +119,10 @@ func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadCnpAccountTrustPolicy")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	id, err := uuid.Parse(d.Id())
@@ -163,7 +169,10 @@ func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m
 func awsUpdateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsUpdateCnpAccountTrustPolicy")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	roleKey := d.Get("role_key").(string)

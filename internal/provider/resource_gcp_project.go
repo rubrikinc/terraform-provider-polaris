@@ -37,8 +37,8 @@ import (
 )
 
 // stringIsInteger assumes m is a string holding an integer and returns nil if
-// the string can be converted to an integer, otherwise an diagnostic message
-// is returned.
+// the string can be converted to an integer, otherwise a diagnostic message is
+// returned.
 func stringIsInteger(m interface{}, p cty.Path) diag.Diagnostics {
 	if _, err := strconv.ParseInt(m.(string), 10, 64); err != nil {
 		return diag.Errorf("expected an integer: %s", err)
