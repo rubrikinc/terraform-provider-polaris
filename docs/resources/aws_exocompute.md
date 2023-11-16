@@ -51,12 +51,12 @@ resource "polaris_aws_exocompute" "default" {
 
 ### Required
 
-- `account_id` (String) RSC cloud account id
+- `account_id` (String) RSC account id
 
 ### Optional
 
 - `cluster_security_group_id` (String) AWS security group id for the cluster.
-- `host_account_id` (String) RSC shared exocompute host cloud account id
+- `host_account_id` (String) Shared exocompute host RSC account id
 - `node_security_group_id` (String) AWS security group id for the nodes.
 - `polaris_managed` (Boolean) If true the security groups are managed by Polaris.
 - `region` (String) AWS region to run the exocompute instance in.
