@@ -23,13 +23,13 @@ package provider
 import (
 	"context"
 	"log"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // resourceAwsExocompute defines the schema for the AWS exocompute resource.
@@ -52,8 +52,17 @@ func resourceAwsExocompute() *schema.Resource {
 				Optional:         true,
 				Computed:         true,
 				ForceNew:         true,
+				ConflictsWith:    []string{"host_account_id"},
 				RequiredWith:     []string{"node_security_group_id"},
 				Description:      "AWS security group id for the cluster.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			},
+			"host_account_id": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				AtLeastOneOf:     []string{"host_account_id", "region"},
+				Description:      "Shared exocompute host RSC account id",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"node_security_group_id": {
@@ -61,21 +70,26 @@ func resourceAwsExocompute() *schema.Resource {
 				Optional:         true,
 				Computed:         true,
 				ForceNew:         true,
+				ConflictsWith:    []string{"host_account_id"},
 				RequiredWith:     []string{"cluster_security_group_id"},
 				Description:      "AWS security group id for the nodes.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"polaris_managed": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Computed:    true,
-				ForceNew:    true,
-				Description: "If true the security groups are managed by Polaris.",
+				Type:          schema.TypeBool,
+				Optional:      true,
+				Computed:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"host_account_id"},
+				Description:   "If true the security groups are managed by Polaris.",
 			},
 			"region": {
 				Type:             schema.TypeString,
-				Required:         true,
+				Optional:         true,
 				ForceNew:         true,
+				AtLeastOneOf:     []string{"host_account_id", "region"},
+				ConflictsWith:    []string{"host_account_id"},
+				RequiredWith:     []string{"subnets", "vpc_id"},
 				Description:      "AWS region to run the exocompute instance in.",
 				ValidateDiagFunc: validateAwsRegion,
 			},
@@ -84,16 +98,20 @@ func resourceAwsExocompute() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				MinItems:    2,
-				MaxItems:    2,
-				Required:    true,
-				ForceNew:    true,
-				Description: "AWS subnet ids for the cluster subnets.",
+				MinItems:      2,
+				MaxItems:      2,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"host_account_id"},
+				RequiredWith:  []string{"subnets", "vpc_id"},
+				Description:   "AWS subnet ids for the cluster subnets.",
 			},
 			"vpc_id": {
 				Type:             schema.TypeString,
-				Required:         true,
+				Optional:         true,
 				ForceNew:         true,
+				ConflictsWith:    []string{"host_account_id"},
+				RequiredWith:     []string{"region", "subnets"},
 				Description:      "AWS VPC id for the cluster network.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
@@ -116,42 +134,39 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(accountID), core.FeatureExocompute)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	cnpFeature, ok := account.Feature(core.FeatureExocompute)
-	if !ok {
-		return diag.Errorf("exocompute not enabled on account")
-	}
 
-	region := d.Get("region").(string)
-	if !cnpFeature.HasRegion(region) {
-		return diag.Errorf("region %q not available with exocompute feature", region)
-	}
-
-	vpcID := d.Get("vpc_id").(string)
-
-	var subnets []string
-	for _, s := range d.Get("subnets").(*schema.Set).List() {
-		subnets = append(subnets, s.(string))
-	}
-
-	clusterSecurityGroupID := d.Get("cluster_security_group_id").(string)
-	nodeSecurityGroupID := d.Get("node_security_group_id").(string)
-
-	var config aws.ExoConfigFunc
-	if clusterSecurityGroupID == "" || nodeSecurityGroupID == "" {
-		config = aws.Managed(region, vpcID, subnets)
+	if host, ok := d.GetOk("host_account_id"); ok {
+		hostID, err := uuid.Parse(host.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		err = aws.Wrap(client).MapExocompute(ctx, aws.CloudAccountID(hostID), aws.CloudAccountID(accountID))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.SetId("app-" + accountID.String())
 	} else {
-		config = aws.Unmanaged(region, vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID)
-	}
+		clusterSecurityGroupID := d.Get("cluster_security_group_id").(string)
+		nodeSecurityGroupID := d.Get("node_security_group_id").(string)
+		region := d.Get("region").(string)
+		var subnets []string
+		for _, s := range d.Get("subnets").(*schema.Set).List() {
+			subnets = append(subnets, s.(string))
+		}
+		vpcID := d.Get("vpc_id").(string)
 
-	id, err := aws.Wrap(client).AddExocomputeConfig(ctx, aws.CloudAccountID(accountID), config)
-	if err != nil {
-		return diag.FromErr(err)
+		var config aws.ExoConfigFunc
+		if clusterSecurityGroupID == "" || nodeSecurityGroupID == "" {
+			config = aws.Managed(region, vpcID, subnets)
+		} else {
+			config = aws.Unmanaged(region, vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID)
+		}
+		id, err := aws.Wrap(client).AddExocomputeConfig(ctx, aws.CloudAccountID(accountID), config)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.SetId(id.String())
 	}
-	d.SetId(id.String())
 
 	awsReadExocompute(ctx, d, m)
 	return nil
@@ -167,42 +182,52 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		return diag.FromErr(err)
 	}
 
-	id, err := uuid.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	id := d.Id()
+	if strings.HasPrefix(d.Id(), "app-") {
+		appID, err := uuid.Parse(strings.TrimPrefix(id, "app-"))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		hostID, err := aws.Wrap(client).ExocomputeHostAccount(ctx, aws.CloudAccountID(appID))
+		if err != nil {
+			return diag.FromErr(err)
+		}
 
-	exoConfig, err := aws.Wrap(client).ExocomputeConfig(ctx, id)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+		if err := d.Set("host_account_id", hostID.String()); err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		configID, err := uuid.Parse(id)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		exoConfig, err := aws.Wrap(client).ExocomputeConfig(ctx, configID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 
-	if err := d.Set("region", exoConfig.Region); err != nil {
-		return diag.FromErr(err)
-	}
-
-	if err := d.Set("vpc_id", exoConfig.VPCID); err != nil {
-		return diag.FromErr(err)
-	}
-
-	subnets := schema.Set{F: schema.HashString}
-	for _, subnet := range exoConfig.Subnets {
-		subnets.Add(subnet.ID)
-	}
-	if err := d.Set("subnets", &subnets); err != nil {
-		return diag.FromErr(err)
-	}
-
-	if err := d.Set("polaris_managed", exoConfig.ManagedByRubrik); err != nil {
-		return diag.FromErr(err)
-	}
-
-	if err := d.Set("cluster_security_group_id", exoConfig.ClusterSecurityGroupID); err != nil {
-		return diag.FromErr(err)
-	}
-
-	if err := d.Set("node_security_group_id", exoConfig.NodeSecurityGroupID); err != nil {
-		return diag.FromErr(err)
+		if err := d.Set("cluster_security_group_id", exoConfig.ClusterSecurityGroupID); err != nil {
+			return diag.FromErr(err)
+		}
+		if err := d.Set("node_security_group_id", exoConfig.NodeSecurityGroupID); err != nil {
+			return diag.FromErr(err)
+		}
+		if err := d.Set("polaris_managed", exoConfig.ManagedByRubrik); err != nil {
+			return diag.FromErr(err)
+		}
+		if err := d.Set("region", exoConfig.Region); err != nil {
+			return diag.FromErr(err)
+		}
+		subnets := schema.Set{F: schema.HashString}
+		for _, subnet := range exoConfig.Subnets {
+			subnets.Add(subnet.ID)
+		}
+		if err := d.Set("subnets", &subnets); err != nil {
+			return diag.FromErr(err)
+		}
+		if err := d.Set("vpc_id", exoConfig.VPCID); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil
@@ -218,14 +243,23 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	id, err := uuid.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	err = aws.Wrap(client).RemoveExocomputeConfig(ctx, id)
-	if err != nil {
-		return diag.FromErr(err)
+	id := d.Id()
+	if strings.HasPrefix(id, "app-") {
+		appID, err := uuid.Parse(strings.TrimPrefix(id, "app-"))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if err = aws.Wrap(client).UnmapExocompute(ctx, aws.CloudAccountID(appID)); err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		configID, err := uuid.Parse(id)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if err = aws.Wrap(client).RemoveExocomputeConfig(ctx, configID); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil
