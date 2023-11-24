@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -113,7 +112,10 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsCreateCnpAccountAttachments")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	accountID, err := uuid.Parse(d.Get("account_id").(string))
@@ -151,7 +153,10 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadCnpAccountAttachments")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	id, err := uuid.Parse(d.Id())
@@ -206,7 +211,10 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsUpdateCnpAccountAttachments")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Get attributes.
 	id, err := uuid.Parse(d.Id())

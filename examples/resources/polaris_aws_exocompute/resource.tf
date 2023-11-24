@@ -1,4 +1,4 @@
-# With security groups managed by Polaris.
+# With security groups managed by RSC.
 resource "polaris_aws_exocompute" "default" {
   account_id = polaris_aws_account.default.id
   region     = "us-east-2"
@@ -22,4 +22,10 @@ resource "polaris_aws_exocompute" "default" {
     "subnet-ea67b67b",
     "subnet-ea43ec78"
   ]
+}
+
+# Using the exocompute resources shared by an exocompute host.
+resource "polaris_aws_exocompute" "default" {
+  account_id      = polaris_aws_account.app.id
+  host_account_id = polaris_aws_account.host.id
 }
