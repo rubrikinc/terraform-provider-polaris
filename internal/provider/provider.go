@@ -54,6 +54,7 @@ func Provider() *schema.Provider {
 
 		ResourcesMap: map[string]*schema.Resource{
 			"polaris_aws_account":                    resourceAwsAccount(),
+			"polaris_aws_archival_location":          resourceAwsArchivalLocation(),
 			"polaris_aws_cnp_account":                resourceAwsCnpAccount(),
 			"polaris_aws_cnp_account_attachments":    resourceAwsCnpAccountAttachments(),
 			"polaris_aws_cnp_account_trust_policy":   resourceAwsCnpAccountTrustPolicy(),
@@ -73,13 +74,14 @@ func Provider() *schema.Provider {
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
-			"polaris_aws_cnp_artifacts":   dataSourceAwsArtifacts(),
-			"polaris_aws_cnp_permissions": dataSourceAwsPermissions(),
-			"polaris_azure_permissions":   dataSourceAzurePermissions(),
-			"polaris_features":            dataSourceFeatures(),
-			"polaris_gcp_permissions":     dataSourceGcpPermissions(),
-			"polaris_role":                dataSourceRole(),
-			"polaris_role_template":       dataSourceRoleTemplate(),
+			"polaris_aws_archival_location": dataSourceAwsArchivalLocation(),
+			"polaris_aws_cnp_artifacts":     dataSourceAwsArtifacts(),
+			"polaris_aws_cnp_permissions":   dataSourceAwsPermissions(),
+			"polaris_azure_permissions":     dataSourceAzurePermissions(),
+			"polaris_features":              dataSourceFeatures(),
+			"polaris_gcp_permissions":       dataSourceGcpPermissions(),
+			"polaris_role":                  dataSourceRole(),
+			"polaris_role_template":         dataSourceRoleTemplate(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
