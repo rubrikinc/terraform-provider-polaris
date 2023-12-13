@@ -89,7 +89,6 @@ func resourceAwsExocompute() *schema.Resource {
 				ForceNew:         true,
 				AtLeastOneOf:     []string{"host_account_id", "region"},
 				ConflictsWith:    []string{"host_account_id"},
-				RequiredWith:     []string{"subnets", "vpc_id"},
 				Description:      "AWS region to run the exocompute instance in.",
 				ValidateDiagFunc: validateAwsRegion,
 			},
@@ -102,7 +101,7 @@ func resourceAwsExocompute() *schema.Resource {
 				MaxItems:      2,
 				Optional:      true,
 				ForceNew:      true,
-				ConflictsWith: []string{"host_account_id"},
+				ConflictsWith: []string{"host_account_id", "cluster_name"},
 				RequiredWith:  []string{"subnets", "vpc_id"},
 				Description:   "AWS subnet ids for the cluster subnets.",
 			},
@@ -110,9 +109,18 @@ func resourceAwsExocompute() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				ConflictsWith:    []string{"host_account_id"},
+				ConflictsWith:    []string{"host_account_id", "cluster_name"},
 				RequiredWith:     []string{"region", "subnets"},
 				Description:      "AWS VPC id for the cluster network.",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			},
+			"cluster_name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				RequiredWith:     []string{"region"},
+				ConflictsWith:    []string{"host_account_id", "subnets", "vpc_id"},
+				Description:      "AWS customer cluster name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},
@@ -155,12 +163,18 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 		vpcID := d.Get("vpc_id").(string)
 
+		clusterName := d.Get("cluster_name").(string)
+
 		var config aws.ExoConfigFunc
-		if clusterSecurityGroupID == "" || nodeSecurityGroupID == "" {
-			config = aws.Managed(region, vpcID, subnets)
-		} else {
+		switch {
+		case clusterName != "":
+			config = aws.CustomerCluster(region, clusterName)
+		case clusterSecurityGroupID != "" && nodeSecurityGroupID != "":
 			config = aws.Unmanaged(region, vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID)
+		default:
+			config = aws.Managed(region, vpcID, subnets)
 		}
+
 		id, err := aws.Wrap(client).AddExocomputeConfig(ctx, aws.CloudAccountID(accountID), config)
 		if err != nil {
 			return diag.FromErr(err)
@@ -206,6 +220,16 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 
+		if err := d.Set("region", exoConfig.Region); err != nil {
+			return diag.FromErr(err)
+		}
+
+		// Customer managed cluster
+		if err := d.Set("cluster_name", exoConfig.ClusterName); err != nil {
+			return diag.FromErr(err)
+		}
+
+		// Rubrik managed cluster
 		if err := d.Set("cluster_security_group_id", exoConfig.ClusterSecurityGroupID); err != nil {
 			return diag.FromErr(err)
 		}
@@ -213,9 +237,6 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 		if err := d.Set("polaris_managed", exoConfig.ManagedByRubrik); err != nil {
-			return diag.FromErr(err)
-		}
-		if err := d.Set("region", exoConfig.Region); err != nil {
 			return diag.FromErr(err)
 		}
 		subnets := schema.Set{F: schema.HashString}
