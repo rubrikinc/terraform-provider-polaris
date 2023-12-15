@@ -127,6 +127,11 @@ func resourceAwsAccount() *schema.Resource {
 							Computed:    true,
 							Description: "Status of the Exocompute feature.",
 						},
+						"stack_arn": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
+						},
 					},
 				},
 				MaxItems:    1,
@@ -295,8 +300,9 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		status := core.FormatStatus(exoFeature.Status)
 		err := d.Set("exocompute", []interface{}{
 			map[string]interface{}{
-				"regions": &regions,
-				"status":  &status,
+				"regions":   &regions,
+				"status":    &status,
+				"stack_arn": &exoFeature.StackArn,
 			},
 		})
 		if err != nil {
