@@ -88,6 +88,29 @@ func awsCreatePrivateContainerRegistry(ctx context.Context, d *schema.ResourceDa
 // There is no API endpoint to read the state of the private container registry.
 func awsReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadPrivateContainerRegistry")
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	id, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	nativeID, url, err := aws.Wrap(client).PrivateContainerRegistry(ctx, aws.CloudAccountID(id))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	if err := d.Set("native_id", nativeID); err != nil {
+		return diag.FromErr(err)
+	}
+
+	if err := d.Set("url", url); err != nil {
+		return diag.FromErr(err)
+	}
+
 	return nil
 }
 
