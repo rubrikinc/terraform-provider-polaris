@@ -30,10 +30,11 @@ pipeline {
     }
     parameters {
         booleanParam(name: 'RUN_ACCEPTANCE_TEST', defaultValue: false)
+        choice(name: 'SERVICEACCOUNT_FILE', choices: ['tf-sdk-test-polaris-service-account', 'tf-sdk-test-polaris-service-account-dev-01'], description: '')
     }
     environment {
         // Polaris
-        RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
+        RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials("${params.SERVICEACCOUNT_FILE}")
         TEST_RSCCONFIG_FILE                = credentials('tf-sdk-test-rsc-config')
 
         // AWS
