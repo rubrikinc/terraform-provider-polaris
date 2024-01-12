@@ -118,7 +118,7 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	ec2RecoveryRolePath := d.Get("ec2_recovery_role_path").(string)
 	var features []core.Feature
 	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+		features = append(features, core.Feature{Name: feature.(string)})
 	}
 	roleKey := d.Get("role_key").(string)
 
@@ -133,7 +133,7 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	for _, policy := range customerPolicies {
 		if roleKey == policy.Artifact {
 			customerPoliciesAttr = append(customerPoliciesAttr, map[string]string{
-				"feature": string(policy.Feature),
+				"feature": policy.Feature.Name,
 				"name":    policy.Name,
 				"policy":  policy.Policy,
 			})
@@ -156,7 +156,7 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	hash := sha256.New()
 	for _, policy := range customerPolicies {
 		hash.Write([]byte(policy.Artifact))
-		hash.Write([]byte(policy.Feature))
+		hash.Write([]byte(policy.Feature.Name))
 		hash.Write([]byte(policy.Name))
 		hash.Write([]byte(policy.Policy))
 	}

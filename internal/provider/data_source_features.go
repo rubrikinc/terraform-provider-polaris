@@ -21,11 +21,12 @@
 package provider
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"fmt"
 	"log"
-	"sort"
+	"slices"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -65,14 +66,14 @@ func featuresRead(ctx context.Context, d *schema.ResourceData, m interface{}) di
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	sort.Slice(features, func(i, j int) bool {
-		return features[i] < features[j]
+	slices.SortFunc(features, func(lhs, rhs core.Feature) int {
+		return cmp.Compare(lhs.Name, rhs.Name)
 	})
 
 	// Set attributes.
 	var featuresAttr []string
 	for _, feature := range features {
-		featuresAttr = append(featuresAttr, string(feature))
+		featuresAttr = append(featuresAttr, feature.Name)
 	}
 	if err := d.Set("features", featuresAttr); err != nil {
 		return diag.FromErr(err)
@@ -80,7 +81,7 @@ func featuresRead(ctx context.Context, d *schema.ResourceData, m interface{}) di
 
 	hash := sha256.New()
 	for _, feature := range features {
-		hash.Write([]byte(feature))
+		hash.Write([]byte(feature.Name))
 	}
 	d.SetId(fmt.Sprintf("%x", hash.Sum(nil)))
 

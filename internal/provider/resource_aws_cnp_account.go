@@ -113,7 +113,7 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	cloud := d.Get("cloud").(string)
 	var features []core.Feature
 	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+		features = append(features, core.Feature{Name: feature.(string)})
 	}
 	name := d.Get("name").(string)
 	nativeID := d.Get("native_id").(string)
@@ -165,7 +165,7 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 	}
 	features := &schema.Set{F: schema.HashString}
 	for _, feature := range account.Features {
-		features.Add(string(feature.Name))
+		features.Add(feature.Feature.Name)
 	}
 	if err := d.Set("features", features); err != nil {
 		return diag.FromErr(err)
@@ -206,7 +206,7 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	deleteSnapshots := d.Get("delete_snapshots_on_destroy").(bool)
 	var features []core.Feature
 	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+		features = append(features, core.Feature{Name: feature.(string)})
 	}
 	name := d.Get("name").(string)
 	nativeID := d.Get("native_id").(string)
@@ -235,11 +235,11 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		oldAttr, newAttr := d.GetChange("features")
 		var oldFeatures []core.Feature
 		for _, feature := range oldAttr.(*schema.Set).List() {
-			oldFeatures = append(oldFeatures, core.Feature(feature.(string)))
+			oldFeatures = append(oldFeatures, core.Feature{Name: feature.(string)})
 		}
 		var newFeatures []core.Feature
 		for _, feature := range newAttr.(*schema.Set).List() {
-			newFeatures = append(newFeatures, core.Feature(feature.(string)))
+			newFeatures = append(newFeatures, core.Feature{Name: feature.(string)})
 		}
 		addFeatures, removeFeatures := diffFeatures(newFeatures, oldFeatures)
 
@@ -302,7 +302,7 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 
 	features := make([]core.Feature, 0, len(account.Features))
 	for _, feature := range account.Features {
-		features = append(features, feature.Name)
+		features = append(features, feature.Feature)
 	}
 
 	// Request account removal.
@@ -317,13 +317,13 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func diffFeatures(newFeatures []core.Feature, oldFeatures []core.Feature) ([]core.Feature, []core.Feature) {
-	newSet := make(map[core.Feature]struct{})
+	newSet := make(map[string]core.Feature)
 	for _, feature := range newFeatures {
-		newSet[feature] = struct{}{}
+		newSet[feature.Key()] = feature
 	}
-	oldSet := make(map[core.Feature]struct{})
+	oldSet := make(map[string]core.Feature)
 	for _, feature := range oldFeatures {
-		oldSet[feature] = struct{}{}
+		oldSet[feature.Key()] = feature
 	}
 
 	for feature := range oldSet {
@@ -334,11 +334,11 @@ func diffFeatures(newFeatures []core.Feature, oldFeatures []core.Feature) ([]cor
 	}
 
 	addFeatures := make([]core.Feature, 0, len(newSet))
-	for feature := range newSet {
+	for _, feature := range newSet {
 		addFeatures = append(addFeatures, feature)
 	}
 	removeFeatures := make([]core.Feature, 0, len(oldSet))
-	for feature := range oldSet {
+	for _, feature := range oldSet {
 		removeFeatures = append(removeFeatures, feature)
 	}
 

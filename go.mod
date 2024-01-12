@@ -1,6 +1,8 @@
 module github.com/rubrikinc/terraform-provider-polaris
 
-go 1.18
+go 1.21
+
+toolchain go1.21.3
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.3.0
@@ -103,3 +105,5 @@ require (
 	google.golang.org/grpc v1.46.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 )
+
+replace github.com/rubrikinc/rubrik-polaris-sdk-for-go => ../rubrik-polaris-sdk-for-go

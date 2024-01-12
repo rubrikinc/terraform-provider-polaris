@@ -97,7 +97,7 @@ func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 	roleKey := d.Get("role_key").(string)
 	var features []core.Feature
 	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+		features = append(features, core.Feature{Name: feature.(string)})
 	}
 
 	// Request the trust policy matching the role key.
@@ -144,7 +144,7 @@ func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m
 	// Request the trust policy.
 	features := make([]core.Feature, 0, len(account.Features))
 	for _, feature := range account.Features {
-		features = append(features, feature.Name)
+		features = append(features, feature.Feature)
 	}
 	policy, err := trustPolicy(ctx, client, id.String(), features, roleKey, "")
 	if err != nil {
@@ -154,7 +154,7 @@ func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m
 	// Set attributes.
 	featuresAttr := &schema.Set{F: schema.HashString}
 	for _, feature := range features {
-		featuresAttr.Add(string(feature))
+		featuresAttr.Add(feature.Name)
 	}
 	if err := d.Set("features", featuresAttr); err != nil {
 		return diag.FromErr(err)
@@ -178,7 +178,7 @@ func awsUpdateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 	roleKey := d.Get("role_key").(string)
 	var features []core.Feature
 	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+		features = append(features, core.Feature{Name: feature.(string)})
 	}
 
 	// Request the trust policy matching the role key. Note that the external ID

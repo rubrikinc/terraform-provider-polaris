@@ -124,7 +124,7 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	}
 	var features []core.Feature
 	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+		features = append(features, core.Feature{Name: feature.(string)})
 	}
 	profiles := make(map[string]string)
 	for _, roleAttr := range d.Get("instance_profile").(*schema.Set).List() {
@@ -175,7 +175,7 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 	}
 	features := &schema.Set{F: schema.HashString}
 	for _, feature := range account.Features {
-		features.Add(string(feature.Name))
+		features.Add(string(feature.Feature.Name))
 	}
 
 	// Request the cloud account artifacts.
@@ -223,7 +223,7 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	}
 	var features []core.Feature
 	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+		features = append(features, core.Feature{Name: feature.(string)})
 	}
 	profiles := make(map[string]string)
 	for _, roleAttr := range d.Get("instance_profile").(*schema.Set).List() {

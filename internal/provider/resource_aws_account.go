@@ -444,7 +444,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				if feature.Status != core.StatusMissingPermissions {
 					continue
 				}
-				features = append(features, feature.Name)
+				features = append(features, feature.Feature)
 			}
 
 			err := aws.Wrap(client).UpdatePermissions(ctx, account, features)

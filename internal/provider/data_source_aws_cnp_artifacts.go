@@ -87,7 +87,7 @@ func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	cloud := d.Get("cloud").(string)
 	var features []core.Feature
 	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+		features = append(features, core.Feature{Name: feature.(string)})
 	}
 
 	// Request artifacts.
