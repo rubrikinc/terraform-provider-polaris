@@ -75,8 +75,13 @@ Required:
 
 - `regions` (Set of String) Regions that Polaris will monitor for instances to automatically protect.
 
+Optional:
+
+- `permission_groups` (Set of String) Permission groups to assign to the cloud native protection feature.
+
 Read-Only:
 
+- `stack_arn` (String) Cloudformation stack ARN.
 - `status` (String) Status of the Cloud Native Protection feature.
 
 
@@ -86,6 +91,10 @@ Read-Only:
 Required:
 
 - `regions` (Set of String) Regions to enable the Exocompute feature in.
+
+Optional:
+
+- `permission_groups` (Set of String) Permission groups to assign to the exocompute feature.
 
 Read-Only:
 
