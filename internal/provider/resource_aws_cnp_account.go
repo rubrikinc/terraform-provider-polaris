@@ -34,6 +34,22 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+var featureResource = &schema.Resource{
+	Schema: map[string]*schema.Schema{
+		"name": {
+			Type:        schema.TypeString,
+			Required:    true,
+			Description: "Feature name.",
+		},
+		"permission_groups": {
+			Type:        schema.TypeSet,
+			Elem:        &schema.Schema{Type: schema.TypeString},
+			Required:    true,
+			Description: "Permission groups to assign to the feature.",
+		},
+	},
+}
+
 func resourceAwsCnpAccount() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateCnpAccount,
@@ -64,15 +80,12 @@ func resourceAwsCnpAccount() *schema.Resource {
 				ForceNew:    true,
 				Description: "External id.",
 			},
-			"features": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validation.StringIsNotWhiteSpace,
-				},
+			"feature": {
+				Type:        schema.TypeSet,
+				Elem:        featureResource,
 				MinItems:    1,
 				Required:    true,
-				Description: "RSC features.",
+				Description: "RSC feature with optional permission groups.",
 			},
 			"name": {
 				Type:         schema.TypeString,
@@ -112,8 +125,14 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	// Get attributes.
 	cloud := d.Get("cloud").(string)
 	var features []core.Feature
-	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+	for _, block := range d.Get("feature").(*schema.Set).List() {
+		block := block.(map[string]interface{})
+		feature := core.Feature{Name: block["name"].(string)}
+		for _, group := range block["permission_groups"].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
+		features = append(features, feature)
 	}
 	name := d.Get("name").(string)
 	nativeID := d.Get("native_id").(string)
@@ -163,11 +182,18 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 	if err := d.Set("cloud", account.Cloud); err != nil {
 		return diag.FromErr(err)
 	}
-	features := &schema.Set{F: schema.HashString}
+	features := &schema.Set{F: schema.HashResource(featureResource)}
 	for _, feature := range account.Features {
-		features.Add(string(feature.Name))
+		groups := &schema.Set{F: schema.HashString}
+		for _, group := range feature.Feature.PermissionGroups {
+			groups.Add(string(group))
+		}
+		features.Add(map[string]any{
+			"name":              feature.Feature.Name,
+			"permission_groups": groups,
+		})
 	}
-	if err := d.Set("features", features); err != nil {
+	if err := d.Set("feature", features); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set("name", account.Name); err != nil {
@@ -205,8 +231,14 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	cloud := d.Get("cloud").(string)
 	deleteSnapshots := d.Get("delete_snapshots_on_destroy").(bool)
 	var features []core.Feature
-	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature(feature.(string)))
+	for _, block := range d.Get("feature").(*schema.Set).List() {
+		block := block.(map[string]interface{})
+		feature := core.Feature{Name: block["name"].(string)}
+		for _, group := range block["permission_groups"].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
+		features = append(features, feature)
 	}
 	name := d.Get("name").(string)
 	nativeID := d.Get("native_id").(string)
@@ -231,15 +263,27 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 	}
 
-	if d.HasChange("features") {
-		oldAttr, newAttr := d.GetChange("features")
+	if d.HasChange("feature") {
+		oldAttr, newAttr := d.GetChange("feature")
 		var oldFeatures []core.Feature
-		for _, feature := range oldAttr.(*schema.Set).List() {
-			oldFeatures = append(oldFeatures, core.Feature(feature.(string)))
+		for _, block := range oldAttr.(*schema.Set).List() {
+			block := block.(map[string]interface{})
+			feature := core.Feature{Name: block["name"].(string)}
+			for _, group := range block["permission_groups"].(*schema.Set).List() {
+				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+
+			oldFeatures = append(oldFeatures, feature)
 		}
 		var newFeatures []core.Feature
-		for _, feature := range newAttr.(*schema.Set).List() {
-			newFeatures = append(newFeatures, core.Feature(feature.(string)))
+		for _, block := range newAttr.(*schema.Set).List() {
+			block := block.(map[string]interface{})
+			feature := core.Feature{Name: block["name"].(string)}
+			for _, group := range block["permission_groups"].(*schema.Set).List() {
+				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+
+			newFeatures = append(newFeatures, feature)
 		}
 		addFeatures, removeFeatures := diffFeatures(newFeatures, oldFeatures)
 
@@ -302,7 +346,7 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 
 	features := make([]core.Feature, 0, len(account.Features))
 	for _, feature := range account.Features {
-		features = append(features, feature.Name)
+		features = append(features, feature.Feature)
 	}
 
 	// Request account removal.
@@ -317,13 +361,13 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func diffFeatures(newFeatures []core.Feature, oldFeatures []core.Feature) ([]core.Feature, []core.Feature) {
-	newSet := make(map[core.Feature]struct{})
+	newSet := make(map[string]core.Feature)
 	for _, feature := range newFeatures {
-		newSet[feature] = struct{}{}
+		newSet[feature.Key()] = feature
 	}
-	oldSet := make(map[core.Feature]struct{})
+	oldSet := make(map[string]core.Feature)
 	for _, feature := range oldFeatures {
-		oldSet[feature] = struct{}{}
+		oldSet[feature.Key()] = feature
 	}
 
 	for feature := range oldSet {
@@ -334,11 +378,11 @@ func diffFeatures(newFeatures []core.Feature, oldFeatures []core.Feature) ([]cor
 	}
 
 	addFeatures := make([]core.Feature, 0, len(newSet))
-	for feature := range newSet {
+	for _, feature := range newSet {
 		addFeatures = append(addFeatures, feature)
 	}
 	removeFeatures := make([]core.Feature, 0, len(oldSet))
-	for feature := range oldSet {
+	for _, feature := range oldSet {
 		removeFeatures = append(removeFeatures, feature)
 	}
 

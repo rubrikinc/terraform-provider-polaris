@@ -81,6 +81,12 @@ func resourceAwsAccount() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"permission_groups": {
+							Type:        schema.TypeSet,
+							Elem:        &schema.Schema{Type: schema.TypeString},
+							Optional:    true,
+							Description: "Permission groups to assign to the cloud native protection feature.",
+						},
 						"regions": {
 							Type: schema.TypeSet,
 							Elem: &schema.Schema{
@@ -95,6 +101,11 @@ func resourceAwsAccount() *schema.Resource {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "Status of the Cloud Native Protection feature.",
+						},
+						"stack_arn": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
 						},
 					},
 				},
@@ -112,6 +123,12 @@ func resourceAwsAccount() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"permission_groups": {
+							Type:        schema.TypeSet,
+							Elem:        &schema.Schema{Type: schema.TypeString},
+							Optional:    true,
+							Description: "Permission groups to assign to the exocompute feature.",
+						},
 						"regions": {
 							Type: schema.TypeSet,
 							Elem: &schema.Schema{
@@ -211,6 +228,11 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	if ok {
 		block := cnpBlock.([]interface{})[0].(map[string]interface{})
 
+		feature := core.FeatureCloudNativeProtection
+		for _, group := range block["permission_groups"].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
 		var cnpOpts []aws.OptionFunc
 		for _, region := range block["regions"].(*schema.Set).List() {
 			cnpOpts = append(cnpOpts, aws.Region(region.(string)))
@@ -218,7 +240,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 		var err error
 		cnpOpts = append(cnpOpts, opts...)
-		id, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, cnpOpts...)
+		id, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, cnpOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -228,13 +250,18 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	if ok {
 		block := exoBlock.([]interface{})[0].(map[string]interface{})
 
+		feature := core.FeatureExocompute
+		for _, group := range block["permission_groups"].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
 		var exoOpts []aws.OptionFunc
 		for _, region := range block["regions"].(*schema.Set).List() {
 			exoOpts = append(exoOpts, aws.Region(region.(string)))
 		}
 
 		exoOpts = append(exoOpts, opts...)
-		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{core.FeatureExocompute}, exoOpts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, exoOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -269,6 +296,11 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 
 	cnpFeature, ok := account.Feature(core.FeatureCloudNativeProtection)
 	if ok {
+		groups := schema.Set{F: schema.HashString}
+		for _, group := range cnpFeature.Feature.PermissionGroups {
+			groups.Add(string(group))
+		}
+
 		regions := schema.Set{F: schema.HashString}
 		for _, region := range cnpFeature.Regions {
 			regions.Add(region)
@@ -277,8 +309,10 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		status := core.FormatStatus(cnpFeature.Status)
 		err := d.Set("cloud_native_protection", []interface{}{
 			map[string]interface{}{
-				"regions": &regions,
-				"status":  &status,
+				"permission_groups": &groups,
+				"regions":           &regions,
+				"status":            &status,
+				"stack_arn":         &cnpFeature.StackArn,
 			},
 		})
 		if err != nil {
@@ -292,6 +326,11 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 
 	exoFeature, ok := account.Feature(core.FeatureExocompute)
 	if ok {
+		groups := schema.Set{F: schema.HashString}
+		for _, group := range exoFeature.Feature.PermissionGroups {
+			groups.Add(string(group))
+		}
+
 		regions := schema.Set{F: schema.HashString}
 		for _, region := range exoFeature.Regions {
 			regions.Add(region)
@@ -300,9 +339,10 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		status := core.FormatStatus(exoFeature.Status)
 		err := d.Set("exocompute", []interface{}{
 			map[string]interface{}{
-				"regions":   &regions,
-				"status":    &status,
-				"stack_arn": &exoFeature.StackArn,
+				"permission_groups": &groups,
+				"regions":           &regions,
+				"status":            &status,
+				"stack_arn":         &exoFeature.StackArn,
 			},
 		})
 		if err != nil {
@@ -379,12 +419,17 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		if ok {
 			block := cnpBlock.([]interface{})[0].(map[string]interface{})
 
+			feature := core.FeatureCloudNativeProtection
+			for _, group := range block["permission_groups"].(*schema.Set).List() {
+				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+
 			var opts []aws.OptionFunc
 			for _, region := range block["regions"].(*schema.Set).List() {
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			if err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection, opts...); err != nil {
+			if err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), feature, opts...); err != nil {
 				return diag.FromErr(err)
 			}
 		} else {
@@ -408,12 +453,17 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		// feature.
 		switch {
 		case len(oldExoList) == 0:
+			feature := core.FeatureExocompute
+			for _, group := range newExoList[0].(map[string]interface{})["permission_groups"].(*schema.Set).List() {
+				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+
 			var opts []aws.OptionFunc
 			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			_, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{core.FeatureExocompute}, opts...)
+			_, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -444,7 +494,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				if feature.Status != core.StatusMissingPermissions {
 					continue
 				}
-				features = append(features, feature.Name)
+				features = append(features, feature.Feature)
 			}
 
 			err := aws.Wrap(client).UpdatePermissions(ctx, account, features)

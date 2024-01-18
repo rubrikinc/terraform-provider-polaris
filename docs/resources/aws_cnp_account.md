@@ -26,7 +26,7 @@ resource "polaris_aws_cnp_account" "account" {
 
 ### Required
 
-- `features` (Set of String) RSC features.
+- `feature` (Block Set, Min: 1) RSC feature with optional permission groups. (see [below for nested schema](#nestedblock--feature))
 - `native_id` (String) AWS account id.
 - `regions` (Set of String) Regions.
 
@@ -40,3 +40,11 @@ resource "polaris_aws_cnp_account" "account" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+<a id="nestedblock--feature"></a>
+### Nested Schema for `feature`
+
+Required:
+
+- `name` (String) Feature name.
+- `permission_groups` (Set of String) Permission groups to assign to the feature.

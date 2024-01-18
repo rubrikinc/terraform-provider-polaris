@@ -1,4 +1,4 @@
-// Copyright 2023 Rubrik, Inc.
+// Copyright 2024 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -21,69 +21,77 @@
 package provider
 
 import (
-	"cmp"
 	"context"
 	"crypto/sha256"
 	"fmt"
 	"log"
-	"slices"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// dataSourceFeatures defines the schema for the RSC features data source.
-func dataSourceFeatures() *schema.Resource {
+// dataSourceDeployment defines the schema for the RSC deployment data source.
+func dataSourceDeployment() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: featuresRead,
+		ReadContext: deploymentRead,
 
 		Schema: map[string]*schema.Schema{
-			"features": {
-				Type: schema.TypeList,
+			"ip_addresses": {
+				Type: schema.TypeSet,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
 				Computed:    true,
-				Description: "Enabled features.",
+				Description: "Deployment IP addresses.",
+			},
+			"version": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Deployment version.",
 			},
 		},
 	}
 }
 
-// featuresRead run the Read operation for the RSC features data source. Returns
-// all RSC features enabled for the current RSC account.
-func featuresRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] featuresRead")
+// deploymentRead run the Read operation for the deployment data source. Returns
+// details about the RSC deployment.
+func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] deploymentRead")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Request features.
-	features, err := core.Wrap(client.GQL).EnabledFeaturesForAccount(ctx)
+	// Request deployment details.
+	ipAddresses, err := core.Wrap(client.GQL).DeploymentIPAddresses(ctx)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	slices.SortFunc(features, func(lhs, rhs core.Feature) int {
-		return cmp.Compare(lhs.Name, rhs.Name)
-	})
+	version, err := client.GQL.DeploymentVersion(ctx)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Set attributes.
-	var featuresAttr []string
-	for _, feature := range features {
-		featuresAttr = append(featuresAttr, feature.Name)
+	ipAddressesAttr := &schema.Set{F: schema.HashString}
+	for _, ipAddress := range ipAddresses {
+		ipAddressesAttr.Add(ipAddress)
 	}
-	if err := d.Set("features", featuresAttr); err != nil {
+	if err := d.Set("ip_addresses", ipAddressesAttr); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("version", version); err != nil {
 		return diag.FromErr(err)
 	}
 
 	// Generate an ID for the data source.
 	hash := sha256.New()
-	for _, feature := range features {
-		hash.Write([]byte(feature.Name))
+	for _, ipAddress := range ipAddresses {
+		hash.Write([]byte(ipAddress))
 	}
+	hash.Write([]byte(version))
 	d.SetId(fmt.Sprintf("%x", hash.Sum(nil)))
 
 	return nil

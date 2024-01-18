@@ -78,6 +78,7 @@ func Provider() *schema.Provider {
 			"polaris_aws_cnp_artifacts":     dataSourceAwsArtifacts(),
 			"polaris_aws_cnp_permissions":   dataSourceAwsPermissions(),
 			"polaris_azure_permissions":     dataSourceAzurePermissions(),
+			"polaris_deployment":            dataSourceDeployment(),
 			"polaris_features":              dataSourceFeatures(),
 			"polaris_gcp_permissions":       dataSourceGcpPermissions(),
 			"polaris_role":                  dataSourceRole(),
