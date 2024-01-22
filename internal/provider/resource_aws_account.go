@@ -493,10 +493,18 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.Errorf("resource id and profile/role refer to different accounts")
 	}
 
-	// Removing Cloud Native Protection also removes Exocompute.
-	err = aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, deleteSnapshots)
-	if err != nil {
-		return diag.FromErr(err)
+	if _, ok := d.GetOk("exocompute"); ok {
+		err = aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureExocompute, deleteSnapshots)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if _, ok := d.GetOk("cloud_native_protection"); ok {
+		err = aws.Wrap(client).RemoveAccount(ctx, account, core.FeatureCloudNativeProtection, deleteSnapshots)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	d.SetId("")
