@@ -44,7 +44,7 @@ func resourceAwsExocompute() *schema.Resource {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
-				Description:      "RSC account id",
+				Description:      "RSC account id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"cluster_security_group_id": {
@@ -62,7 +62,7 @@ func resourceAwsExocompute() *schema.Resource {
 				Optional:         true,
 				ForceNew:         true,
 				AtLeastOneOf:     []string{"host_account_id", "region"},
-				Description:      "Shared exocompute host RSC account id",
+				Description:      "Shared exocompute host RSC account id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"node_security_group_id": {
