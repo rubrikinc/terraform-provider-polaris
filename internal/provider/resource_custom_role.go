@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
@@ -29,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
 // resourceCustomRole defines the schema for the custom role resource.
@@ -137,6 +139,10 @@ func readCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 	}
 
 	role, err := access.Wrap(client).Role(ctx, id)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}

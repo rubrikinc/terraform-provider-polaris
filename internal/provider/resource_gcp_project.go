@@ -217,6 +217,10 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 
 	// Lookup the GCP project in Polaris and update the local state.
 	account, err := gcp.Wrap(client).Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}

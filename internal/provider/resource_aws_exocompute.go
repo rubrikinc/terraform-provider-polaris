@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strings"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
 // resourceAwsExocompute defines the schema for the AWS exocompute resource.
@@ -203,6 +205,10 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 		hostID, err := aws.Wrap(client).ExocomputeHostAccount(ctx, aws.CloudAccountID(appID))
+		if errors.Is(err, graphql.ErrNotFound) {
+			d.SetId("")
+			return nil
+		}
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -216,6 +222,10 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 		exoConfig, err := aws.Wrap(client).ExocomputeConfig(ctx, configID)
+		if errors.Is(err, graphql.ErrNotFound) {
+			d.SetId("")
+			return nil
+		}
 		if err != nil {
 			return diag.FromErr(err)
 		}

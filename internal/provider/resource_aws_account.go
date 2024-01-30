@@ -290,6 +290,10 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 
 	// Lookup the Polaris cloud account using the cloud account id.
 	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}

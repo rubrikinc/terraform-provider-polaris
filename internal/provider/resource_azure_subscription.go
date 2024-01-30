@@ -236,6 +236,10 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m interf
 
 	// Lookup the Polaris cloud account using the cloud account id.
 	account, err := azure.Wrap(client).Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}

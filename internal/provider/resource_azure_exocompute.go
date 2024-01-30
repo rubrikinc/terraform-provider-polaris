@@ -127,6 +127,10 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	}
 
 	exoConfig, err := azure.Wrap(client).ExocomputeConfig(ctx, id)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
