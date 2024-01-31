@@ -107,7 +107,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 	}
 	d.SetId(id.String())
 
-	awsReadExocompute(ctx, d, m)
+	azureReadExocompute(ctx, d, m)
 	return nil
 }
 
