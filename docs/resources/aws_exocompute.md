@@ -55,7 +55,6 @@ resource "polaris_aws_exocompute" "default" {
 
 ### Optional
 
-- `cluster_name` (String) AWS customer cluster name.
 - `cluster_security_group_id` (String) AWS security group id for the cluster.
 - `host_account_id` (String) Shared exocompute host RSC account id.
 - `node_security_group_id` (String) AWS security group id for the nodes.

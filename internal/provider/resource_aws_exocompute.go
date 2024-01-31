@@ -103,26 +103,17 @@ func resourceAwsExocompute() *schema.Resource {
 				MaxItems:      2,
 				Optional:      true,
 				ForceNew:      true,
-				ConflictsWith: []string{"host_account_id", "cluster_name"},
-				RequiredWith:  []string{"subnets", "vpc_id"},
+				ConflictsWith: []string{"host_account_id"},
+				RequiredWith:  []string{"vpc_id"},
 				Description:   "AWS subnet ids for the cluster subnets.",
 			},
 			"vpc_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				ConflictsWith:    []string{"host_account_id", "cluster_name"},
-				RequiredWith:     []string{"region", "subnets"},
+				ConflictsWith:    []string{"host_account_id"},
+				RequiredWith:     []string{"subnets"},
 				Description:      "AWS VPC id for the cluster network.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
-			},
-			"cluster_name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				RequiredWith:     []string{"region"},
-				ConflictsWith:    []string{"host_account_id", "subnets", "vpc_id"},
-				Description:      "AWS customer cluster name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 		},
@@ -165,16 +156,18 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 		vpcID := d.Get("vpc_id").(string)
 
-		clusterName := d.Get("cluster_name").(string)
-
+		// Note that Managed and Unmanaged below refer to whether the security
+		// groups are managed by RSC or not, and not the cluster.
 		var config aws.ExoConfigFunc
 		switch {
-		case clusterName != "":
-			config = aws.CustomerCluster(region, clusterName)
-		case clusterSecurityGroupID != "" && nodeSecurityGroupID != "":
+		case region != "" && vpcID != "" && len(subnets) > 0 && clusterSecurityGroupID != "" && nodeSecurityGroupID != "":
 			config = aws.Unmanaged(region, vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID)
-		default:
+		case region != "" && vpcID != "" && len(subnets) > 0:
 			config = aws.Managed(region, vpcID, subnets)
+		case region != "":
+			config = aws.BYOKCluster(region)
+		default:
+			return diag.Errorf("invalid exocompute configuration")
 		}
 
 		id, err := aws.Wrap(client).AddExocomputeConfig(ctx, aws.CloudAccountID(accountID), config)
@@ -231,11 +224,6 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		}
 
 		if err := d.Set("region", exoConfig.Region); err != nil {
-			return diag.FromErr(err)
-		}
-
-		// Customer managed cluster
-		if err := d.Set("cluster_name", exoConfig.ClusterName); err != nil {
 			return diag.FromErr(err)
 		}
 
