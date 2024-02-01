@@ -265,6 +265,7 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 
 	if d.HasChange("feature") {
 		oldAttr, newAttr := d.GetChange("feature")
+
 		var oldFeatures []core.Feature
 		for _, block := range oldAttr.(*schema.Set).List() {
 			block := block.(map[string]interface{})
@@ -272,9 +273,9 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 			for _, group := range block["permission_groups"].(*schema.Set).List() {
 				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 			}
-
 			oldFeatures = append(oldFeatures, feature)
 		}
+
 		var newFeatures []core.Feature
 		for _, block := range newAttr.(*schema.Set).List() {
 			block := block.(map[string]interface{})
@@ -282,21 +283,20 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 			for _, group := range block["permission_groups"].(*schema.Set).List() {
 				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 			}
-
 			newFeatures = append(newFeatures, feature)
 		}
-		addFeatures, removeFeatures := diffFeatures(newFeatures, oldFeatures)
 
+		// When adding new features the list should include all features. When
+		// removing features only the features to be removed should be passed
+		// in.
+		removeFeatures, updateFeatures := diffFeatures(oldFeatures, newFeatures)
 		account := aws.AccountWithName(cloud, nativeID, name)
-		if len(addFeatures) > 0 {
-			// When adding new features the list should include all features.
-			if _, err := aws.Wrap(client).AddAccount(ctx, account, newFeatures, aws.Regions(regions...)); err != nil {
+		if len(updateFeatures) > 0 {
+			if _, err := aws.Wrap(client).AddAccount(ctx, account, updateFeatures, aws.Regions(regions...)); err != nil {
 				return diag.FromErr(err)
 			}
 		}
 		if len(removeFeatures) > 0 {
-			// When removing features only the features to be removed should be
-			// passed in.
 			if err := aws.Wrap(client).RemoveAccount(ctx, account, removeFeatures, deleteSnapshots); err != nil {
 				return diag.FromErr(err)
 			}
@@ -360,31 +360,33 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	return nil
 }
 
-func diffFeatures(newFeatures []core.Feature, oldFeatures []core.Feature) ([]core.Feature, []core.Feature) {
-	newSet := make(map[string]core.Feature)
-	for _, feature := range newFeatures {
-		newSet[feature.Key()] = feature
-	}
+func diffFeatures(oldFeatures []core.Feature, newFeatures []core.Feature) ([]core.Feature, []core.Feature) {
 	oldSet := make(map[string]core.Feature)
 	for _, feature := range oldFeatures {
-		oldSet[feature.Key()] = feature
+		oldSet[feature.Name] = feature
+	}
+	newSet := make(map[string]core.Feature)
+	for _, feature := range newFeatures {
+		newSet[feature.Name] = feature
 	}
 
-	for feature := range oldSet {
-		if _, ok := newSet[feature]; ok {
-			delete(newSet, feature)
-			delete(oldSet, feature)
+	for name, oldFeature := range oldSet {
+		if newFeature, ok := newSet[name]; ok {
+			if oldFeature.DeepEqual(newFeature) {
+				delete(newSet, name)
+			}
+			delete(oldSet, name)
 		}
 	}
 
-	addFeatures := make([]core.Feature, 0, len(newSet))
-	for _, feature := range newSet {
-		addFeatures = append(addFeatures, feature)
-	}
 	removeFeatures := make([]core.Feature, 0, len(oldSet))
 	for _, feature := range oldSet {
 		removeFeatures = append(removeFeatures, feature)
 	}
+	updateFeatures := make([]core.Feature, 0, len(newSet))
+	for _, feature := range newSet {
+		updateFeatures = append(updateFeatures, feature)
+	}
 
-	return addFeatures, removeFeatures
+	return removeFeatures, updateFeatures
 }

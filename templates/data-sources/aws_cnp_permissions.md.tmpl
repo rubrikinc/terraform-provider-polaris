@@ -25,12 +25,12 @@ data "polaris_aws_cnp_permissions" "permissions" {
 
 ### Required
 
-- `cloud` (String) AWS cloud type.
-- `features` (Set of String) RSC features.
+- `feature` (Block Set, Min: 1) RSC feature with optional permission groups. (see [below for nested schema](#nestedblock--feature))
 - `role_key` (String) Role key.
 
 ### Optional
 
+- `cloud` (String) AWS cloud type.
 - `ec2_recovery_role_path` (String) EC2 recovery role path.
 
 ### Read-Only
@@ -47,3 +47,11 @@ Read-Only:
 - `feature` (String) RSC Feature.
 - `name` (String) Policy name.
 - `policy` (String) Policy.
+
+<a id="nestedblock--feature"></a>
+### Nested Schema for `feature`
+
+Required:
+
+- `name` (String) Feature name.
+- `permission_groups` (Set of String) Permission groups to assign to the feature.
