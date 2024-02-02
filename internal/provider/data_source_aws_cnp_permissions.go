@@ -76,15 +76,12 @@ func dataSourceAwsPermissions() *schema.Resource {
 				Optional:    true,
 				Description: "EC2 recovery role path.",
 			},
-			"features": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validation.StringIsNotWhiteSpace,
-				},
+			"feature": {
+				Type:        schema.TypeSet,
+				Elem:        featureResource,
 				MinItems:    1,
 				Required:    true,
-				Description: "RSC features.",
+				Description: "RSC feature with optional permission groups.",
 			},
 			"managed_policies": {
 				Type:        schema.TypeList,
@@ -117,8 +114,14 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	cloud := d.Get("cloud").(string)
 	ec2RecoveryRolePath := d.Get("ec2_recovery_role_path").(string)
 	var features []core.Feature
-	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	for _, block := range d.Get("feature").(*schema.Set).List() {
+		block := block.(map[string]interface{})
+		feature := core.Feature{Name: block["name"].(string)}
+		for _, group := range block["permission_groups"].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
+		features = append(features, feature)
 	}
 	roleKey := d.Get("role_key").(string)
 

@@ -23,7 +23,7 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 
 ### Required
 
-- `features` (Set of String) RSC features.
+- `feature` (Block Set, Min: 1) RSC feature with optional permission groups. (see [below for nested schema](#nestedblock--feature))
 
 ### Optional
 
@@ -34,3 +34,11 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 - `id` (String) The ID of this resource.
 - `instance_profile_keys` (Set of String) Instance profile keys for the RSC features.
 - `role_keys` (Set of String) Role keys for the RSC features.
+
+<a id="nestedblock--feature"></a>
+### Nested Schema for `feature`
+
+Required:
+
+- `name` (String) Feature name.
+- `permission_groups` (Set of String) Permission groups to assign to the feature.

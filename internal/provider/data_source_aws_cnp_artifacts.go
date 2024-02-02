@@ -46,15 +46,12 @@ func dataSourceAwsArtifacts() *schema.Resource {
 				Description:  "AWS cloud type.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"features": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validation.StringIsNotWhiteSpace,
-				},
+			"feature": {
+				Type:        schema.TypeSet,
+				Elem:        featureResource,
 				MinItems:    1,
 				Required:    true,
-				Description: "RSC features.",
+				Description: "RSC feature with optional permission groups.",
 			},
 			"instance_profile_keys": {
 				Type:        schema.TypeSet,
@@ -86,8 +83,14 @@ func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	// Get attributes.
 	cloud := d.Get("cloud").(string)
 	var features []core.Feature
-	for _, feature := range d.Get("features").(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	for _, block := range d.Get("feature").(*schema.Set).List() {
+		block := block.(map[string]interface{})
+		feature := core.Feature{Name: block["name"].(string)}
+		for _, group := range block["permission_groups"].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
+		features = append(features, feature)
 	}
 
 	// Request artifacts.
