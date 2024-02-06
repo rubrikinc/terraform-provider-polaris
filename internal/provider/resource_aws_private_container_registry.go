@@ -55,7 +55,7 @@ func resourceAwsPrivateContainerRegistry() *schema.Resource {
 			"url": {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "RSC account id",
+				Description:  "URL for customer provided private container registry.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},

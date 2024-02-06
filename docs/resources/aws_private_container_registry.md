@@ -25,7 +25,7 @@ resource "polaris_aws_private_container_registry" "default" {
 ### Required
 
 - `account_id` (String) RSC account id
-- `url` (String) RSC account id
+- `url` (String) URL for customer provided private container registry.
 
 ### Optional
 
