@@ -48,8 +48,8 @@ func resourceAwsPrivateContainerRegistry() *schema.Resource {
 			},
 			"native_id": {
 				Type:         schema.TypeString,
-				Optional:     true,
-				Description:  "AWS account id.",
+				Required:     true,
+				Description:  "AWS account ID of the AWS account that will pull images from the RSC container registry.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"url": {
@@ -106,7 +106,6 @@ func awsReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceData
 	if err := d.Set("native_id", nativeID); err != nil {
 		return diag.FromErr(err)
 	}
-
 	if err := d.Set("url", url); err != nil {
 		return diag.FromErr(err)
 	}
