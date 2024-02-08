@@ -25,11 +25,8 @@ resource "polaris_aws_private_container_registry" "default" {
 ### Required
 
 - `account_id` (String) RSC account id
+- `native_id` (String) AWS account ID of the AWS account that will pull images from the RSC container registry.
 - `url` (String) URL for customer provided private container registry.
-
-### Optional
-
-- `native_id` (String) AWS account id.
 
 ### Read-Only
 
