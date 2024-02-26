@@ -33,9 +33,10 @@ import (
 
 func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: awsCreateClusterAttachment,
-		ReadContext:   awsReadClusterAttachment,
-		DeleteContext: awsDeleteClusterAttachment,
+		CreateContext: awsCreateAwsExocomputeClusterAttachment,
+		ReadContext:   awsReadAwsExocomputeClusterAttachment,
+		UpdateContext: awsUpdateAwsExocomputeClusterAttachment,
+		DeleteContext: awsDeleteAwsExocomputeClusterAttachment,
 
 		Schema: map[string]*schema.Schema{
 			"cluster_name": {
@@ -57,12 +58,17 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 				Description:      "RSC exocompute id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
+			"token_refresh": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: "To force a refresh of the token, part of the connection command, increase the value of this field.",
+			},
 		},
 	}
 }
 
-func awsCreateClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsCreateClusterAttachment")
+func awsCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] awsCreateAwsExocomputeClusterAttachment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -91,46 +97,42 @@ func awsCreateClusterAttachment(ctx context.Context, d *schema.ResourceData, m i
 	return nil
 }
 
-func awsReadClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsReadClusterAttachment")
+func awsReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] awsReadAwsExocomputeClusterAttachment")
+
+	// There is no way to read the state of the cluster attachment without
+	// updating the token.
+
+	return nil
+}
+
+func awsUpdateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] awsUpdateAwsExocomputeClusterAttachment")
+
+	if d.HasChange("token_refresh") {
+		return awsCreateAwsExocomputeClusterAttachment(ctx, d, m)
+	}
+
+	return nil
+}
+
+func awsDeleteAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] awsDeleteAwsExocomputeClusterAttachment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
-	configID, err := uuid.Parse(d.Get("exocompute_id").(string))
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	clusterName := d.Get("cluster_name").(string)
-
-	// Request cluster attachment. The AddClusterToExocomputeConfig function is
-	// idempotent.
-	clusterID, cmd, err := aws.Wrap(client).AddClusterToExocomputeConfig(ctx, configID, clusterName)
+	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if clusterID.String() != d.Id() {
-		return diag.Errorf("cluster id mismatch: %s != %s", clusterID.String(), d.Id())
-	}
-
-	// Set read-only attributes.
-	if err := d.Set("connection_command", cmd); err != nil {
+	if err := aws.Wrap(client).RemoveExocomputeCluster(ctx, id); err != nil {
 		return diag.FromErr(err)
 	}
 
-	return nil
-}
-
-func awsDeleteClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsDeleteClusterAttachment")
-
-	// There is no way to detach a cluster from an exocompute config at this
-	// time.
 	d.SetId("")
-
 	return nil
 }
