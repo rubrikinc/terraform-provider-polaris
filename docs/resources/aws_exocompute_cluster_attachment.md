@@ -20,6 +20,10 @@ description: |-
 - `cluster_name` (String) AWS EKS cluster name.
 - `exocompute_id` (String) RSC exocompute id.
 
+### Optional
+
+- `token_refresh` (Number) To force a refresh of the token, part of the connection command, increase the value of this field.
+
 ### Read-Only
 
 - `connection_command` (String) Cluster connection command.
