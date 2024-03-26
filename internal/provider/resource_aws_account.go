@@ -101,7 +101,7 @@ func resourceAwsAccount() *schema.Resource {
 				},
 				MaxItems:    1,
 				Required:    true,
-				Description: "Enable the Cloud Native Protection feature for the GCP project.",
+				Description: "Enable the Cloud Native Protection feature for the AWS account.",
 			},
 			"delete_snapshots_on_destroy": {
 				Type:        schema.TypeBool,
