@@ -23,7 +23,7 @@
 pipeline {
     agent any
     tools {
-        go 'go-1.21'
+        go 'go-1.22'
     }
     triggers {
         cron(env.BRANCH_NAME == 'main' ? 'H 01 * * *' : '')
