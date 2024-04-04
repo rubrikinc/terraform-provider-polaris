@@ -3,20 +3,20 @@
 page_title: "polaris_azure_exocompute Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_azure_exocompute resource creates an RSC Exocompute configuration. When an Exocompute configuration is created, RSC will automatically deploy the necessary resources in the specified Azure region to run the Exocompute service.
 ---
 
 # polaris_azure_exocompute (Resource)
 
-
+The `polaris_azure_exocompute` resource creates an RSC Exocompute configuration. When an Exocompute configuration is created, RSC will automatically deploy the necessary resources in the specified Azure region to run the Exocompute service.
 
 ## Example Usage
 
 ```terraform
 resource "polaris_azure_exocompute" "default" {
-  subscription_id = polaris_azure_subscription.default.id
-  region          = "eastus2"
-  subnet_id       = "/subscriptions/65774f88-da6a-11eb-bc8f-e798f8b54eba/resourceGroups/test/providers/Microsoft.Network/virtualNetworks/test/subnets/default"
+  cloud_account_id = polaris_azure_subscription.default.id
+  region           = "EASTUS2"
+  subnet_id        = "/subscriptions/65774f88-da6a-11eb-bc8f-e798f8b54eba/resourceGroups/test/providers/Microsoft.Network/virtualNetworks/test/subnets/default"
 }
 ```
 
@@ -25,10 +25,16 @@ resource "polaris_azure_exocompute" "default" {
 
 ### Required
 
-- `region` (String) Azure region to run the exocompute instance in.
+- `region` (String) Azure region to run the exocompute service in. Should be specified in the standard Azure style, e.g. `eastus`.
 - `subnet` (String) Azure subnet id.
-- `subscription_id` (String) RSC subscription id
+
+### Optional
+
+- `cloud_account_id` (String) RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for which the Exocompute service runs.
+- `subscription_id` (String, Deprecated) RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for which the Exocompute service runs. Deprecated, use `cloud_account_id` instead.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) Exocompute configuration ID.
+
+

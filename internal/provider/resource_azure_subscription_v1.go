@@ -32,8 +32,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// resourceAzureSubscriptionV0 defines the schema for version 1 of the Azure
-// subscription resource.
+// resourceAzureSubscriptionV1 defines the schema for version 1 of the Azure
+// service principal resource and how to migrate to version 2.
 func resourceAzureSubscriptionV1() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -79,7 +79,7 @@ func resourceAzureSubscriptionV1() *schema.Resource {
 // resourceAzureSubscriptionStateUpgradeV1 introduces a cloud native protection
 // feature block.
 func resourceAzureSubscriptionStateUpgradeV1(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAzureSubscriptionStateUpgradeV1")
+	log.Print("[TRACE] azureSubscriptionStateUpgradeV1")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -88,7 +88,7 @@ func resourceAzureSubscriptionStateUpgradeV1(ctx context.Context, state map[stri
 
 	id, err := uuid.Parse(state["id"].(string))
 	if err != nil {
-		return state, err
+		return nil, err
 	}
 
 	account, err := azure.Wrap(client).Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)

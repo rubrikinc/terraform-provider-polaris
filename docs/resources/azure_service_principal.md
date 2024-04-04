@@ -3,36 +3,74 @@
 page_title: "polaris_azure_service_principal Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_azure_service_principal resource adds an Azure service principal to RSC. A service principal must be added for each Azure tenant before subscriptions for the tenants can be added to RSC.
+  There are 3 ways to create a polaris_azure_service principal resource:
+    1. Using the app_id, app_name, app_secret, tenant_id and tenant_domain fields.
+    2. Using the credentials field which is the path to a custom service principal file. A description      of the custom format can be found      here https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials.
+    3. Using the sdk_auth field which is the path to an Azure service principal created with the Azure      SDK using the --sdk-auth parameter.
+  The permissions field can be used with the polaris_azure_permissions data source to inform RSC about permission updates when the Terraform configuration is applied.
+  ~> Note: Removing the last subscription from an RSC tenant will automatically remove the tenant, which also removes the service principal.
+  ~> Note: Destroying the polaris_azure_service_principal resource only updates the local state, it does not remove the service principal from RSC. However, creating another polaris_azure_service_principal resource for the same Azure tenant will overwrite the old service principal in RSC.
+  -> Note: There is no way to verify if a service principal has been added to RSC using the UI. RSC tenants doesn't show up in the UI until the first subscription is added.
 ---
 
 # polaris_azure_service_principal (Resource)
 
+The `polaris_azure_service_principal` resource adds an Azure service principal to RSC. A service principal must be added for each Azure tenant before subscriptions for the tenants can be added to RSC.
 
+There are 3 ways to create a `polaris_azure_service principal` resource:
+  1. Using the `app_id`, `app_name`, `app_secret`, `tenant_id` and `tenant_domain` fields.
+  2. Using the `credentials` field which is the path to a custom service principal file. A description      of the custom format can be found      [here](https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials).
+  3. Using the `sdk_auth` field which is the path to an Azure service principal created with the Azure      SDK using the `--sdk-auth` parameter.
+
+The `permissions` field can be used with the `polaris_azure_permissions` data source to inform RSC about permission updates when the Terraform configuration is applied.
+
+~> **Note:** Removing the last subscription from an RSC tenant will automatically remove the tenant, which also removes the service principal.
+
+~> **Note:** Destroying the `polaris_azure_service_principal` resource only updates the local state, it does not remove the service principal from RSC. However, creating another `polaris_azure_service_principal` resource for the same Azure tenant will overwrite the old service principal in RSC.
+
+-> **Note:** There is no way to verify if a service principal has been added to RSC using the UI. RSC tenants doesn't show up in the UI until the first subscription is added.
 
 ## Example Usage
 
 ```terraform
-# With service principal file.
+# With custom service principal file.
 resource "polaris_azure_service_principal" "default" {
   credentials   = "${path.module}/service-principal.json"
   tenant_domain = "mydomain.onmicrosoft.com"
 }
 
-# With service principal created with the Azure SDK using the --sdk-auth
-# parameter
+# With a service principal created using the Azure SDK and the
+# --sdk-auth parameter.
 resource "polaris_azure_service_principal" "default" {
   sdk_auth      = "${path.module}/sdk-service-principal.json"
   tenant_domain = "mydomain.onmicrosoft.com"
 }
 
-# Without service principal file.
+# Without a service principal file.
+resource "polaris_azure_service_principal" "default" {
+  app_id        = "25c2b42a-c76b-11eb-9767-6ff6b5b7e72b"
+  app_name      = "My App"
+  app_secret    = "<my-apps-secret>"
+  tenant_domain = "mydomain.onmicrosoft.com"
+  tenant_id     = "2bfdaef8-c76b-11eb-8d3d-4706c14a88f0"
+}
+
+# Using the polaris_azure_permissions data source to inform RSC
+# about permission updates.
+data "polaris_azure_permissions" "cnp" {
+  features = [
+    "CLOUD_NATIVE_PROTECTION",
+  ]
+}
+
 resource "polaris_azure_service_principal" "default" {
   app_id        = "25c2b42a-c76b-11eb-9767-6ff6b5b7e72b"
   app_name      = "My App"
   app_secret    = "<my-app-secret>"
   tenant_domain = "mydomain.onmicrosoft.com"
   tenant_id     = "2bfdaef8-c76b-11eb-8d3d-4706c14a88f0"
+  permissions   = data.polaris_azure_permissions.cnp.id
 }
 ```
 
@@ -41,18 +79,21 @@ resource "polaris_azure_service_principal" "default" {
 
 ### Required
 
-- `tenant_domain` (String) Tenant directory/domain name.
+- `tenant_domain` (String) Azure tenant primary domain.
 
 ### Optional
 
-- `app_id` (String) App registration application id.
-- `app_name` (String) App registration display name.
-- `app_secret` (String, Sensitive) App registration client secret.
-- `credentials` (String) Path to Azure service principal file.
-- `permissions_hash` (String) Signals that the permissions has been updated.
-- `sdk_auth` (String) Path to Azure service principal created with the Azure SDK using the --sdk-auth parameter
-- `tenant_id` (String) Tenant/domain id.
+- `app_id` (String) Azure app registration application ID. Also known as the client ID.
+- `app_name` (String) Azure app registration display name.
+- `app_secret` (String, Sensitive) Azure app registration client secret.
+- `credentials` (String) Path to a custom service principal file.
+- `permissions` (String) Permissions updated signal. When this field is updated, the provider will notify RSC that permissions has been updated. Use this field with the `polaris_azure_permissions` data source.
+- `permissions_hash` (String, Deprecated) Permissions updated signal. Deprecated, use `permissions` instead.
+- `sdk_auth` (String) Path to an Azure service principal created with the Azure SDK using the `--sdk-auth` parameter
+- `tenant_id` (String) Azure tenant ID. Also known as the directory ID.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) Azure app registration application ID. Also known as the client ID. Note, this might change in the future, use the `app_id` field to reference the application ID in configurations.
+
+

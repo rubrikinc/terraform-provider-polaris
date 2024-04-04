@@ -31,7 +31,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // resourceAzureExocompute defines the schema for the Azure exocompute resource.
@@ -41,26 +40,47 @@ func resourceAzureExocompute() *schema.Resource {
 		ReadContext:   azureReadExocompute,
 		DeleteContext: azureDeleteExocompute,
 
+		Description: "The `polaris_azure_exocompute` resource creates an RSC Exocompute configuration. When an " +
+			"Exocompute configuration is created, RSC will automatically deploy the necessary resources in the " +
+			"specified Azure region to run the Exocompute service.",
 		Schema: map[string]*schema.Schema{
-			"subscription_id": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "RSC subscription id",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
-			},
-			"region": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "Azure region to run the exocompute instance in.",
-				ValidateDiagFunc: validateAzureRegion,
-			},
-			"subnet": {
+			keyID: {
 				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: "Azure subnet id.",
+				Computed:    true,
+				Description: "Exocompute configuration ID.",
+			},
+			keyCloudAccountID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ExactlyOneOf: []string{keyCloudAccountID, keySubscriptionID},
+				Description: "RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for " +
+					"which the Exocompute service runs.",
+				ValidateFunc: validation.IsUUID,
+			},
+			keySubscriptionID: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Description: "RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for " +
+					"which the Exocompute service runs. Deprecated, use `cloud_account_id` instead.",
+				Deprecated:   "Use cloud_account_id instead.",
+				ValidateFunc: validation.IsUUID,
+			},
+			keyRegion: {
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+				Description: "Azure region to run the exocompute service in. Should be specified in the standard " +
+					"Azure style, e.g. `eastus`.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keySubnet: {
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "Azure subnet id.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
 		SchemaVersion: 1,
@@ -74,7 +94,7 @@ func resourceAzureExocompute() *schema.Resource {
 
 // azureCreateExocompute run the Create operation for the Azure exocompute
 // resource. This enables the exocompute feature and adds an exocompute config
-// to the Polaris cloud account.
+// to the RSC cloud account.
 func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureCreateExocompute")
 
@@ -83,36 +103,29 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.FromErr(err)
 	}
 
-	accountID, err := uuid.Parse(d.Get("subscription_id").(string))
+	id := d.Get(keyCloudAccountID).(string)
+	if id == "" {
+		id = d.Get(keySubscriptionID).(string)
+	}
+	accountID, err := uuid.Parse(id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	account, err := azure.Wrap(client).Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute)
-	if errors.Is(err, graphql.ErrNotFound) {
-		return diag.Errorf("exocompute not enabled on account")
-	}
+	region := d.Get(keyRegion).(string)
+
+	exoConfig := azure.Managed(region, d.Get(keySubnet).(string))
+	exoConfigID, err := azure.Wrap(client).AddExocomputeConfig(ctx, azure.CloudAccountID(accountID), exoConfig)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	region := d.Get("region").(string)
-	if !account.Features[0].HasRegion(region) {
-		return diag.Errorf("region %q not available with exocompute feature", region)
-	}
-
-	config := azure.Managed(region, d.Get("subnet").(string))
-	id, err := azure.Wrap(client).AddExocomputeConfig(ctx, azure.CloudAccountID(accountID), config)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	d.SetId(id.String())
-
-	azureReadExocompute(ctx, d, m)
+	d.SetId(exoConfigID.String())
+	awsReadExocompute(ctx, d, m)
 	return nil
 }
 
 // azureReadExocompute run the Read operation for the Azure exocompute
-// resource. This reads the state of the exocompute config in Polaris.
+// resource. This reads the remote state of the exocompute config in RSC.
 func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureReadExocompute")
 
@@ -121,24 +134,23 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	id, err := uuid.Parse(d.Id())
+	exoConfigID, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	exoConfig, err := azure.Wrap(client).ExocomputeConfig(ctx, id)
+	exoConfig, err := azure.Wrap(client).ExocomputeConfig(ctx, exoConfigID)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set("region", exoConfig.Region); err != nil {
+	if err := d.Set(keyRegion, exoConfig.Region); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("subnet", exoConfig.SubnetID); err != nil {
+	if err := d.Set(keySubnet, exoConfig.SubnetID); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -146,7 +158,7 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 // azureDeleteExocompute run the Delete operation for the Azure exocompute
-// resource. This removes the exocompute config from Polaris.
+// resource. This removes the exocompute config from RSC.
 func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureDeleteExocompute")
 
@@ -155,12 +167,12 @@ func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.FromErr(err)
 	}
 
-	id, err := uuid.Parse(d.Id())
+	exoConfigID, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	err = azure.Wrap(client).RemoveExocomputeConfig(ctx, id)
+	err = azure.Wrap(client).RemoveExocomputeConfig(ctx, exoConfigID)
 	if err != nil {
 		return diag.FromErr(err)
 	}

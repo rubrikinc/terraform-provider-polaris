@@ -3,20 +3,61 @@
 page_title: "polaris_azure_permissions Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_azure_permissions data source is used to access information about the permissions required by RSC for a specified set of RSC features. The features currently supported for Azure subscriptions are:
+    * AZURE_SQL_DB_PROTECTION
+    * AZURE_SQL_MI_PROTECTION
+    * CLOUD_NATIVE_ARCHIVAL
+    * CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
+    * CLOUD_NATIVE_PROTECTION
+    * EXOCOMPUTE
+  See the subscription azure_subscription resource for more information on enabling features for an Azure subscription added to RSC.
+  The polaris_azure_permissions data source can be used with the azurerm_role_definition and the polaris_azure_service_principal resources to automatically update the permissions of roles and notify RSC about the updated permissions.
+  -> Note: Due to backward compatibility, the features field allow the feature names to be given in    3 different styles: EXAMPLE_FEATURE_NAME, example-feature-name or example_feature_name. The    recommended style is EXAMPLE_FEATURE_NAME as it is what the RSC API itself uses.
 ---
 
 # polaris_azure_permissions (Data Source)
 
+The `polaris_azure_permissions` data source is used to access information about the permissions required by RSC for a specified set of RSC features. The features currently supported for Azure subscriptions are:
+  * `AZURE_SQL_DB_PROTECTION`
+  * `AZURE_SQL_MI_PROTECTION`
+  * `CLOUD_NATIVE_ARCHIVAL`
+  * `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`
+  * `CLOUD_NATIVE_PROTECTION`
+  * `EXOCOMPUTE`
 
+See the [subscription](azure_subscription) resource for more information on enabling features for an Azure subscription added to RSC.
+
+The `polaris_azure_permissions` data source can be used with the `azurerm_role_definition` and the `polaris_azure_service_principal` resources to automatically update the permissions of roles and notify RSC about the updated permissions.
+
+-> **Note:** Due to backward compatibility, the `features` field allow the feature names to be given in    3 different styles: `EXAMPLE_FEATURE_NAME`, `example-feature-name` or `example_feature_name`. The    recommended style is `EXAMPLE_FEATURE_NAME` as it is what the RSC API itself uses.
 
 ## Example Usage
 
 ```terraform
+# Permissions required for the Cloud Native Protection RSC feature.
 data "polaris_azure_permissions" "default" {
   features = [
     "CLOUD_NATIVE_PROTECTION",
   ]
+}
+
+# Permissions required for the Cloud Native Protection and Exocompute
+# RSC features. The polaris_azure_service_principal is set up to notify
+# RSC when the permissions are updated.
+data "polaris_azure_permissions" "default" {
+  features = [
+    "CLOUD_NATIVE_PROTECTION",
+    "EXOCOMPUTE"
+  ]
+}
+
+resource "polaris_azure_service_principal" "default" {
+  app_id        = "25c2b42a-c76b-11eb-9767-6ff6b5b7e72b"
+  app_name      = "My App"
+  app_secret    = "<my-app-secret>"
+  tenant_domain = "mydomain.onmicrosoft.com"
+  tenant_id     = "2bfdaef8-c76b-11eb-8d3d-4706c14a88f0"
+  permissions   = data.polaris_azure_permissions.default.id
 }
 ```
 
@@ -25,13 +66,15 @@ data "polaris_azure_permissions" "default" {
 
 ### Required
 
-- `features` (Set of String) Enabled features.
+- `features` (Set of String) RSC features.
 
 ### Read-Only
 
-- `actions` (List of String) Allowed actions.
-- `data_actions` (List of String) Allowed data actions.
-- `hash` (String) SHA-256 hash of the permissions, can be used to detect changes to the permissions.
-- `id` (String) The ID of this resource.
-- `not_actions` (List of String) Disallowed actions.
-- `not_data_actions` (List of String) Disallowed data actions.
+- `actions` (List of String) Azure allowed actions.
+- `data_actions` (List of String) Azure allowed data actions.
+- `hash` (String, Deprecated) SHA-256 hash of the permissions, can be used to detect changes to the permissions. Deprecated, use `id` instead.
+- `id` (String) SHA-256 hash of the required permissions, will be updated as the required permissions changes.
+- `not_actions` (List of String) Azure disallowed actions.
+- `not_data_actions` (List of String) Azure disallowed data actions.
+
+
