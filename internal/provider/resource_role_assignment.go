@@ -23,14 +23,16 @@ package provider
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
 // resourceRoleAssignment defines the schema for the role assignment resource.
@@ -42,18 +44,18 @@ func resourceRoleAssignment() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"role_id": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "Role identifier.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "Role identifier.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"user_email": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "User email address.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "User email address.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
 	}
@@ -64,7 +66,10 @@ func resourceRoleAssignment() *schema.Resource {
 func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] createRoleAssignment")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	roleID, err := uuid.Parse(d.Get("role_id").(string))
 	if err != nil {
@@ -86,7 +91,10 @@ func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] readRoleAssignment")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	roleID, err := uuid.Parse(d.Get("role_id").(string))
 	if err != nil {
@@ -95,6 +103,10 @@ func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag
 	userEmail := d.Get("user_email").(string)
 
 	user, err := access.Wrap(client).User(ctx, userEmail)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -110,7 +122,10 @@ func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag
 func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] deleteRoleAssignment")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	roleID, err := uuid.Parse(d.Get("role_id").(string))
 	if err != nil {

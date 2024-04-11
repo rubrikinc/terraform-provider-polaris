@@ -13,7 +13,7 @@ description: |-
 ## Example Usage
 
 ```terraform
-# With security groups managed by Polaris.
+# With security groups managed by RSC.
 resource "polaris_aws_exocompute" "default" {
   account_id = polaris_aws_account.default.id
   region     = "us-east-2"
@@ -27,16 +27,22 @@ resource "polaris_aws_exocompute" "default" {
 
 # With security groups managed by the user.
 resource "polaris_aws_exocompute" "default" {
-  account_id             = polaris_aws_account.default.id
-  clusterSecurityGroupID = "sg-005656347687b8170"
-  nodeSecurityGroupID    = "sg-00e147656785d7e2f"
-  region                 = "us-east-2"
-  vpc_id                 = "vpc-4859acb9"
+  account_id                = polaris_aws_account.default.id
+  cluster_security_group_id = "sg-005656347687b8170"
+  node_security_group_id    = "sg-00e147656785d7e2f"
+  region                    = "us-east-2"
+  vpc_id                    = "vpc-4859acb9"
 
   subnets = [
     "subnet-ea67b67b",
     "subnet-ea43ec78"
   ]
+}
+
+# Using the exocompute resources shared by an exocompute host.
+resource "polaris_aws_exocompute" "default" {
+  account_id      = polaris_aws_account.app.id
+  host_account_id = polaris_aws_account.host.id
 }
 ```
 
@@ -45,19 +51,18 @@ resource "polaris_aws_exocompute" "default" {
 
 ### Required
 
-- `account_id` (String) Polaris account id
-- `region` (String) AWS region to run the exocompute instance in.
-- `subnets` (Set of String) AWS subnet ids for the cluster subnets. Two subnets must be specified and they must be in different availability zones.
-- `vpc_id` (String) AWS VPC id for the cluster network.
+- `account_id` (String) RSC account id.
 
 ### Optional
 
 - `cluster_security_group_id` (String) AWS security group id for the cluster.
+- `host_account_id` (String) Shared exocompute host RSC account id.
 - `node_security_group_id` (String) AWS security group id for the nodes.
 - `polaris_managed` (Boolean) If true the security groups are managed by Polaris.
+- `region` (String) AWS region to run the exocompute instance in.
+- `subnets` (Set of String) AWS subnet ids for the cluster subnets.
+- `vpc_id` (String) AWS VPC id for the cluster network.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-
-

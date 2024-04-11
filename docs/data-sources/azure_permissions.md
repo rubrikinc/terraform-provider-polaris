@@ -15,7 +15,7 @@ description: |-
 ```terraform
 data "polaris_azure_permissions" "default" {
   features = [
-    "cloud-native-protection",
+    "CLOUD_NATIVE_PROTECTION",
   ]
 }
 ```
@@ -35,5 +35,3 @@ data "polaris_azure_permissions" "default" {
 - `id` (String) The ID of this resource.
 - `not_actions` (List of String) Disallowed actions.
 - `not_data_actions` (List of String) Disallowed data actions.
-
-

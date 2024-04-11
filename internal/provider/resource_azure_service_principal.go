@@ -28,7 +28,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 )
 
@@ -120,9 +119,12 @@ func resourceAzureServicePrincipal() *schema.Resource {
 func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureCreateServicePrincipal")
 
-	client := m.(*polaris.Client)
-	tenantDomain := d.Get("tenant_domain").(string)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
+	tenantDomain := d.Get("tenant_domain").(string)
 	var principal azure.ServicePrincipalFunc
 	switch {
 	case d.Get("credentials").(string) != "":
@@ -167,7 +169,10 @@ func azureReadServicePrincipal(ctx context.Context, d *schema.ResourceData, m in
 func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureUpdateServicePrincipal")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	if d.HasChange("permissions_hash") {
 		err := azure.Wrap(client).PermissionsUpdatedForTenantDomain(ctx, d.Get("tenant_domain").(string), nil)
