@@ -29,7 +29,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
@@ -71,7 +70,10 @@ func resourceAwsAccountV0() *schema.Resource {
 func resourceAwsAccountStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
 	log.Print("[TRACE] resourceAwsAccountStateUpgradeV0")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return nil, err
+	}
 
 	// Split the id into Polaris cloud account id and AWS account id.
 	parts := strings.Split(state["id"].(string), ":")

@@ -31,7 +31,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
@@ -62,9 +62,10 @@ func dataSourceAzurePermissions() *schema.Resource {
 			"features": {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
-					Type:             schema.TypeString,
-					ValidateDiagFunc: validateFeature,
+					Type:         schema.TypeString,
+					ValidateFunc: validation.StringIsNotWhiteSpace,
 				},
+				MinItems:    1,
 				Required:    true,
 				Description: "Enabled features.",
 			},
@@ -98,16 +99,21 @@ func dataSourceAzurePermissions() *schema.Resource {
 func azurePermissionsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azurePermissionsRead")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Read permissions required for the specified features.
 	var features []core.Feature
 	for _, f := range d.Get("features").(*schema.Set).List() {
+		// The ParseFeature functions accepts different spellings of the
+		// features and should not be used. However, we need to keep it for
+		// backwards compatibility reasons.
 		feature, err := core.ParseFeature(f.(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
-
 		features = append(features, feature)
 	}
 

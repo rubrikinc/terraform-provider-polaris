@@ -29,7 +29,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
@@ -94,7 +93,10 @@ func resourceGcpProjectV0() *schema.Resource {
 func resourceGcpProjectStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
 	log.Print("[TRACE] resourceGcpProjectStateUpgradeV0")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return nil, err
+	}
 
 	// Split the id into Polaris cloud account id and GCP project id.
 	parts := strings.Split(state["id"].(string), ":")

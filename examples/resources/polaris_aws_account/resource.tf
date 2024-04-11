@@ -26,3 +26,8 @@ resource "polaris_aws_account" "default" {
     ]
   }
 }
+
+# The Couldformation stack ARN is available after creation
+output "stack_arn" {
+  value       = polaris_aws_account.default.exocompute[0].stack_arn
+}

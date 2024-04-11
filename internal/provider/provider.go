@@ -22,14 +22,20 @@ package provider
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io/fs"
+	"net/mail"
 	"os"
-	"strings"
+	"time"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/cdm"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -39,75 +45,169 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"credentials": {
-				Type:             schema.TypeString,
-				Required:         true,
-				Description:      "The local user account name or service account file to use when accessing RSC.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "The service account file or local user account name to use when accessing RSC.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"polaris_aws_account":             resourceAwsAccount(),
-			"polaris_aws_exocompute":          resourceAwsExocompute(),
-			"polaris_azure_exocompute":        resourceAzureExocompute(),
-			"polaris_azure_service_principal": resourceAzureServicePrincipal(),
-			"polaris_azure_subscription":      resourceAzureSubscription(),
-			"polaris_custom_role":             resourceCustomRole(),
-			"polaris_gcp_project":             resourceGcpProject(),
-			"polaris_gcp_service_account":     resourceGcpServiceAccount(),
-			"polaris_role_assignment":         resourceRoleAssignment(),
-			"polaris_user":                    resourceUser(),
+			"polaris_aws_account":                       resourceAwsAccount(),
+			"polaris_aws_archival_location":             resourceAwsArchivalLocation(),
+			"polaris_aws_cnp_account":                   resourceAwsCnpAccount(),
+			"polaris_aws_cnp_account_attachments":       resourceAwsCnpAccountAttachments(),
+			"polaris_aws_cnp_account_trust_policy":      resourceAwsCnpAccountTrustPolicy(),
+			"polaris_aws_exocompute":                    resourceAwsExocompute(),
+			"polaris_aws_exocompute_cluster_attachment": resourceAwsExocomputeClusterAttachment(),
+			"polaris_aws_private_container_registry":    resourceAwsPrivateContainerRegistry(),
+			"polaris_azure_exocompute":                  resourceAzureExocompute(),
+			"polaris_azure_service_principal":           resourceAzureServicePrincipal(),
+			"polaris_azure_subscription":                resourceAzureSubscription(),
+			"polaris_cdm_bootstrap":                     resourceCDMBootstrap(),
+			"polaris_cdm_bootstrap_cces_aws":            resourceCDMBootstrapCCESAWS(),
+			"polaris_cdm_bootstrap_cces_azure":          resourceCDMBootstrapCCESAzure(),
+			"polaris_custom_role":                       resourceCustomRole(),
+			"polaris_gcp_project":                       resourceGcpProject(),
+			"polaris_gcp_service_account":               resourceGcpServiceAccount(),
+			"polaris_role_assignment":                   resourceRoleAssignment(),
+			"polaris_user":                              resourceUser(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
-			"polaris_azure_permissions": dataSourceAzurePermissions(),
-			"polaris_gcp_permissions":   dataSourceGcpPermissions(),
-			"polaris_role":              dataSourceRole(),
-			"polaris_role_template":     dataSourceRoleTemplate(),
+			"polaris_aws_archival_location": dataSourceAwsArchivalLocation(),
+			"polaris_aws_cnp_artifacts":     dataSourceAwsArtifacts(),
+			"polaris_aws_cnp_permissions":   dataSourceAwsPermissions(),
+			"polaris_azure_permissions":     dataSourceAzurePermissions(),
+			"polaris_deployment":            dataSourceDeployment(),
+			"polaris_features":              dataSourceFeatures(),
+			"polaris_gcp_permissions":       dataSourceGcpPermissions(),
+			"polaris_role":                  dataSourceRole(),
+			"polaris_role_template":         dataSourceRoleTemplate(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
 	}
 }
 
-// providerConfigure configures the RSC provider.
-func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
-	credentials := d.Get("credentials").(string)
+type client struct {
+	cdmClient     *cdm.BootstrapClient
+	polarisClient *polaris.Client
+}
 
-	// When credentials refer to an existing file we load the file as a service
-	// account, otherwise we assume that it's an account name
-	var account polaris.Account
-	if _, err := os.Stat(credentials); err != nil {
-		account, err = polaris.DefaultUserAccount(credentials, true)
-		if err != nil {
-			return nil, diag.FromErr(err)
-		}
-	} else {
-		account, err = polaris.ServiceAccountFromFile(credentials, true)
-		if err != nil {
-			return nil, diag.FromErr(err)
-		}
+func (c *client) cdm() (*cdm.BootstrapClient, error) {
+	if c.cdmClient == nil {
+		return nil, errors.New("cdm functionality has not been configured in the provider block")
 	}
 
+	return c.cdmClient, nil
+}
+
+func (c *client) polaris() (*polaris.Client, error) {
+	if c.polarisClient == nil {
+		return nil, errors.New("polaris functionality has not been configured in the provider block")
+	}
+
+	return c.polarisClient, nil
+}
+
+// providerConfigure configures the RSC provider.
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 	logger := log.NewStandardLogger()
-	polaris.SetLogLevelFromEnv(logger)
-	client, err := polaris.NewClientWithLogger(account, logger)
-	if err != nil {
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
 		return nil, diag.FromErr(err)
+	}
+
+	client := &client{
+		cdmClient: cdm.NewBootstrapClientWithLogger(true, logger),
+	}
+
+	var account polaris.Account
+	if c, ok := d.GetOk("credentials"); ok {
+		credentials := c.(string)
+
+		// When credentials refer to an existing file we load the file as a
+		// service account, otherwise we assume that it's a user account name.
+		if _, err := os.Stat(credentials); err == nil {
+			if account, err = polaris.ServiceAccountFromFile(credentials, true); err != nil {
+				return nil, diag.FromErr(err)
+			}
+		} else {
+			if account, err = polaris.DefaultUserAccount(credentials, true); err != nil {
+				return nil, diag.FromErr(err)
+			}
+		}
+	} else {
+		var err error
+		if account, err = polaris.ServiceAccountFromEnv(); err != nil {
+			if !errors.Is(err, graphql.ErrNotFound) {
+				return nil, diag.FromErr(err)
+			}
+
+			// Make sure interface value is an untyped nil, see SA4023 for
+			// details.
+			account = nil
+		}
+	}
+	if account != nil {
+		polarisClient, err := polaris.NewClientWithLogger(account, logger)
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+		client.polarisClient = polarisClient
 	}
 
 	return client, nil
 }
 
-// validateStringIsNotWhiteSpace validates that the specified string is not
-// empty or consisting entirely of whitespace characters.
-//
-// Note that the standard validation.StringIsNotWhiteSpace does not always work
-// with the validation.ToDiagFunc.
-func validateStringIsNotWhiteSpace(m any, p cty.Path) diag.Diagnostics {
-	if s, ok := m.(string); ok && strings.TrimSpace(s) == "" {
-		return diag.Errorf("expected %q to not be an empty string or whitespace", s)
+// validateDuration verifies that i contains a valid duration.
+func validateDuration(i interface{}, k string) ([]string, []error) {
+	v, ok := i.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+	}
+	if _, err := time.ParseDuration(v); err != nil {
+		return nil, []error{fmt.Errorf("%q is not a valid duration", v)}
+	}
+
+	return nil, nil
+}
+
+// validateEmailAddress verifies that i contains a valid email address.
+func validateEmailAddress(i interface{}, k string) ([]string, []error) {
+	v, ok := i.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+	}
+	if _, err := mail.ParseAddress(v); err != nil {
+		return nil, []error{fmt.Errorf("%q is not a valid email address", v)}
+	}
+
+	return nil, nil
+}
+
+// fileExists assumes m is a file path and returns nil if the file exists,
+// otherwise a diagnostic message is returned.
+func fileExists(m interface{}, p cty.Path) diag.Diagnostics {
+	if _, err := os.Stat(m.(string)); err != nil {
+		details := "unknown error"
+
+		var pathErr *fs.PathError
+		if errors.As(err, &pathErr) {
+			details = pathErr.Err.Error()
+		}
+
+		return diag.Errorf("failed to access file: %s", details)
 	}
 
 	return nil
+}
+
+// validateHash verifies that m contains a valid SHA-256 hash.
+func validateHash(m interface{}, p cty.Path) diag.Diagnostics {
+	if hash, ok := m.(string); ok && len(hash) == 64 {
+		return nil
+	}
+
+	return diag.Errorf("invalid hash value")
 }

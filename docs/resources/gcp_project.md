@@ -52,5 +52,3 @@ resource "polaris_gcp_project" "default" {
 Read-Only:
 
 - `status` (String) Status of the Cloud Native Protection feature.
-
-

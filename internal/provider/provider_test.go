@@ -24,9 +24,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
+	"testing"
 	"text/template"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -36,6 +39,85 @@ var providerFactories = map[string]func() (*schema.Provider, error){
 	"polaris": func() (*schema.Provider, error) {
 		return provider, nil
 	},
+}
+
+const credentialsFromEnv = `
+provider "polaris" {
+}
+
+data "polaris_role" "admin" {
+  name = "Administrator"
+}
+`
+
+func TestAccProviderCredentialsInEnv_basic(t *testing.T) {
+	credentials, err := loadTestCredentials("RUBRIK_POLARIS_SERVICEACCOUNT_FILE")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Valid service account in env.
+	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS", credentials)
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: credentialsFromEnv,
+			Check: resource.ComposeTestCheckFunc(
+				resource.TestCheckResourceAttr("data.polaris_role.admin", "id", "00000000-0000-0000-0000-000000000000"),
+				resource.TestCheckResourceAttr("data.polaris_role.admin", "name", "Administrator"),
+			),
+		}},
+	})
+
+	// Invalid service account in env.
+	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS", "invalid")
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config:      credentialsFromEnv,
+			ExpectError: regexp.MustCompile("failed to unmarshal RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS: invalid character 'i' looking for beginning of value"),
+		}},
+	})
+}
+
+func TestAccProviderMissingCredentialsInEnv_basic(t *testing.T) {
+	// No service account in env. This could happen if the provider is used to
+	// bootstrap a CDM cluster without RSC credentials, but an RSC resource is
+	// used.
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config:      credentialsFromEnv,
+			ExpectError: regexp.MustCompile("polaris functionality has not been configured in the provider block"),
+		}},
+	})
+
+	// Partial service account in env. This could happen if the service account
+	// is given in parts and one of the parts is missing.
+	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME", "name")
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config:      credentialsFromEnv,
+			ExpectError: regexp.MustCompile("invalid service account client id"),
+		}},
+	})
+}
+
+// loadTestCredentials returns the content of the file pointed to by the
+// credentialsEnv parameter.
+func loadTestCredentials(credentialsEnv string) (string, error) {
+	credentials := os.Getenv(credentialsEnv)
+	if credentials == "" {
+		return "", fmt.Errorf("%s is empty", credentialsEnv)
+	}
+
+	buf, err := os.ReadFile(credentials)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file pointed to by %s: %v", credentialsEnv, err)
+	}
+
+	return string(buf), nil
 }
 
 // testConfig holds the configuration for a test, i.e. the actual values to
@@ -49,8 +131,8 @@ type testConfig struct {
 
 // loadTestConfig returns a new testConfig initialized from the file pointed
 // to by the environmental variable in resourceFileEnv. Note that it must be
-// possible to unmarshal the file to resource and that resource must be of
-// pointer type.
+// possible to unmarshal the file to the resource type and that resource must
+// be of pointer type.
 func loadTestConfig(credentialsEnv, resourceFileEnv string, resource interface{}) (testConfig, error) {
 	credentials := os.Getenv(credentialsEnv)
 	if credentials == "" {
@@ -59,7 +141,7 @@ func loadTestConfig(credentialsEnv, resourceFileEnv string, resource interface{}
 
 	buf, err := os.ReadFile(os.Getenv(resourceFileEnv))
 	if err != nil {
-		return testConfig{}, fmt.Errorf("failed to read file pointed to %s: %v", resourceFileEnv, err)
+		return testConfig{}, fmt.Errorf("failed to read file pointed to by %s: %v", resourceFileEnv, err)
 	}
 
 	if err := json.Unmarshal(buf, resource); err != nil {

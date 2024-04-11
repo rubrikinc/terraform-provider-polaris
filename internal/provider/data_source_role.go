@@ -26,7 +26,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
@@ -47,10 +47,10 @@ func dataSourceRole() *schema.Resource {
 				Description: "True if the role is the organization administrator.",
 			},
 			"name": {
-				Type:             schema.TypeString,
-				Required:         true,
-				Description:      "Role name.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "Role name.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"permission": {
 				Type: schema.TypeSet,
@@ -96,7 +96,10 @@ func dataSourceRole() *schema.Resource {
 func roleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] roleRead")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	name := d.Get("name").(string)
 	role, err := access.Wrap(client).RoleByName(ctx, name)

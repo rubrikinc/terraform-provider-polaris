@@ -33,5 +33,3 @@ resource "polaris_gcp_service_account" "default" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-
-

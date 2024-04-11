@@ -22,13 +22,15 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
 // resourceCustomRole defines the schema for the custom role resource.
@@ -41,16 +43,16 @@ func resourceCustomRole() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"description": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Description:      "Role description.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "Role description.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"name": {
-				Type:             schema.TypeString,
-				Required:         true,
-				Description:      "Role name.",
-				ValidateDiagFunc: validateStringIsNotWhiteSpace,
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "Role name.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			"permission": {
 				Type: schema.TypeSet,
@@ -63,18 +65,18 @@ func resourceCustomRole() *schema.Resource {
 									"object_ids": {
 										Type: schema.TypeSet,
 										Elem: &schema.Schema{
-											Type:             schema.TypeString,
-											ValidateDiagFunc: validateStringIsNotWhiteSpace,
+											Type:         schema.TypeString,
+											ValidateFunc: validation.StringIsNotWhiteSpace,
 										},
 										Required:    true,
 										MinItems:    1,
 										Description: "Object/workload identifiers.",
 									},
 									"snappable_type": {
-										Type:             schema.TypeString,
-										Required:         true,
-										Description:      "Snappable/workload type.",
-										ValidateDiagFunc: validateStringIsNotWhiteSpace,
+										Type:         schema.TypeString,
+										Required:     true,
+										Description:  "Snappable/workload type.",
+										ValidateFunc: validation.StringIsNotWhiteSpace,
 									},
 								},
 							},
@@ -83,10 +85,10 @@ func resourceCustomRole() *schema.Resource {
 							Description: "Snappable hierarchy.",
 						},
 						"operation": {
-							Type:             schema.TypeString,
-							Required:         true,
-							Description:      "Operation to allow on object ids under the snappable hierarchy.",
-							ValidateDiagFunc: validateStringIsNotWhiteSpace,
+							Type:         schema.TypeString,
+							Required:     true,
+							Description:  "Operation to allow on object ids under the snappable hierarchy.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 					},
 				},
@@ -102,7 +104,10 @@ func resourceCustomRole() *schema.Resource {
 func createCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] createCustomRole")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	name := d.Get("name").(string)
 	description := d.Get("description").(string)
@@ -123,7 +128,10 @@ func createCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 func readCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] readCustomRole")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
@@ -131,6 +139,10 @@ func readCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 	}
 
 	role, err := access.Wrap(client).Role(ctx, id)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -152,7 +164,10 @@ func readCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 func updateCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] updateCustomRole")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
@@ -177,7 +192,10 @@ func updateCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 func deleteCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] deleteCustomRole")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {

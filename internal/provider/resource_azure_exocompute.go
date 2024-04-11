@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -47,7 +46,7 @@ func resourceAzureExocompute() *schema.Resource {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
-				Description:      "Polaris subscription id",
+				Description:      "RSC subscription id",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"region": {
@@ -79,7 +78,10 @@ func resourceAzureExocompute() *schema.Resource {
 func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureCreateExocompute")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	accountID, err := uuid.Parse(d.Get("subscription_id").(string))
 	if err != nil {
@@ -105,7 +107,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 	}
 	d.SetId(id.String())
 
-	awsReadExocompute(ctx, d, m)
+	azureReadExocompute(ctx, d, m)
 	return nil
 }
 
@@ -114,7 +116,10 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureReadExocompute")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
@@ -122,6 +127,10 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	}
 
 	exoConfig, err := azure.Wrap(client).ExocomputeConfig(ctx, id)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -141,7 +150,10 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureDeleteExocompute")
 
-	client := m.(*polaris.Client)
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
