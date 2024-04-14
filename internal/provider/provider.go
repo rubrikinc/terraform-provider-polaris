@@ -44,7 +44,7 @@ import (
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			"credentials": {
+			keyCredentials: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Description:  "The service account file or local user account name to use when accessing RSC.",
@@ -61,9 +61,9 @@ func Provider() *schema.Provider {
 			"polaris_aws_exocompute":                    resourceAwsExocompute(),
 			"polaris_aws_exocompute_cluster_attachment": resourceAwsExocomputeClusterAttachment(),
 			"polaris_aws_private_container_registry":    resourceAwsPrivateContainerRegistry(),
-			"polaris_azure_exocompute":                  resourceAzureExocompute(),
-			"polaris_azure_service_principal":           resourceAzureServicePrincipal(),
-			"polaris_azure_subscription":                resourceAzureSubscription(),
+			keyAzureExocompute:                          resourceAzureExocompute(),
+			keyAzureServicePrincipal:                    resourceAzureServicePrincipal(),
+			keyAzureSubscription:                        resourceAzureSubscription(),
 			"polaris_cdm_bootstrap":                     resourceCDMBootstrap(),
 			"polaris_cdm_bootstrap_cces_aws":            resourceCDMBootstrapCCESAWS(),
 			"polaris_cdm_bootstrap_cces_azure":          resourceCDMBootstrapCCESAzure(),
@@ -78,7 +78,7 @@ func Provider() *schema.Provider {
 			"polaris_aws_archival_location": dataSourceAwsArchivalLocation(),
 			"polaris_aws_cnp_artifacts":     dataSourceAwsArtifacts(),
 			"polaris_aws_cnp_permissions":   dataSourceAwsPermissions(),
-			"polaris_azure_permissions":     dataSourceAzurePermissions(),
+			keyAzurePermissions:             dataSourceAzurePermissions(),
 			"polaris_deployment":            dataSourceDeployment(),
 			"polaris_features":              dataSourceFeatures(),
 			"polaris_gcp_permissions":       dataSourceGcpPermissions(),
@@ -123,7 +123,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 	}
 
 	var account polaris.Account
-	if c, ok := d.GetOk("credentials"); ok {
+	if c, ok := d.GetOk(keyCredentials); ok {
 		credentials := c.(string)
 
 		// When credentials refer to an existing file we load the file as a
@@ -144,7 +144,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 				return nil, diag.FromErr(err)
 			}
 
-			// Make sure interface value is an untyped nil, see SA4023 for
+			// Make sure the interface value is an untyped nil, see SA4023 for
 			// details.
 			account = nil
 		}
@@ -201,6 +201,25 @@ func fileExists(m interface{}, p cty.Path) diag.Diagnostics {
 	}
 
 	return nil
+}
+
+func isExistingFile(i interface{}, k string) ([]string, []error) {
+	v, ok := i.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+	}
+
+	if _, err := os.Stat(v); err != nil {
+		details := "unknown error"
+		var pathErr *fs.PathError
+		if errors.As(err, &pathErr) {
+			details = pathErr.Err.Error()
+		}
+
+		return nil, []error{fmt.Errorf("failed to access file: %s", details)}
+	}
+
+	return nil, nil
 }
 
 // validateHash verifies that m contains a valid SHA-256 hash.

@@ -83,15 +83,7 @@ func gcpPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	// Read permissions required for the specified features.
 	var features []core.Feature
 	for _, f := range d.Get("features").(*schema.Set).List() {
-		// The ParseFeature functions accepts different spellings of the
-		// features and should not be used. However, we need to keep it for
-		// backwards compatibility reasons.
-		feature, err := core.ParseFeature(f.(string))
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		features = append(features, feature)
+		features = append(features, core.ParseFeatureNoValidation(f.(string)))
 	}
 
 	perms, err := gcp.Wrap(client).Permissions(ctx, features)

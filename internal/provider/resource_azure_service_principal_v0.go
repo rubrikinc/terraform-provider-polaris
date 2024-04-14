@@ -31,9 +31,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-// resourceAzureServicePrincipal defines the schema for the Azure service
-// principal resource. Note that the delete function cannot remove the service
-// principal since there is no delete operation in the Polaris API.
+// resourceAzureServicePrincipalV0 defines the schema for version 0 of the Azure
+// service principal resource and how to migrate to version 1.
 func resourceAzureServicePrincipalV0() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -93,10 +92,10 @@ func resourceAzureServicePrincipalV0() *schema.Resource {
 // resourceAzureServicePrincipalStateUpgradeV0 makes the tenant domain
 // parameter required.
 func resourceAzureServicePrincipalStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAzureServicePrincipalStateUpgradeV0")
+	log.Print("[TRACE] azureServicePrincipalStateUpgradeV0")
 
 	// Tenant domain is only missing when the principal has been given as a
-	// credentials file.
+	// credential file.
 	credentials, ok := state["credentials"]
 	if !ok {
 		return state, nil

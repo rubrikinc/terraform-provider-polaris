@@ -33,15 +33,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	graphqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
-
-// validateAwsRegion verifies that the name is a valid AWS region name.
-func validateAwsRegion(m interface{}, p cty.Path) diag.Diagnostics {
-	_, err := graphqlaws.ParseRegion(m.(string))
-	return diag.FromErr(err)
-}
 
 // validatePermissions verifies that the permissions value is valid.
 func validatePermissions(m interface{}, p cty.Path) diag.Diagnostics {
@@ -90,8 +83,8 @@ func resourceAwsAccount() *schema.Resource {
 						"regions": {
 							Type: schema.TypeSet,
 							Elem: &schema.Schema{
-								Type:             schema.TypeString,
-								ValidateDiagFunc: validateAwsRegion,
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringIsNotWhiteSpace,
 							},
 							MinItems:    1,
 							Required:    true,
@@ -132,8 +125,8 @@ func resourceAwsAccount() *schema.Resource {
 						"regions": {
 							Type: schema.TypeSet,
 							Elem: &schema.Schema{
-								Type:             schema.TypeString,
-								ValidateDiagFunc: validateAwsRegion,
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringIsNotWhiteSpace,
 							},
 							MinItems:    1,
 							Required:    true,
