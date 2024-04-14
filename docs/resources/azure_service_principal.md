@@ -95,5 +95,3 @@ resource "polaris_azure_service_principal" "default" {
 ### Read-Only
 
 - `id` (String) Azure app registration application ID. Also known as the client ID. Note, this might change in the future, use the `app_id` field to reference the application ID in configurations.
-
-

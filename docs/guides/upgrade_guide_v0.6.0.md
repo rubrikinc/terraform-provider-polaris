@@ -1,5 +1,5 @@
 ---
-page_title: "Upgrade Guide: v0.6.0 "
+page_title: "Upgrade Guide: v0.6.0"
 subcategory: "Upgrade"
 ---
 

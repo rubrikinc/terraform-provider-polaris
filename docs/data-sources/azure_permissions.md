@@ -76,5 +76,3 @@ resource "polaris_azure_service_principal" "default" {
 - `id` (String) SHA-256 hash of the required permissions, will be updated as the required permissions changes.
 - `not_actions` (List of String) Azure disallowed actions.
 - `not_data_actions` (List of String) Azure disallowed data actions.
-
-

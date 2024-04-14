@@ -36,5 +36,3 @@ resource "polaris_azure_exocompute" "default" {
 ### Read-Only
 
 - `id` (String) Exocompute configuration ID.
-
-

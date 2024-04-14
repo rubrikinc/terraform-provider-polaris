@@ -166,6 +166,8 @@ Optional:
 Read-Only:
 
 - `status` (String) Status of the Exocompute feature.
+
+
 <a id="nestedblock--sql_db_protection"></a>
 ### Nested Schema for `sql_db_protection`
 
@@ -188,5 +190,3 @@ Required:
 Read-Only:
 
 - `status` (String) Status of the SQL MI Protection feature.
-
-
