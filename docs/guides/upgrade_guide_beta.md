@@ -56,7 +56,7 @@ When upgrading to the latest beta release you may encounter one or more of the f
 ### polaris_azure_exocompute
 Replacing the `subscription_id` field with the `cloud_account_id` field will result in the `polaris_azure_exocompute`
 resource being recreated, a diff similar to the following will be shown:
-```
+```hcl
   # polaris_azure_exocompute.default must be replaced
 -/+ resource "polaris_azure_exocompute" "default" {
       + cloud_account_id = "a677433c-954c-4af6-842e-0268c4a82a9f" # forces replacement
@@ -70,7 +70,7 @@ Apply the diff to recreate the resource and replace the field.
 ### polaris_azure_service_principal
 Replacing the `permissions_hash` field with the `permissions` field will result in the resource being updated in-place,
 a diff similar to the following will be shown:
-```
+```hcl
 # polaris_azure_service_principal.default will be updated in-place
 ~ resource "polaris_azure_service_principal" "default" {
     id               = "6f35cc58-e1c9-445d-8bb0-a0e30dd53a40"
@@ -84,7 +84,7 @@ Apply the diff to replace the field.
 ### polaris_azure_subscription
 Because of the new Azure resource group support, using the `cloud_native_protection` or `exocompute` fields will result
 in a diff similar to the following:
-```
+```hcl
 # polaris_azure_subscription.default will be updated in-place
 ~ resource "polaris_azure_subscription" "default" {
     id                          = "f7b298c4-bf1d-4af4-900e-bf69ddfc6187"
