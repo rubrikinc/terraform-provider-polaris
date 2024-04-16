@@ -11,6 +11,7 @@ description: |-
     4. exocompute - Provides snapshot indexing, file recovery, storage tiering, and application-consistent      protection of Azure objects.
     5. sql_db_protection - Provides centralized database backup management and recovery in an Azure SQL      Database deployment.
     6. sql_mi_protection - Provides centralized database backup management and recovery for an Azure SQL      Managed Instance deployment.
+  ~> Note: Even though the resource_group_name and the resource_group_region fields are marked as optional you should always specify them. They are marked as optional to simplify the migration of existing Terraform configurations. If omitted, RSC will generate a unique resource group name but it will not create the actual resource group. Until the resource group is created, the RSC feature depending on the resource group will not function as expected.
   -> Note: As of now, sql_db_protection and sql_mi_protection does not support specifying an Azure    resource group.
 ---
 
@@ -25,6 +26,8 @@ Any combination of different RSC features can be enabled for a subscription:
   4. `exocompute` - Provides snapshot indexing, file recovery, storage tiering, and application-consistent      protection of Azure objects.
   5. `sql_db_protection` - Provides centralized database backup management and recovery in an Azure SQL      Database deployment.
   6. `sql_mi_protection` - Provides centralized database backup management and recovery for an Azure SQL      Managed Instance deployment.
+
+~> **Note:** Even though the `resource_group_name` and the `resource_group_region` fields are marked as optional you should always specify them. They are marked as optional to simplify the migration of existing Terraform configurations. If omitted, RSC will generate a unique resource group name but it will not create the actual resource group. Until the resource group is created, the RSC feature depending on the resource group will not function as expected.
 
 -> **Note:** As of now, `sql_db_protection` and `sql_mi_protection` does not support specifying an Azure    resource group.
 
@@ -105,7 +108,7 @@ Required:
 
 Optional:
 
-- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature.
+- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists.
 - `resource_group_region` (String) Region of the Azure resource group.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group.
 
@@ -123,7 +126,7 @@ Required:
 
 Optional:
 
-- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature.
+- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists.
 - `resource_group_region` (String) Region of the Azure resource group.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group.
 
@@ -141,7 +144,7 @@ Required:
 
 Optional:
 
-- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature.
+- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists.
 - `resource_group_region` (String) Region of the Azure resource group.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group.
 
@@ -159,7 +162,7 @@ Required:
 
 Optional:
 
-- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature.
+- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists.
 - `resource_group_region` (String) Region of the Azure resource group.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group.
 

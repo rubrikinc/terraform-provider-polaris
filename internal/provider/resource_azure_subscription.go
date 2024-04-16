@@ -63,6 +63,12 @@ func resourceAzureSubscription() *schema.Resource {
 			"  6. `sql_mi_protection` - Provides centralized database backup management and recovery for an Azure SQL " +
 			"     Managed Instance deployment.\n" +
 			"\n" +
+			"~> **Note:** Even though the `resource_group_name` and the `resource_group_region` fields are marked as " +
+			"optional you should always specify them. They are marked as optional to simplify the migration of existing " +
+			"Terraform configurations. If omitted, RSC will generate a unique resource group name but it will not create " +
+			"the actual resource group. Until the resource group is created, the RSC feature depending on the resource " +
+			"group will not function as expected.\n" +
+			"\n" +
 			"-> **Note:** As of now, `sql_db_protection` and `sql_mi_protection` does not support specifying an Azure " +
 			"   resource group.\n",
 		Schema: map[string]*schema.Schema{
@@ -86,9 +92,10 @@ func resourceAzureSubscription() *schema.Resource {
 								"specified in the standard Azure style, e.g. `eastus`.",
 						},
 						keyResourceGroupName: {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Description:  "Name of the Azure resource group where RSC places all resources created by the feature.",
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "Name of the Azure resource group where RSC places all resources created by " +
+								"the feature. RSC assumes the resource group already exists.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyResourceGroupRegion: {
@@ -138,7 +145,7 @@ func resourceAzureSubscription() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							Description: "Name of the Azure resource group where RSC places all resources created by " +
-								"the feature.",
+								"the feature. RSC assumes the resource group already exists.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyResourceGroupRegion: {
@@ -188,7 +195,7 @@ func resourceAzureSubscription() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							Description: "Name of the Azure resource group where RSC places all resources created by " +
-								"the feature.",
+								"the feature. RSC assumes the resource group already exists.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyResourceGroupRegion: {
@@ -241,9 +248,10 @@ func resourceAzureSubscription() *schema.Resource {
 								"the standard Azure style, e.g. `eastus`.",
 						},
 						keyResourceGroupName: {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Description:  "Name of the Azure resource group where RSC places all resources created by the feature.",
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "Name of the Azure resource group where RSC places all resources created by " +
+								"the feature. RSC assumes the resource group already exists.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyResourceGroupRegion: {
