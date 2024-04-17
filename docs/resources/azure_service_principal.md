@@ -88,7 +88,7 @@ resource "polaris_azure_service_principal" "default" {
 - `app_secret` (String, Sensitive) Azure app registration client secret.
 - `credentials` (String) Path to a custom service principal file.
 - `permissions` (String) Permissions updated signal. When this field is updated, the provider will notify RSC that permissions has been updated. Use this field with the `polaris_azure_permissions` data source.
-- `permissions_hash` (String, Deprecated) Permissions updated signal. Deprecated, use `permissions` instead.
+- `permissions_hash` (String, Deprecated) Permissions updated signal. **Deprecated:** use `permissions` instead.
 - `sdk_auth` (String) Path to an Azure service principal created with the Azure SDK using the `--sdk-auth` parameter
 - `tenant_id` (String) Azure tenant ID. Also known as the directory ID.
 

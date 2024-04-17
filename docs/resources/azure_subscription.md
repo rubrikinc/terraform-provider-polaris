@@ -61,7 +61,7 @@ resource "polaris_azure_subscription" "default" {
     ]
     resource_group_name   = "my-west-resource-group"
     resource_group_region = "westus2"
-    resource_group_tags   = {
+    resource_group_tags = {
       environment = "production"
     }
   }

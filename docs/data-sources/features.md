@@ -3,12 +3,12 @@
 page_title: "polaris_features Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_feature data source is used to access information about features enabled for an RSC account.
 ---
 
 # polaris_features (Data Source)
 
-
+The `polaris_feature` data source is used to access information about features enabled for an RSC account.
 
 ## Example Usage
 
@@ -21,5 +21,5 @@ data "polaris_features" "features" {}
 
 ### Read-Only
 
-- `features` (List of String) Enabled features.
-- `id` (String) The ID of this resource.
+- `features` (List of String) Features enabled for the RSC account.
+- `id` (String) SHA-256 hash of the fields in order.

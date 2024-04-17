@@ -38,14 +38,21 @@ func dataSourceFeatures() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: featuresRead,
 
+		Description: "The `polaris_feature` data source is used to access information about features enabled for an " +
+			"RSC account.",
 		Schema: map[string]*schema.Schema{
-			"features": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "SHA-256 hash of the fields in order.",
+			},
+			keyFeatures: {
 				Type: schema.TypeList,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
 				Computed:    true,
-				Description: "Enabled features.",
+				Description: "Features enabled for the RSC account.",
 			},
 		},
 	}
@@ -75,7 +82,7 @@ func featuresRead(ctx context.Context, d *schema.ResourceData, m interface{}) di
 	for _, feature := range features {
 		featuresAttr = append(featuresAttr, feature.Name)
 	}
-	if err := d.Set("features", featuresAttr); err != nil {
+	if err := d.Set(keyFeatures, featuresAttr); err != nil {
 		return diag.FromErr(err)
 	}
 

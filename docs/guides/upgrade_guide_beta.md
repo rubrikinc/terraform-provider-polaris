@@ -13,11 +13,13 @@ The latest beta release introduces changes to the following data sources and res
   `cloud_account_id` field will recreate the resource.
 * `polaris_azure_service_principal` - The `permissions_hash` field has been deprecated and replaced with the
   `permissions` field. With the changes in the `polaris_azure_permissions` data source, use
-   `permissions = data.polaris_azure_permissions.<name>.id` to connect the `polaris_azure_permissions` data source to
-   the permissions updated signal.
+  `permissions = data.polaris_azure_permissions.<name>.id` to connect the `polaris_azure_permissions` data source to
+  the permissions updated signal.
 * `polaris_azure_subscription` - Support for onboarding `cloud_native_archival`, `cloud_native_archival_encryption`,
   `sql_db_protection` and `sql_mi_protection`. Note, there is no additional Terraform resources for managing the
-   features yet. Support for specifying an Azure resource group per RSC feature.
+  features yet. Support for specifying an Azure resource group per RSC feature.
+* `polaris_deployment` - Introduced 2 new fields, `account_fqdn` and `account_name`. `account_fqdn` holds the fully
+  qualified domain name for the RSC account. `account_name` holds the RSC account name.
 
 Deprecated fields will be removed in a future release, please migrate your configurations to use the replacement field
 as soon as possible.
