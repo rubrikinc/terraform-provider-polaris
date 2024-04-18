@@ -125,7 +125,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Description:  "Permissions updated signal. **Deprecated:** use `permissions` instead.",
-				Deprecated:   "Use `permissions` instead.",
+				Deprecated:   "use `permissions` instead.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyTenantDomain: {

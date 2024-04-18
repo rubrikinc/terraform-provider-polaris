@@ -25,7 +25,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -37,25 +36,12 @@ func dataSourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: deploymentRead,
 
-		Description: "The `polaris_deployment` data source is used to access information about the RSC deployment.\n" +
-			"\n" +
-			"-> **Note:** `account_fqdn` and `account_name` are read from the service account or the local user " +
-			"account and not from RSC.",
+		Description: "The `polaris_deployment` data source is used to access information about the RSC deployment.",
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "SHA-256 hash of the fields in order.",
-			},
-			keyAccountFQDN: {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Fully qualified domain name of the RSC account.",
-			},
-			keyAccountName: {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "RSC account name.",
 			},
 			keyIPAddresses: {
 				Type: schema.TypeSet,
@@ -85,8 +71,6 @@ func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	}
 
 	// Request deployment details.
-	accountFQDN := strings.ToLower(client.Account.AccountFQDN())
-	accountName := strings.ToLower(client.Account.AccountName())
 	ipAddresses, err := core.Wrap(client.GQL).DeploymentIPAddresses(ctx)
 	if err != nil {
 		return diag.FromErr(err)
@@ -97,13 +81,6 @@ func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	}
 
 	// Set attributes.
-	if err := d.Set(keyAccountFQDN, accountFQDN); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keyAccountName, accountName); err != nil {
-		return diag.FromErr(err)
-
-	}
 	ipAddressesAttr := &schema.Set{F: schema.HashString}
 	for _, ipAddress := range ipAddresses {
 		ipAddressesAttr.Add(ipAddress)
@@ -117,8 +94,6 @@ func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) 
 
 	// Generate an ID for the data source.
 	hash := sha256.New()
-	hash.Write([]byte(accountFQDN))
-	hash.Write([]byte(accountName))
 	for _, ipAddress := range ipAddresses {
 		hash.Write([]byte(ipAddress))
 	}

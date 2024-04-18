@@ -4,34 +4,24 @@ page_title: "polaris_deployment Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
   The polaris_deployment data source is used to access information about the RSC deployment.
-  -> Note: account_fqdn and account_name are read from the service account or the local user account and not from RSC.
 ---
 
 # polaris_deployment (Data Source)
 
 The `polaris_deployment` data source is used to access information about the RSC deployment.
 
--> **Note:** `account_fqdn` and `account_name` are read from the service account or the local user account and not from RSC.
-
 ## Example Usage
 
 ```terraform
-# Output the IP addresses used by the RSC deployment.
+# Output the IP addresses and version used by the RSC deployment.
 data "polaris_deployment" "deployment" {}
 
 output "ip_addresses" {
   value = data.polaris_deployment.deployment.ip_addresses
 }
 
-# Using the account_fqdn field from the deployment data source to create
-# an Azure AD application.
-data "polaris_deployment" "deployment" {}
-
-resource "azuread_application" "app" {
-  display_name = "Rubrik Security Cloud Integration"
-  web {
-    homepage_url = "https://${data.polaris_deployment.deployment.account_fqdn}/setup_azure"
-  }
+output "version" {
+  value = data.polaris_deployment.deployment.version
 }
 ```
 
@@ -40,8 +30,6 @@ resource "azuread_application" "app" {
 
 ### Read-Only
 
-- `account_fqdn` (String) Fully qualified domain name of the RSC account.
-- `account_name` (String) RSC account name.
 - `id` (String) SHA-256 hash of the fields in order.
 - `ip_addresses` (Set of String) Deployment IP addresses.
 - `version` (String) Deployment version.

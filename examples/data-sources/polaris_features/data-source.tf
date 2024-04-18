@@ -2,5 +2,5 @@
 data "polaris_features" "features" {}
 
 output "features_enabled" {
-  value = data.polaris_features.features
+  value = data.polaris_features.features.features
 }

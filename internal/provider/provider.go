@@ -75,6 +75,7 @@ func Provider() *schema.Provider {
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
+			keyPolarisAccount:               dataSourceAccount(),
 			"polaris_aws_archival_location": dataSourceAwsArchivalLocation(),
 			"polaris_aws_cnp_artifacts":     dataSourceAwsArtifacts(),
 			"polaris_aws_cnp_permissions":   dataSourceAwsPermissions(),

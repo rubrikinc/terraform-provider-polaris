@@ -64,7 +64,7 @@ func resourceAzureExocompute() *schema.Resource {
 				ForceNew: true,
 				Description: "RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for " +
 					"which the Exocompute service runs. **Deprecated:** use `cloud_account_id` instead.",
-				Deprecated:   "Use cloud_account_id instead.",
+				Deprecated:   "use `cloud_account_id` instead.",
 				ValidateFunc: validation.IsUUID,
 			},
 			keyRegion: {

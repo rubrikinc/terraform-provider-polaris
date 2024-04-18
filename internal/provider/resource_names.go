@@ -1,8 +1,6 @@
 package provider
 
 const (
-	keyAccountFQDN                   = "account_fqdn"
-	keyAccountName                   = "account_name"
 	keyActions                       = "actions"
 	keyAppID                         = "app_id"
 	keyAppName                       = "app_name"
@@ -16,13 +14,16 @@ const (
 	keyDeleteSnapshotsOnDestroy      = "delete_snapshots_on_destroy"
 	keyExocompute                    = "exocompute"
 	keyFeatures                      = "features"
+	keyFQDN                          = "fqdn"
 	keyHash                          = "hash"
 	keyID                            = "id"
 	keyIPAddresses                   = "ip_addresses"
+	keyName                          = "name"
 	keyNotActions                    = "not_actions"
 	keyNotDataActions                = "not_data_actions"
 	keyPermissions                   = "permissions"
 	keyPermissionsHash               = "permissions_hash"
+	keyPolarisAccount                = "polaris_account"
 	keyPolarisAzureExocompute        = "polaris_azure_exocompute"
 	keyPolarisAzurePermissions       = "polaris_azure_permissions"
 	keyPolarisAzureServicePrincipal  = "polaris_azure_service_principal"

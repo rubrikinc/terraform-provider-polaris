@@ -98,7 +98,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Computed: true,
 				Description: "SHA-256 hash of the permissions, can be used to detect changes to the permissions. " +
 					"**Deprecated:** use `id` instead.",
-				Deprecated: "Use `id` instead.",
+				Deprecated: "use `id` instead.",
 			},
 			keyNotActions: {
 				Type: schema.TypeList,
