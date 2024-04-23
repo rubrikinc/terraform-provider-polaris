@@ -5,6 +5,9 @@ subcategory: "Upgrade"
 
 # RSC provider beta changes
 The latest beta release introduces changes to the following data sources and resources:
+* `polaris_account` - New data source with 3 fields, `features`, `fqdn` and `name`. `features` holds the features
+  enabled for the RSC account. `fqdn` holds the fully qualified domain name for the RSC account. `name` holds the RSC
+  account name.
 * `polaris_azure_permissions` - The `hash` field has been deprecated and replaced with the `id` field. Both fields will
   have same value until the `hash` field is removed, in a future release.
 * `polaris_azure_exocompute` - The `subscription_id` field has been deprecated and replaced with the `cloud_account_id`
@@ -13,11 +16,13 @@ The latest beta release introduces changes to the following data sources and res
   `cloud_account_id` field will recreate the resource.
 * `polaris_azure_service_principal` - The `permissions_hash` field has been deprecated and replaced with the
   `permissions` field. With the changes in the `polaris_azure_permissions` data source, use
-   `permissions = data.polaris_azure_permissions.<name>.id` to connect the `polaris_azure_permissions` data source to
-   the permissions updated signal.
+  `permissions = data.polaris_azure_permissions.<name>.id` to connect the `polaris_azure_permissions` data source to
+  the permissions updated signal.
 * `polaris_azure_subscription` - Support for onboarding `cloud_native_archival`, `cloud_native_archival_encryption`,
   `sql_db_protection` and `sql_mi_protection`. Note, there is no additional Terraform resources for managing the
-   features yet. Support for specifying an Azure resource group per RSC feature.
+  features yet. Support for specifying an Azure resource group per RSC feature.
+* `polaris_features` - The data source has been deprecated and replaced with the `features` field of the
+  `polaris_deployment` data source. Note, the `features` field is a set and not a list.
 
 Deprecated fields will be removed in a future release, please migrate your configurations to use the replacement field
 as soon as possible.

@@ -36,8 +36,14 @@ func dataSourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: deploymentRead,
 
+		Description: "The `polaris_deployment` data source is used to access information about the RSC deployment.",
 		Schema: map[string]*schema.Schema{
-			"ip_addresses": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "SHA-256 hash of the fields in order.",
+			},
+			keyIPAddresses: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
@@ -45,7 +51,7 @@ func dataSourceDeployment() *schema.Resource {
 				Computed:    true,
 				Description: "Deployment IP addresses.",
 			},
-			"version": {
+			keyVersion: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "Deployment version.",
@@ -79,10 +85,10 @@ func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	for _, ipAddress := range ipAddresses {
 		ipAddressesAttr.Add(ipAddress)
 	}
-	if err := d.Set("ip_addresses", ipAddressesAttr); err != nil {
+	if err := d.Set(keyIPAddresses, ipAddressesAttr); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("version", version); err != nil {
+	if err := d.Set(keyVersion, version); err != nil {
 		return diag.FromErr(err)
 	}
 

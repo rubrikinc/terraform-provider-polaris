@@ -72,7 +72,7 @@ resource "polaris_azure_service_principal" "default" {
 
 - `actions` (List of String) Azure allowed actions.
 - `data_actions` (List of String) Azure allowed data actions.
-- `hash` (String, Deprecated) SHA-256 hash of the permissions, can be used to detect changes to the permissions. Deprecated, use `id` instead.
+- `hash` (String, Deprecated) SHA-256 hash of the permissions, can be used to detect changes to the permissions. **Deprecated:** use `id` instead.
 - `id` (String) SHA-256 hash of the required permissions, will be updated as the required permissions changes.
 - `not_actions` (List of String) Azure disallowed actions.
 - `not_data_actions` (List of String) Azure disallowed data actions.

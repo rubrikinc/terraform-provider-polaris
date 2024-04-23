@@ -1,4 +1,5 @@
 // Copyright 2021 Rubrik, Inc.
+// Copyright 2021 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -123,8 +124,8 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			keyPermissionsHash: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				Description:  "Permissions updated signal. Deprecated, use `permissions` instead.",
-				Deprecated:   "Use `permissions` instead.",
+				Description:  "Permissions updated signal. **Deprecated:** use `permissions` instead.",
+				Deprecated:   "use `permissions` instead.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyTenantDomain: {

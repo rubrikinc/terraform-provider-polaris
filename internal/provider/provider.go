@@ -61,9 +61,9 @@ func Provider() *schema.Provider {
 			"polaris_aws_exocompute":                    resourceAwsExocompute(),
 			"polaris_aws_exocompute_cluster_attachment": resourceAwsExocomputeClusterAttachment(),
 			"polaris_aws_private_container_registry":    resourceAwsPrivateContainerRegistry(),
-			keyAzureExocompute:                          resourceAzureExocompute(),
-			keyAzureServicePrincipal:                    resourceAzureServicePrincipal(),
-			keyAzureSubscription:                        resourceAzureSubscription(),
+			keyPolarisAzureExocompute:                   resourceAzureExocompute(),
+			keyPolarisAzureServicePrincipal:             resourceAzureServicePrincipal(),
+			keyPolarisAzureSubscription:                 resourceAzureSubscription(),
 			"polaris_cdm_bootstrap":                     resourceCDMBootstrap(),
 			"polaris_cdm_bootstrap_cces_aws":            resourceCDMBootstrapCCESAWS(),
 			"polaris_cdm_bootstrap_cces_azure":          resourceCDMBootstrapCCESAzure(),
@@ -75,12 +75,13 @@ func Provider() *schema.Provider {
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
+			keyPolarisAccount:               dataSourceAccount(),
 			"polaris_aws_archival_location": dataSourceAwsArchivalLocation(),
 			"polaris_aws_cnp_artifacts":     dataSourceAwsArtifacts(),
 			"polaris_aws_cnp_permissions":   dataSourceAwsPermissions(),
-			keyAzurePermissions:             dataSourceAzurePermissions(),
-			"polaris_deployment":            dataSourceDeployment(),
-			"polaris_features":              dataSourceFeatures(),
+			keyPolarisAzurePermissions:      dataSourceAzurePermissions(),
+			keyPolarisDeployment:            dataSourceDeployment(),
+			keyPolarisFeatures:              dataSourceFeatures(),
 			"polaris_gcp_permissions":       dataSourceGcpPermissions(),
 			"polaris_role":                  dataSourceRole(),
 			"polaris_role_template":         dataSourceRoleTemplate(),
@@ -126,7 +127,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 	if c, ok := d.GetOk(keyCredentials); ok {
 		credentials := c.(string)
 
-		// When credentials refer to an existing file we load the file as a
+		// When credentials refer to an existing file, we load the file as a
 		// service account, otherwise we assume that it's a user account name.
 		if _, err := os.Stat(credentials); err == nil {
 			if account, err = polaris.ServiceAccountFromFile(credentials, true); err != nil {

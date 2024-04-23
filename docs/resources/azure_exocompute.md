@@ -31,7 +31,7 @@ resource "polaris_azure_exocompute" "default" {
 ### Optional
 
 - `cloud_account_id` (String) RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for which the Exocompute service runs.
-- `subscription_id` (String, Deprecated) RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for which the Exocompute service runs. Deprecated, use `cloud_account_id` instead.
+- `subscription_id` (String, Deprecated) RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for which the Exocompute service runs. **Deprecated:** use `cloud_account_id` instead.
 
 ### Read-Only
 
