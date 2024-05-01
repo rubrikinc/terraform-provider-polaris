@@ -636,6 +636,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 	const (
 		opAddFeature = iota
 		opRemoveFeature
+		opTemporaryRemoveFeature
 		opUpdateRegions
 		opUpdatePermissions
 	)
@@ -680,7 +681,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 					order:   feature.orderSplitAdd,
 				})
 				updates = append(updates, updateOp{
-					op:      opRemoveFeature,
+					op:      opTemporaryRemoveFeature,
 					feature: feature.feature,
 					order:   feature.orderSplitRemove,
 				})
@@ -717,8 +718,11 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			if id != accountID {
 				return diag.Errorf("feature %s added to the wrong cloud account", feature)
 			}
-		case opRemoveFeature:
-			deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
+		case opRemoveFeature, opTemporaryRemoveFeature:
+			deleteSnapshots := false
+			if update.op == opRemoveFeature {
+				deleteSnapshots = d.Get(keyDeleteSnapshotsOnDestroy).(bool)
+			}
 			if err := azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), feature, deleteSnapshots); err != nil {
 				return diag.FromErr(err)
 			}
