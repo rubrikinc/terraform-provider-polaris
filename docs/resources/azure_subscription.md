@@ -13,7 +13,7 @@ description: |-
     6. sql_mi_protection - Provides centralized database backup management and recovery for an Azure SQL      Managed Instance deployment.
   Each feature's permissions field can be used with the polaris_azure_permissions data source to inform RSC about permission updates when the Terraform configuration is applied.
   ~> Note: Even though the resource_group_name and the resource_group_region fields are marked as    optional you should always specify them. They are marked as optional to simplify the migration of    existing Terraform configurations. If omitted, RSC will generate a unique resource group name but it    will not create the actual resource group. Until the resource group is created, the RSC feature    depending on the resource group will not function as expected.
-  ~> Note: As mentioned in the documentation for each feature below, changing certain fields causes    features to re-onboarded. Take care when the subscription only has a single feature, as it could cause    the tenant to be removed from RSC.
+  ~> Note: As mentioned in the documentation for each feature below, changing certain fields causes    features to be re-onboarded. Take care when the subscription only has a single feature, as it could    cause the tenant to be removed from RSC.
   -> Note: As of now, sql_db_protection and sql_mi_protection does not support specifying an Azure    resource group.
 ---
 
@@ -33,7 +33,7 @@ Each feature's `permissions` field can be used with the `polaris_azure_permissio
 
 ~> **Note:** Even though the `resource_group_name` and the `resource_group_region` fields are marked as    optional you should always specify them. They are marked as optional to simplify the migration of    existing Terraform configurations. If omitted, RSC will generate a unique resource group name but it    will not create the actual resource group. Until the resource group is created, the RSC feature    depending on the resource group will not function as expected.
 
-~> **Note:** As mentioned in the documentation for each feature below, changing certain fields causes    features to re-onboarded. Take care when the subscription only has a single feature, as it could cause    the tenant to be removed from RSC.
+~> **Note:** As mentioned in the documentation for each feature below, changing certain fields causes    features to be re-onboarded. Take care when the subscription only has a single feature, as it could    cause the tenant to be removed from RSC.
 
 -> **Note:** As of now, `sql_db_protection` and `sql_mi_protection` does not support specifying an Azure    resource group.
 

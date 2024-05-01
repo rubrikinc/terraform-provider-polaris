@@ -37,6 +37,9 @@ as soon as possible.
 * The user-assigned managed identity for `cloud_native_archival_encryption` is not refreshed when the
   `polaris_azure_subscription` resource is updated. This will be fixed in a future release.
 
+In addition to the issues listed above, affecting this particular beta release of the provider, additional issues
+reported can be found on [GitHub](https://github.com/rubrikinc/terraform-provider-polaris/issues).
+
 # Upgrade to the latest beta release
 Start by assigning the version of the latest beta release to the `version` field in the `provider` block of the
 Terraform configuration:
