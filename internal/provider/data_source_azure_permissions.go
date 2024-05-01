@@ -56,7 +56,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 			"`permissions` fields of the `polaris_azure_subscription` resources to automatically update the permissions " +
 			"of roles and notify RSC about the updated permissions.\n" +
 			"\n" +
-			"-> **Note:** To better fit the RSC Azure permission model where each RSC feature should have one RSC role, " +
+			"-> **Note:** To better fit the RSC Azure permission model where each RSC feature have two Azure roles, " +
 			"   the `features` field has been deprecated and replaced with the `feature` field.\n" +
 			"\n" +
 			"-> **Note:** Due to the RSC Azure permission model having been refined into subscription level permissions " +

@@ -75,8 +75,8 @@ func resourceAzureSubscription() *schema.Resource {
 			"   depending on the resource group will not function as expected.\n" +
 			"\n" +
 			"~> **Note:** As mentioned in the documentation for each feature below, changing certain fields causes " +
-			"   features to re-onboarded. Take care when the subscription only has a single feature, as it could cause " +
-			"   the tenant to be removed from RSC.\n" +
+			"   features to be re-onboarded. Take care when the subscription only has a single feature, as it could " +
+			"   cause the tenant to be removed from RSC.\n" +
 			"\n" +
 			"-> **Note:** As of now, `sql_db_protection` and `sql_mi_protection` does not support specifying an Azure " +
 			"   resource group.\n",
