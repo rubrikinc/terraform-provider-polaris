@@ -998,11 +998,8 @@ func diffAzureFeatureRegions(oldBlock, newBlock map[string]any) bool {
 	slices.SortFunc(newRegions, func(i, j string) int {
 		return cmp.Compare(i, j)
 	})
-	if !slices.Equal(oldRegions, newRegions) {
-		return true
-	}
 
-	return false
+	return !slices.Equal(oldRegions, newRegions)
 }
 
 // diffAzureFeatureResourceGroup returns true if the old and new resource group
