@@ -24,7 +24,6 @@ import (
 	"cmp"
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"maps"
 	"slices"
@@ -535,16 +534,24 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 
+	featureKeys := make([]featureKey, 0, len(azureKeyFeatureMap))
+	for key, feature := range azureKeyFeatureMap {
+		featureKeys = append(featureKeys, featureKey{key: key, feature: feature.feature, order: feature.orderAdd})
+	}
+	slices.SortFunc(featureKeys, func(i, j featureKey) int {
+		return cmp.Compare(i.order, j.order)
+	})
+
 	var accountID uuid.UUID
-	for key := range azureKeyFeatureMap {
+	for _, featureKey := range featureKeys {
 		var block map[string]any
-		if v, ok := d.GetOk(key); ok {
+		if v, ok := d.GetOk(featureKey.key); ok {
 			block = v.([]any)[0].(map[string]any)
 		} else {
 			continue
 		}
 
-		id, err := addAzureFeature(ctx, d, client, key, block)
+		id, err := addAzureFeature(ctx, d, client, featureKey.feature, block)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -552,7 +559,7 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			accountID = id
 		}
 		if id != accountID {
-			return diag.Errorf("feature %s added to wrong cloud account", azureKeyFeatureMap[key])
+			return diag.Errorf("feature %s added to wrong cloud account", featureKey.feature)
 		}
 	}
 
@@ -583,15 +590,15 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m any) d
 		return diag.FromErr(err)
 	}
 
-	for featureKey, feature := range azureKeyFeatureMap {
-		feature, ok := account.Feature(feature)
+	for key, feature := range azureKeyFeatureMap {
+		feature, ok := account.Feature(feature.feature)
 		if !ok {
-			if err := d.Set(featureKey, nil); err != nil {
+			if err := d.Set(key, nil); err != nil {
 				return diag.FromErr(err)
 			}
 			continue
 		}
-		if err := updateAzureFeatureState(d, featureKey, feature); err != nil {
+		if err := updateAzureFeatureState(d, key, feature); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -624,64 +631,107 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 
-	// Classify the feature changes as either add, remove or update.
-	// The classification determines the order in which the changes are applied.
-	// Add-changes must be applied before remove-changes, otherwise there is a
-	// risk that he tenant is removed during the update.
+	// Break the update into a series of update operations sequenced in the
+	// correct order.
 	const (
-		add    = 1
-		remove = 2
-		update = 3
+		opAddFeature = iota
+		opRemoveFeature
+		opUpdateRegions
+		opUpdatePermissions
 	)
-	type change struct {
-		key      string
-		oldBlock map[string]any
-		newBlock map[string]any
-		order    int
+	type updateOp struct {
+		feature core.Feature
+		op      int
+		block   map[string]any
+		order   int
 	}
-	var changes []change
-	for key := range azureKeyFeatureMap {
+	var updates []updateOp
+	for key, feature := range azureKeyFeatureMap {
 		if !d.HasChange(key) {
 			continue
 		}
+
 		switch oldBlock, newBlock := d.GetChange(key); {
 		case len(oldBlock.([]any)) == 0 && len(newBlock.([]any)) != 0:
-			newBlock := newBlock.([]any)[0].(map[string]any)
-			changes = append(changes, change{key: key, newBlock: newBlock, order: add})
+			updates = append(updates, updateOp{
+				op:      opAddFeature,
+				feature: feature.feature,
+				block:   newBlock.([]any)[0].(map[string]any),
+				order:   feature.orderAdd,
+			})
+
 		case len(oldBlock.([]any)) != 0 && len(newBlock.([]any)) == 0:
-			changes = append(changes, change{key: key, order: remove})
+			updates = append(updates, updateOp{
+				op:      opRemoveFeature,
+				feature: feature.feature,
+				order:   feature.orderRemove,
+			})
+
 		case len(oldBlock.([]any)) != 0 && len(newBlock.([]any)) != 0:
 			oldBlock := oldBlock.([]any)[0].(map[string]any)
 			newBlock := newBlock.([]any)[0].(map[string]any)
-			changes = append(changes, change{key: key, oldBlock: oldBlock, newBlock: newBlock, order: update})
-		default:
-			return diag.Errorf("")
+
+			switch {
+			case diffAzureFeatureResourceGroup(oldBlock, newBlock) || diffAzureUserAssignedManagedIdentity(oldBlock, newBlock):
+				updates = append(updates, updateOp{
+					op:      opAddFeature,
+					feature: feature.feature,
+					block:   newBlock,
+					order:   feature.orderSplitAdd,
+				})
+				updates = append(updates, updateOp{
+					op:      opRemoveFeature,
+					feature: feature.feature,
+					order:   feature.orderSplitRemove,
+				})
+
+			case diffAzureFeatureRegions(oldBlock, newBlock):
+				updates = append(updates, updateOp{
+					op:      opUpdateRegions,
+					feature: feature.feature,
+					block:   newBlock,
+				})
+
+			case newBlock[keyPermissions] != oldBlock[keyPermissions]:
+				updates = append(updates, updateOp{
+					op:      opUpdatePermissions,
+					feature: feature.feature,
+				})
+			}
 		}
 	}
-	slices.SortFunc(changes, func(i, j change) int {
+	slices.SortFunc(updates, func(i, j updateOp) int {
 		return cmp.Compare(i.order, j.order)
 	})
 
-	// Apply changes in order.
-	for _, change := range changes {
-		feature := azureKeyFeatureMap[change.key]
+	// Apply the update operations in the correct order.
+	for _, update := range updates {
+		feature := update.feature
 
-		switch change.order {
-		case add:
-			id, err := addAzureFeature(ctx, d, client, change.key, change.newBlock)
+		switch update.op {
+		case opAddFeature:
+			id, err := addAzureFeature(ctx, d, client, feature, update.block)
 			if err != nil {
 				return diag.FromErr(err)
 			}
 			if id != accountID {
-				return diag.Errorf("feature %s added to wrong cloud account", feature)
+				return diag.Errorf("feature %s added to the wrong cloud account", feature)
 			}
-		case remove:
+		case opRemoveFeature:
 			deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
 			if err := azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), feature, deleteSnapshots); err != nil {
 				return diag.FromErr(err)
 			}
-		case update:
-			if err := updateAzureFeature(ctx, d, client, accountID, change.key, change.oldBlock, change.newBlock); err != nil {
+		case opUpdateRegions:
+			var opts []azure.OptionFunc
+			for _, region := range update.block[keyRegions].(*schema.Set).List() {
+				opts = append(opts, azure.Region(region.(string)))
+			}
+			if err := azure.Wrap(client).UpdateSubscription(ctx, azure.CloudAccountID(accountID), feature, opts...); err != nil {
+				return diag.FromErr(err)
+			}
+		case opUpdatePermissions:
+			if err := azure.Wrap(client).PermissionsUpdated(ctx, azure.CloudAccountID(accountID), []core.Feature{feature}); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -713,13 +763,21 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 
-	for key, feature := range azureKeyFeatureMapReverse {
-		if _, ok := d.GetOk(key); !ok {
+	featureKeys := make([]featureKey, 0, len(azureKeyFeatureMap))
+	for key, feature := range azureKeyFeatureMap {
+		featureKeys = append(featureKeys, featureKey{key: key, feature: feature.feature, order: feature.orderRemove})
+	}
+	slices.SortFunc(featureKeys, func(i, j featureKey) int {
+		return cmp.Compare(i.order, j.order)
+	})
+
+	for _, featureKey := range featureKeys {
+		if _, ok := d.GetOk(featureKey.key); !ok {
 			continue
 		}
 
 		deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
-		if err = azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), feature, deleteSnapshots); err != nil {
+		if err = azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), featureKey.feature, deleteSnapshots); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -728,74 +786,83 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m any)
 	return nil
 }
 
-// azureKeyFeatureMap maps the subscription resource's Terraform keys to RSC
-// features.
-var azureKeyFeatureMap = map[string]core.Feature{
-	keyCloudNativeArchival:           core.FeatureCloudNativeArchival,
-	keyCloudNativeArchivalEncryption: core.FeatureCloudNativeArchivalEncryption,
-	keyCloudNativeProtection:         core.FeatureCloudNativeProtection,
-	keyExocompute:                    core.FeatureExocompute,
-	keySQLDBProtection:               core.FeatureAzureSQLDBProtection,
-	keySQLMIProtection:               core.FeatureAzureSQLMIProtection,
+// featureKey maps a Terraform configuration key to an RSC feature along with
+// order information.
+type featureKey struct {
+	key     string
+	feature core.Feature
+	order   int
 }
 
-// azureKeyFeatureMapReverse maps the subscription resource's Terraform keys to
-// RSC features, but with the Cloud Native Archival and Cloud Native Archival
-// Encryption features reversed.
-var azureKeyFeatureMapReverse = map[string]core.Feature{
-	keyCloudNativeArchivalEncryption: core.FeatureCloudNativeArchivalEncryption,
-	keyCloudNativeArchival:           core.FeatureCloudNativeArchival,
-	keyCloudNativeProtection:         core.FeatureCloudNativeProtection,
-	keyExocompute:                    core.FeatureExocompute,
-	keySQLDBProtection:               core.FeatureAzureSQLDBProtection,
-	keySQLMIProtection:               core.FeatureAzureSQLMIProtection,
+// orderedFeature holds the feature and order information for the feature.
+// The split order information is used when a feature needs to be re-onboarded
+// due to a change in the configuration.
+type orderedFeature struct {
+	feature          core.Feature
+	orderAdd         int
+	orderRemove      int
+	orderSplitAdd    int
+	orderSplitRemove int
 }
 
-// updateAzureFeature updates the remote RSC feature with the local state
-// information.
-func updateAzureFeature(ctx context.Context, d *schema.ResourceData, client *polaris.Client, accountID uuid.UUID, key string, oldBlock, newBlock map[string]any) error {
-	feature := azureKeyFeatureMap[key]
-
-	// Both of these diffs requires the feature to be re-onboarded. Note, we
-	// never delete the snapshots when a feature gets re-onboarded because of
-	// a configuration change.
-	if diffAzureFeatureResourceGroup(oldBlock, newBlock) || diffAzureUserAssignedManagedIdentity(oldBlock, newBlock) {
-		if err := azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), feature, false); err != nil {
-			return err
-		}
-		id, err := addAzureFeature(ctx, d, client, key, newBlock)
-		if err != nil {
-			return err
-		}
-		if id != accountID {
-			return fmt.Errorf("feature %s added to wrong cloud account", feature)
-		}
-
-		return nil
-	}
-
-	// Region diffs can be updated in place.
-	if diffAzureFeatureRegions(oldBlock, newBlock) {
-		var opts []azure.OptionFunc
-		for _, region := range newBlock[keyRegions].(*schema.Set).List() {
-			opts = append(opts, azure.Region(region.(string)))
-		}
-		if err := azure.Wrap(client).UpdateSubscription(ctx, azure.CloudAccountID(accountID), feature, opts...); err != nil {
-			return err
-		}
-	}
-
-	if newBlock[keyPermissions] != oldBlock[keyPermissions] {
-		if err := azure.Wrap(client).PermissionsUpdated(ctx, azure.CloudAccountID(accountID), []core.Feature{feature}); err != nil {
-			return err
-		}
-	}
-
-	return nil
+// azureKeyFeatureMap maps the subscription's Terraform keys to the RSC features
+// and the feature's order information.
+//
+// Adds are performed first, to reduce the risk of tenant being removed due to
+// the last RSC feature being removed. Next, we perform updates. An update can
+// result in a feature being removed and added again. Lastly, feature removals
+// are performed.
+//
+// Note, all operations must be performed in the correct order, due to the
+// implicit relationship between CLOUD_NATIVE_ARCHIVAL and
+// CLOUD_NATIVE_ARCHIVAL_ENCRYPTION.
+var azureKeyFeatureMap = map[string]orderedFeature{
+	keyCloudNativeArchival: {
+		feature:          core.FeatureCloudNativeArchival,
+		orderAdd:         100,
+		orderRemove:      301,
+		orderSplitAdd:    202,
+		orderSplitRemove: 201,
+	},
+	keyCloudNativeArchivalEncryption: {
+		feature:          core.FeatureCloudNativeArchivalEncryption,
+		orderAdd:         101,
+		orderRemove:      300,
+		orderSplitAdd:    203,
+		orderSplitRemove: 200,
+	},
+	keyCloudNativeProtection: {
+		feature:          core.FeatureCloudNativeProtection,
+		orderAdd:         102,
+		orderRemove:      302,
+		orderSplitAdd:    205,
+		orderSplitRemove: 204,
+	},
+	keyExocompute: {
+		feature:          core.FeatureExocompute,
+		orderAdd:         103,
+		orderRemove:      303,
+		orderSplitAdd:    207,
+		orderSplitRemove: 206,
+	},
+	keySQLDBProtection: {
+		feature:          core.FeatureAzureSQLDBProtection,
+		orderAdd:         104,
+		orderRemove:      304,
+		orderSplitAdd:    209,
+		orderSplitRemove: 208,
+	},
+	keySQLMIProtection: {
+		feature:          core.FeatureAzureSQLMIProtection,
+		orderAdd:         105,
+		orderRemove:      305,
+		orderSplitAdd:    211,
+		orderSplitRemove: 210,
+	},
 }
 
 // addAzureFeature onboards the RSC feature for the Azure subscription.
-func addAzureFeature(ctx context.Context, d *schema.ResourceData, client *polaris.Client, key string, block map[string]any) (uuid.UUID, error) {
+func addAzureFeature(ctx context.Context, d *schema.ResourceData, client *polaris.Client, feature core.Feature, block map[string]any) (uuid.UUID, error) {
 	id, err := uuid.Parse(d.Get(keySubscriptionID).(string))
 	if err != nil {
 		return uuid.Nil, err
@@ -818,7 +885,6 @@ func addAzureFeature(ctx context.Context, d *schema.ResourceData, client *polari
 		opts = append(opts, miOpt)
 	}
 
-	feature := azureKeyFeatureMap[key]
 	return azure.Wrap(client).AddSubscription(ctx, azure.Subscription(id, d.Get(keyTenantDomain).(string)), feature, opts...)
 }
 
