@@ -992,6 +992,12 @@ func diffAzureFeatureRegions(oldBlock, newBlock map[string]any) bool {
 			newRegions = append(newRegions, region.(string))
 		}
 	}
+	slices.SortFunc(oldRegions, func(i, j string) int {
+		return cmp.Compare(i, j)
+	})
+	slices.SortFunc(newRegions, func(i, j string) int {
+		return cmp.Compare(i, j)
+	})
 	if !slices.Equal(oldRegions, newRegions) {
 		return true
 	}
