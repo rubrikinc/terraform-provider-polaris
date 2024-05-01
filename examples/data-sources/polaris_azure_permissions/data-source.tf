@@ -1,25 +1,24 @@
 # Permissions required for the Cloud Native Protection RSC feature.
-data "polaris_azure_permissions" "default" {
-  features = [
-    "CLOUD_NATIVE_PROTECTION",
-  ]
+data "polaris_azure_permissions" "cloud_native_protection" {
+  feature = "CLOUD_NATIVE_PROTECTION"
 }
 
-# Permissions required for the Cloud Native Protection and Exocompute
-# RSC features. The polaris_azure_service_principal is set up to notify
-# RSC when the permissions are updated.
-data "polaris_azure_permissions" "default" {
-  features = [
-    "CLOUD_NATIVE_PROTECTION",
-    "EXOCOMPUTE"
-  ]
+# Permissions required for the Exocompute RSC feature. The subscription
+# is set up to notify RSC when the permissions are updated for the feature.
+data "polaris_azure_permissions" "exocompute" {
+  feature = "EXOCOMPUTE"
 }
 
-resource "polaris_azure_service_principal" "default" {
-  app_id        = "25c2b42a-c76b-11eb-9767-6ff6b5b7e72b"
-  app_name      = "My App"
-  app_secret    = "<my-app-secret>"
-  tenant_domain = "mydomain.onmicrosoft.com"
-  tenant_id     = "2bfdaef8-c76b-11eb-8d3d-4706c14a88f0"
-  permissions   = data.polaris_azure_permissions.default.id
+resource "polaris_azure_subscription" "subscription" {
+  subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
+  tenant_domain   = "my-domain.onmicrosoft.com"
+
+  exocompute {
+    permissions = data.polaris_azure_permissions.exocompute.id
+    regions = [
+      "eastus2",
+    ]
+    resource_group_name   = "my-east-resource-group"
+    resource_group_region = "eastus2"
+  }
 }

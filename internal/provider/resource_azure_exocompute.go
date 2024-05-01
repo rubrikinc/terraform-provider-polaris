@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -33,6 +34,10 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
+const (
+	appCloudAccountPrefix = "app-"
+)
+
 // resourceAzureExocompute defines the schema for the Azure exocompute resource.
 func resourceAzureExocompute() *schema.Resource {
 	return &schema.Resource{
@@ -40,9 +45,28 @@ func resourceAzureExocompute() *schema.Resource {
 		ReadContext:   azureReadExocompute,
 		DeleteContext: azureDeleteExocompute,
 
-		Description: "The `polaris_azure_exocompute` resource creates an RSC Exocompute configuration. When an " +
-			"Exocompute configuration is created, RSC will automatically deploy the necessary resources in the " +
-			"specified Azure region to run the Exocompute service.",
+		Description: "The `polaris_azure_exocompute` resource creates an RSC Exocompute configuration.\n" +
+			"\n" +
+			"There are 2 types of Exocompute configurations:\n" +
+			" 1. *Host* - When a host configuration is created, RSC will automatically deploy the necessary resources " +
+			"    in the specified Azure region to run the Exocompute service. A host configuration can be used by both " +
+			"    the host cloud account and application cloud accounts mapped to the host account.\n" +
+			" 2. *Application* - An application configuration is created by mapping the application cloud account to a " +
+			"    host cloud account. The application cloud account will leverage the Exocompute resources deployed for " +
+			"    the host configuration.\n" +
+			"\n" +
+			"Since there are 2 types of Exocompute configurations, there are 2 ways to create a `polaris_azure_exocompute` " +
+			"resource:\n" +
+			" 1. Using the `cloud_account_id`, `region`, `subnet` and `pod_overlay_network_cidr` fields. This creates a " +
+			"    host configuration.\n" +
+			" 2. Using the `cloud_account_id` and `host_cloud_account_id` fields. This creates an application " +
+			"    configuration.\n" +
+			"\n" +
+			"~> **Note:** A host configuration can be created without specifying the `pod_overlay_network_cidr` field, " +
+			"   this is discouraged and should only be done for backwards compatibility reasons.\n" +
+			"\n" +
+			"-> **Note:** Using both host and application Exocompute configurations is sometimes referred to as shared " +
+			"   Exocompute.",
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -55,32 +79,52 @@ func resourceAzureExocompute() *schema.Resource {
 				ForceNew:     true,
 				ExactlyOneOf: []string{keyCloudAccountID, keySubscriptionID},
 				Description: "RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for " +
-					"which the Exocompute service runs.",
+					"which the Exocompute service runs. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.IsUUID,
+			},
+			keyHostCloudAccountID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				AtLeastOneOf: []string{keyHostCloudAccountID, keyRegion},
+				Description: "RSC cloud account ID of the shared exocompute host account. Changing this forces a new " +
+					"resource to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyPodOverlayNetworkCIDR: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Description: "The CIDR range assigned to pods when launching Exocompute with the CNI overlay network " +
+					"plugin mode. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyRegion: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Description: "Azure region to run the exocompute service in. Should be specified in the standard " +
+					"Azure style, e.g. `eastus`. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keySubnet: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Description: "Azure subnet ID of the cluster subnet corresponding to the Exocompute configuration. " +
+					"This subnet will be used to allocate IP addresses to the nodes of the cluster. Changing this forces " +
+					"a new resource to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keySubscriptionID: {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
 				Description: "RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for " +
-					"which the Exocompute service runs. **Deprecated:** use `cloud_account_id` instead.",
+					"which the Exocompute service runs. Changing this forces a new resource to be created. " +
+					"**Deprecated:** use `cloud_account_id` instead.",
 				Deprecated:   "use `cloud_account_id` instead.",
 				ValidateFunc: validation.IsUUID,
-			},
-			keyRegion: {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-				Description: "Azure region to run the exocompute service in. Should be specified in the standard " +
-					"Azure style, e.g. `eastus`.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
-			},
-			keySubnet: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "Azure subnet id.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
 		SchemaVersion: 1,
@@ -111,16 +155,33 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	region := d.Get(keyRegion).(string)
 
-	exoConfig := azure.Managed(region, d.Get(keySubnet).(string))
-	exoConfigID, err := azure.Wrap(client).AddExocomputeConfig(ctx, azure.CloudAccountID(accountID), exoConfig)
-	if err != nil {
-		return diag.FromErr(err)
+	if hostCloudAccount, ok := d.GetOk(keyHostCloudAccountID); ok {
+		hostCloudAccountID, err := uuid.Parse(hostCloudAccount.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		err = azure.Wrap(client).MapExocompute(ctx, azure.CloudAccountID(hostCloudAccountID), azure.CloudAccountID(accountID))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.SetId(appCloudAccountPrefix + accountID.String())
+	} else {
+		var exoConfig azure.ExoConfigFunc
+		if podOverlayNetworkCIDR, ok := d.GetOk(keyPodOverlayNetworkCIDR); ok {
+			exoConfig = azure.ManagedWithOverlayNetwork(d.Get(keyRegion).(string), d.Get(keySubnet).(string),
+				podOverlayNetworkCIDR.(string))
+		} else {
+			exoConfig = azure.Managed(d.Get(keyRegion).(string), d.Get(keySubnet).(string))
+		}
+		exoConfigID, err := azure.Wrap(client).AddExocomputeConfig(ctx, azure.CloudAccountID(accountID), exoConfig)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.SetId(exoConfigID.String())
 	}
 
-	d.SetId(exoConfigID.String())
-	awsReadExocompute(ctx, d, m)
+	azureReadExocompute(ctx, d, m)
 	return nil
 }
 
@@ -134,24 +195,48 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	exoConfigID, err := uuid.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	if id := d.Id(); strings.HasPrefix(id, appCloudAccountPrefix) {
+		appID, err := uuid.Parse(strings.TrimPrefix(id, appCloudAccountPrefix))
+		if err != nil {
+			return diag.FromErr(err)
+		}
 
-	exoConfig, err := azure.Wrap(client).ExocomputeConfig(ctx, exoConfigID)
-	if errors.Is(err, graphql.ErrNotFound) {
-		d.SetId("")
-		return nil
-	} else if err != nil {
-		return diag.FromErr(err)
-	}
+		hostID, err := azure.Wrap(client).ExocomputeHostAccount(ctx, azure.CloudAccountID(appID))
+		if errors.Is(err, graphql.ErrNotFound) {
+			d.SetId("")
+			return nil
+		}
+		if err != nil {
+			return diag.FromErr(err)
+		}
 
-	if err := d.Set(keyRegion, exoConfig.Region); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keySubnet, exoConfig.SubnetID); err != nil {
-		return diag.FromErr(err)
+		if err := d.Set(keyHostCloudAccountID, hostID.String()); err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		exoConfigID, err := uuid.Parse(id)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		exoConfig, err := azure.Wrap(client).ExocomputeConfig(ctx, exoConfigID)
+		if errors.Is(err, graphql.ErrNotFound) {
+			d.SetId("")
+			return nil
+		}
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		if err := d.Set(keyRegion, exoConfig.Region); err != nil {
+			return diag.FromErr(err)
+		}
+		if err := d.Set(keySubnet, exoConfig.SubnetID); err != nil {
+			return diag.FromErr(err)
+		}
+		if err := d.Set(keyPodOverlayNetworkCIDR, exoConfig.PodOverlayNetworkCIDR); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil
@@ -167,14 +252,25 @@ func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.FromErr(err)
 	}
 
-	exoConfigID, err := uuid.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	if id := d.Id(); strings.HasPrefix(id, appCloudAccountPrefix) {
+		appID, err := uuid.Parse(strings.TrimPrefix(id, appCloudAccountPrefix))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		err = azure.Wrap(client).UnmapExocompute(ctx, azure.CloudAccountID(appID))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		exoConfigID, err := uuid.Parse(d.Id())
+		if err != nil {
+			return diag.FromErr(err)
+		}
 
-	err = azure.Wrap(client).RemoveExocomputeConfig(ctx, exoConfigID)
-	if err != nil {
-		return diag.FromErr(err)
+		err = azure.Wrap(client).RemoveExocomputeConfig(ctx, exoConfigID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	d.SetId("")

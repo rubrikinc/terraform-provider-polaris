@@ -54,9 +54,6 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			"  3. Using the `sdk_auth` field which is the path to an Azure service principal created with the Azure " +
 			"     SDK using the `--sdk-auth` parameter.\n" +
 			"\n" +
-			"The `permissions` field can be used with the `polaris_azure_permissions` data source to inform RSC about " +
-			"permission updates when the Terraform configuration is applied.\n" +
-			"\n" +
 			"~> **Note:** Removing the last subscription from an RSC tenant will automatically remove the tenant, " +
 			"which also removes the service principal.\n" +
 			"\n" +
@@ -65,7 +62,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			"resource for the same Azure tenant will overwrite the old service principal in RSC.\n" +
 			"\n" +
 			"-> **Note:** There is no way to verify if a service principal has been added to RSC using the UI. RSC " +
-			"tenants doesn't show up in the UI until the first subscription is added.\n",
+			"tenants don't show up in the UI until the first subscription is added.",
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:     schema.TypeString,
@@ -101,7 +98,8 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Optional:     true,
 				ForceNew:     true,
 				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
-				Description:  "Path to a custom service principal file.",
+				Description: "Path to a custom service principal file. Changing this forces a new resource to be " +
+					"created.",
 				ValidateFunc: isExistingFile,
 			},
 			keySDKAuth: {
@@ -110,7 +108,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				ForceNew:     true,
 				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
 				Description: "Path to an Azure service principal created with the Azure SDK using the `--sdk-auth` " +
-					"parameter",
+					"parameter. Changing this forces a new resource to be created.",
 				ValidateFunc: isExistingFile,
 			},
 			keyPermissions: {
@@ -118,7 +116,9 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Optional: true,
 				Description: "Permissions updated signal. When this field is updated, the provider will notify RSC " +
 					"that permissions has been updated. Use this field with the `polaris_azure_permissions` data " +
-					"source.",
+					"source. **Deprecated:** use the `polaris_azure_subscription` resource's `permissions` fields " +
+					"instead.",
+				Deprecated:   "use the `polaris_azure_subscription` resource's `permissions` fields instead.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyPermissionsHash: {
@@ -132,7 +132,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "Azure tenant primary domain.",
+				Description:  "Azure tenant primary domain. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyTenantID: {
@@ -140,7 +140,8 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Optional:     true,
 				ForceNew:     true,
 				RequiredWith: []string{keyAppID, keyAppName, keyAppSecret},
-				Description:  "Azure tenant ID. Also known as the directory ID.",
+				Description: "Azure tenant ID. Also known as the directory ID. Changing this forces a new resource to " +
+					"be created.",
 				ValidateFunc: validation.IsUUID,
 			},
 		},
