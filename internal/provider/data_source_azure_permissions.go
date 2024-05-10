@@ -218,15 +218,17 @@ func azurePermissionsRead(ctx context.Context, d *schema.ResourceData, m any) di
 	}
 
 	// Check both feature and features.
-	var features []core.Feature
+	var perms []azure.Permissions
+	var groups []azure.PermissionGroupWithVersion
 	if f := d.Get(keyFeature).(string); f != "" {
-		features = []core.Feature{{Name: f}}
+		perms, groups, err = azure.Wrap(client).ScopedPermissions(ctx, core.Feature{Name: f})
 	} else {
+		var features []core.Feature
 		for _, f := range d.Get(keyFeatures).(*schema.Set).List() {
-			features = append(features, core.ParseFeatureNoValidation(f.(string)))
+			features = append(features, core.Feature{Name: f.(string)})
 		}
+		perms, err = azure.Wrap(client).ScopedPermissionsForFeatures(ctx, features)
 	}
-	perms, err := azure.Wrap(client).ScopedPermissionsForFeatures(ctx, features)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -336,6 +338,14 @@ func azurePermissionsRead(ctx context.Context, d *schema.ResourceData, m any) di
 	}
 	if err := d.Set(keyResourceGroupNotDataActions, rgNotDataActions); err != nil {
 		return diag.FromErr(err)
+	}
+
+	// Hash permission groups. This generates a diff for subscription onboarded
+	// with the old onboarding workflow. Applying the diff fixes the backend
+	// state.
+	for _, group := range groups {
+		hash.Write([]byte(group.Name))
+		hash.Write([]byte(fmt.Sprintf("%d", group.Version)))
 	}
 
 	hashValue := fmt.Sprintf("%x", hash.Sum(nil))
