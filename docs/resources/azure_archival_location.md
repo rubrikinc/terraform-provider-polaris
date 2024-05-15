@@ -36,7 +36,6 @@ Custom storage encryption is enabled by specifying one or more `customer_managed
 
 ### Optional
 
-- `container_name_prefix` (String) Azure storage container name prefix. Default value is `rubrik-storage-container-1`.
 - `customer_managed_key` (Block List) Customer managed storage encryption. Specify the regions and their respective encryption details. For other regions, data will be encrypted using platform managed keys. (see [below for nested schema](#nestedblock--customer_managed_key))
 - `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`.
 - `storage_account_region` (String) Azure region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.
@@ -46,6 +45,7 @@ Custom storage encryption is enabled by specifying one or more `customer_managed
 ### Read-Only
 
 - `connection_status` (String) Connection status of the cloud native archival location.
+- `container_name` (String) Azure storage container name.
 - `id` (String) Cloud native archival location ID.
 - `location_template` (String) RSC location template. If a storage account region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.
 
