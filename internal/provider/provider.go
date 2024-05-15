@@ -61,6 +61,7 @@ func Provider() *schema.Provider {
 			"polaris_aws_exocompute":                    resourceAwsExocompute(),
 			"polaris_aws_exocompute_cluster_attachment": resourceAwsExocomputeClusterAttachment(),
 			"polaris_aws_private_container_registry":    resourceAwsPrivateContainerRegistry(),
+			keyPolarisAzureArchivalLocation:             resourceAzureArchivalLocation(),
 			keyPolarisAzureExocompute:                   resourceAzureExocompute(),
 			keyPolarisAzureServicePrincipal:             resourceAzureServicePrincipal(),
 			keyPolarisAzureSubscription:                 resourceAzureSubscription(),
