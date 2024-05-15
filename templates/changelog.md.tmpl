@@ -8,6 +8,7 @@ page_title: "Changelog"
 * Fix an issue with the permissions of subscriptions onboarded using the `polaris_azure_subscription` resource where
   the RSC UI would show the status as "Update permissions" even though the app registration would have all the required
   permissions.
+* Add support for creating Azure cloud native archival locations. [[docs](resources/azure_archival_location)]
 
 ## v0.9.0-beta.3
 * Fix a bug in the `polaris_aws_exocompute` resource where customer supplied security groups were not validated
