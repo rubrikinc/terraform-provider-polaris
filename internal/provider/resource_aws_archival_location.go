@@ -214,7 +214,6 @@ func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 	// Lookup and parse the target mapping ID from the resource ID.
 	targetMappingID, err := uuid.Parse(d.Id())
 	if err != nil {
-		d.SetId("")
 		return diag.FromErr(err)
 	}
 
@@ -255,8 +254,8 @@ func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 	return nil
 }
 
-// fromBucketTags converts from the bucket tags argument to a standard string to
-// string map.
+// fromBucketTags converts from the bucket tags argument to a standard
+// string-to-string map.
 func fromBucketTags(bucketTags map[string]any) (map[string]string, error) {
 	tags := make(map[string]string, len(bucketTags))
 	for key, value := range bucketTags {
@@ -270,8 +269,8 @@ func fromBucketTags(bucketTags map[string]any) (map[string]string, error) {
 	return tags, nil
 }
 
-// toBucketTags converts to the bucket tags argument from a standard string to
-// string map.
+// toBucketTags converts to the bucket tags argument from a standard
+// string-to-string map.
 func toBucketTags(tags map[string]string) map[string]any {
 	bucketTags := make(map[string]any, len(tags))
 	for key, value := range tags {
