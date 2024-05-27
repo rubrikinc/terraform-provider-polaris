@@ -1,6 +1,5 @@
 ---
 page_title: "Upgrade Guide: beta release"
-subcategory: "Upgrade"
 ---
 
 ~> **Note:** The beta provider might have breaking changes between beta releases.
