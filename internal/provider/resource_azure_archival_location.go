@@ -82,30 +82,8 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Description: "Azure storage container name.",
 			},
 			keyCustomerManagedKey: {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						keyName: {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "Key name.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-						keyRegion: {
-							Type:     schema.TypeString,
-							Required: true,
-							Description: "The region in which the key will be used. Regions without customer managed " +
-								"keys will use platform managed keys.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-						keyVaultName: {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "Key vault name.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-					},
-				},
+				Type:     schema.TypeSet,
+				Elem:     customerKeyResource(),
 				Optional: true,
 				Description: "Customer managed storage encryption. Specify the regions and their respective encryption " +
 					"details. For other regions, data will be encrypted using platform managed keys.",
@@ -177,7 +155,7 @@ func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	customerKeys := fromCustomerManagedKeys(d.Get(keyCustomerManagedKey).([]any))
+	customerKeys := fromCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set))
 	name := d.Get(keyName).(string)
 	redundancy := d.Get(keyRedundancy).(string)
 	storageAccountName := d.Get(keyStorageAccountNamePrefix).(string)
@@ -271,7 +249,7 @@ func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	customerKeys := fromCustomerManagedKeys(d.Get(keyCustomerManagedKey).([]any))
+	customerKeys := fromCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set))
 	name := d.Get(keyName).(string)
 	storageAccountTags, err := fromStorageAccountTags(d.Get(keyStorageAccountTags).(map[string]any))
 	if err != nil {
@@ -310,11 +288,38 @@ func azureDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	return nil
 }
 
+// customerKeyResource returns the schema for a customer managed key resource.
+func customerKeyResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			keyName: {
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "Key name.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyRegion: {
+				Type:     schema.TypeString,
+				Required: true,
+				Description: "The region in which the key will be used. Regions without customer managed keys will " +
+					"use platform managed keys.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyVaultName: {
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "Key vault name.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+		},
+	}
+}
+
 // fromCustomerManagedKeys converts from the customer managed keys field type
 // to a customer key slice.
-func fromCustomerManagedKeys(customerManagedKeys []any) []azure.CustomerKey {
-	customerKeys := make([]azure.CustomerKey, 0, len(customerManagedKeys))
-	for _, key := range customerManagedKeys {
+func fromCustomerManagedKeys(customerManagedKeys *schema.Set) []azure.CustomerKey {
+	var customerKeys []azure.CustomerKey
+	for _, key := range customerManagedKeys.List() {
 		key := key.(map[string]any)
 		customerKeys = append(customerKeys, azure.CustomerKey{
 			Name:      key[keyName].(string),
@@ -328,10 +333,10 @@ func fromCustomerManagedKeys(customerManagedKeys []any) []azure.CustomerKey {
 
 // toStorageAccountTags converts to the customer managed keys field type from
 // a customer key slice.
-func toCustomerManagedKeys(customerKeys []azure.CustomerKey) []any {
-	customerManagedKeys := make([]any, 0, len(customerKeys))
+func toCustomerManagedKeys(customerKeys []azure.CustomerKey) *schema.Set {
+	customerManagedKeys := &schema.Set{F: schema.HashResource(customerKeyResource())}
 	for _, key := range customerKeys {
-		customerManagedKeys = append(customerManagedKeys, map[string]any{
+		customerManagedKeys.Add(map[string]any{
 			keyName:      key.Name,
 			keyRegion:    key.Region,
 			keyVaultName: key.VaultName,
