@@ -36,7 +36,7 @@ Custom storage encryption is enabled by specifying one or more `customer_managed
 
 ### Optional
 
-- `customer_managed_key` (Block List) Customer managed storage encryption. Specify the regions and their respective encryption details. For other regions, data will be encrypted using platform managed keys. (see [below for nested schema](#nestedblock--customer_managed_key))
+- `customer_managed_key` (Block Set) Customer managed storage encryption. Specify the regions and their respective encryption details. For other regions, data will be encrypted using platform managed keys. (see [below for nested schema](#nestedblock--customer_managed_key))
 - `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`.
 - `storage_account_region` (String) Azure region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.
 - `storage_account_tags` (Map of String) Azure storage account tags. Each tag will be added to the storage account created by RSC.
