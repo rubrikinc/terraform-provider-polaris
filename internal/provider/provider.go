@@ -80,6 +80,7 @@ func Provider() *schema.Provider {
 			"polaris_aws_archival_location": dataSourceAwsArchivalLocation(),
 			"polaris_aws_cnp_artifacts":     dataSourceAwsArtifacts(),
 			"polaris_aws_cnp_permissions":   dataSourceAwsPermissions(),
+			keyPolarisAzureArchivalLocation: dataSourceAzureArchivalLocation(),
 			keyPolarisAzurePermissions:      dataSourceAzurePermissions(),
 			keyPolarisDeployment:            dataSourceDeployment(),
 			keyPolarisFeatures:              dataSourceFeatures(),

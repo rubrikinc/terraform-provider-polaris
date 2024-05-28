@@ -30,7 +30,9 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
-// dataSourceRoleTemplate defines the schema for the role template data source.
+// This data source uses a template for its documentation due to a bug in the TF
+// docs generator. Remember to update the template if the documentation for any
+// fields are changed.
 func dataSourceRoleTemplate() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: roleTemplateRead,
@@ -87,7 +89,6 @@ func dataSourceRoleTemplate() *schema.Resource {
 	}
 }
 
-// roleTemplateRead run the Read operation for the role template data source.
 func roleTemplateRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] roleTemplateRead")
 

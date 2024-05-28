@@ -33,8 +33,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// dataSourceAzurePermissions defines the schema for the Azure permissions data
-// source.
 func dataSourceAzurePermissions() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: azurePermissionsRead,
@@ -207,8 +205,6 @@ func dataSourceAzurePermissions() *schema.Resource {
 	}
 }
 
-// azurePermissionsRead run the Read operation for the Azure permissions data
-// source. Reads the permissions required for the specified RSC features.
 func azurePermissionsRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] azurePermissionsRead")
 

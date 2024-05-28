@@ -33,8 +33,9 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// dataSourceAwsPermissions defines the schema for the AWS permissions data
-// source.
+// This data source uses a template for its documentation due to a bug in the TF
+// docs generator. Remember to update the template if the documentation for any
+// fields are changed.
 func dataSourceAwsPermissions() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: awsPermissionsRead,
@@ -99,9 +100,6 @@ func dataSourceAwsPermissions() *schema.Resource {
 	}
 }
 
-// awsPermissionsRead run the Read operation for the AWS permissions data
-// source. Returns all AWS permissions needed of for the specified cloud and
-// feature set.
 func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsPermissionsRead")
 
