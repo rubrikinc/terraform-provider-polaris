@@ -7,6 +7,9 @@ description: |-
 
 # polaris_cdm_bootstrap (Resource)
 
+
+
+
 ## Example Usage
 
 ```terraform
@@ -27,6 +30,7 @@ resource "polaris_cdm_bootstrap" "default" {
   ntp_server2_name       = "10.1.200.200"
 }
 ```
+
 
 ## Schema
 
