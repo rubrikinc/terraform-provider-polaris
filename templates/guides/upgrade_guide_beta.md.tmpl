@@ -12,6 +12,8 @@ The latest beta release introduces changes to the following data sources and res
 * `polaris_azure_permissions` - Add support for scoped permissions. Permissions are scoped to either the subscription
   level or to resource group level. The `hash` field has been deprecated and replaced with the `id` field. Both fields
   will have same value until the `hash` field is removed in a future release.
+* `polaris_azure_archival_location` - Add support for Azure archival locations, see the data source and resource
+  documentation for more information.
 * `polaris_azure_exocompute` - Add support for shared Exocompute, see the resource documentation for more information.
   The `subscription_id` field has been deprecated and replaced with the `cloud_account_id` field. The `subscription_id`
   field referred to the ID of the `polaris_azure_subscription` resource and not the Azure subscription ID, which was

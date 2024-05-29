@@ -2,10 +2,13 @@
 page_title: "polaris_cdm_bootstrap_cces_azure Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-
+  
 ---
 
 # polaris_cdm_bootstrap_cces_azure (Resource)
+
+
+
 
 ## Example Usage
 
@@ -29,6 +32,7 @@ resource "polaris_cdm_bootstrap_cces_azure" "default" {
   ntp_server2_name       = "10.1.200.200"
 }
 ```
+
 
 ## Schema
 

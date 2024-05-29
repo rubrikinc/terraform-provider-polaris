@@ -11,6 +11,9 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/cdm"
 )
 
+// This resource uses a template for its documentation due to a bug in the TF
+// docs generator. Remember to update the template if the documentation for any
+// fields are changed.
 func resourceCDMBootstrapCCESAWS() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceCDMBootstrapCCESAWSCreate,
