@@ -6,6 +6,11 @@ page_title: "Changelog"
 
 ## v0.9.0-beta.7
 * Add `polaris_azure_archival_location` data source. [[docs](../data-sources/azure_archival_location)]
+* Fix a bug in the `polaris_azure_archival_location` resource where the cloud account UUID would be passed to the RSC
+  API instead of the Azure subscription UUID when creating an Azure archival location.
+* Fix a bug in the `polaris_aws_cnp_account` resource where destroying it would constantly result in an *objects not
+  authorized* error.
+* Increase the wait time for asynchronous RSC operations to 8.5 minutes.
 
 ## v0.9.0-beta.6
 * Fix an issue with the permissions of subscriptions onboarded using the `polaris_azure_subscription` resource where
