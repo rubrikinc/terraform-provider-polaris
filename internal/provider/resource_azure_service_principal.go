@@ -73,24 +73,28 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			keyAppID: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				ForceNew:     true,
 				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
 				RequiredWith: []string{keyAppName, keyAppSecret, keyTenantID},
-				Description:  "Azure app registration application ID. Also known as the client ID.",
+				Description: "Azure app registration application ID. Also known as the client ID. Changing this " +
+					"forces a new resource to be created.",
 				ValidateFunc: validation.IsUUID,
 			},
 			keyAppName: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				ForceNew:     true,
 				RequiredWith: []string{keyAppID, keyAppSecret, keyTenantID},
-				Description:  "Azure app registration display name.",
+				Description:  "Azure app registration display name. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyAppSecret: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				ForceNew:     true,
 				Sensitive:    true,
 				RequiredWith: []string{keyAppID, keyAppName, keyTenantID},
-				Description:  "Azure app registration client secret.",
+				Description:  "Azure app registration client secret. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyCredentials: {

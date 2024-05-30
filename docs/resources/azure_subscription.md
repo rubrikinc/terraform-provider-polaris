@@ -136,7 +136,7 @@ Optional:
 
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
-- `resource_group_region` (String) Region of the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
 
 Read-Only:
@@ -152,14 +152,14 @@ Required:
 - `regions` (Set of String) Azure regions to enable the Cloud Native Archival Encryption feature in. Should be specified in the standard Azure style, e.g. `eastus`.
 - `user_assigned_managed_identity_name` (String) User-assigned managed identity name.
 - `user_assigned_managed_identity_principal_id` (String) ID of the service principal object associated with the user-assigned managed identity.
-- `user_assigned_managed_identity_region` (String) User-assigned managed identity region.
+- `user_assigned_managed_identity_region` (String) User-assigned managed identity region. Should be specified in the standard Azure style, e.g. `eastus`.
 - `user_assigned_managed_identity_resource_group_name` (String) User-assigned managed identity resource group name.
 
 Optional:
 
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
-- `resource_group_region` (String) Region of the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
 
 Read-Only:
@@ -178,7 +178,7 @@ Optional:
 
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
-- `resource_group_region` (String) Region of the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
 
 Read-Only:
@@ -197,7 +197,7 @@ Optional:
 
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
-- `resource_group_region` (String) Region of the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
 
 Read-Only:

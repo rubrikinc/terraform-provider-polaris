@@ -96,19 +96,29 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Optional:     true,
 				ExactlyOneOf: []string{keyFeature, keyFeatures},
 				Description: "RSC feature. Note that the feature name must be given in the `EXAMPLE_FEATURE_NAME` " +
-					"style.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+					"style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  " +
+					"`CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION` and " +
+					"`EXOCOMPUTE`.",
+				ValidateFunc: validation.StringInSlice([]string{
+					"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_NATIVE_ARCHIVAL",
+					"CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_PROTECTION", "EXOCOMPUTE",
+				}, false),
 			},
 			keyFeatures: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validation.StringIsNotWhiteSpace,
+					Type: schema.TypeString,
+					ValidateFunc: validation.StringInSlice([]string{
+						"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_NATIVE_ARCHIVAL",
+						"CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_PROTECTION", "EXOCOMPUTE",
+					}, false),
 				},
-				MinItems:    1,
-				Optional:    true,
-				Description: "RSC features. **Deprecated:** use `feature` instead.",
-				Deprecated:  "use `feature` instead",
+				MinItems: 1,
+				Optional: true,
+				Description: "RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, " +
+					"`AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, " +
+					"`CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`. **Deprecated:** use `feature` instead.",
+				Deprecated: "use `feature` instead",
 			},
 			keyHash: {
 				Type:     schema.TypeString,

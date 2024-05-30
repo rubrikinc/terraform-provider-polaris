@@ -68,7 +68,7 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "RSC cloud account ID.",
+				Description:  "RSC cloud account ID. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyConnectionStatus: {
@@ -106,7 +106,7 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				ForceNew: true,
 				Default:  "LRS",
 				Description: "Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` " +
-					"and `ZRS`. Default value is `LRS`.",
+					"and `ZRS`. Default value is `LRS`. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringInSlice([]string{"GRS", "GZRS", "LRS", "RA_GRS", "RA_GZRS", "ZRS"}, false),
 			},
 			keyStorageAccountNamePrefix: {
@@ -114,7 +114,8 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 				Description: "Azure storage account name prefix. The storage account name prefix cannot be longer than " +
-					"14 characters and can only consist of numbers and lower case letters.",
+					"14 characters and can only consist of numbers and lower case letters. Changing this forces a new " +
+					"resource to be created.",
 				ValidateFunc: validation.All(validation.StringLenBetween(1, 14),
 					validation.StringMatch(regexp.MustCompile("^[a-z0-9]*$"), "storage account name may only contain numbers and lowercase letters")),
 			},
@@ -123,7 +124,7 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 				Description: "Azure region to store the snapshots in. If not specified, the snapshots will be stored " +
-					"in the same region as the workload.",
+					"in the same region as the workload. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyStorageAccountTags: {
