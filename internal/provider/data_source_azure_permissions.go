@@ -47,8 +47,8 @@ func dataSourceAzurePermissions() *schema.Resource {
 			"  * `CLOUD_NATIVE_PROTECTION`\n" +
 			"  * `EXOCOMPUTE`\n" +
 			"\n" +
-			"See the [subscription](azure_subscription) resource for more information on enabling features for an " +
-			"Azure subscription added to RSC.\n" +
+			"See the [subscription](../resources/azure_subscription) resource for more information on enabling " +
+			"features for an Azure subscription added to RSC.\n" +
 			"\n" +
 			"The `polaris_azure_permissions` data source can be used with the `azurerm_role_definition` and the " +
 			"`permissions` fields of the `polaris_azure_subscription` resources to automatically update the permissions " +

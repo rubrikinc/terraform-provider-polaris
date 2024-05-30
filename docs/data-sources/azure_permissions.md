@@ -10,7 +10,7 @@ description: |-
     * CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
     * CLOUD_NATIVE_PROTECTION
     * EXOCOMPUTE
-  See the subscription azure_subscription resource for more information on enabling features for an Azure subscription added to RSC.
+  See the subscription ../resources/azure_subscription resource for more information on enabling features for an Azure subscription added to RSC.
   The polaris_azure_permissions data source can be used with the azurerm_role_definition and the permissions fields of the polaris_azure_subscription resources to automatically update the permissions of roles and notify RSC about the updated permissions.
   -> Note: To better fit the RSC Azure permission model where each RSC feature have two Azure roles,    the features field has been deprecated and replaced with the feature field.
   -> Note: Due to the RSC Azure permission model having been refined into subscription level permissions    and resource group level permissions, the actions, data_actions, not_actions and not_data_actions    fields have been deprecated and replaced with the corresponding subscription and resource group fields.
@@ -27,7 +27,7 @@ The `polaris_azure_permissions` data source is used to access information about 
   * `CLOUD_NATIVE_PROTECTION`
   * `EXOCOMPUTE`
 
-See the [subscription](azure_subscription) resource for more information on enabling features for an Azure subscription added to RSC.
+See the [subscription](../resources/azure_subscription) resource for more information on enabling features for an Azure subscription added to RSC.
 
 The `polaris_azure_permissions` data source can be used with the `azurerm_role_definition` and the `permissions` fields of the `polaris_azure_subscription` resources to automatically update the permissions of roles and notify RSC about the updated permissions.
 
