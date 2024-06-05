@@ -125,8 +125,8 @@ func resourceAzureSubscription() *schema.Resource {
 							RequiredWith: []string{
 								keyCloudNativeArchival + ".0." + keyResourceGroupName,
 							},
-							Description: "Region of the Azure resource group. Changing this forces the RSC feature to " +
-								"be re-onboarded.",
+							Description: "Region of the Azure resource group. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyResourceGroupTags: {
@@ -199,8 +199,8 @@ func resourceAzureSubscription() *schema.Resource {
 							RequiredWith: []string{
 								keyCloudNativeArchivalEncryption + ".0." + keyResourceGroupName,
 							},
-							Description: "Region of the Azure resource group. Changing this forces the RSC feature to " +
-								"be re-onboarded.",
+							Description: "Region of the Azure resource group. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyResourceGroupTags: {
@@ -235,9 +235,10 @@ func resourceAzureSubscription() *schema.Resource {
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyUserAssignedManagedIdentityRegion: {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "User-assigned managed identity region.",
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "User-assigned managed identity region. Should be specified in the " +
+								"standard Azure style, e.g. `eastus`.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyUserAssignedManagedIdentityResourceGroupName: {
@@ -294,8 +295,8 @@ func resourceAzureSubscription() *schema.Resource {
 							RequiredWith: []string{
 								keyCloudNativeProtection + ".0." + keyResourceGroupName,
 							},
-							Description: "Region of the Azure resource group. Changing this forces the RSC feature to " +
-								"be re-onboarded.",
+							Description: "Region of the Azure resource group. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyResourceGroupTags: {
@@ -374,8 +375,8 @@ func resourceAzureSubscription() *schema.Resource {
 							RequiredWith: []string{
 								keyExocompute + ".0." + keyResourceGroupName,
 							},
-							Description: "Region of the Azure resource group. Changing this forces the RSC feature to " +
-								"be re-onboarded.",
+							Description: "Region of the Azure resource group. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyResourceGroupTags: {

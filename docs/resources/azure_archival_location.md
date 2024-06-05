@@ -60,15 +60,15 @@ resource "polaris_azure_archival_location" "archival_location" {
 
 ### Required
 
-- `cloud_account_id` (String) RSC cloud account ID.
+- `cloud_account_id` (String) RSC cloud account ID. Changing this forces a new resource to be created.
 - `name` (String) Cloud native archival location name.
-- `storage_account_name_prefix` (String) Azure storage account name prefix. The storage account name prefix cannot be longer than 14 characters and can only consist of numbers and lower case letters.
+- `storage_account_name_prefix` (String) Azure storage account name prefix. The storage account name prefix cannot be longer than 14 characters and can only consist of numbers and lower case letters. Changing this forces a new resource to be created.
 
 ### Optional
 
 - `customer_managed_key` (Block Set) Customer managed storage encryption. Specify the regions and their respective encryption details. For other regions, data will be encrypted using platform managed keys. (see [below for nested schema](#nestedblock--customer_managed_key))
-- `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`.
-- `storage_account_region` (String) Azure region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.
+- `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`. Changing this forces a new resource to be created.
+- `storage_account_region` (String) Azure region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload. Changing this forces a new resource to be created.
 - `storage_account_tags` (Map of String) Azure storage account tags. Each tag will be added to the storage account created by RSC.
 - `storage_tier` (String) Azure storage tier. Possible values are `COOL` and `HOT`. Default value is `COOL`.
 

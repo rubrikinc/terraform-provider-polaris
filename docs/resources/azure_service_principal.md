@@ -63,9 +63,9 @@ resource "polaris_azure_service_principal" "default" {
 
 ### Optional
 
-- `app_id` (String) Azure app registration application ID. Also known as the client ID.
-- `app_name` (String) Azure app registration display name.
-- `app_secret` (String, Sensitive) Azure app registration client secret.
+- `app_id` (String) Azure app registration application ID. Also known as the client ID. Changing this forces a new resource to be created.
+- `app_name` (String) Azure app registration display name. Changing this forces a new resource to be created.
+- `app_secret` (String, Sensitive) Azure app registration client secret. Changing this forces a new resource to be created.
 - `credentials` (String) Path to a custom service principal file. Changing this forces a new resource to be created.
 - `permissions` (String, Deprecated) Permissions updated signal. When this field is updated, the provider will notify RSC that permissions has been updated. Use this field with the `polaris_azure_permissions` data source. **Deprecated:** use the `polaris_azure_subscription` resource's `permissions` fields instead.
 - `permissions_hash` (String, Deprecated) Permissions updated signal. **Deprecated:** use `permissions` instead.
