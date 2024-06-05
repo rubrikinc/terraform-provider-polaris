@@ -3,32 +3,56 @@
 page_title: "polaris_azure_exocompute Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_azure_exocompute resource creates an RSC Exocompute configuration.
+  The polaris_azure_exocompute resource creates an RSC Exocompute configuration for
+  Azure workloads.
   There are 2 types of Exocompute configurations:
-   1. Host - When a host configuration is created, RSC will automatically deploy the necessary resources     in the specified Azure region to run the Exocompute service. A host configuration can be used by both     the host cloud account and application cloud accounts mapped to the host account.
-   2. Application - An application configuration is created by mapping the application cloud account to a     host cloud account. The application cloud account will leverage the Exocompute resources deployed for     the host configuration.
-  Since there are 2 types of Exocompute configurations, there are 2 ways to create a polaris_azure_exocompute resource:
-   1. Using the cloud_account_id, region, subnet and pod_overlay_network_cidr fields. This creates a     host configuration.
-   2. Using the cloud_account_id and host_cloud_account_id fields. This creates an application     configuration.
-  ~> Note: A host configuration can be created without specifying the pod_overlay_network_cidr field,    this is discouraged and should only be done for backwards compatibility reasons.
-  -> Note: Using both host and application Exocompute configurations is sometimes referred to as shared    Exocompute.
+   1. Host - When a host configuration is created, RSC will automatically deploy the
+      necessary resources in the specified Azure region to run the Exocompute service.
+      A host configuration can be used by both the host cloud account and application
+      cloud accounts mapped to the host account.
+   2. Application - An application configuration is created by mapping the application
+      cloud account to a host cloud account. The application cloud account will leverage
+      the Exocompute resources deployed for the host configuration.
+  Since there are 2 types of Exocompute configurations, there are 2 ways to create a
+  polaris_azure_exocompute resource:
+   1. Using the cloud_account_id, region, subnet and pod_overlay_network_cidr
+      fields. This creates a host configuration.
+   2. Using the cloud_account_id and host_cloud_account_id fields. This creates an
+      application configuration.
+  ~> Note: A host configuration can be created without specifying the
+     pod_overlay_network_cidr field, this is discouraged and should only be done for
+     backwards compatibility reasons.
+  -> Note: Using both host and application Exocompute configurations is sometimes
+     referred to as shared Exocompute.
 ---
 
 # polaris_azure_exocompute (Resource)
 
-The `polaris_azure_exocompute` resource creates an RSC Exocompute configuration.
+The `polaris_azure_exocompute` resource creates an RSC Exocompute configuration for
+Azure workloads.
 
 There are 2 types of Exocompute configurations:
- 1. *Host* - When a host configuration is created, RSC will automatically deploy the necessary resources     in the specified Azure region to run the Exocompute service. A host configuration can be used by both     the host cloud account and application cloud accounts mapped to the host account.
- 2. *Application* - An application configuration is created by mapping the application cloud account to a     host cloud account. The application cloud account will leverage the Exocompute resources deployed for     the host configuration.
+ 1. *Host* - When a host configuration is created, RSC will automatically deploy the
+    necessary resources in the specified Azure region to run the Exocompute service.
+    A host configuration can be used by both the host cloud account and application
+    cloud accounts mapped to the host account.
+ 2. *Application* - An application configuration is created by mapping the application
+    cloud account to a host cloud account. The application cloud account will leverage
+    the Exocompute resources deployed for the host configuration.
 
-Since there are 2 types of Exocompute configurations, there are 2 ways to create a `polaris_azure_exocompute` resource:
- 1. Using the `cloud_account_id`, `region`, `subnet` and `pod_overlay_network_cidr` fields. This creates a     host configuration.
- 2. Using the `cloud_account_id` and `host_cloud_account_id` fields. This creates an application     configuration.
+Since there are 2 types of Exocompute configurations, there are 2 ways to create a
+`polaris_azure_exocompute` resource:
+ 1. Using the `cloud_account_id`, `region`, `subnet` and `pod_overlay_network_cidr`
+    fields. This creates a host configuration.
+ 2. Using the `cloud_account_id` and `host_cloud_account_id` fields. This creates an
+    application configuration.
 
-~> **Note:** A host configuration can be created without specifying the `pod_overlay_network_cidr` field,    this is discouraged and should only be done for backwards compatibility reasons.
+~> **Note:** A host configuration can be created without specifying the
+   `pod_overlay_network_cidr` field, this is discouraged and should only be done for
+   backwards compatibility reasons.
 
--> **Note:** Using both host and application Exocompute configurations is sometimes referred to as shared    Exocompute.
+-> **Note:** Using both host and application Exocompute configurations is sometimes
+   referred to as shared Exocompute.
 
 ## Example Usage
 
@@ -62,4 +86,4 @@ resource "polaris_azure_exocompute" "app_exocompute" {
 
 ### Read-Only
 
-- `id` (String) Exocompute configuration ID.
+- `id` (String) Exocompute configuration ID (UUID).

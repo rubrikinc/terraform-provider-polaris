@@ -3,12 +3,12 @@
 page_title: "polaris_aws_account Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_aws_account resource adds an AWS account to RSC for protection.
 ---
 
 # polaris_aws_account (Resource)
 
-
+The `polaris_aws_account` resource adds an AWS account to RSC for protection.
 
 ## Example Usage
 
@@ -24,7 +24,7 @@ resource "polaris_aws_account" "default" {
   }
 }
 
-# Enable Cloud Native Protection and Exocompte.
+# Enable Cloud Native Protection and Exocompute.
 resource "polaris_aws_account" "default" {
   profile = "default"
 
@@ -44,7 +44,7 @@ resource "polaris_aws_account" "default" {
 
 # The Couldformation stack ARN is available after creation
 output "stack_arn" {
-  value       = polaris_aws_account.default.exocompute[0].stack_arn
+  value = polaris_aws_account.default.exocompute[0].stack_arn
 }
 ```
 
@@ -59,25 +59,25 @@ output "stack_arn" {
 
 - `assume_role` (String) Role ARN of role to assume.
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed.
-- `exocompute` (Block List, Max: 1) Enable the exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
+- `exocompute` (Block List, Max: 1) Enable the Exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
 - `name` (String) Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.
 - `permissions` (String) When set to 'update' feature permissions can be updated by applying the configuration.
 - `profile` (String) AWS named profile.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) RSC cloud account ID (UUID).
 
 <a id="nestedblock--cloud_native_protection"></a>
 ### Nested Schema for `cloud_native_protection`
 
 Required:
 
-- `regions` (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+- `regions` (Set of String) Regions that RSC will monitor for instances to automatically protect.
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the cloud native protection feature.
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature.
 
 Read-Only:
 
@@ -94,7 +94,7 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the exocompute feature.
+- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature.
 
 Read-Only:
 

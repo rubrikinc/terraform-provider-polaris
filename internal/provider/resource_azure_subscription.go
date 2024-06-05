@@ -38,8 +38,45 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// resourceAzureSubscription defines the schema for the Azure subscription
-// resource.
+const resourceAzureSubscriptionDescription = `
+The ´polaris_azure_subscription´ resource adds an Azure subscription to RSC. When
+the first subscription for an Azure tenant is added, a corresponding tenant is
+created in RSC. The RSC tenant is automatically destroyed when it's last subscription
+is removed.
+
+Any combination of different RSC features can be enabled for a subscription:
+  1. ´cloud_native_archival´ - Provides archival of data from data center workloads
+     for disaster recovery and long-term retention.
+  2. ´cloud_native_archival_encryption´ - Allows cloud archival locations to be
+     encrypted with customer managed keys.
+  3. ´cloud_native_protection´ - Provides protection for Azure virtual machines and
+     managed disks through the rules and policies of SLA Domains.
+  4. ´exocompute´ - Provides snapshot indexing, file recovery, storage tiering, and
+     application-consistent protection of Azure objects.
+  5. ´sql_db_protection´ - Provides centralized database backup management and
+     recovery in an Azure SQL Database deployment.
+  6. ´sql_mi_protection´ - Provides centralized database backup management and
+     recovery for an Azure SQL Managed Instance deployment.
+
+Each feature's ´permissions´ field can be used with the ´polaris_azure_permissions´
+data source to inform RSC about permission updates when the Terraform configuration
+is applied.
+
+~> **Note:** Even though the ´resource_group_name´ and the ´resource_group_region´
+   fields are marked as optional you should always specify them. They are marked as
+   optional to simplify the migration of existing Terraform configurations. If
+   omitted, RSC will generate a unique resource group name but it will not create
+   the actual resource group. Until the resource group is created, the RSC feature 
+   depending on the resource group will not function as expected.
+
+~> **Note:** As mentioned in the documentation for each feature below, changing
+   certain fields causes features to be re-onboarded. Take care when the subscription
+   only has a single feature, as it could cause the tenant to be removed from RSC.
+
+-> **Note:** As of now, ´sql_db_protection´ and ´sql_mi_protection´ does not support
+   specifying an Azure resource group.
+`
+
 func resourceAzureSubscription() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateSubscription,
@@ -47,44 +84,12 @@ func resourceAzureSubscription() *schema.Resource {
 		UpdateContext: azureUpdateSubscription,
 		DeleteContext: azureDeleteSubscription,
 
-		Description: "The `polaris_azure_subscription` resource adds an Azure subscription to RSC. When the first " +
-			"subscription for an Azure tenant is added, a corresponding tenant is created in RSC. The RSC tenant is " +
-			"automatically destroyed when it's last subscription is removed.\n" +
-			"\n" +
-			"Any combination of different RSC features can be enabled for a subscription:\n" +
-			"  1. `cloud_native_archival` - Provides archival of data from data center workloads for disaster recovery " +
-			"     and long-term retention.\n" +
-			"  2. `cloud_native_archival_encryption` - Allows cloud archival locations to be encrypted with customer " +
-			"     managed keys.\n" +
-			"  3. `cloud_native_protection` - Provides protection for Azure virtual machines and managed disks through " +
-			"     the rules and policies of SLA Domains.\n" +
-			"  4. `exocompute` - Provides snapshot indexing, file recovery, storage tiering, and application-consistent " +
-			"     protection of Azure objects.\n" +
-			"  5. `sql_db_protection` - Provides centralized database backup management and recovery in an Azure SQL " +
-			"     Database deployment.\n" +
-			"  6. `sql_mi_protection` - Provides centralized database backup management and recovery for an Azure SQL " +
-			"     Managed Instance deployment.\n" +
-			"\n" +
-			"Each feature's `permissions` field can be used with the `polaris_azure_permissions` data source to inform " +
-			"RSC about permission updates when the Terraform configuration is applied.\n" +
-			"\n" +
-			"~> **Note:** Even though the `resource_group_name` and the `resource_group_region` fields are marked as " +
-			"   optional you should always specify them. They are marked as optional to simplify the migration of " +
-			"   existing Terraform configurations. If omitted, RSC will generate a unique resource group name but it " +
-			"   will not create the actual resource group. Until the resource group is created, the RSC feature " +
-			"   depending on the resource group will not function as expected.\n" +
-			"\n" +
-			"~> **Note:** As mentioned in the documentation for each feature below, changing certain fields causes " +
-			"   features to be re-onboarded. Take care when the subscription only has a single feature, as it could " +
-			"   cause the tenant to be removed from RSC.\n" +
-			"\n" +
-			"-> **Note:** As of now, `sql_db_protection` and `sql_mi_protection` does not support specifying an Azure " +
-			"   resource group.\n",
+		Description: description(resourceAzureSubscriptionDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "RSC cloud account ID.",
+				Description: "RSC cloud account ID (UUID).",
 			},
 			keyCloudNativeArchival: {
 				Type: schema.TypeList,

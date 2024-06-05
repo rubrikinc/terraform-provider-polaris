@@ -3,12 +3,14 @@
 page_title: "polaris_aws_archival_location Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_aws_archival_location data source is used to access information about an
+  AWS archival location. An archival location is looked up using either the ID or the name.
 ---
 
 # polaris_aws_archival_location (Data Source)
 
-
+The `polaris_aws_archival_location` data source is used to access information about an
+AWS archival location. An archival location is looked up using either the ID or the name.
 
 ## Example Usage
 
@@ -29,16 +31,16 @@ data "polaris_aws_archival_location" "location" {
 
 ### Optional
 
-- `archival_location_id` (String) ID of the archival location.
-- `name` (String) Name of the archival location.
+- `archival_location_id` (String) Cloud native archival location ID (UUID).
+- `name` (String) Name of the cloud native archival location.
 
 ### Read-Only
 
-- `bucket_prefix` (String) AWS bucket prefix.
+- `bucket_prefix` (String) AWS bucket prefix. Note, `rubrik-` will always be prepended to the prefix.
 - `bucket_tags` (Map of String) AWS bucket tags.
 - `connection_status` (String) Connection status of the archival location.
-- `id` (String) The ID of this resource.
+- `id` (String) Cloud native archival location ID (UUID).
 - `kms_master_key` (String, Sensitive) AWS KMS master key alias/ID.
-- `location_template` (String) Location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.
+- `location_template` (String) RSC location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.
 - `region` (String) AWS region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.
-- `storage_class` (String) AWS bucket storage class.
+- `storage_class` (String) AWS bucket storage class. Possible values are `STANDARD`, `STANDARD_IA`, `ONEZONE_IA`, `GLACIER_INSTANT_RETRIEVAL`, `GLACIER_DEEP_ARCHIVE` and `GLACIER_FLEXIBLE_RETRIEVAL`. Default value is `STANDARD_IA`.

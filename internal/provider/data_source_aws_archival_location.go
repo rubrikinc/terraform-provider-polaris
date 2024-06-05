@@ -32,60 +32,75 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 )
 
+const dataSourceAWSArchivalLocationDescription = `
+The ´polaris_aws_archival_location´ data source is used to access information about an
+AWS archival location. An archival location is looked up using either the ID or the name.
+`
+
 func dataSourceAwsArchivalLocation() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: awsArchivalLocationRead,
 
+		Description: description(dataSourceAWSArchivalLocationDescription),
 		Schema: map[string]*schema.Schema{
-			"bucket_prefix": {
+			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "AWS bucket prefix.",
+				Description: "Cloud native archival location ID (UUID).",
 			},
-			"bucket_tags": {
+			keyArchivalLocationID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: []string{keyArchivalLocationID, keyName},
+				Description:  "Cloud native archival location ID (UUID).",
+				ValidateFunc: validation.IsUUID,
+			},
+			keyBucketPrefix: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "AWS bucket prefix. Note, `rubrik-` will always be prepended to the prefix.",
+			},
+			keyBucketTags: {
 				Type:        schema.TypeMap,
 				Computed:    true,
 				Description: "AWS bucket tags.",
 			},
-			"connection_status": {
+			keyConnectionStatus: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "Connection status of the archival location.",
 			},
-			"archival_location_id": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ExactlyOneOf: []string{"archival_location_id", "name"},
-				Description:  "ID of the archival location.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
-			},
-			"kms_master_key": {
+			keyKMSMasterKey: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Sensitive:   true,
 				Description: "AWS KMS master key alias/ID.",
 			},
-			"location_template": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.",
+			keyLocationTemplate: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "RSC location template. If a region was specified, it will be `SPECIFIC_REGION`, " +
+					"otherwise `SOURCE_REGION`.",
 			},
-			"name": {
+			keyName: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{"archival_location_id", "name"},
-				Description:  "Name of the archival location.",
+				ExactlyOneOf: []string{keyArchivalLocationID, keyName},
+				Description:  "Name of the cloud native archival location.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"region": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "AWS region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.",
+			keyRegion: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "AWS region to store the snapshots in. If not specified, the snapshots will be stored " +
+					"in the same region as the workload.",
 			},
-			"storage_class": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "AWS bucket storage class.",
+			keyStorageClass: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "AWS bucket storage class. Possible values are `STANDARD`, `STANDARD_IA`, `ONEZONE_IA`, " +
+					"`GLACIER_INSTANT_RETRIEVAL`, `GLACIER_DEEP_ARCHIVE` and `GLACIER_FLEXIBLE_RETRIEVAL`. Default " +
+					"value is `STANDARD_IA`.",
 			},
 		},
 	}
@@ -99,58 +114,50 @@ func awsArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 
+	// Read the archival location using either the ID or the name.
 	var targetMapping aws.TargetMapping
-	if targetMappingID, ok := d.GetOk("archival_location_id"); ok {
+	if targetMappingID, ok := d.GetOk(keyArchivalLocationID); ok {
 		id, err := uuid.Parse(targetMappingID.(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		// Read the AWS archival location using the target mapping ID.
 		targetMapping, err = aws.Wrap(client).TargetMappingByID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		targetMappingName := d.Get("name").(string)
-
-		// Read the AWS archival location using the target mapping name.
-		targetMapping, err = aws.Wrap(client).TargetMappingByName(ctx, targetMappingName)
+		targetMapping, err = aws.Wrap(client).TargetMappingByName(ctx, d.Get(keyName).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	// Set the resource string arguments.
-	if err := d.Set("bucket_prefix", strings.TrimPrefix(targetMapping.BucketPrefix, "rubrik-")); err != nil {
+	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetMapping.BucketPrefix, "rubrik-")); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("connection_status", targetMapping.ConnectionStatus); err != nil {
+	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("kms_master_key", targetMapping.KMSMasterKey); err != nil {
+	if err := d.Set(keyKMSMasterKey, targetMapping.KMSMasterKey); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("location_template", targetMapping.LocTemplate); err != nil {
+	if err := d.Set(keyLocationTemplate, targetMapping.LocTemplate); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("name", targetMapping.Name); err != nil {
+	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("region", targetMapping.Region); err != nil {
+	if err := d.Set(keyRegion, targetMapping.Region); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("storage_class", targetMapping.StorageClass); err != nil {
+	if err := d.Set(keyStorageClass, targetMapping.StorageClass); err != nil {
 		return diag.FromErr(err)
 	}
-
-	// Set the resource bucket tags argument.
-	if err := d.Set("bucket_tags", toBucketTags(targetMapping.BucketTags)); err != nil {
+	if err := d.Set(keyBucketTags, toBucketTags(targetMapping.BucketTags)); err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Set the resource ID to the target mapping ID.
 	d.SetId(targetMapping.ID.String())
-
 	return nil
 }

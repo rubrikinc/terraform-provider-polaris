@@ -4,14 +4,16 @@ page_title: "polaris_account Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
   The polaris_account data source is used to access information about the RSC account.
-  -> Note: The fqdn and name fields are read from the local RSC credentials and not from RSC.
+  -> Note: The fqdn and name fields are read from the local RSC credentials and
+     not from RSC.
 ---
 
 # polaris_account (Data Source)
 
 The `polaris_account` data source is used to access information about the RSC account.
 
--> **Note:** The `fqdn` and `name` fields are read from the local RSC credentials and not from RSC.
+-> **Note:** The `fqdn` and `name` fields are read from the local RSC credentials and
+   not from RSC.
 
 ## Example Usage
 
@@ -42,5 +44,5 @@ resource "azuread_application" "app" {
 
 - `features` (Set of String) Features enabled for the RSC account.
 - `fqdn` (String) Fully qualified domain name of the RSC account.
-- `id` (String) SHA-256 hash of the fields in order.
+- `id` (String) SHA-256 hash of the features, the fully qualified domain name and the name.
 - `name` (String) RSC account name.

@@ -3,25 +3,35 @@
 page_title: "polaris_aws_cnp_account_attachments Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The aws_cnp_account_attachments resource attaches AWS instance profiles and AWS
+  roles to an RSC cloud account.
+  -> Note: The features field takes only the feature names and not the permission
+     groups associated with the features.
 ---
 
 # polaris_aws_cnp_account_attachments (Resource)
 
+The `aws_cnp_account_attachments` resource attaches AWS instance profiles and AWS
+roles to an RSC cloud account.
 
+-> **Note:** The `features` field takes only the feature names and not the permission
+   groups associated with the features.
 
 ## Example Usage
 
 ```terraform
+# The configuration assumes that an AWS account has been been added
+# to RSC and that one AWS IAM instance profile and role has been
+# created for each RSC artifact.
 resource "polaris_aws_cnp_account_attachments" "attachments" {
   account_id = polaris_aws_cnp_account.account.id
-  features   = polaris_aws_cnp_account.account.features
+  features   = polaris_aws_cnp_account.account.feature.*.name
 
   dynamic "instance_profile" {
     for_each = aws_iam_instance_profile.profile
     content {
       key  = instance_profile.key
-      name = instance_profile.value["name"]
+      name = instance_profile.value["arn"]
     }
   }
 
@@ -40,8 +50,8 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 
 ### Required
 
-- `account_id` (String) RSC account id.
-- `features` (Set of String) RSC features.
+- `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
+- `features` (Set of String) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
 - `role` (Block Set, Min: 1) Roles to attach to the cloud account. (see [below for nested schema](#nestedblock--role))
 
 ### Optional
@@ -50,7 +60,7 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) RSC cloud account ID (UUID).
 
 <a id="nestedblock--role"></a>
 ### Nested Schema for `role`
@@ -58,7 +68,7 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 Required:
 
 - `arn` (String) AWS role ARN.
-- `key` (String) Role key.
+- `key` (String) RSC artifact key for the AWS role.
 
 
 <a id="nestedblock--instance_profile"></a>
@@ -66,5 +76,5 @@ Required:
 
 Required:
 
-- `key` (String) Instance profile key.
+- `key` (String) RSC artifact key for the AWS instance profile.
 - `name` (String) AWS instance profile name.

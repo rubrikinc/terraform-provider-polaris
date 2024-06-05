@@ -3,12 +3,27 @@
 page_title: "polaris_aws_archival_location Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_aws_archival_location resource creates an RSC archival location for
+  cloud-native workloads.
+  When creating an archival location, the region where the snapshots are stored needs
+  to be specified:
+    * SOURCE_REGION - Store snapshots in the same region to minimize data transfer
+      charges. This is the default behaviour when the region field is not specified.
+    * SPECIFIC_REGION - Storing snapshots in another region can increase total data
+      transfer charges. The region field specifies the region.
 ---
 
 # polaris_aws_archival_location (Resource)
 
+The `polaris_aws_archival_location` resource creates an RSC archival location for
+cloud-native workloads.
 
+When creating an archival location, the region where the snapshots are stored needs
+to be specified:
+  * `SOURCE_REGION` - Store snapshots in the same region to minimize data transfer
+    charges. This is the default behaviour when the `region` field is not specified.
+  * `SPECIFIC_REGION` - Storing snapshots in another region can increase total data
+    transfer charges. The `region` field specifies the region.
 
 ## Example Usage
 
@@ -34,19 +49,19 @@ resource "polaris_aws_archival_location" "archival_location" {
 
 ### Required
 
-- `account_id` (String) RSC cloud account ID.
-- `bucket_prefix` (String) AWS bucket prefix. Note that `rubrik-` will always be prepended to the prefix.
-- `name` (String) Name of the archival location.
+- `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
+- `bucket_prefix` (String) AWS bucket prefix. The prefix cannot be longer than 19 characters. Note that `rubrik-` will always be prepended to the prefix. Changing this forces a new resource to be created.
+- `name` (String) Name of the cloud native archival location.
 
 ### Optional
 
-- `bucket_tags` (Map of String) AWS bucket tags. Each tag will be added to the bucket created by RSC.
+- `bucket_tags` (Map of String) AWS bucket tags. Each tag will be added to the bucket created by RSC. Changing this forces a new resource to be created.
 - `kms_master_key` (String, Sensitive) AWS KMS master key alias/ID.
-- `region` (String) AWS region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.
-- `storage_class` (String) AWS bucket storage class.
+- `region` (String) AWS region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload. Changing this forces a new resource to be created.
+- `storage_class` (String) AWS bucket storage class. Possible values are `STANDARD`, `STANDARD_IA`, `ONEZONE_IA`, `GLACIER_INSTANT_RETRIEVAL`, `GLACIER_DEEP_ARCHIVE` and `GLACIER_FLEXIBLE_RETRIEVAL`. Default value is `STANDARD_IA`.
 
 ### Read-Only
 
-- `connection_status` (String) Connection status of the archival location.
-- `id` (String) The ID of this resource.
+- `connection_status` (String) Connection status of the cloud native archival location.
+- `id` (String) Cloud native archival location ID (UUID).
 - `location_template` (String) Location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.

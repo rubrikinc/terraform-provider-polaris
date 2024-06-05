@@ -33,6 +33,47 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+const dataSourceAWSPermissionsDescription = `
+The ´polaris_aws_cnp_permissions´ data source is used to access information about the
+permissions required by RSC for a specified feature set.
+
+## Permission Groups
+Following is a list of features and their applicable permission groups. These are used
+when specifying the feature set.
+
+### CLOUD_NATIVE_ARCHIVAL
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+### CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+  * ´ENCRYPTION´ - Represents the set of permissions required for encryption operations.
+
+### CLOUD_NATIVE_PROTECTION
+ * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+ * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export and
+   restore operations.
+ * ´FILE_LEVEL_RECOVERY´ - Represents the set of permissions required for file-level
+   recovery operations.
+ * ´SNAPSHOT_PRIVATE_ACCESS´ - Represents the set of permissions required for private
+   access to disk snapshots.
+
+### CLOUD_NATIVE_S3_PROTECTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+### EXOCOMPUTE
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+  * ´PRIVATE_ENDPOINTS´ - Represents the set of permissions required for usage of private
+    endpoints.
+  * ´RSC_MANAGED_CLUSTER´ - Represents the set of permissions required for the Rubrik-
+    managed Exocompute cluster.
+
+### RDS_PROTECTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+-> **Note:** When permission groups are specified, the ´BASIC´ permission group must
+   always be included.
+`
+
 // This data source uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
@@ -40,60 +81,67 @@ func dataSourceAwsPermissions() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: awsPermissionsRead,
 
+		Description: description(dataSourceAWSPermissionsDescription),
 		Schema: map[string]*schema.Schema{
-			"cloud": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Default:      "STANDARD",
-				Description:  "AWS cloud type.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "SHA-256 hash of the customer managed policies and the managed policies.",
 			},
-			"customer_managed_policies": {
+			keyCloud: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "STANDARD",
+				Description: "AWS cloud type. Possible values are `STANDARD`, `CHINA` and `GOV`. Default value is " +
+					"`STANDARD`.",
+				ValidateFunc: validation.StringInSlice([]string{"STANDARD", "CHINA", "GOV"}, false),
+			},
+			keyCustomerManagedPolicies: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"feature": {
+						keyFeature: {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "RSC Feature.",
+							Description: "RSC feature name.",
 						},
-						"name": {
+						keyName: {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "Policy name.",
 						},
-						"policy": {
+						keyPolicy: {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Policy.",
+							Description: "AWS policy.",
 						},
 					},
 				},
 				Computed:    true,
 				Description: "Customer managed policies.",
 			},
-			"ec2_recovery_role_path": {
+			keyEC2RecoveryRolePath: {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: "EC2 recovery role path.",
+				Description: "AWS EC2 recovery role path.",
 			},
-			"feature": {
+			keyFeature: {
 				Type:        schema.TypeSet,
-				Elem:        featureResource,
+				Elem:        featureResource(),
 				MinItems:    1,
 				Required:    true,
 				Description: "RSC feature with optional permission groups.",
 			},
-			"managed_policies": {
+			keyManagedPolicies: {
 				Type:        schema.TypeList,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Computed:    true,
 				Description: "Managed policies.",
 			},
-			"role_key": {
+			keyRoleKey: {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "Role key.",
+				Description:  "RSC artifact key for the AWS role.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
@@ -108,39 +156,36 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
-	cloud := d.Get("cloud").(string)
-	ec2RecoveryRolePath := d.Get("ec2_recovery_role_path").(string)
+	cloud := d.Get(keyCloud).(string)
+	ec2RecoveryRolePath := d.Get(keyEC2RecoveryRolePath).(string)
 	var features []core.Feature
-	for _, block := range d.Get("feature").(*schema.Set).List() {
+	for _, block := range d.Get(keyFeature).(*schema.Set).List() {
 		block := block.(map[string]interface{})
-		feature := core.Feature{Name: block["name"].(string)}
-		for _, group := range block["permission_groups"].(*schema.Set).List() {
+		feature := core.Feature{Name: block[keyName].(string)}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
 
 		features = append(features, feature)
 	}
-	roleKey := d.Get("role_key").(string)
+	roleKey := d.Get(keyRoleKey).(string)
 
-	// Request permissions.
 	customerPolicies, managedPolicies, err := aws.Wrap(client).Permissions(ctx, cloud, features, ec2RecoveryRolePath)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Set attributes.
 	var customerPoliciesAttr []map[string]string
 	for _, policy := range customerPolicies {
 		if roleKey == policy.Artifact {
 			customerPoliciesAttr = append(customerPoliciesAttr, map[string]string{
-				"feature": policy.Feature.Name,
-				"name":    policy.Name,
-				"policy":  policy.Policy,
+				keyFeature: policy.Feature.Name,
+				keyName:    policy.Name,
+				keyPolicy:  policy.Policy,
 			})
 		}
 	}
-	if err := d.Set("customer_managed_policies", customerPoliciesAttr); err != nil {
+	if err := d.Set(keyCustomerManagedPolicies, customerPoliciesAttr); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -150,7 +195,7 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 			managedPoliciesAttr = append(managedPoliciesAttr, policy.Name)
 		}
 	}
-	if err := d.Set("managed_policies", managedPoliciesAttr); err != nil {
+	if err := d.Set(keyManagedPolicies, managedPoliciesAttr); err != nil {
 		return diag.FromErr(err)
 	}
 

@@ -32,6 +32,33 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 )
 
+const resourceAzureServicePrincipalDescription = `
+The ´polaris_azure_service_principal´ resource adds an Azure service principal to
+RSC. A service principal must be added for each Azure tenant before subscriptions
+for the tenants can be added to RSC.
+
+There are 3 ways to create a ´polaris_azure_service principal´ resource:
+  1. Using the ´app_id´, ´app_name´, ´app_secret´, ´tenant_id´ and ´tenant_domain´
+     fields.
+  2. Using the ´credentials´ field which is the path to a custom service principal 
+     file. A description of the custom format can be found
+     [here](https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials).
+  3. Using the ' sdk_auth´ field which is the path to an Azure service principal
+     created with the Azure SDK using the ´--sdk-auth´ parameter.
+
+~> **Note:** Removing the last subscription from an RSC tenant will automatically
+   remove the tenant, which also removes the service principal.
+
+~> **Note:** Destroying the ´polaris_azure_service_principal´ resource only updates
+   the local state, it does not remove the service principal from RSC. However,
+   creating another ´polaris_azure_service_principal´ resource for the same Azure
+   tenant will overwrite the old service principal in RSC.
+
+-> **Note:** There is no way to verify if a service principal has been added to RSC
+   using the UI. RSC tenants don't show up in the UI until the first subscription is
+   added.
+`
+
 // resourceAzureServicePrincipal defines the schema for the Azure service
 // principal resource. Note that the delete function cannot remove the service
 // principal since there is no delete operation in the RSC API.
@@ -42,33 +69,14 @@ func resourceAzureServicePrincipal() *schema.Resource {
 		UpdateContext: azureUpdateServicePrincipal,
 		DeleteContext: azureDeleteServicePrincipal,
 
-		Description: "The `polaris_azure_service_principal` resource adds an Azure service principal to RSC. " +
-			"A service principal must be added for each Azure tenant before subscriptions for the tenants can be " +
-			"added to RSC.\n" +
-			"\n" +
-			"There are 3 ways to create a `polaris_azure_service principal` resource:\n" +
-			"  1. Using the `app_id`, `app_name`, `app_secret`, `tenant_id` and `tenant_domain` fields.\n" +
-			"  2. Using the `credentials` field which is the path to a custom service principal file. A description " +
-			"     of the custom format can be found " +
-			"     [here](https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials).\n" +
-			"  3. Using the `sdk_auth` field which is the path to an Azure service principal created with the Azure " +
-			"     SDK using the `--sdk-auth` parameter.\n" +
-			"\n" +
-			"~> **Note:** Removing the last subscription from an RSC tenant will automatically remove the tenant, " +
-			"which also removes the service principal.\n" +
-			"\n" +
-			"~> **Note:** Destroying the `polaris_azure_service_principal` resource only updates the local state, it " +
-			"does not remove the service principal from RSC. However, creating another `polaris_azure_service_principal` " +
-			"resource for the same Azure tenant will overwrite the old service principal in RSC.\n" +
-			"\n" +
-			"-> **Note:** There is no way to verify if a service principal has been added to RSC using the UI. RSC " +
-			"tenants don't show up in the UI until the first subscription is added.",
+		Description: description(resourceAzureServicePrincipalDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:     schema.TypeString,
 				Computed: true,
-				Description: "Azure app registration application ID. Also known as the client ID. Note, this might " +
-					"change in the future, use the `app_id` field to reference the application ID in configurations.",
+				Description: "Azure app registration application ID (UUID). Also known as the client ID. " +
+					"Note, this might change in the future, use the `app_id` field to reference the application ID " +
+					"in configurations.",
 			},
 			keyAppID: {
 				Type:         schema.TypeString,

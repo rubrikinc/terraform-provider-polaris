@@ -35,6 +35,26 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
+const resourceAzureArchivalLocationDescription = `
+The ´polaris_azure_archival_location´ resource creates an RSC archival location for
+cloud-native workloads.
+
+When creating an archival location, the region where the snapshots are stored needs
+to be specified:
+  * ´SOURCE_REGION´ - Store snapshots in the same region to minimize data transfer
+    charges. This is the default behaviour when the ´storage_account_region´ field is
+    not specified.
+  * ´SPECIFIC_REGION´ - Storing snapshots in another region can increase total data
+    transfer charges. The ´storage_account_region´ field specifies the region.
+
+Custom storage encryption is enabled by specifying one or more ´customer_managed_key´
+blocks. Each ´customer_managed_key´ block specifies the encryption details to use for
+a region. For other regions, data will be encrypted using platform managed keys.
+
+-> **Note:** The Azure storage account is not created until the first protected object
+   is archived to the location.
+`
+
 func resourceAzureArchivalLocation() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateArchivalLocation,
@@ -42,27 +62,12 @@ func resourceAzureArchivalLocation() *schema.Resource {
 		UpdateContext: azureUpdateArchivalLocation,
 		DeleteContext: azureDeleteArchivalLocation,
 
-		Description: "The `polaris_azure_archival_location` resource creates an RSC archival location for cloud-native " +
-			"workloads.\n" +
-			"\n" +
-			"When creating an archival location, the region where the snapshots are stored needs to be specified:\n" +
-			"  * *Source Region* - Store snapshots in the same region to minimize data transfer charges. This is the " +
-			"    default behaviour when the `storage_account_region` field is not specified.\n" +
-			"  * *Specific region* - Storing snapshots in another region can increase total data transfer charges. " +
-			"    The `storage_account_region` field specifies the region.\n" +
-			"\n" +
-			"Custom storage encryption is enabled by specifying one or more `customer_managed_key` blocks. Each " +
-			"`customer_managed_key` block specifies the encryption details to use for a region. For other regions, " +
-			"data will be encrypted using platform managed keys. \n" +
-			"\n" +
-			"-> **Note:** The Azure storage account is not created until the first protected object is archived to the" +
-			"   location.\n" +
-			"\n",
+		Description: description(resourceAzureArchivalLocationDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Cloud native archival location ID.",
+				Description: "Cloud native archival location ID (UUID).",
 			},
 			keyCloudAccountID: {
 				Type:         schema.TypeString,
@@ -85,8 +90,8 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Type:     schema.TypeSet,
 				Elem:     customerKeyResource(),
 				Optional: true,
-				Description: "Customer managed storage encryption. Specify the regions and their respective encryption " +
-					"details. For other regions, data will be encrypted using platform managed keys.",
+				Description: "Customer managed storage encryption. Specify the regions and their respective " +
+					"encryption details. For other regions, data will be encrypted using platform managed keys.",
 			},
 			keyLocationTemplate: {
 				Type:     schema.TypeString,
@@ -105,19 +110,20 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 				Default:  "LRS",
-				Description: "Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` " +
-					"and `ZRS`. Default value is `LRS`. Changing this forces a new resource to be created.",
+				Description: "Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, " +
+					"`RA_GZRS` and `ZRS`. Default value is `LRS`. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringInSlice([]string{"GRS", "GZRS", "LRS", "RA_GRS", "RA_GZRS", "ZRS"}, false),
 			},
 			keyStorageAccountNamePrefix: {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				Description: "Azure storage account name prefix. The storage account name prefix cannot be longer than " +
-					"14 characters and can only consist of numbers and lower case letters. Changing this forces a new " +
-					"resource to be created.",
+				Description: "Azure storage account name prefix. The storage account name prefix cannot be longer " +
+					"than 14 characters and can only consist of numbers and lower case letters. Changing this forces " +
+					"a new resource to be created.",
 				ValidateFunc: validation.All(validation.StringLenBetween(1, 14),
-					validation.StringMatch(regexp.MustCompile("^[a-z0-9]*$"), "storage account name may only contain numbers and lowercase letters")),
+					validation.StringMatch(regexp.MustCompile("^[a-z0-9]*$"),
+						"storage account name may only contain numbers and lowercase letters")),
 			},
 			keyStorageAccountRegion: {
 				Type:     schema.TypeString,
@@ -128,9 +134,10 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyStorageAccountTags: {
-				Type:        schema.TypeMap,
-				Optional:    true,
-				Description: "Azure storage account tags. Each tag will be added to the storage account created by RSC.",
+				Type:     schema.TypeMap,
+				Optional: true,
+				Description: "Azure storage account tags. Each tag will be added to the storage account created by " +
+					"RSC.",
 			},
 			keyStorageTier: {
 				Type:         schema.TypeString,

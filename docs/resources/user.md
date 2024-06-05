@@ -3,12 +3,12 @@
 page_title: "polaris_user Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_user resource is used to manage users in RSC.
 ---
 
 # polaris_user (Resource)
 
-
+The `polaris_user` resource is used to manage users in RSC.
 
 ## Example Usage
 
@@ -27,11 +27,11 @@ resource "polaris_user" "auditor" {
 
 ### Required
 
-- `email` (String) User email address.
-- `role_ids` (Set of String) Roles assigned to the user.
+- `email` (String) User email address. Changing this forces a new resource to be created.
+- `role_ids` (Set of String) Roles assigned to the user (UUIDs).
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) User email address.
 - `is_account_owner` (Boolean) True if the user is the account owner.
 - `status` (String) User status.

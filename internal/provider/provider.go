@@ -23,13 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"fmt"
-	"io/fs"
-	"net/mail"
 	"os"
-	"time"
+	"strings"
 
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -38,6 +34,10 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/cdm"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+)
+
+const (
+	appCloudAccountPrefix = "app-"
 )
 
 // Provider defines the schema and resource map for the RSC provider.
@@ -53,40 +53,40 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"polaris_aws_account":                       resourceAwsAccount(),
-			"polaris_aws_archival_location":             resourceAwsArchivalLocation(),
-			"polaris_aws_cnp_account":                   resourceAwsCnpAccount(),
-			"polaris_aws_cnp_account_attachments":       resourceAwsCnpAccountAttachments(),
-			"polaris_aws_cnp_account_trust_policy":      resourceAwsCnpAccountTrustPolicy(),
-			"polaris_aws_exocompute":                    resourceAwsExocompute(),
-			"polaris_aws_exocompute_cluster_attachment": resourceAwsExocomputeClusterAttachment(),
-			"polaris_aws_private_container_registry":    resourceAwsPrivateContainerRegistry(),
-			keyPolarisAzureArchivalLocation:             resourceAzureArchivalLocation(),
-			keyPolarisAzureExocompute:                   resourceAzureExocompute(),
-			keyPolarisAzureServicePrincipal:             resourceAzureServicePrincipal(),
-			keyPolarisAzureSubscription:                 resourceAzureSubscription(),
-			"polaris_cdm_bootstrap":                     resourceCDMBootstrap(),
-			"polaris_cdm_bootstrap_cces_aws":            resourceCDMBootstrapCCESAWS(),
-			"polaris_cdm_bootstrap_cces_azure":          resourceCDMBootstrapCCESAzure(),
-			"polaris_custom_role":                       resourceCustomRole(),
-			"polaris_gcp_project":                       resourceGcpProject(),
-			"polaris_gcp_service_account":               resourceGcpServiceAccount(),
-			"polaris_role_assignment":                   resourceRoleAssignment(),
-			"polaris_user":                              resourceUser(),
+			keyPolarisAWSAccount:                     resourceAwsAccount(),
+			keyPolarisAWSArchivalLocation:            resourceAwsArchivalLocation(),
+			keyPolarisAWSCNPAccount:                  resourceAwsCnpAccount(),
+			keyPolarisAWSCNPAccountAttachments:       resourceAwsCnpAccountAttachments(),
+			keyPolarisAWSCNPTrustPolicy:              resourceAwsCnpAccountTrustPolicy(),
+			keyPolarisAWSExocompute:                  resourceAwsExocompute(),
+			keyPolarisAWSExocomputeClusterAttachment: resourceAwsExocomputeClusterAttachment(),
+			keyPolarisAWSPrivateContainerRegistry:    resourceAwsPrivateContainerRegistry(),
+			keyPolarisAzureArchivalLocation:          resourceAzureArchivalLocation(),
+			keyPolarisAzureExocompute:                resourceAzureExocompute(),
+			keyPolarisAzureServicePrincipal:          resourceAzureServicePrincipal(),
+			keyPolarisAzureSubscription:              resourceAzureSubscription(),
+			"polaris_cdm_bootstrap":                  resourceCDMBootstrap(),
+			"polaris_cdm_bootstrap_cces_aws":         resourceCDMBootstrapCCESAWS(),
+			"polaris_cdm_bootstrap_cces_azure":       resourceCDMBootstrapCCESAzure(),
+			keyPolarisCustomRole:                     resourceCustomRole(),
+			"polaris_gcp_project":                    resourceGcpProject(),
+			"polaris_gcp_service_account":            resourceGcpServiceAccount(),
+			keyPolarisRoleAssignment:                 resourceRoleAssignment(),
+			keyPolarisUser:                           resourceUser(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
 			keyPolarisAccount:               dataSourceAccount(),
-			"polaris_aws_archival_location": dataSourceAwsArchivalLocation(),
-			"polaris_aws_cnp_artifacts":     dataSourceAwsArtifacts(),
-			"polaris_aws_cnp_permissions":   dataSourceAwsPermissions(),
+			keyPolarisAWSArchivalLocation:   dataSourceAwsArchivalLocation(),
+			keyPolarisAWSCNPArtifacts:       dataSourceAwsArtifacts(),
+			keyPolarisAWSCNPPermissions:     dataSourceAwsPermissions(),
 			keyPolarisAzureArchivalLocation: dataSourceAzureArchivalLocation(),
 			keyPolarisAzurePermissions:      dataSourceAzurePermissions(),
 			keyPolarisDeployment:            dataSourceDeployment(),
 			keyPolarisFeatures:              dataSourceFeatures(),
 			"polaris_gcp_permissions":       dataSourceGcpPermissions(),
-			"polaris_role":                  dataSourceRole(),
-			"polaris_role_template":         dataSourceRoleTemplate(),
+			keyPolarisRole:                  dataSourceRole(),
+			keyPolarisRoleTemplate:          dataSourceRoleTemplate(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
@@ -163,73 +163,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 	return client, nil
 }
 
-// validateDuration verifies that i contains a valid duration.
-func validateDuration(i interface{}, k string) ([]string, []error) {
-	v, ok := i.(string)
-	if !ok {
-		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
-	}
-	if _, err := time.ParseDuration(v); err != nil {
-		return nil, []error{fmt.Errorf("%q is not a valid duration", v)}
-	}
-
-	return nil, nil
-}
-
-// validateEmailAddress verifies that i contains a valid email address.
-func validateEmailAddress(i interface{}, k string) ([]string, []error) {
-	v, ok := i.(string)
-	if !ok {
-		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
-	}
-	if _, err := mail.ParseAddress(v); err != nil {
-		return nil, []error{fmt.Errorf("%q is not a valid email address", v)}
-	}
-
-	return nil, nil
-}
-
-// fileExists assumes m is a file path and returns nil if the file exists,
-// otherwise a diagnostic message is returned.
-func fileExists(m interface{}, p cty.Path) diag.Diagnostics {
-	if _, err := os.Stat(m.(string)); err != nil {
-		details := "unknown error"
-
-		var pathErr *fs.PathError
-		if errors.As(err, &pathErr) {
-			details = pathErr.Err.Error()
-		}
-
-		return diag.Errorf("failed to access file: %s", details)
-	}
-
-	return nil
-}
-
-func isExistingFile(i interface{}, k string) ([]string, []error) {
-	v, ok := i.(string)
-	if !ok {
-		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
-	}
-
-	if _, err := os.Stat(v); err != nil {
-		details := "unknown error"
-		var pathErr *fs.PathError
-		if errors.As(err, &pathErr) {
-			details = pathErr.Err.Error()
-		}
-
-		return nil, []error{fmt.Errorf("failed to access file: %s", details)}
-	}
-
-	return nil, nil
-}
-
-// validateHash verifies that m contains a valid SHA-256 hash.
-func validateHash(m interface{}, p cty.Path) diag.Diagnostics {
-	if hash, ok := m.(string); ok && len(hash) == 64 {
-		return nil
-	}
-
-	return diag.Errorf("invalid hash value")
+// description returns the description string with all acute accents replaced
+// with grave accents (backticks).
+func description(description string) string {
+	return strings.ReplaceAll(description, "´", "`")
 }

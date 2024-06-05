@@ -34,39 +34,13 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-var instanceProfileResource = &schema.Resource{
-	Schema: map[string]*schema.Schema{
-		"key": {
-			Type:         schema.TypeString,
-			Required:     true,
-			Description:  "Instance profile key.",
-			ValidateFunc: validation.StringIsNotWhiteSpace,
-		},
-		"name": {
-			Type:         schema.TypeString,
-			Required:     true,
-			Description:  "AWS instance profile name.",
-			ValidateFunc: validation.StringIsNotWhiteSpace,
-		},
-	},
-}
+const resourceAWSCNPAccountAttachmentsDescription = `
+The ´aws_cnp_account_attachments´ resource attaches AWS instance profiles and AWS
+roles to an RSC cloud account.
 
-var roleResource = &schema.Resource{
-	Schema: map[string]*schema.Schema{
-		"key": {
-			Type:         schema.TypeString,
-			Required:     true,
-			Description:  "Role key.",
-			ValidateFunc: validation.StringIsNotWhiteSpace,
-		},
-		"arn": {
-			Type:         schema.TypeString,
-			Required:     true,
-			Description:  "AWS role ARN.",
-			ValidateFunc: validation.StringIsNotWhiteSpace,
-		},
-	},
-}
+-> **Note:** The ´features´ field takes only the feature names and not the permission
+   groups associated with the features.
+`
 
 func resourceAwsCnpAccountAttachments() *schema.Resource {
 	return &schema.Resource{
@@ -75,33 +49,44 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 		UpdateContext: awsUpdateCnpAccountAttachments,
 		DeleteContext: awsDeleteCnpAccountAttachments,
 
+		Description: description(resourceAWSCNPAccountAttachmentsDescription),
 		Schema: map[string]*schema.Schema{
-			"account_id": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "RSC cloud account ID (UUID).",
+			},
+			keyAccountID: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "RSC account id.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				Description:  "RSC cloud account ID (UUID). Changing this forces a new resource to be created.",
+				ValidateFunc: validation.IsUUID,
 			},
-			"features": {
+			keyFeatures: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validation.StringIsNotWhiteSpace,
+					Type: schema.TypeString,
+					ValidateFunc: validation.StringInSlice([]string{
+						"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_PROTECTION",
+						"CLOUD_NATIVE_S3_PROTECTION", "EXOCOMPUTE", "RDS_PROTECTION",
+					}, false),
 				},
-				MinItems:    1,
-				Required:    true,
-				Description: "RSC features.",
+				MinItems: 1,
+				Required: true,
+				Description: "RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
+					"`CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
+					"`EXOCOMPUTE` and `RDS_PROTECTION`.",
 			},
-			"instance_profile": {
+			keyInstanceProfile: {
 				Type:        schema.TypeSet,
-				Elem:        instanceProfileResource,
+				Elem:        instanceProfileResource(),
 				Optional:    true,
 				Description: "Instance profiles to attach to the cloud account.",
 			},
-			"role": {
+			keyRole: {
 				Type:        schema.TypeSet,
-				Elem:        roleResource,
+				Elem:        roleResource(),
 				Required:    true,
 				Description: "Roles to attach to the cloud account.",
 			},
@@ -117,24 +102,23 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
-	accountID, err := uuid.Parse(d.Get("account_id").(string))
+	accountID, err := uuid.Parse(d.Get(keyAccountID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	var features []core.Feature
-	for _, feature := range d.Get("features").(*schema.Set).List() {
+	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
 		features = append(features, core.Feature{Name: feature.(string)})
 	}
 	profiles := make(map[string]string)
-	for _, roleAttr := range d.Get("instance_profile").(*schema.Set).List() {
+	for _, roleAttr := range d.Get(keyInstanceProfile).(*schema.Set).List() {
 		block := roleAttr.(map[string]any)
-		profiles[block["key"].(string)] = block["name"].(string)
+		profiles[block["key"].(string)] = block[keyName].(string)
 	}
 	roles := make(map[string]string)
-	for _, roleAttr := range d.Get("role").(*schema.Set).List() {
+	for _, roleAttr := range d.Get(keyRole).(*schema.Set).List() {
 		block := roleAttr.(map[string]any)
-		roles[block["key"].(string)] = block["arn"].(string)
+		roles[block[keyKey].(string)] = block[keyARN].(string)
 	}
 
 	// Request artifacts be added to account.
@@ -143,9 +127,7 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	// Set attributes.
 	d.SetId(id.String())
-
 	awsReadCnpAccountAttachments(ctx, d, m)
 	return nil
 }
@@ -158,7 +140,6 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
@@ -184,24 +165,23 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
-	// Set attributes.
-	if err := d.Set("features", features); err != nil {
+	if err := d.Set(keyFeatures, features); err != nil {
 		return diag.FromErr(err)
 	}
 
-	instanceProfilesAttr := &schema.Set{F: schema.HashResource(instanceProfileResource)}
+	instanceProfilesAttr := &schema.Set{F: schema.HashResource(instanceProfileResource())}
 	for key, name := range instanceProfiles {
-		instanceProfilesAttr.Add(map[string]any{"key": key, "name": name})
+		instanceProfilesAttr.Add(map[string]any{keyKey: key, keyName: name})
 	}
-	if err := d.Set("instance_profile", instanceProfilesAttr); err != nil {
+	if err := d.Set(keyInstanceProfile, instanceProfilesAttr); err != nil {
 		return diag.FromErr(err)
 	}
 
-	rolesAttr := &schema.Set{F: schema.HashResource(roleResource)}
+	rolesAttr := &schema.Set{F: schema.HashResource(roleResource())}
 	for key, arn := range roles {
-		rolesAttr.Add(map[string]any{"key": key, "arn": arn})
+		rolesAttr.Add(map[string]any{keyKey: key, keyARN: arn})
 	}
-	if err := d.Set("role", rolesAttr); err != nil {
+	if err := d.Set(keyRole, rolesAttr); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -216,24 +196,23 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	var features []core.Feature
-	for _, feature := range d.Get("features").(*schema.Set).List() {
+	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
 		features = append(features, core.Feature{Name: feature.(string)})
 	}
 	profiles := make(map[string]string)
-	for _, roleAttr := range d.Get("instance_profile").(*schema.Set).List() {
+	for _, roleAttr := range d.Get(keyInstanceProfile).(*schema.Set).List() {
 		block := roleAttr.(map[string]any)
-		profiles[block["key"].(string)] = block["name"].(string)
+		profiles[block[keyKey].(string)] = block[keyName].(string)
 	}
 	roles := make(map[string]string)
-	for _, roleAttr := range d.Get("role").(*schema.Set).List() {
+	for _, roleAttr := range d.Get(keyRole).(*schema.Set).List() {
 		block := roleAttr.(map[string]any)
-		roles[block["key"].(string)] = block["arn"].(string)
+		roles[block[keyKey].(string)] = block[keyARN].(string)
 	}
 
 	// Request artifacts be added to account.
@@ -252,4 +231,42 @@ func awsDeleteCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	d.SetId("")
 
 	return nil
+}
+
+func instanceProfileResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			keyKey: {
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "RSC artifact key for the AWS instance profile.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyName: {
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "AWS instance profile name.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+		},
+	}
+}
+
+func roleResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			keyKey: {
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "RSC artifact key for the AWS role.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyARN: {
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "AWS role ARN.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+		},
+	}
 }

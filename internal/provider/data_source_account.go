@@ -32,19 +32,23 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// dataSourceAccount defines the schema for the RSC account data source.
+const dataSourceAccountDescription = `
+The ´polaris_account´ data source is used to access information about the RSC account.
+
+-> **Note:** The ´fqdn´ and ´name´ fields are read from the local RSC credentials and
+   not from RSC.
+`
+
 func dataSourceAccount() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: accountRead,
 
-		Description: "The `polaris_account` data source is used to access information about the RSC account.\n" +
-			"\n" +
-			"-> **Note:** The `fqdn` and `name` fields are read from the local RSC credentials and not from RSC.",
+		Description: description(dataSourceAccountDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "SHA-256 hash of the fields in order.",
+				Description: "SHA-256 hash of the features, the fully qualified domain name and the name.",
 			},
 			keyFeatures: {
 				Type: schema.TypeSet,
@@ -68,8 +72,6 @@ func dataSourceAccount() *schema.Resource {
 	}
 }
 
-// accountRead run the Read operation for the account data source. Returns
-// details about the RSC account.
 func accountRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] accountRead")
 
@@ -78,7 +80,6 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 		return diag.FromErr(err)
 	}
 
-	// Request deployment details.
 	accountFeatures, err := core.Wrap(client.GQL).EnabledFeaturesForAccount(ctx)
 	if err != nil {
 		return diag.FromErr(err)
@@ -86,7 +87,6 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 	accountFQDN := strings.ToLower(client.Account.AccountFQDN())
 	accountName := strings.ToLower(client.Account.AccountName())
 
-	// Set attributes.
 	accountFeaturesAttr := &schema.Set{F: schema.HashString}
 	for _, accountFeature := range accountFeatures {
 		accountFeaturesAttr.Add(accountFeature.Name)
@@ -102,7 +102,6 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 
 	}
 
-	// Generate an ID for the data source.
 	hash := sha256.New()
 	for _, accountFeature := range accountFeatures {
 		hash.Write([]byte(accountFeature.Name))
