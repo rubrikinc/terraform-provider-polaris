@@ -44,4 +44,4 @@ signs:
       - "${artifact}"
 release:
 changelog:
-  skip: true
+  disable: true
