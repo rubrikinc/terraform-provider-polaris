@@ -165,6 +165,7 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 
 		features = append(features, feature)
 	}
+
 	name := d.Get(keyName).(string)
 	nativeID := d.Get(keyNativeID).(string)
 	var regions []string
@@ -387,7 +388,6 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 
 	// Reset ID.
 	d.SetId("")
-
 	return nil
 }
 
@@ -415,10 +415,9 @@ func featureResource() *schema.Resource {
 					}, false),
 				},
 				Required: true,
-				Default:  schema.NewSet(schema.HashString, []any{"BASIC"}),
 				Description: "RSC permission groups for the feature. Possible values are `BASIC`, `ENCRYPTION`, " +
 					"`EXPORT_AND_RESTORE`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. " +
-					"Default value is `BASIC`.",
+					"For backwards compatibility, `[]` is interpreted as all applicable permission groups.",
 			},
 		},
 	}

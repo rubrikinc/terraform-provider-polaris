@@ -19,7 +19,7 @@ description: |-
   access to disk snapshots.
   CLOUDNATIVES3_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the feature.
-  EXOCOMPUTE\n" +
+  EXOCOMPUTE" +
   BASIC - Represents the basic set of permissions required to onboard the feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage of private
   endpoints.RSC_MANAGED_CLUSTER - Represents the set of permissions required for the Rubrik-
   managed Exocompute cluster.
@@ -57,7 +57,7 @@ when specifying the feature set.
 ### CLOUD_NATIVE_S3_PROTECTION
   * `BASIC` - Represents the basic set of permissions required to onboard the feature.
 
-### EXOCOMPUTE\n" +
+### EXOCOMPUTE" +
   * `BASIC` - Represents the basic set of permissions required to onboard the feature.
   * `PRIVATE_ENDPOINTS` - Represents the set of permissions required for usage of private
     endpoints.
@@ -146,4 +146,4 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 Required:
 
 - `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
-- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. Default value is `BASIC`.
+- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.

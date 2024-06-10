@@ -57,7 +57,7 @@ func Provider() *schema.Provider {
 			keyPolarisAWSArchivalLocation:            resourceAwsArchivalLocation(),
 			keyPolarisAWSCNPAccount:                  resourceAwsCnpAccount(),
 			keyPolarisAWSCNPAccountAttachments:       resourceAwsCnpAccountAttachments(),
-			keyPolarisAWSCNPTrustPolicy:              resourceAwsCnpAccountTrustPolicy(),
+			keyPolarisAWSCNPAccountTrustPolicy:       resourceAwsCnpAccountTrustPolicy(),
 			keyPolarisAWSExocompute:                  resourceAwsExocompute(),
 			keyPolarisAWSExocomputeClusterAttachment: resourceAwsExocomputeClusterAttachment(),
 			keyPolarisAWSPrivateContainerRegistry:    resourceAwsPrivateContainerRegistry(),

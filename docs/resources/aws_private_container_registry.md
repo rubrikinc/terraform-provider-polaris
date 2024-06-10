@@ -55,10 +55,10 @@ description: |-
   {
     "input": {
       "approvalStatus": "APPROVED",
-      "bundleVersion": "1.164"
+      "bundleVersion": "1.164",
       "bundleMetadata": {
         "eksVersion": "1.29"
-      },
+      }
     }
   }
   
@@ -125,10 +125,10 @@ The input is an object with the following structure:
 {
   "input": {
     "approvalStatus": "APPROVED",
-    "bundleVersion": "1.164"
+    "bundleVersion": "1.164",
     "bundleMetadata": {
       "eksVersion": "1.29"
-    },
+    }
   }
 }
 ```

@@ -93,7 +93,8 @@ func isExistingFile(i interface{}, k string) ([]string, []error) {
 	return nil, nil
 }
 
-// validateHash verifies that m contains a valid SHA-256 hash.
+// validateHash verifies that m contains a valid base 16 encoded SHA-256 hash
+// with two characters per byte.
 func validateHash(m interface{}, p cty.Path) diag.Diagnostics {
 	if hash, ok := m.(string); ok && len(hash) == 64 {
 		return nil

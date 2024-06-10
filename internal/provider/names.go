@@ -66,7 +66,7 @@ const (
 	keyPolarisAWSArchivalLocation                   = "polaris_aws_archival_location"
 	keyPolarisAWSCNPAccount                         = "polaris_aws_cnp_account"
 	keyPolarisAWSCNPAccountAttachments              = "polaris_aws_cnp_account_attachments"
-	keyPolarisAWSCNPTrustPolicy                     = "polaris_aws_cnp_trust_policy"
+	keyPolarisAWSCNPAccountTrustPolicy              = "polaris_aws_cnp_account_trust_policy"
 	keyPolarisAWSCNPArtifacts                       = "polaris_aws_cnp_artifacts"
 	keyPolarisAWSCNPPermissions                     = "polaris_aws_cnp_permissions"
 	keyPolarisAWSExocompute                         = "polaris_aws_exocompute"

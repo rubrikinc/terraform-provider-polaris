@@ -90,6 +90,7 @@ func resourceAwsExocompute() *schema.Resource {
 			keyClusterSecurityGroupID: {
 				Type:          schema.TypeString,
 				Optional:      true,
+				Computed:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{"host_account_id"},
 				RequiredWith:  []string{"node_security_group_id"},
@@ -108,6 +109,7 @@ func resourceAwsExocompute() *schema.Resource {
 			keyNodeSecurityGroupID: {
 				Type:          schema.TypeString,
 				Optional:      true,
+				Computed:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{"host_account_id"},
 				RequiredWith:  []string{"cluster_security_group_id"},
