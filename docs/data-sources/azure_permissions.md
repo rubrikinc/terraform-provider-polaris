@@ -3,23 +3,39 @@
 page_title: "polaris_azure_permissions Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_azure_permissions data source is used to access information about the permissions required by RSC for a specified RSC feature. The features currently supported for Azure subscriptions are:
+  The polaris_azure_permissions data source is used to access information about
+  the permissions required by RSC for a specified RSC feature. The features currently
+  supported for Azure subscriptions are:
     * AZURE_SQL_DB_PROTECTION
     * AZURE_SQL_MI_PROTECTION
     * CLOUD_NATIVE_ARCHIVAL
     * CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
     * CLOUD_NATIVE_PROTECTION
     * EXOCOMPUTE
-  See the subscription ../resources/azure_subscription resource for more information on enabling features for an Azure subscription added to RSC.
-  The polaris_azure_permissions data source can be used with the azurerm_role_definition and the permissions fields of the polaris_azure_subscription resources to automatically update the permissions of roles and notify RSC about the updated permissions.
-  -> Note: To better fit the RSC Azure permission model where each RSC feature have two Azure roles,    the features field has been deprecated and replaced with the feature field.
-  -> Note: Due to the RSC Azure permission model having been refined into subscription level permissions    and resource group level permissions, the actions, data_actions, not_actions and not_data_actions    fields have been deprecated and replaced with the corresponding subscription and resource group fields.
-  -> Note: Due to backward compatibility, the features field allow the feature names to be given in    3 different styles: EXAMPLE_FEATURE_NAME, example-feature-name or example_feature_name. The    recommended style is EXAMPLE_FEATURE_NAME as it is what the RSC API itself uses.
+  See the subscription ../resources/azure_subscription resource for more information
+  on enabling features for an Azure subscription added to RSC.
+  The polaris_azure_permissions data source can be used with the azurerm_role_definition
+  and the permissions fields of the polaris_azure_subscription resources to
+  automatically update the permissions of roles and notify RSC about the updated
+  permissions.
+  -> Note: To better fit the RSC Azure permission model where each RSC feature have
+     two Azure roles, the features field has been deprecated and replaced with the
+     feature field.
+  -> Note: Due to the RSC Azure permission model having been refined into subscription
+     level permissions and resource group level permissions, the actions, data_actions,
+     not_actions and not_data_actions fields have been deprecated and replaced with the
+     corresponding subscription and resource group fields.
+  -> Note: Due to backward compatibility, the features field allow the feature names
+     to be given in 3 different styles: EXAMPLE_FEATURE_NAME, example-feature-name or
+     example_feature_name. The recommended style is EXAMPLE_FEATURE_NAME as it is what
+     the RSC API itself uses.
 ---
 
 # polaris_azure_permissions (Data Source)
 
-The `polaris_azure_permissions` data source is used to access information about the permissions required by RSC for a specified RSC feature. The features currently supported for Azure subscriptions are:
+The `polaris_azure_permissions` data source is used to access information about
+the permissions required by RSC for a specified RSC feature. The features currently
+supported for Azure subscriptions are:
   * `AZURE_SQL_DB_PROTECTION`
   * `AZURE_SQL_MI_PROTECTION`
   * `CLOUD_NATIVE_ARCHIVAL`
@@ -27,15 +43,27 @@ The `polaris_azure_permissions` data source is used to access information about 
   * `CLOUD_NATIVE_PROTECTION`
   * `EXOCOMPUTE`
 
-See the [subscription](../resources/azure_subscription) resource for more information on enabling features for an Azure subscription added to RSC.
+See the [subscription](../resources/azure_subscription) resource for more information
+on enabling features for an Azure subscription added to RSC.
 
-The `polaris_azure_permissions` data source can be used with the `azurerm_role_definition` and the `permissions` fields of the `polaris_azure_subscription` resources to automatically update the permissions of roles and notify RSC about the updated permissions.
+The `polaris_azure_permissions` data source can be used with the `azurerm_role_definition`
+and the `permissions` fields of the `polaris_azure_subscription` resources to
+automatically update the permissions of roles and notify RSC about the updated
+permissions.
 
--> **Note:** To better fit the RSC Azure permission model where each RSC feature have two Azure roles,    the `features` field has been deprecated and replaced with the `feature` field.
+-> **Note:** To better fit the RSC Azure permission model where each RSC feature have
+   two Azure roles, the `features` field has been deprecated and replaced with the
+   `feature` field.
 
--> **Note:** Due to the RSC Azure permission model having been refined into subscription level permissions    and resource group level permissions, the `actions`, `data_actions`, `not_actions` and `not_data_actions`    fields have been deprecated and replaced with the corresponding subscription and resource group fields.
+-> **Note:** Due to the RSC Azure permission model having been refined into subscription
+   level permissions and resource group level permissions, the `actions`, `data_actions`,
+   `not_actions` and `not_data_actions` fields have been deprecated and replaced with the
+   corresponding subscription and resource group fields.
 
--> **Note:** Due to backward compatibility, the `features` field allow the feature names to be given in    3 different styles: `EXAMPLE_FEATURE_NAME`, `example-feature-name` or `example_feature_name`. The    recommended style is `EXAMPLE_FEATURE_NAME` as it is what the RSC API itself uses.
+-> **Note:** Due to backward compatibility, the `features` field allow the feature names
+   to be given in 3 different styles: `EXAMPLE_FEATURE_NAME`, `example-feature-name` or
+   `example_feature_name`. The recommended style is `EXAMPLE_FEATURE_NAME` as it is what
+   the RSC API itself uses.
 
 ## Example Usage
 

@@ -34,7 +34,10 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
-// resourceUser defines the schema for the user resource.
+const resourceUserDescription = `
+The ´polaris_user´ resource is used to manage users in RSC.
+`
+
 func resourceUser() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: createUser,
@@ -42,29 +45,35 @@ func resourceUser() *schema.Resource {
 		UpdateContext: updateUser,
 		DeleteContext: deleteUser,
 
+		Description: description(resourceUserDescription),
 		Schema: map[string]*schema.Schema{
-			"email": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "User email address.",
+			},
+			keyEmail: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "User email address.",
+				Description:  "User email address. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"is_account_owner": {
+			keyIsAccountOwner: {
 				Type:        schema.TypeBool,
 				Computed:    true,
 				Description: "True if the user is the account owner.",
 			},
-			"role_ids": {
+			keyRoleIDs: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
 					Type:         schema.TypeString,
-					ValidateFunc: validation.StringIsNotWhiteSpace,
+					ValidateFunc: validation.IsUUID,
 				},
 				Required:    true,
-				Description: "Roles assigned to the user.",
+				Description: "Roles assigned to the user (UUIDs).",
 			},
-			"status": {
+			keyStatus: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "User status.",
@@ -73,7 +82,6 @@ func resourceUser() *schema.Resource {
 	}
 }
 
-// createUser run the Create operation for the user resource.
 func createUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] createUser")
 
@@ -82,8 +90,8 @@ func createUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 		return diag.FromErr(err)
 	}
 
-	userEmail := d.Get("email").(string)
-	roleIDs, err := parseRoleIDs(d.Get("role_ids").(*schema.Set))
+	userEmail := d.Get(keyEmail).(string)
+	roleIDs, err := parseRoleIDs(d.Get(keyRoleIDs).(*schema.Set))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -98,7 +106,6 @@ func createUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 	return nil
 }
 
-// readUser run the Read operation for the user resource.
 func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] readUser")
 
@@ -116,13 +123,13 @@ func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set("email", user.Email); err != nil {
+	if err := d.Set(keyEmail, user.Email); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("is_account_owner", user.IsAccountOwner); err != nil {
+	if err := d.Set(keyIsAccountOwner, user.IsAccountOwner); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("status", user.Status); err != nil {
+	if err := d.Set(keyStatus, user.Status); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -130,16 +137,15 @@ func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 	for _, role := range user.Roles {
 		roleIDs.Add(role.ID.String())
 	}
-	if err := d.Set("role_ids", roleIDs); err != nil {
+	if err := d.Set(keyRoleIDs, roleIDs); err != nil {
 		return diag.FromErr(err)
 	}
 
 	return nil
 }
 
-// updateUser run the Update operation for the user resource.
 func updateUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	roleIDs, err := parseRoleIDs(d.Get("role_ids").(*schema.Set))
+	roleIDs, err := parseRoleIDs(d.Get(keyRoleIDs).(*schema.Set))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -157,7 +163,6 @@ func updateUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 	return nil
 }
 
-// deleteUser run the Delete operation for the user resource.
 func deleteUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] deleteUser")
 

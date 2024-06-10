@@ -25,9 +25,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -36,25 +34,26 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// validatePermissions verifies that the permissions value is valid.
-func validatePermissions(m interface{}, p cty.Path) diag.Diagnostics {
-	if m.(string) != "update" {
-		return diag.Errorf("invalid permissions value")
-	}
+const resourceAWSAccountDescription = `
+The ´polaris_aws_account´ resource adds an AWS account to RSC. To grant RSC
+permissions to perform certain operations on the account, a Cloud Formation stack
+is created from a template provided by RSC.
 
-	return nil
-}
+There are two ways to specify the AWS account to onboard:
+ 1. Using the ´profile´ field. The AWS profile is used to create the Cloud
+    Formation stack and lookup the AWS account ID.
+ 2. Using the ´assume_role´field with, or without, the ´profile´ field. If the
+    ´profile´ field is omitted, the default profile is used. The profile is used
+    to assume the role. The assumed role is then used and create the Cloud
+    Formation stack and lookup the account ID.
 
-// validateRoleARN verifies that the role ARN is a valid AWS ARN.
-func validateRoleARN(m interface{}, p cty.Path) diag.Diagnostics {
-	if _, err := arn.Parse(m.(string)); err != nil {
-		return diag.Errorf("failed to parse role ARN: %v", err)
-	}
+Any combination of different RSC features can be enabled for an account:
+  1. ´cloud_native_protection´ - Provides protection for AWS EC2 instances and
+     EBS volumes through the rules and policies of SLA Domains.
+  2. ´exocompute´ - Provides snapshot indexing, file recovery and application
+     protection of AWS objects.
+`
 
-	return nil
-}
-
-// resourceAwsAccount defines the schema for the AWS account resource.
 func resourceAwsAccount() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateAccount,
@@ -62,25 +61,37 @@ func resourceAwsAccount() *schema.Resource {
 		UpdateContext: awsUpdateAccount,
 		DeleteContext: awsDeleteAccount,
 
+		Description: description(resourceAWSAccountDescription),
 		Schema: map[string]*schema.Schema{
-			"assume_role": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "RSC cloud account ID (UUID).",
+			},
+			keyAssumeRole: {
 				Type:             schema.TypeString,
 				Optional:         true,
-				AtLeastOneOf:     []string{"profile"},
+				AtLeastOneOf:     []string{keyProfile},
 				Description:      "Role ARN of role to assume.",
 				ValidateDiagFunc: validateRoleARN,
 			},
-			"cloud_native_protection": {
+			keyCloudNativeProtection: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"permission_groups": {
-							Type:        schema.TypeSet,
-							Elem:        &schema.Schema{Type: schema.TypeString},
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "EXPORT_AND_RESTORE",
+									"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+								}, false),
+							},
 							Optional:    true,
-							Description: "Permission groups to assign to the cloud native protection feature.",
+							Description: "Permission groups to assign to the Cloud Native Protection feature.",
 						},
-						"regions": {
+						keyRegions: {
 							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type:         schema.TypeString,
@@ -88,14 +99,14 @@ func resourceAwsAccount() *schema.Resource {
 							},
 							MinItems:    1,
 							Required:    true,
-							Description: "Regions that Polaris will monitor for instances to automatically protect.",
+							Description: "Regions that RSC will monitor for instances to automatically protect.",
 						},
-						"status": {
+						keyStatus: {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "Status of the Cloud Native Protection feature.",
 						},
-						"stack_arn": {
+						keyStackARN: {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "Cloudformation stack ARN.",
@@ -106,23 +117,29 @@ func resourceAwsAccount() *schema.Resource {
 				Required:    true,
 				Description: "Enable the Cloud Native Protection feature for the AWS account.",
 			},
-			"delete_snapshots_on_destroy": {
+			keyDeleteSnapshotsOnDestroy: {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
-			"exocompute": {
+			keyExocompute: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"permission_groups": {
-							Type:        schema.TypeSet,
-							Elem:        &schema.Schema{Type: schema.TypeString},
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "EXPORT_AND_RESTORE",
+									"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+								}, false),
+							},
 							Optional:    true,
-							Description: "Permission groups to assign to the exocompute feature.",
+							Description: "Permission groups to assign to the Exocompute feature.",
 						},
-						"regions": {
+						keyRegions: {
 							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type:         schema.TypeString,
@@ -132,12 +149,12 @@ func resourceAwsAccount() *schema.Resource {
 							Required:    true,
 							Description: "Regions to enable the Exocompute feature in.",
 						},
-						"status": {
+						keyStatus: {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "Status of the Exocompute feature.",
 						},
-						"stack_arn": {
+						keyStackARN: {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "Cloudformation stack ARN.",
@@ -146,28 +163,31 @@ func resourceAwsAccount() *schema.Resource {
 				},
 				MaxItems:    1,
 				Optional:    true,
-				Description: "Enable the exocompute feature for the account.",
+				Description: "Enable the Exocompute feature for the account.",
 			},
-			"name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Computed:         true,
-				Description:      "Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyName: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				Description: "Account name in Polaris. If not given the name is taken from AWS Organizations " +
+					"or, if the required permissions are missing, is derived from the AWS account ID and the " +
+					"named profile.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"permissions": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Computed:         true,
-				Description:      "When set to 'update' feature permissions can be updated by applying the configuration.",
+			keyPermissions: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				Description: "When set to 'update' feature permissions can be updated by applying the " +
+					"configuration.",
 				ValidateDiagFunc: validatePermissions,
 			},
-			"profile": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				AtLeastOneOf:     []string{"assume_role"},
-				Description:      "AWS named profile.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyProfile: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				AtLeastOneOf: []string{keyAssumeRole},
+				Description:  "AWS named profile.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
 
@@ -184,8 +204,6 @@ func resourceAwsAccount() *schema.Resource {
 	}
 }
 
-// awsCreateAccount run the Create operation for the AWS account resource. This
-// adds the AWS account to the Polaris platform.
 func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsCreateAccount")
 
@@ -195,8 +213,8 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Initialize to empty string if missing from the configuration.
-	profile, _ := d.Get("profile").(string)
-	roleARN, _ := d.Get("assume_role").(string)
+	profile, _ := d.Get(keyProfile).(string)
+	roleARN, _ := d.Get(keyAssumeRole).(string)
 
 	var account aws.AccountFunc
 	switch {
@@ -209,7 +227,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	var opts []aws.OptionFunc
-	if name, ok := d.GetOk("name"); ok {
+	if name, ok := d.GetOk(keyName); ok {
 		opts = append(opts, aws.Name(name.(string)))
 	}
 
@@ -217,17 +235,17 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	// cloud native protection feature.
 	var id uuid.UUID
 
-	cnpBlock, ok := d.GetOk("cloud_native_protection")
+	cnpBlock, ok := d.GetOk(keyCloudNativeProtection)
 	if ok {
 		block := cnpBlock.([]interface{})[0].(map[string]interface{})
 
 		feature := core.FeatureCloudNativeProtection
-		for _, group := range block["permission_groups"].(*schema.Set).List() {
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
 
 		var cnpOpts []aws.OptionFunc
-		for _, region := range block["regions"].(*schema.Set).List() {
+		for _, region := range block[keyRegions].(*schema.Set).List() {
 			cnpOpts = append(cnpOpts, aws.Region(region.(string)))
 		}
 
@@ -239,17 +257,17 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 	}
 
-	exoBlock, ok := d.GetOk("exocompute")
+	exoBlock, ok := d.GetOk(keyExocompute)
 	if ok {
 		block := exoBlock.([]interface{})[0].(map[string]interface{})
 
 		feature := core.FeatureExocompute
-		for _, group := range block["permission_groups"].(*schema.Set).List() {
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
 
 		var exoOpts []aws.OptionFunc
-		for _, region := range block["regions"].(*schema.Set).List() {
+		for _, region := range block[keyRegions].(*schema.Set).List() {
 			exoOpts = append(exoOpts, aws.Region(region.(string)))
 		}
 
@@ -266,8 +284,6 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
-// awsReadAccount run the Read operation for the AWS account resource. This
-// reads the state of the AWS account in Polaris.
 func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadAccount")
 
@@ -306,17 +322,17 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		status := core.FormatStatus(cnpFeature.Status)
 		err := d.Set("cloud_native_protection", []interface{}{
 			map[string]interface{}{
-				"permission_groups": &groups,
-				"regions":           &regions,
-				"status":            &status,
-				"stack_arn":         &cnpFeature.StackArn,
+				keyPermissionGroups: &groups,
+				keyRegions:          &regions,
+				keyStatus:           &status,
+				keyStackARN:         &cnpFeature.StackArn,
 			},
 		})
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		if err := d.Set("cloud_native_protection", nil); err != nil {
+		if err := d.Set(keyCloudNativeProtection, nil); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -336,22 +352,22 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		status := core.FormatStatus(exoFeature.Status)
 		err := d.Set("exocompute", []interface{}{
 			map[string]interface{}{
-				"permission_groups": &groups,
-				"regions":           &regions,
-				"status":            &status,
-				"stack_arn":         &exoFeature.StackArn,
+				keyPermissionGroups: &groups,
+				keyRegions:          &regions,
+				keyStatus:           &status,
+				keyStackARN:         &exoFeature.StackArn,
 			},
 		})
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		if err := d.Set("exocompute", nil); err != nil {
+		if err := d.Set(keyExocompute, nil); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	if err := d.Set("name", account.Name); err != nil {
+	if err := d.Set(keyName, account.Name); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -361,7 +377,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 			continue
 		}
 
-		if err := d.Set("permissions", "update-required"); err != nil {
+		if err := d.Set(keyPermissions, "update-required"); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -369,8 +385,6 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	return nil
 }
 
-// awsUpdateAccount run the Update operation for the AWS account resource. This
-// updates the state of the AWS account in Polaris.
 func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsUpdateAccount")
 
@@ -380,8 +394,8 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Initialize to empty string if missing from the configuration.
-	profile, _ := d.Get("profile").(string)
-	roleARN, _ := d.Get("assume_role").(string)
+	profile, _ := d.Get(keyProfile).(string)
+	roleARN, _ := d.Get(keyAssumeRole).(string)
 
 	var account aws.AccountFunc
 	switch {
@@ -411,18 +425,18 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.Errorf("resource id and profile/role refer to different accounts")
 	}
 
-	if d.HasChange("cloud_native_protection") {
-		cnpBlock, ok := d.GetOk("cloud_native_protection")
+	if d.HasChange(keyCloudNativeProtection) {
+		cnpBlock, ok := d.GetOk(keyCloudNativeProtection)
 		if ok {
 			block := cnpBlock.([]interface{})[0].(map[string]interface{})
 
 			feature := core.FeatureCloudNativeProtection
-			for _, group := range block["permission_groups"].(*schema.Set).List() {
+			for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 			}
 
 			var opts []aws.OptionFunc
-			for _, region := range block["regions"].(*schema.Set).List() {
+			for _, region := range block[keyRegions].(*schema.Set).List() {
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
@@ -430,19 +444,19 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				return diag.FromErr(err)
 			}
 		} else {
-			if _, ok := d.GetOk("exocompute"); ok {
+			if _, ok := d.GetOk(keyExocompute); ok {
 				return diag.Errorf("cloud native protection is required by exocompute")
 			}
 
-			snapshots := d.Get("delete_snapshots_on_destroy").(bool)
+			snapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
 			if err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, snapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		}
 	}
 
-	if d.HasChange("exocompute") {
-		oldExoBlock, newExoBlock := d.GetChange("exocompute")
+	if d.HasChange(keyExocompute) {
+		oldExoBlock, newExoBlock := d.GetChange(keyExocompute)
 		oldExoList := oldExoBlock.([]interface{})
 		newExoList := newExoBlock.([]interface{})
 
@@ -451,12 +465,12 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		switch {
 		case len(oldExoList) == 0:
 			feature := core.FeatureExocompute
-			for _, group := range newExoList[0].(map[string]interface{})["permission_groups"].(*schema.Set).List() {
+			for _, group := range newExoList[0].(map[string]interface{})[keyPermissionGroups].(*schema.Set).List() {
 				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 			}
 
 			var opts []aws.OptionFunc
-			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
+			for _, region := range newExoList[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
@@ -471,7 +485,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 			}
 		default:
 			var opts []aws.OptionFunc
-			for _, region := range newExoList[0].(map[string]interface{})["regions"].(*schema.Set).List() {
+			for _, region := range newExoList[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
@@ -482,8 +496,8 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 	}
 
-	if d.HasChange("permissions") {
-		oldPerms, newPerms := d.GetChange("permissions")
+	if d.HasChange(keyPermissions) {
+		oldPerms, newPerms := d.GetChange(keyPermissions)
 
 		if oldPerms == "update-required" && newPerms == "update" {
 			var features []core.Feature
@@ -499,7 +513,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				return diag.FromErr(err)
 			}
 
-			if err := d.Set("permissions", "update"); err != nil {
+			if err := d.Set(keyPermissions, "update"); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -509,8 +523,6 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
-// awsDeleteAccount run the Delete operation for the AWS account resource. This
-// removes the AWS account from Polaris.
 func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsDeleteAccount")
 
@@ -526,8 +538,8 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	// Get the old resource arguments. Initialize to empty string if missing
 	// from the configuration.
-	oldProfile, _ := d.GetChange("profile")
-	oldRoleARN, _ := d.GetChange("assume_role")
+	oldProfile, _ := d.GetChange(keyProfile)
+	oldRoleARN, _ := d.GetChange(keyAssumeRole)
 	profile, _ := oldProfile.(string)
 	roleARN, _ := oldRoleARN.(string)
 
@@ -541,7 +553,7 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		account = aws.DefaultWithRole(roleARN)
 	}
 
-	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
+	oldSnapshots, _ := d.GetChange(keyDeleteSnapshotsOnDestroy)
 	deleteSnapshots := oldSnapshots.(bool)
 
 	// Make sure that the resource id and account profile refers to the same
@@ -557,14 +569,14 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.Errorf("resource id and profile/role refer to different accounts")
 	}
 
-	if _, ok := d.GetOk("exocompute"); ok {
+	if _, ok := d.GetOk(keyExocompute); ok {
 		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureExocompute}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	if _, ok := d.GetOk("cloud_native_protection"); ok {
+	if _, ok := d.GetOk(keyCloudNativeProtection); ok {
 		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
@@ -572,6 +584,5 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	d.SetId("")
-
 	return nil
 }

@@ -3,25 +3,41 @@
 page_title: "polaris_azure_archival_location Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_azure_archival_location resource creates an RSC archival location for cloud-native workloads.
-  When creating an archival location, the region where the snapshots are stored needs to be specified:
-    * Source Region - Store snapshots in the same region to minimize data transfer charges. This is the     default behaviour when the storage_account_region field is not specified.
-    * Specific region - Storing snapshots in another region can increase total data transfer charges.     The storage_account_region field specifies the region.
-  Custom storage encryption is enabled by specifying one or more customer_managed_key blocks. Each customer_managed_key block specifies the encryption details to use for a region. For other regions, data will be encrypted using platform managed keys.
-  -> Note: The Azure storage account is not created until the first protected object is archived to the   location.
+  The polaris_azure_archival_location resource creates an RSC archival location for
+  cloud-native workloads.
+  When creating an archival location, the region where the snapshots are stored needs
+  to be specified:
+    * SOURCE_REGION - Store snapshots in the same region to minimize data transfer
+      charges. This is the default behaviour when the storage_account_region field is
+      not specified.
+    * SPECIFIC_REGION - Storing snapshots in another region can increase total data
+      transfer charges. The storage_account_region field specifies the region.
+  Custom storage encryption is enabled by specifying one or more customer_managed_key
+  blocks. Each customer_managed_key block specifies the encryption details to use for
+  a region. For other regions, data will be encrypted using platform managed keys.
+  -> Note: The Azure storage account is not created until the first protected object
+     is archived to the location.
 ---
 
 # polaris_azure_archival_location (Resource)
 
-The `polaris_azure_archival_location` resource creates an RSC archival location for cloud-native workloads.
+The `polaris_azure_archival_location` resource creates an RSC archival location for
+cloud-native workloads.
 
-When creating an archival location, the region where the snapshots are stored needs to be specified:
-  * *Source Region* - Store snapshots in the same region to minimize data transfer charges. This is the     default behaviour when the `storage_account_region` field is not specified.
-  * *Specific region* - Storing snapshots in another region can increase total data transfer charges.     The `storage_account_region` field specifies the region.
+When creating an archival location, the region where the snapshots are stored needs
+to be specified:
+  * `SOURCE_REGION` - Store snapshots in the same region to minimize data transfer
+    charges. This is the default behaviour when the `storage_account_region` field is
+    not specified.
+  * `SPECIFIC_REGION` - Storing snapshots in another region can increase total data
+    transfer charges. The `storage_account_region` field specifies the region.
 
-Custom storage encryption is enabled by specifying one or more `customer_managed_key` blocks. Each `customer_managed_key` block specifies the encryption details to use for a region. For other regions, data will be encrypted using platform managed keys. 
+Custom storage encryption is enabled by specifying one or more `customer_managed_key`
+blocks. Each `customer_managed_key` block specifies the encryption details to use for
+a region. For other regions, data will be encrypted using platform managed keys.
 
--> **Note:** The Azure storage account is not created until the first protected object is archived to the   location.
+-> **Note:** The Azure storage account is not created until the first protected object
+   is archived to the location.
 
 ## Example Usage
 
@@ -76,7 +92,7 @@ resource "polaris_azure_archival_location" "archival_location" {
 
 - `connection_status` (String) Connection status of the cloud native archival location.
 - `container_name` (String) Azure storage container name.
-- `id` (String) Cloud native archival location ID.
+- `id` (String) Cloud native archival location ID (UUID).
 - `location_template` (String) RSC location template. If a storage account region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.
 
 <a id="nestedblock--customer_managed_key"></a>

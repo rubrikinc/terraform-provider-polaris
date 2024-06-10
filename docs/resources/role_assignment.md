@@ -3,12 +3,12 @@
 page_title: "polaris_role_assignment Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_role_assignment resource is used to assign roles to users in RSC.
 ---
 
 # polaris_role_assignment (Resource)
 
-
+The `polaris_role_assignment` resource is used to assign roles to users in RSC.
 
 ## Example Usage
 
@@ -31,9 +31,9 @@ resource "polaris_role_assignment" "compliance_auditor" {
 
 ### Required
 
-- `role_id` (String) Role identifier.
-- `user_email` (String) User email address.
+- `role_id` (String) Role ID (UUID). Changing this forces a new resource to be created.
+- `user_email` (String) User email address. Changing this forces a new resource to be created.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) SHA-256 hash of the user email and the role ID.

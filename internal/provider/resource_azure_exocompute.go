@@ -34,44 +34,46 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
-const (
-	appCloudAccountPrefix = "app-"
-)
+const resourceAzureExocomputeDescription = `
+The ´polaris_azure_exocompute´ resource creates an RSC Exocompute configuration for
+Azure workloads.
 
-// resourceAzureExocompute defines the schema for the Azure exocompute resource.
+There are 2 types of Exocompute configurations:
+ 1. *Host* - When a host configuration is created, RSC will automatically deploy the
+    necessary resources in the specified Azure region to run the Exocompute service.
+    A host configuration can be used by both the host cloud account and application
+    cloud accounts mapped to the host account.
+ 2. *Application* - An application configuration is created by mapping the application
+    cloud account to a host cloud account. The application cloud account will leverage
+    the Exocompute resources deployed for the host configuration.
+
+Since there are 2 types of Exocompute configurations, there are 2 ways to create a
+´polaris_azure_exocompute´ resource:
+ 1. Using the ´cloud_account_id´, ´region´, ´subnet´ and ´pod_overlay_network_cidr´
+    fields. This creates a host configuration.
+ 2. Using the ´cloud_account_id´ and ´host_cloud_account_id´ fields. This creates an
+    application configuration.
+
+~> **Note:** A host configuration can be created without specifying the
+   ´pod_overlay_network_cidr´ field, this is discouraged and should only be done for
+   backwards compatibility reasons.
+
+-> **Note:** Using both host and application Exocompute configurations is sometimes
+   referred to as shared Exocompute.
+`
+
 func resourceAzureExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateExocompute,
 		ReadContext:   azureReadExocompute,
 		DeleteContext: azureDeleteExocompute,
 
-		Description: "The `polaris_azure_exocompute` resource creates an RSC Exocompute configuration.\n" +
-			"\n" +
-			"There are 2 types of Exocompute configurations:\n" +
-			" 1. *Host* - When a host configuration is created, RSC will automatically deploy the necessary resources " +
-			"    in the specified Azure region to run the Exocompute service. A host configuration can be used by both " +
-			"    the host cloud account and application cloud accounts mapped to the host account.\n" +
-			" 2. *Application* - An application configuration is created by mapping the application cloud account to a " +
-			"    host cloud account. The application cloud account will leverage the Exocompute resources deployed for " +
-			"    the host configuration.\n" +
-			"\n" +
-			"Since there are 2 types of Exocompute configurations, there are 2 ways to create a `polaris_azure_exocompute` " +
-			"resource:\n" +
-			" 1. Using the `cloud_account_id`, `region`, `subnet` and `pod_overlay_network_cidr` fields. This creates a " +
-			"    host configuration.\n" +
-			" 2. Using the `cloud_account_id` and `host_cloud_account_id` fields. This creates an application " +
-			"    configuration.\n" +
-			"\n" +
-			"~> **Note:** A host configuration can be created without specifying the `pod_overlay_network_cidr` field, " +
-			"   this is discouraged and should only be done for backwards compatibility reasons.\n" +
-			"\n" +
-			"-> **Note:** Using both host and application Exocompute configurations is sometimes referred to as shared " +
-			"   Exocompute.",
+		Description: description(resourceAzureExocomputeDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Exocompute configuration ID.",
+				Description: "Exocompute configuration ID (UUID).",
 			},
 			keyCloudAccountID: {
 				Type:         schema.TypeString,
@@ -89,7 +91,7 @@ func resourceAzureExocompute() *schema.Resource {
 				AtLeastOneOf: []string{keyHostCloudAccountID, keyRegion},
 				Description: "RSC cloud account ID of the shared exocompute host account. Changing this forces a new " +
 					"resource to be created.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				ValidateFunc: validation.IsUUID,
 			},
 			keyPodOverlayNetworkCIDR: {
 				Type:     schema.TypeString,
@@ -136,9 +138,6 @@ func resourceAzureExocompute() *schema.Resource {
 	}
 }
 
-// azureCreateExocompute run the Create operation for the Azure exocompute
-// resource. This enables the exocompute feature and adds an exocompute config
-// to the RSC cloud account.
 func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureCreateExocompute")
 
@@ -185,8 +184,6 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 	return nil
 }
 
-// azureReadExocompute run the Read operation for the Azure exocompute
-// resource. This reads the remote state of the exocompute config in RSC.
 func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureReadExocompute")
 
@@ -242,8 +239,6 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	return nil
 }
 
-// azureDeleteExocompute run the Delete operation for the Azure exocompute
-// resource. This removes the exocompute config from RSC.
 func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureDeleteExocompute")
 

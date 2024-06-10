@@ -9,7 +9,7 @@ resource "polaris_aws_account" "default" {
   }
 }
 
-# Enable Cloud Native Protection and Exocompte.
+# Enable Cloud Native Protection and Exocompute.
 resource "polaris_aws_account" "default" {
   profile = "default"
 
@@ -29,5 +29,5 @@ resource "polaris_aws_account" "default" {
 
 # The Couldformation stack ARN is available after creation
 output "stack_arn" {
-  value       = polaris_aws_account.default.exocompute[0].stack_arn
+  value = polaris_aws_account.default.exocompute[0].stack_arn
 }

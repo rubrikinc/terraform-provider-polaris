@@ -24,7 +24,7 @@ description: |-
 ### Read-Only
 
 - `description` (String) Role description.
-- `id` (String) The ID of this resource.
+- `id` (String) Role ID (UUID).
 - `is_org_admin` (Boolean) True if the role is the organization administrator.
 - `permission` (Set of Object) Role permission. (see [below for nested schema](#nestedatt--permission))
 
@@ -34,7 +34,7 @@ description: |-
 Read-Only:
 
 - `hierarchy` (Set of Object) Snappable hierarchy. (see [below for nested schema](#nestedobjatt--permission--hierarchy))
-- `operation` (String) Operation allowed on object ids under the snappable hierarchy.
+- `operation` (String) Operation allowed on object IDs under the snappable hierarchy.
 
 <a id="nestedobjatt--permission--hierarchy"></a>
 ### Nested Schema for `permission.hierarchy`

@@ -3,15 +3,19 @@
 page_title: "polaris_features Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_feature data source is used to access information about features enabled for an RSC account.
-  !> WARNING: This resource is deprecated and will be removed in a future version. Use the features field of the polaris_account data source instead.
+  The polaris_feature data source is used to access information about features enabled
+  for an RSC account.
+  !> WARNING: This resource is deprecated and will be removed in a future version.
+     Use the features field of the polaris_account data source instead.
 ---
 
 # polaris_features (Data Source)
 
-The `polaris_feature` data source is used to access information about features enabled for an RSC account.
+The `polaris_feature` data source is used to access information about features enabled
+for an RSC account.
 
-!> **WARNING:** This resource is deprecated and will be removed in a future version. Use the `features` field of the `polaris_account` data source instead.
+!> **WARNING:** This resource is deprecated and will be removed in a future version.
+   Use the `features` field of the `polaris_account` data source instead.
 
 ## Example Usage
 

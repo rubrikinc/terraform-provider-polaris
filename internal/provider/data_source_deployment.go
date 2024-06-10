@@ -31,12 +31,16 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// dataSourceDeployment defines the schema for the RSC deployment data source.
+const dataSourceDeploymentDescription = `
+The ´polaris_deployment´ data source is used to access information about the RSC
+deployment.
+`
+
 func dataSourceDeployment() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: deploymentRead,
 
-		Description: "The `polaris_deployment` data source is used to access information about the RSC deployment.",
+		Description: description(dataSourceDeploymentDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -60,8 +64,6 @@ func dataSourceDeployment() *schema.Resource {
 	}
 }
 
-// deploymentRead run the Read operation for the deployment data source. Returns
-// details about the RSC deployment.
 func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] deploymentRead")
 
@@ -70,7 +72,6 @@ func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		return diag.FromErr(err)
 	}
 
-	// Request deployment details.
 	ipAddresses, err := core.Wrap(client.GQL).DeploymentIPAddresses(ctx)
 	if err != nil {
 		return diag.FromErr(err)
@@ -80,7 +81,6 @@ func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		return diag.FromErr(err)
 	}
 
-	// Set attributes.
 	ipAddressesAttr := &schema.Set{F: schema.HashString}
 	for _, ipAddress := range ipAddresses {
 		ipAddressesAttr.Add(ipAddress)
@@ -92,7 +92,6 @@ func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		return diag.FromErr(err)
 	}
 
-	// Generate an ID for the data source.
 	hash := sha256.New()
 	for _, ipAddress := range ipAddresses {
 		hash.Write([]byte(ipAddress))

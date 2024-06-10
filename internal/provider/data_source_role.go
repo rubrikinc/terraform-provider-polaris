@@ -30,6 +30,10 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
+const dataSourceRoleDescription = `
+The ´polaris_role´ data source is used to access information about RSC roles.
+`
+
 // This data source uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
@@ -37,32 +41,38 @@ func dataSourceRole() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: roleRead,
 
+		Description: description(dataSourceRoleDescription),
 		Schema: map[string]*schema.Schema{
-			"description": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Role ID (UUID).",
+			},
+			keyDescription: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "Role description.",
 			},
-			"is_org_admin": {
+			keyIsOrgAdmin: {
 				Type:        schema.TypeBool,
 				Computed:    true,
 				Description: "True if the role is the organization administrator.",
 			},
-			"name": {
+			keyName: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "Role name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"permission": {
+			keyPermission: {
 				Type: schema.TypeSet,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"hierarchy": {
+						keyHierarchy: {
 							Type: schema.TypeSet,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"object_ids": {
+									keyObjectIDs: {
 										Type: schema.TypeSet,
 										Elem: &schema.Schema{
 											Type: schema.TypeString,
@@ -70,7 +80,7 @@ func dataSourceRole() *schema.Resource {
 										Computed:    true,
 										Description: "Object/workload identifiers.",
 									},
-									"snappable_type": {
+									keySnappableType: {
 										Type:        schema.TypeString,
 										Computed:    true,
 										Description: "Snappable/workload type.",
@@ -80,10 +90,10 @@ func dataSourceRole() *schema.Resource {
 							Computed:    true,
 							Description: "Snappable hierarchy.",
 						},
-						"operation": {
+						keyOperation: {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Operation allowed on object ids under the snappable hierarchy.",
+							Description: "Operation allowed on object IDs under the snappable hierarchy.",
 						},
 					},
 				},

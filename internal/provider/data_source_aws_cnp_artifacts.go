@@ -33,33 +33,81 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// dataSourceAwsArtifacts defines the schema for the AWS artifacts data source.
+const dataSourceAWSArtifactsDescription = `
+The ´polaris_aws_archival_location´ data source is used to access information about
+instance profiles and roles required by RSC for a specified feature set.
+
+## Permission Groups
+Following is a list of features and their applicable permission groups. These are used
+when specifying the feature set.
+
+### CLOUD_NATIVE_ARCHIVAL
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+### CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+  * ´ENCRYPTION´ - Represents the set of permissions required for encryption operations.
+
+### CLOUD_NATIVE_PROTECTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+  * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export and
+    restore operations.
+  * ´FILE_LEVEL_RECOVERY´ - Represents the set of permissions required for file-level
+    recovery operations.
+  * ´SNAPSHOT_PRIVATE_ACCESS´ - Represents the set of permissions required for private
+    access to disk snapshots.
+
+### CLOUD_NATIVE_S3_PROTECTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+### EXOCOMPUTE" +
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+  * ´PRIVATE_ENDPOINTS´ - Represents the set of permissions required for usage of private
+    endpoints.
+  * ´RSC_MANAGED_CLUSTER´ - Represents the set of permissions required for the Rubrik-
+    managed Exocompute cluster.
+
+### RDS_PROTECTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+-> **Note:** When permission groups are specified, the ´BASIC´ permission group must
+   always be included.
+`
+
 func dataSourceAwsArtifacts() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: awsArtifactsRead,
 
+		Description: description(dataSourceAWSArtifactsDescription),
 		Schema: map[string]*schema.Schema{
-			"cloud": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Default:      "STANDARD",
-				Description:  "AWS cloud type.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+			keyID: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "SHA-256 hash of the instance profile keys and the roles" +
+					"keys.",
 			},
-			"feature": {
+			keyCloud: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "STANDARD",
+				Description: "AWS cloud type. Possible values are `STANDARD`, `CHINA` and `GOV`. Default value is " +
+					"`STANDARD`.",
+				ValidateFunc: validation.StringInSlice([]string{"STANDARD", "CHINA", "GOV"}, false),
+			},
+			keyFeature: {
 				Type:        schema.TypeSet,
-				Elem:        featureResource,
+				Elem:        featureResource(),
 				MinItems:    1,
 				Required:    true,
 				Description: "RSC feature with optional permission groups.",
 			},
-			"instance_profile_keys": {
+			keyInstanceProfileKeys: {
 				Type:        schema.TypeSet,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Computed:    true,
 				Description: "Instance profile keys for the RSC features.",
 			},
-			"role_keys": {
+			keyRoleKeys: {
 				Type:        schema.TypeSet,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Computed:    true,
@@ -69,9 +117,6 @@ func dataSourceAwsArtifacts() *schema.Resource {
 	}
 }
 
-// awsArtifactsRead run the Read operation for the AWS artifacts data source.
-// Returns all the instance profiles and roles required for the specified cloud
-// and feature set.
 func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsArtifactsRead")
 
@@ -81,12 +126,12 @@ func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Get attributes.
-	cloud := d.Get("cloud").(string)
+	cloud := d.Get(keyCloud).(string)
 	var features []core.Feature
-	for _, block := range d.Get("feature").(*schema.Set).List() {
+	for _, block := range d.Get(keyFeature).(*schema.Set).List() {
 		block := block.(map[string]interface{})
-		feature := core.Feature{Name: block["name"].(string)}
-		for _, group := range block["permission_groups"].(*schema.Set).List() {
+		feature := core.Feature{Name: block[keyName].(string)}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
 
@@ -104,7 +149,7 @@ func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	for _, profile := range profiles {
 		profilesAttr.Add(profile)
 	}
-	if err := d.Set("instance_profile_keys", profilesAttr); err != nil {
+	if err := d.Set(keyInstanceProfileKeys, profilesAttr); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -112,7 +157,7 @@ func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	for _, role := range roles {
 		rolesAttr.Add(role)
 	}
-	if err := d.Set("role_keys", rolesAttr); err != nil {
+	if err := d.Set(keyRoleKeys, rolesAttr); err != nil {
 		return diag.FromErr(err)
 	}
 

@@ -3,10 +3,14 @@ page_title: "polaris_role Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
   
+The `polaris_role` data source is used to access information about RSC roles.
+
 ---
 
 # polaris_role (Data Source)
 
+
+The `polaris_role` data source is used to access information about RSC roles.
 
 
 
@@ -28,7 +32,7 @@ data "polaris_role" "compliance_auditor" {
 ### Read-Only
 
 - `description` (String) Role description.
-- `id` (String) The ID of this resource.
+- `id` (String) Role ID (UUID).
 - `is_org_admin` (Boolean) True if the role is the organization administrator.
 - `permission` (Set of Object) Role permission. (see [below for nested schema](#nestedatt--permission))
 
@@ -38,7 +42,7 @@ data "polaris_role" "compliance_auditor" {
 Read-Only:
 
 - `hierarchy` (Set of Object) Snappable hierarchy. (see [below for nested schema](#nestedobjatt--permission--hierarchy))
-- `operation` (String) Operation allowed on object ids under the snappable hierarchy.
+- `operation` (String) Operation allowed on object IDs under the snappable hierarchy.
 
 <a id="nestedobjatt--permission--hierarchy"></a>
 ### Nested Schema for `permission.hierarchy`

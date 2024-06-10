@@ -34,21 +34,47 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-var featureResource = &schema.Resource{
-	Schema: map[string]*schema.Schema{
-		"name": {
-			Type:        schema.TypeString,
-			Required:    true,
-			Description: "Feature name.",
-		},
-		"permission_groups": {
-			Type:        schema.TypeSet,
-			Elem:        &schema.Schema{Type: schema.TypeString},
-			Required:    true,
-			Description: "Permission groups to assign to the feature.",
-		},
-	},
-}
+const resourceAWSCNPAccount = `
+The ´polaris_aws_cnp_account´ resource adds an AWS account to RSC using the non-CFT
+(Cloud Formation Template) workflow. The ´polaris_aws_account´ resource can be used to
+add an AWS account to RSC using the CFT workflow.
+
+## Permission Groups
+Following is a list of features and their applicable permission groups. These are used
+when specifying the feature set.
+
+### CLOUD_NATIVE_ARCHIVAL
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+### CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+  * ´ENCRYPTION´ - Represents the set of permissions required for encryption operations.
+
+### CLOUD_NATIVE_PROTECTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+  * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export and
+    restore operations.
+  * ´FILE_LEVEL_RECOVERY´ - Represents the set of permissions required for file-level
+    recovery operations.
+  * ´SNAPSHOT_PRIVATE_ACCESS´ - Represents the set of permissions required for private
+    access to disk snapshots.
+
+### CLOUD_NATIVE_S3_PROTECTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+### EXOCOMPUTE
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+  * ´PRIVATE_ENDPOINTS´ - Represents the set of permissions required for usage of
+    private endpoints.
+  * ´RSC_MANAGED_CLUSTER´ - Represents the set of permissions required for the Rubrik-
+    managed Exocompute cluster.
+
+### RDS_PROTECTION
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+
+-> **Note:** When permission groups are specified, the ´BASIC´ permission group must
+   always be included.
+`
 
 func resourceAwsCnpAccount() *schema.Resource {
 	return &schema.Resource{
@@ -57,50 +83,55 @@ func resourceAwsCnpAccount() *schema.Resource {
 		UpdateContext: awsUpdateCnpAccount,
 		DeleteContext: awsDeleteCnpAccount,
 
+		Description: description(resourceAWSCNPAccount),
 		Schema: map[string]*schema.Schema{
-			"cloud": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				Default:      "STANDARD",
-				Description:  "Cloud type.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "RSC cloud account ID (UUID).",
 			},
-			"delete_snapshots_on_destroy": {
+			keyCloud: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Default:  "STANDARD",
+				Description: "AWS cloud type. Possible values are `STANDARD`, `CHINA` and `GOV`. Default value is " +
+					"`STANDARD`. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.StringInSlice([]string{"STANDARD", "CHINA", "GOV"}, false),
+			},
+			keyDeleteSnapshotsOnDestroy: {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
-			// Needed to force full recreation of account if external id is
-			// changed.
-			"external_id": {
+			keyExternalID: {
 				Type:        schema.TypeString,
 				Optional:    true,
 				ForceNew:    true,
-				Description: "External id.",
+				Description: "External ID. Changing this forces a new resource to be created.",
 			},
-			"feature": {
+			keyFeature: {
 				Type:        schema.TypeSet,
-				Elem:        featureResource,
+				Elem:        featureResource(),
 				MinItems:    1,
 				Required:    true,
 				Description: "RSC feature with optional permission groups.",
 			},
-			"name": {
+			keyName: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Description:  "Account name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"native_id": {
+			keyNativeID: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "AWS account id.",
+				Description:  "AWS account ID. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"regions": {
+			keyRegions: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
 					Type:         schema.TypeString,
@@ -123,21 +154,22 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	}
 
 	// Get attributes.
-	cloud := d.Get("cloud").(string)
+	cloud := d.Get(keyCloud).(string)
 	var features []core.Feature
-	for _, block := range d.Get("feature").(*schema.Set).List() {
+	for _, block := range d.Get(keyFeature).(*schema.Set).List() {
 		block := block.(map[string]interface{})
-		feature := core.Feature{Name: block["name"].(string)}
-		for _, group := range block["permission_groups"].(*schema.Set).List() {
+		feature := core.Feature{Name: block[keyName].(string)}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
 
 		features = append(features, feature)
 	}
-	name := d.Get("name").(string)
-	nativeID := d.Get("native_id").(string)
+
+	name := d.Get(keyName).(string)
+	nativeID := d.Get(keyNativeID).(string)
 	var regions []string
-	for _, region := range d.Get("regions").(*schema.Set).List() {
+	for _, region := range d.Get(keyRegions).(*schema.Set).List() {
 		regions = append(regions, region.(string))
 	}
 
@@ -182,24 +214,24 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 	if err := d.Set("cloud", account.Cloud); err != nil {
 		return diag.FromErr(err)
 	}
-	features := &schema.Set{F: schema.HashResource(featureResource)}
+	features := &schema.Set{F: schema.HashResource(featureResource())}
 	for _, feature := range account.Features {
 		groups := &schema.Set{F: schema.HashString}
 		for _, group := range feature.Feature.PermissionGroups {
 			groups.Add(string(group))
 		}
 		features.Add(map[string]any{
-			"name":              feature.Feature.Name,
-			"permission_groups": groups,
+			keyName:             feature.Feature.Name,
+			keyPermissionGroups: groups,
 		})
 	}
-	if err := d.Set("feature", features); err != nil {
+	if err := d.Set(keyFeature, features); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("name", account.Name); err != nil {
+	if err := d.Set(keyName, account.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("native_id", account.NativeID); err != nil {
+	if err := d.Set(keyNativeID, account.NativeID); err != nil {
 		return diag.FromErr(err)
 	}
 	regions := &schema.Set{F: schema.HashString}
@@ -208,7 +240,7 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 			regions.Add(region)
 		}
 	}
-	if err := d.Set("regions", regions); err != nil {
+	if err := d.Set(keyRegions, regions); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -228,22 +260,22 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	cloud := d.Get("cloud").(string)
-	deleteSnapshots := d.Get("delete_snapshots_on_destroy").(bool)
+	cloud := d.Get(keyCloud).(string)
+	deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
 	var features []core.Feature
-	for _, block := range d.Get("feature").(*schema.Set).List() {
+	for _, block := range d.Get(keyFeature).(*schema.Set).List() {
 		block := block.(map[string]interface{})
-		feature := core.Feature{Name: block["name"].(string)}
-		for _, group := range block["permission_groups"].(*schema.Set).List() {
+		feature := core.Feature{Name: block[keyName].(string)}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
 
 		features = append(features, feature)
 	}
-	name := d.Get("name").(string)
-	nativeID := d.Get("native_id").(string)
+	name := d.Get(keyName).(string)
+	nativeID := d.Get(keyNativeID).(string)
 	var regions []string
-	for _, region := range d.Get("regions").(*schema.Set).List() {
+	for _, region := range d.Get(keyRegions).(*schema.Set).List() {
 		regions = append(regions, region.(string))
 	}
 
@@ -257,20 +289,20 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	if d.HasChange("name") {
+	if d.HasChange(keyName) {
 		if err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureAll, aws.Name(name)); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	if d.HasChange("feature") {
-		oldAttr, newAttr := d.GetChange("feature")
+	if d.HasChange(keyFeature) {
+		oldAttr, newAttr := d.GetChange(keyFeature)
 
 		var oldFeatures []core.Feature
 		for _, block := range oldAttr.(*schema.Set).List() {
 			block := block.(map[string]interface{})
-			feature := core.Feature{Name: block["name"].(string)}
-			for _, group := range block["permission_groups"].(*schema.Set).List() {
+			feature := core.Feature{Name: block[keyName].(string)}
+			for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 			}
 			oldFeatures = append(oldFeatures, feature)
@@ -279,8 +311,8 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		var newFeatures []core.Feature
 		for _, block := range newAttr.(*schema.Set).List() {
 			block := block.(map[string]interface{})
-			feature := core.Feature{Name: block["name"].(string)}
-			for _, group := range block["permission_groups"].(*schema.Set).List() {
+			feature := core.Feature{Name: block[keyName].(string)}
+			for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 			}
 			newFeatures = append(newFeatures, feature)
@@ -303,9 +335,9 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 	}
 
-	if d.HasChange("regions") {
+	if d.HasChange(keyRegions) {
 		var regions []string
-		for _, region := range d.Get("regions").(*schema.Set).List() {
+		for _, region := range d.Get(keyRegions).(*schema.Set).List() {
 			regions = append(regions, region.(string))
 		}
 
@@ -332,7 +364,7 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	deleteSnapshots := d.Get("delete_snapshots_on_destroy").(bool)
+	deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
 
 	// Request the cloud account.
 	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
@@ -356,8 +388,39 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 
 	// Reset ID.
 	d.SetId("")
-
 	return nil
+}
+
+func featureResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			keyName: {
+				Type:     schema.TypeString,
+				Required: true,
+				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
+					"`CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
+					"`EXOCOMPUTE` and `RDS_PROTECTION`.",
+				ValidateFunc: validation.StringInSlice([]string{
+					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_PROTECTION",
+					"CLOUD_NATIVE_S3_PROTECTION", "EXOCOMPUTE", "RDS_PROTECTION",
+				}, false),
+			},
+			keyPermissionGroups: {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+					ValidateFunc: validation.StringInSlice([]string{
+						"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "EXPORT_AND_RESTORE",
+						"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+					}, false),
+				},
+				Required: true,
+				Description: "RSC permission groups for the feature. Possible values are `BASIC`, `ENCRYPTION`, " +
+					"`EXPORT_AND_RESTORE`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. " +
+					"For backwards compatibility, `[]` is interpreted as all applicable permission groups.",
+			},
+		},
+	}
 }
 
 func diffFeatures(oldFeatures []core.Feature, newFeatures []core.Feature) ([]core.Feature, []core.Feature) {

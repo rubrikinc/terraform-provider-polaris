@@ -3,22 +3,76 @@
 page_title: "polaris_aws_cnp_account_trust_policy Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The aws_cnp_account_trust_policy resource gets the AWS IAM trust policies required
+  by RSC. The policy field of aws_cnp_account_trust_policy resource should be used
+  with the assume_role_policy of the aws_iam_role resource.
+  -> Note: The features field takes only the feature names and not the permission
+     groups associated with the features.
 ---
 
 # polaris_aws_cnp_account_trust_policy (Resource)
 
+The `aws_cnp_account_trust_policy` resource gets the AWS IAM trust policies required
+by RSC. The `policy` field of `aws_cnp_account_trust_policy` resource should be used
+with the `assume_role_policy` of the `aws_iam_role` resource.
 
+-> **Note:** The `features` field takes only the feature names and not the permission
+   groups associated with the features.
 
 ## Example Usage
 
 ```terraform
+data "polaris_aws_cnp_artifacts" "artifacts" {
+  feature {
+    name = "CLOUD_NATIVE_ARCHIVAL"
+
+    permission_groups = [
+      "BASIC",
+    ]
+  }
+
+  feature {
+    name = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
+
+    permission_groups = [
+      "BASIC",
+      "ENCRYPTION",
+    ]
+  }
+
+  feature {
+    name = "CLOUD_NATIVE_PROTECTION"
+
+    permission_groups = [
+      "BASIC",
+    ]
+  }
+}
+
+resource "polaris_aws_cnp_account" "account" {
+  name      = "My Account"
+  native_id = "123456789123"
+  regions = [
+    "us-east-2",
+    "us-west-2",
+  ]
+
+  dynamic "feature" {
+    for_each = data.polaris_aws_cnp_artifacts.artifacts.feature
+    content {
+      name              = feature.value["name"]
+      permission_groups = feature.value["permission_groups"]
+    }
+  }
+}
+
+# Lookup the trust policies using the artifacts data source and the
+# account resource.
 resource "polaris_aws_cnp_account_trust_policy" "trust_policy" {
-  for_each    = data.polaris_aws_cnp_artifacts.artifacts.role_keys
-  account_id  = polaris_aws_cnp_account.account.id
-  features    = polaris_aws_cnp_account.account.features
-  external_id = polaris_aws_cnp_account.account.external_id
-  role_key    = each.key
+  for_each   = data.polaris_aws_cnp_artifacts.artifacts.role_keys
+  account_id = polaris_aws_cnp_account.account.id
+  features   = polaris_aws_cnp_account.account.feature.*.name
+  role_key   = each.key
 }
 ```
 
@@ -27,15 +81,15 @@ resource "polaris_aws_cnp_account_trust_policy" "trust_policy" {
 
 ### Required
 
-- `account_id` (String) RSC account id.
-- `features` (Set of String) RSC features.
-- `role_key` (String) Role key.
+- `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
+- `features` (Set of String) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`. Changing this forces a new resource to be created.
+- `role_key` (String) RSC artifact key for the AWS role.
 
 ### Optional
 
-- `external_id` (String) External id.
+- `external_id` (String) External ID. Changing this forces a new resource to be created.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
-- `policy` (String) Trust policy.
+- `id` (String) RSC cloud account ID (UUID).
+- `policy` (String) AWS IAM trust policy.

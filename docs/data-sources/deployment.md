@@ -3,12 +3,14 @@
 page_title: "polaris_deployment Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_deployment data source is used to access information about the RSC deployment.
+  The polaris_deployment data source is used to access information about the RSC
+  deployment.
 ---
 
 # polaris_deployment (Data Source)
 
-The `polaris_deployment` data source is used to access information about the RSC deployment.
+The `polaris_deployment` data source is used to access information about the RSC
+deployment.
 
 ## Example Usage
 

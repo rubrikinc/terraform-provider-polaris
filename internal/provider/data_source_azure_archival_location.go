@@ -31,6 +31,12 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 )
 
+const dataSourceAzureArchivalLocationDescription = `
+The ´polaris_azure_archival_location´ data source is used to access information about
+an Azure archival location. An archival location is looked up using either the ID or
+the name.
+`
+
 // This data source uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
@@ -38,13 +44,18 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: azureArchivalLocationRead,
 
-		Description: "The `polaris_azure_archival_location` data source is used to access information about an " +
-			"Azure archival location. An archival location is looked up using either the ID or the name.\n",
+		Description: description(dataSourceAzureArchivalLocationDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Cloud native archival location ID (UUID).",
+			},
+			keyArchivalLocationID: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				Description:  "Cloud native archival location ID.",
+				ExactlyOneOf: []string{keyArchivalLocationID, keyName},
+				Description:  "Cloud native archival location ID (UUID).",
 				ValidateFunc: validation.IsUUID,
 			},
 			keyConnectionStatus: {
@@ -73,6 +84,7 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			keyName: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				ExactlyOneOf: []string{keyArchivalLocationID, keyName},
 				Description:  "Cloud native archival location name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
@@ -130,9 +142,7 @@ func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m in
 			return diag.FromErr(err)
 		}
 	} else {
-		targetMappingName := d.Get("name").(string)
-
-		targetMapping, err = azure.Wrap(client).TargetMappingByName(ctx, targetMappingName)
+		targetMapping, err = azure.Wrap(client).TargetMappingByName(ctx, d.Get("name").(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -169,5 +179,6 @@ func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
+	d.SetId(targetMapping.ID.String())
 	return nil
 }

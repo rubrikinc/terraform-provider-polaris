@@ -35,34 +35,41 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
-// resourceRoleAssignment defines the schema for the role assignment resource.
+const resourceRoleAssignmentDescription = `
+The ´polaris_role_assignment´ resource is used to assign roles to users in RSC.
+`
+
 func resourceRoleAssignment() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: createRoleAssignment,
 		ReadContext:   readRoleAssignment,
 		DeleteContext: deleteRoleAssignment,
 
+		Description: description(resourceRoleAssignmentDescription),
 		Schema: map[string]*schema.Schema{
-			"role_id": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "Role identifier.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "SHA-256 hash of the user email and the role ID.",
 			},
-			"user_email": {
+			keyRoleID: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "User email address.",
+				Description:  "Role ID (UUID). Changing this forces a new resource to be created.",
+				ValidateFunc: validation.IsUUID,
+			},
+			keyUserEmail: {
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "User email address. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
 	}
 }
 
-// createRoleAssignment run the Create operation for the role assignment
-// resource.
 func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] createRoleAssignment")
 
@@ -71,11 +78,11 @@ func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 		return diag.FromErr(err)
 	}
 
-	roleID, err := uuid.Parse(d.Get("role_id").(string))
+	roleID, err := uuid.Parse(d.Get(keyRoleID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	userEmail := d.Get("user_email").(string)
+	userEmail := d.Get(keyUserEmail).(string)
 
 	if err := access.Wrap(client).AssignRole(ctx, userEmail, roleID); err != nil {
 		return diag.FromErr(err)
@@ -87,7 +94,6 @@ func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 	return nil
 }
 
-// readRoleAssignment run the Read operation for the role assignment resource.
 func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] readRoleAssignment")
 
@@ -96,11 +102,11 @@ func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag
 		return diag.FromErr(err)
 	}
 
-	roleID, err := uuid.Parse(d.Get("role_id").(string))
+	roleID, err := uuid.Parse(d.Get(keyRoleID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	userEmail := d.Get("user_email").(string)
+	userEmail := d.Get(keyUserEmail).(string)
 
 	user, err := access.Wrap(client).User(ctx, userEmail)
 	if errors.Is(err, graphql.ErrNotFound) {
@@ -111,14 +117,12 @@ func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag
 		return diag.FromErr(err)
 	}
 	if !user.HasRole(roleID) {
-		d.Set("role_id", "")
+		d.Set(keyRoleID, "")
 	}
 
 	return nil
 }
 
-// deleteRoleAssignment run the Delete operation for the role assignment
-// resource.
 func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] deleteRoleAssignment")
 
@@ -127,11 +131,11 @@ func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 		return diag.FromErr(err)
 	}
 
-	roleID, err := uuid.Parse(d.Get("role_id").(string))
+	roleID, err := uuid.Parse(d.Get(keyRoleID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	userEmail := d.Get("user_email").(string)
+	userEmail := d.Get(keyUserEmail).(string)
 
 	if err := access.Wrap(client).UnassignRole(ctx, userEmail, roleID); err != nil {
 		return diag.FromErr(err)

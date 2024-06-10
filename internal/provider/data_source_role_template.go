@@ -30,6 +30,11 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
+const dataSourceRoleTemplateDescription = `
+The ´polaris_role_template´ data source is used to access information about RSC role
+templates.
+`
+
 // This data source uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
@@ -37,27 +42,33 @@ func dataSourceRoleTemplate() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: roleTemplateRead,
 
+		Description: description(dataSourceRoleTemplateDescription),
 		Schema: map[string]*schema.Schema{
-			"description": {
+			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Role description.",
+				Description: "Role template ID (UUID).",
 			},
-			"name": {
+			keyDescription: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Role template description.",
+			},
+			keyName: {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "Role name.",
+				Description:  "Role template name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"permission": {
+			keyPermission: {
 				Type: schema.TypeSet,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"hierarchy": {
+						keyHierarchy: {
 							Type: schema.TypeSet,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"object_ids": {
+									keyObjectIDs: {
 										Type: schema.TypeSet,
 										Elem: &schema.Schema{
 											Type: schema.TypeString,
@@ -65,7 +76,7 @@ func dataSourceRoleTemplate() *schema.Resource {
 										Computed:    true,
 										Description: "Object/workload identifiers.",
 									},
-									"snappable_type": {
+									keySnappableType: {
 										Type:        schema.TypeString,
 										Computed:    true,
 										Description: "Snappable/workload type.",
@@ -75,10 +86,10 @@ func dataSourceRoleTemplate() *schema.Resource {
 							Computed:    true,
 							Description: "Snappable hierarchy.",
 						},
-						"operation": {
+						keyOperation: {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Operation allowed on object ids under the snappable hierarchy.",
+							Description: "Operation allowed on object IDs under the snappable hierarchy.",
 						},
 					},
 				},

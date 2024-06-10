@@ -33,16 +33,19 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// dataSourceFeatures defines the schema for the RSC features data source.
+const dataSourceFeaturesDescription = `
+The ´polaris_feature´ data source is used to access information about features enabled
+for an RSC account.
+
+!> **WARNING:** This resource is deprecated and will be removed in a future version.
+   Use the ´features´ field of the ´polaris_account´ data source instead.
+`
+
 func dataSourceFeatures() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: featuresRead,
 
-		Description: "The `polaris_feature` data source is used to access information about features enabled for an " +
-			"RSC account.\n" +
-			"\n" +
-			"!> **WARNING:** This resource is deprecated and will be removed in a future version. Use the `features` " +
-			"field of the `polaris_account` data source instead.",
+		Description: description(dataSourceFeaturesDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -62,8 +65,6 @@ func dataSourceFeatures() *schema.Resource {
 	}
 }
 
-// featuresRead run the Read operation for the RSC features data source. Returns
-// all RSC features enabled for the current RSC account.
 func featuresRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] featuresRead")
 
@@ -72,7 +73,6 @@ func featuresRead(ctx context.Context, d *schema.ResourceData, m interface{}) di
 		return diag.FromErr(err)
 	}
 
-	// Request features.
 	features, err := core.Wrap(client.GQL).EnabledFeaturesForAccount(ctx)
 	if err != nil {
 		return diag.FromErr(err)
@@ -81,7 +81,6 @@ func featuresRead(ctx context.Context, d *schema.ResourceData, m interface{}) di
 		return cmp.Compare(lhs.Name, rhs.Name)
 	})
 
-	// Set attributes.
 	var featuresAttr []string
 	for _, feature := range features {
 		featuresAttr = append(featuresAttr, feature.Name)
@@ -90,7 +89,6 @@ func featuresRead(ctx context.Context, d *schema.ResourceData, m interface{}) di
 		return diag.FromErr(err)
 	}
 
-	// Generate an ID for the data source.
 	hash := sha256.New()
 	for _, feature := range features {
 		hash.Write([]byte(feature.Name))
