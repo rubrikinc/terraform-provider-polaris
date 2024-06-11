@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.9.0-beta.8
+* Improve the documentation for AWS data sources and resources.
+* Update guides.
+
 ## v0.9.0-beta.7
 * Add `polaris_azure_archival_location` data source. [[docs](../data-sources/azure_archival_location)]
 * Fix a bug in the `polaris_azure_archival_location` resource where the cloud account UUID would be passed to the RSC

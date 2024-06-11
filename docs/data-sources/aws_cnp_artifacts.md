@@ -89,7 +89,7 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
     permission_groups = [
       "BASIC",
       "EXPORT_AND_RESTORE",
-      "EXPORT_AND_RESTORE",
+      "FILE_LEVEL_RECOVERY",
     ]
   }
 }
