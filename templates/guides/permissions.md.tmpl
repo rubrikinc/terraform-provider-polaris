@@ -7,10 +7,14 @@ RSC requires permissions to operate and as new features are added to RSC the set
 guide explains how Terraform can be used to keep this set of permissions up to date.
 
 ## AWS
-For AWS this is managed through a CloudFormation stack. When the status of an account feature is `missing-permissions`
-the CloudFormation stack must be updated for the feature to continue to function. This can be managed by setting the
-`permissions` argument to `update`.
-```hcl
+There are two ways to onboard AWS accounts to RSC, using a CloudFormation stack or not. Depending on the way an account
+is onboarded, permissions are managed in different ways.
+
+### Using a CloudFormation Stack
+When an account is onboarded using a CloudFormation stack, the permissions are managed through the stack. When the
+status of an account feature is `MISSING_PERMISSIONS` the CloudFormation stack must be updated for the RSC feature to
+continue to function. This can be managed by setting the `permissions` argument to `update`.
+```terraform
 resource "polaris_aws_account" "default" {
   profile     = "default"
   permissions = "update"
@@ -22,55 +26,98 @@ resource "polaris_aws_account" "default" {
   }
 }
 ```
-This will generate a diff when the status of at least one feature is `missing-permissions`. Applying the account
-resource for this diff will update the CloudFormation stack. If the `permissions` argument is not specified the
+This will generate a diff when the status of at least one feature is in the `MISSING_PERMISSIONS` state. Applying the
+account resource for this diff will update the CloudFormation stack. If the `permissions` argument is not specified the
 provider will not attempt to update the CloudFormation stack.
 
+### Not Using a CloudFormation Stack
+When an account is onboarded without using a CloudFormation stack, the permissions can be managed using the
+`polaris_aws_cnp_artifacts` and `polaris_aws_cnp_permissions` data sources and the
+[aws](https://registry.terraform.io/providers/hashicorp/aws/latest) provider, using IAM roles. Please see the
+[AWS CNP Account](aws_cnp_account.md) guide for more information on how create IAM roles using the data sources.
+
 ## Azure
-For Azure permissions are managed through a service principal. When the status of a subscription feature is
-`missing-permissions` the permissions of the service principal must be updated for the feature to continue to
-function. This can be managed by Terraform using the
-[azurerm](https://registry.terraform.io/providers/hashicorp/azurerm/latest) provider:
-```hcl
-data "polaris_azure_permissions" "default" {
-  features = [
-    "cloud-native-protection",
-    "exocompute",
-  ]
+For Azure permissions are managed through the subscription. When the status of a subscription feature is
+`MISSING_PERMISSIONS` the permissions must be updated for the feature to continue to function. This can be managed by
+Terraform using the [azurerm](https://registry.terraform.io/providers/hashicorp/azurerm/latest) provider:
+```terraform
+variable "features" {
+  type        = set(string)
+  description = "List of RSC features to enable for subscription."
 }
 
-resource "azurerm_role_definition" "default" {
-  name  = "terraform"
-  scope = data.azurerm_subscription.default.id
+data "polaris_azure_permissions" "features" {
+  for_each = var.features
+  feature  = each.key
+}
+
+resource "azurerm_role_definition" "subscription" {
+  for_each = data.polaris_azure_permissions.features
+  name     = "RSC - Subscription Level - ${each.value.feature}"
+  scope    = data.azurerm_subscription.subscription.id
 
   permissions {
-    actions          = data.polaris_azure_permissions.default.actions
-    data_actions     = data.polaris_azure_permissions.default.data_actions
-    not_actions      = data.polaris_azure_permissions.default.not_actions
-    not_data_actions = data.polaris_azure_permissions.default.not_data_actions
+    actions          = each.value.subscription_actions
+    data_actions     = each.value.subscription_data_actions
+    not_actions      = each.value.subscription_not_actions
+    not_data_actions = each.value.subscription_not_data_actions
   }
 }
 
-resource "azurerm_role_assignment" "default" {
+resource "azurerm_role_assignment" "subscription" {
+  for_each           = data.polaris_azure_permissions.features
   principal_id       = "9e7f3952-1fc1-11ec-b57a-972144d12d97"
-  role_definition_id = azurerm_role_definition.default.role_definition_resource_id
-  scope              = data.azurerm_subscription.default.id
+  role_definition_id = azurerm_role_definition.subscription[each.key].role_definition_resource_id
+  scope              = data.azurerm_subscription.subscription.id
 }
 
-resource "polaris_azure_service_principal" "default" {
-  sdk_auth         = "${path.module}/sdk-service-principal.json"
-  tenant_domain    = "mydomain.onmicrosoft.com"
-  permissions_hash = data.polaris_azure_permissions.default.hash
+resource "azurerm_role_definition" "resource_group" {
+  for_each = data.polaris_azure_permissions.features
+  name     = "RSC - Resource Group Level - ${each.value.feature}"
+  scope    = data.azurerm_resource_group.resource_group.id
+
+  permissions {
+    actions          = each.value.resource_group_actions
+    data_actions     = each.value.resource_group_data_actions
+    not_actions      = each.value.resource_group_not_actions
+    not_data_actions = each.value.resource_group_not_data_actions
+  }
+}
+
+resource "azurerm_role_assignment" "resource_group" {
+  for_each           = data.polaris_azure_permissions.features
+  principal_id       = "9e7f3952-1fc1-11ec-b57a-972144d12d97"
+  role_definition_id = azurerm_role_definition.resource_group[each.key].role_definition_resource_id
+  scope              = data.azurerm_resource_group.resource_group.id
+}
+
+resource "polaris_azure_service_principal" "service_principal" {
+  ...
+}
+
+resource "polaris_azure_subscription" "subscription" {
+  subscription_id   = data.azurerm_subscription.subscription.subscription_id
+  subscription_name = data.azurerm_subscription.subscription.display_name
+  tenant_domain     = polaris_azure_service_principal.service_principal.tenant_domain
+
+  cloud_native_protection {
+    permissions           = data.polaris_azure_permissions.features["CLOUD_NATIVE_PROTECTION"].id
+    resource_group_name   = data.azurerm_resource_group.resource_group.name
+    resource_group_region = data.azurerm_resource_group.resource_group.location
+    regions               = ["eastus2"]
+  }
+
+  ...
 
   depends_on = [
-    azurerm_role_definition.default,
-    azurerm_role_assignment.default,
+    azurerm_role_definition.subscription,
+    azurerm_role_definition.resource_group,
   ]
 }
 ```
 When the permissions for a feature changes the permissions data source will reflect this generating a diff for the
-role definition and service principal resources. Applying the diff will first update the permissions of the service
-principal's role definition and then notify RSC about the update.
+role definitions and subscription resources. Applying the diff will first update the permissions of the role
+definitions, then notify RSC about the update.
 
 ## GCP
 For GCP permissions are managed through a service account. When the status of a project feature is `missing-permissions`
