@@ -47,6 +47,9 @@ There are 2 types of Exocompute configurations:
     cloud account to a host cloud account. The application cloud account will leverage
     the Exocompute resources deployed for the host configuration.
 
+Item 1 above requires that the Azure subscription has been onboarded with the
+´exocompute´ feature.
+
 Since there are 2 types of Exocompute configurations, there are 2 ways to create a
 ´polaris_azure_exocompute´ resource:
  1. Using the ´cloud_account_id´, ´region´, ´subnet´ and ´pod_overlay_network_cidr´
@@ -58,8 +61,9 @@ Since there are 2 types of Exocompute configurations, there are 2 ways to create
    ´pod_overlay_network_cidr´ field, this is discouraged and should only be done for
    backwards compatibility reasons.
 
--> **Note:** Using both host and application Exocompute configurations is sometimes
-   referred to as shared Exocompute.
+-> **Note:** Customer-managed Exocompute is sometimes referred to as Bring Your Own
+   Kubernetes (BYOK). Using both host and application Exocompute configurations is
+   sometimes referred to as shared Exocompute.
 `
 
 func resourceAzureExocompute() *schema.Resource {

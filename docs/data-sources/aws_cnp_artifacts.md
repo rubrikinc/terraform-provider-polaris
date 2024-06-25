@@ -19,7 +19,7 @@ description: |-
   access to disk snapshots.
   CLOUDNATIVES3_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the feature.
-  EXOCOMPUTE" +
+  EXOCOMPUTE
   BASIC - Represents the basic set of permissions required to onboard the feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage of private
   endpoints.RSC_MANAGED_CLUSTER - Represents the set of permissions required for the Rubrik-
   managed Exocompute cluster.
@@ -57,7 +57,7 @@ when specifying the feature set.
 ### CLOUD_NATIVE_S3_PROTECTION
   * `BASIC` - Represents the basic set of permissions required to onboard the feature.
 
-### EXOCOMPUTE" +
+### EXOCOMPUTE
   * `BASIC` - Represents the basic set of permissions required to onboard the feature.
   * `PRIVATE_ENDPOINTS` - Represents the set of permissions required for usage of private
     endpoints.

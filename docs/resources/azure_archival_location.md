@@ -4,7 +4,8 @@ page_title: "polaris_azure_archival_location Resource - terraform-provider-polar
 subcategory: ""
 description: |-
   The polaris_azure_archival_location resource creates an RSC archival location for
-  cloud-native workloads.
+  cloud-native workloads. This resource requires that the Azure subscription has been
+  onboarded with the cloud_native_archival feature.
   When creating an archival location, the region where the snapshots are stored needs
   to be specified:
     * SOURCE_REGION - Store snapshots in the same region to minimize data transfer
@@ -22,7 +23,8 @@ description: |-
 # polaris_azure_archival_location (Resource)
 
 The `polaris_azure_archival_location` resource creates an RSC archival location for
-cloud-native workloads.
+cloud-native workloads. This resource requires that the Azure subscription has been
+onboarded with the `cloud_native_archival` feature.
 
 When creating an archival location, the region where the snapshots are stored needs
 to be specified:
