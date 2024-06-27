@@ -37,7 +37,8 @@ import (
 
 const resourceAzureArchivalLocationDescription = `
 The ´polaris_azure_archival_location´ resource creates an RSC archival location for
-cloud-native workloads.
+cloud-native workloads. This resource requires that the Azure subscription has been
+onboarded with the ´cloud_native_archival´ feature.
 
 When creating an archival location, the region where the snapshots are stored needs
 to be specified:

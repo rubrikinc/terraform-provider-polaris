@@ -16,6 +16,8 @@ description: |-
    3. Application - An application configuration is created by mapping the application
       cloud account to a host cloud account. The application cloud account will leverage
       the Exocompute resources deployed for the host configuration.
+  Items 1 and 2 above requires that the AWS account has been onboarded with the
+  EXOCOMPUTE feature.
   Since there are 3 types of Exocompute configurations, there are 3 ways to create a
   polaris_azure_exocompute resource:
    1. Using the cloud_account_id, region, subnet and pod_overlay_network_cidr
@@ -25,10 +27,9 @@ description: |-
       to attach an AWS EKS cluster to the Exocompute configuration.
    3. Using the cloud_account_id and host_cloud_account_id fields creates an
       application configuration.
-  -> Note: Customer managed exocompute is sometimes referred to as Bring Your Own
-     Kubernetes (BYOK).
-  -> Note: Using both host and application Exocompute configurations is sometimes
-     referred to as shared Exocompute.
+  -> Note: Customer-managed Exocompute is sometimes referred to as Bring Your Own
+     Kubernetes (BYOK). Using both host and application Exocompute configurations is
+     sometimes referred to as shared Exocompute.
 ---
 
 # polaris_aws_exocompute (Resource)
@@ -48,6 +49,9 @@ There are 3 types of Exocompute configurations:
     cloud account to a host cloud account. The application cloud account will leverage
     the Exocompute resources deployed for the host configuration.
 
+Items 1 and 2 above requires that the AWS account has been onboarded with the
+`EXOCOMPUTE` feature.
+
 Since there are 3 types of Exocompute configurations, there are 3 ways to create a
 `polaris_azure_exocompute` resource:
  1. Using the `cloud_account_id`, `region`, `subnet` and `pod_overlay_network_cidr`
@@ -58,11 +62,9 @@ Since there are 3 types of Exocompute configurations, there are 3 ways to create
  3. Using the `cloud_account_id` and `host_cloud_account_id` fields creates an
     application configuration.
 
--> **Note:** Customer managed exocompute is sometimes referred to as Bring Your Own
-   Kubernetes (BYOK).
-
--> **Note:** Using both host and application Exocompute configurations is sometimes
-   referred to as shared Exocompute.
+-> **Note:** Customer-managed Exocompute is sometimes referred to as Bring Your Own
+   Kubernetes (BYOK). Using both host and application Exocompute configurations is
+   sometimes referred to as shared Exocompute.
 
 ## Example Usage
 

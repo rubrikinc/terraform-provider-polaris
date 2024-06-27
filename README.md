@@ -82,6 +82,7 @@ provider "polaris" {
 ##### Environment Variables for Local User Accounts
 When using a local user account the following environmental variables can be used to override the default local user
 account behaviour:
+* *RUBRIK_POLARIS_ACCOUNT_CREDENTIALS* — Overrides the content of the local user account file.
 * *RUBRIK_POLARIS_ACCOUNT_FILE* — Overrides the name and path of the file to read local user accounts from.
 * *RUBRIK_POLARIS_ACCOUNT_NAME* — Overrides the name of the local user account given to the credentials
 parameter in the provider configuration.
@@ -109,6 +110,7 @@ provider "polaris" {
 ##### Environment Variables for Service Accounts
 When using a service account the following environmental variables can be used to override the default service account
 behaviour:
+* *RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS* — Overrides the content of the service account credentials file.
 * *RUBRIK_POLARIS_SERVICEACCOUNT_FILE* — Overrides the name and path of the service account credentials file.
 * *RUBRIK_POLARIS_SERVICEACCOUNT_NAME* — Overrides the name of the service account.
 * *RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID* — Overrides the client id of the service account.

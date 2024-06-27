@@ -4,19 +4,23 @@ page_title: "polaris_aws_archival_location Resource - terraform-provider-polaris
 subcategory: ""
 description: |-
   The polaris_aws_archival_location resource creates an RSC archival location for
-  cloud-native workloads.
+  cloud-native workloads. This resource requires that the AWS account has been
+  onboarded with the CLOUD_NATIVE_ARCHIVAL feature.
   When creating an archival location, the region where the snapshots are stored needs
   to be specified:
     * SOURCE_REGION - Store snapshots in the same region to minimize data transfer
       charges. This is the default behaviour when the region field is not specified.
     * SPECIFIC_REGION - Storing snapshots in another region can increase total data
       transfer charges. The region field specifies the region.
+  -> Note: The AWS bucket holding the archived data is not created until the first
+     protected object is archived.
 ---
 
 # polaris_aws_archival_location (Resource)
 
 The `polaris_aws_archival_location` resource creates an RSC archival location for
-cloud-native workloads.
+cloud-native workloads. This resource requires that the AWS account has been
+onboarded with the `CLOUD_NATIVE_ARCHIVAL` feature.
 
 When creating an archival location, the region where the snapshots are stored needs
 to be specified:
@@ -24,6 +28,9 @@ to be specified:
     charges. This is the default behaviour when the `region` field is not specified.
   * `SPECIFIC_REGION` - Storing snapshots in another region can increase total data
     transfer charges. The `region` field specifies the region.
+
+-> **Note:** The AWS bucket holding the archived data is not created until the first
+   protected object is archived.
 
 ## Example Usage
 
