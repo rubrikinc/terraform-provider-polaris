@@ -8,19 +8,11 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
   }
 
   feature {
-    name = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
-
-    permission_groups = [
-      "BASIC",
-      "ENCRYPTION",
-    ]
-  }
-
-  feature {
     name = "CLOUD_NATIVE_PROTECTION"
 
     permission_groups = [
       "BASIC",
+      "EXPORT_AND_RESTORE",
     ]
   }
 }

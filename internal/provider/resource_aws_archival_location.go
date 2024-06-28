@@ -101,7 +101,7 @@ func resourceAwsArchivalLocation() *schema.Resource {
 				Optional:     true,
 				Sensitive:    true,
 				Default:      "aws/s3",
-				Description:  "AWS KMS master key alias/ID.",
+				Description:  "AWS KMS master key alias/ID. Default value is `aws/s3`.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyLocationTemplate: {

@@ -13,10 +13,6 @@ when specifying the feature set.
 ### CLOUD_NATIVE_ARCHIVAL
   * `BASIC` - Represents the basic set of permissions required to onboard the feature.
 
-### CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
-  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
-  * `ENCRYPTION` - Represents the set of permissions required for encryption operations.
-
 ### CLOUD_NATIVE_PROTECTION
  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
  * `EXPORT_AND_RESTORE` - Represents the set of permissions required for export and
@@ -56,10 +52,6 @@ when specifying the feature set.
 
 ### CLOUD_NATIVE_ARCHIVAL
   * `BASIC` - Represents the basic set of permissions required to onboard the feature.
-
-### CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
-  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
-  * `ENCRYPTION` - Represents the set of permissions required for encryption operations.
 
 ### CLOUD_NATIVE_PROTECTION
  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
@@ -101,19 +93,11 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
   }
 
   feature {
-    name = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
-
-    permission_groups = [
-      "BASIC",
-      "ENCRYPTION",
-    ]
-  }
-
-  feature {
     name = "CLOUD_NATIVE_PROTECTION"
 
     permission_groups = [
       "BASIC",
+      "EXPORT_AND_RESTORE",
     ]
   }
 }

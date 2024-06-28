@@ -84,8 +84,8 @@ func resourceAwsAccount() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "EXPORT_AND_RESTORE",
-									"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+									"BASIC", "EXPORT_AND_RESTORE", "SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT",
+									"RSC_MANAGED_CLUSTER",
 								}, false),
 							},
 							Optional:    true,
@@ -132,8 +132,8 @@ func resourceAwsAccount() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "EXPORT_AND_RESTORE",
-									"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+									"BASIC", "EXPORT_AND_RESTORE", "SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT",
+									"RSC_MANAGED_CLUSTER",
 								}, false),
 							},
 							Optional:    true,

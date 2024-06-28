@@ -44,10 +44,6 @@ when specifying the feature set.
 ### CLOUD_NATIVE_ARCHIVAL
   * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
 
-### CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
-  * ´ENCRYPTION´ - Represents the set of permissions required for encryption operations.
-
 ### CLOUD_NATIVE_PROTECTION
   * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
   * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export and

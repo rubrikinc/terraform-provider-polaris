@@ -10,8 +10,6 @@ description: |-
   when specifying the feature set.
   CLOUDNATIVEARCHIVAL
   BASIC - Represents the basic set of permissions required to onboard the feature.
-  CLOUDNATIVEARCHIVAL_ENCRYPTION
-  BASIC - Represents the basic set of permissions required to onboard the feature.ENCRYPTION - Represents the set of permissions required for encryption operations.
   CLOUDNATIVEPROTECTION
   BASIC - Represents the basic set of permissions required to onboard the feature.EXPORT_AND_RESTORE - Represents the set of permissions required for export and
   restore operations.FILE_LEVEL_RECOVERY - Represents the set of permissions required for file-level
@@ -40,10 +38,6 @@ when specifying the feature set.
 
 ### CLOUD_NATIVE_ARCHIVAL
   * `BASIC` - Represents the basic set of permissions required to onboard the feature.
-
-### CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
-  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
-  * `ENCRYPTION` - Represents the set of permissions required for encryption operations.
 
 ### CLOUD_NATIVE_PROTECTION
   * `BASIC` - Represents the basic set of permissions required to onboard the feature.
@@ -105,19 +99,12 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
   }
 
   feature {
-    name = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
-
-    permission_groups = [
-      "BASIC",
-      "ENCRYPTION",
-    ]
-  }
-
-  feature {
     name = "CLOUD_NATIVE_PROTECTION"
 
     permission_groups = [
       "BASIC",
+      "EXPORT_AND_RESTORE",
+      "FILE_LEVEL_RECOVERY",
     ]
   }
 }
@@ -145,5 +132,5 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
-- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
