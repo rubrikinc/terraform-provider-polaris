@@ -61,8 +61,8 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 			keyConnectionCommand: {
 				Type:     schema.TypeString,
 				Computed: true,
-				Description: "Manual cluster connection command. Execute this command inside the EKS cluster to " +
-					"establish a connection between the cluster and RSC.",
+				Description: "`kubectl` command which can be executed inside the EKS cluster to create a connection " +
+					"between the cluster and RSC. See " + keySetupYAML + " for an alternative connection method.",
 			},
 			keyExocomputeID: {
 				Type:     schema.TypeString,
@@ -71,6 +71,13 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 				Description: "RSC exocompute configuration ID (UUID). Changing this forces a new resource to be " +
 					"created.",
 				ValidateFunc: validation.IsUUID,
+			},
+			keySetupYAML: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "K8s spec which can be passed to `kubectl apply -f` inside the EKS cluster to create a " +
+					"connection between the cluster and RSC. See " + keyConnectionCommand + " for an alternative " +
+					"connection method.",
 			},
 			keyTokenRefresh: {
 				Type:     schema.TypeInt,
@@ -96,13 +103,14 @@ func awsCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 	}
 	clusterName := d.Get(keyClusterName).(string)
 
-	// Request cluster attachment.
-	clusterID, cmd, err := aws.Wrap(client).AddClusterToExocomputeConfig(ctx, configID, clusterName)
+	clusterID, kubectlCmd, setupYAML, err := aws.Wrap(client).AddClusterToExocomputeConfig(ctx, configID, clusterName)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-
-	if err := d.Set(keyConnectionCommand, cmd); err != nil {
+	if err := d.Set(keyConnectionCommand, kubectlCmd); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keySetupYAML, setupYAML); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -115,7 +123,6 @@ func awsReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Resour
 
 	// There is no way to read the state of the cluster attachment without
 	// updating the token.
-
 	return nil
 }
 
