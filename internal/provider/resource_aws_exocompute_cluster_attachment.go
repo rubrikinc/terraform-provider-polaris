@@ -75,7 +75,7 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 			keySetupYAML: {
 				Type:     schema.TypeString,
 				Computed: true,
-				Description: "K8s spec which can be passed to `kubectl apply -f` inside the EKS cluster to create a " +
+				Description: "K8s spec which can be passed to `kubectl apply` inside the EKS cluster to create a " +
 					"connection between the cluster and RSC. See " + keyConnectionCommand + " for an alternative " +
 					"connection method.",
 			},

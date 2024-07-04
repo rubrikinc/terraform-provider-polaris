@@ -30,6 +30,8 @@ The latest beta release introduces changes to the following data sources and res
   feature, which can be use with the `polaris_azure_permissions` data source signal permissions updates.
 * `polaris_features` - The data source has been deprecated and replaced with the `features` field of the
   `polaris_deployment` data source. Note, the `features` field is a set and not a list.
+* `polaris_aws_exocompute_cluster_attachment` - New field, `setup_yaml`, which holds the K8s spec which can be passed
+  to `kubectl apply` inside the EKS cluster to create a connection between the cluster and RSC.
 
 Deprecated fields will be removed in a future release, please migrate your configurations to use the replacement field
 as soon as possible.

@@ -39,4 +39,4 @@ resource "polaris_aws_exocompute_cluster_attachment" "attachment" {
 
 - `connection_command` (String) `kubectl` command which can be executed inside the EKS cluster to create a connection between the cluster and RSC. See setup_yaml for an alternative connection method.
 - `id` (String) RSC cluster ID (UUID).
-- `setup_yaml` (String) K8s spec which can be passed to `kubectl apply -f` inside the EKS cluster to create a connection between the cluster and RSC. See connection_command for an alternative connection method.
+- `setup_yaml` (String) K8s spec which can be passed to `kubectl apply` inside the EKS cluster to create a connection between the cluster and RSC. See connection_command for an alternative connection method.
