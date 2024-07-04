@@ -48,6 +48,10 @@ resource "polaris_aws_account" "default" {
   profile = "default"
 
   cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
     regions = [
       "us-east-2",
     ]
@@ -59,6 +63,10 @@ resource "polaris_aws_account" "default" {
   profile = "default"
 
   cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
     regions = [
       "us-east-2",
       "us-west-2",
@@ -66,6 +74,11 @@ resource "polaris_aws_account" "default" {
   }
 
   exocompute {
+    permission_groups = [
+      "BASIC",
+      "RSC_MANAGED_CLUSTER",
+    ]
+
     regions = [
       "us-west-2",
     ]
@@ -107,7 +120,7 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature.
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and `SNAPSHOT_PRIVATE_ACCESS`.
 
 Read-Only:
 
@@ -124,7 +137,7 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature.
+- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`.
 
 Read-Only:
 

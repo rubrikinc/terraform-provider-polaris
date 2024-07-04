@@ -3,6 +3,10 @@ resource "polaris_aws_account" "default" {
   profile = "default"
 
   cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
     regions = [
       "us-east-2",
     ]
@@ -14,6 +18,10 @@ resource "polaris_aws_account" "default" {
   profile = "default"
 
   cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
     regions = [
       "us-east-2",
       "us-west-2",
@@ -21,6 +29,11 @@ resource "polaris_aws_account" "default" {
   }
 
   exocompute {
+    permission_groups = [
+      "BASIC",
+      "RSC_MANAGED_CLUSTER",
+    ]
+
     regions = [
       "us-west-2",
     ]

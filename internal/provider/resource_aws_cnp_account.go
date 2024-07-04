@@ -405,14 +405,15 @@ func featureResource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"BASIC", "EXPORT_AND_RESTORE", "SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT",
-						"RSC_MANAGED_CLUSTER",
+						"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS",
+						"PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
 					}, false),
 				},
 				Required: true,
 				Description: "RSC permission groups for the feature. Possible values are `BASIC`, " +
-					"`EXPORT_AND_RESTORE`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. " +
-					"For backwards compatibility, `[]` is interpreted as all applicable permission groups.",
+					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` " +
+					"and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable " +
+					"permission groups.",
 			},
 		},
 	}
