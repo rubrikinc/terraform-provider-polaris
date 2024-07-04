@@ -106,6 +106,7 @@ const (
 	keySnappableType                                = "snappable_type"
 	keySQLDBProtection                              = "sql_db_protection"
 	keySQLMIProtection                              = "sql_mi_protection"
+	keySetupYAML                                    = "setup_yaml"
 	keyStackARN                                     = "stack_arn"
 	keyStatus                                       = "status"
 	keyStorageAccountNamePrefix                     = "storage_account_name_prefix"

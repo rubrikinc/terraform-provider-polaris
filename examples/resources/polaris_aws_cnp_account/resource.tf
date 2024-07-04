@@ -18,7 +18,6 @@ resource "polaris_aws_cnp_account" "account" {
     permission_groups = [
       "BASIC",
       "EXPORT_AND_RESTORE",
-      "EXPORT_AND_RESTORE",
     ]
   }
 }

@@ -63,7 +63,7 @@ resource "polaris_aws_archival_location" "archival_location" {
 ### Optional
 
 - `bucket_tags` (Map of String) AWS bucket tags. Each tag will be added to the bucket created by RSC. Changing this forces a new resource to be created.
-- `kms_master_key` (String, Sensitive) AWS KMS master key alias/ID.
+- `kms_master_key` (String, Sensitive) AWS KMS master key alias/ID. Default value is `aws/s3`.
 - `region` (String) AWS region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload. Changing this forces a new resource to be created.
 - `storage_class` (String) AWS bucket storage class. Possible values are `STANDARD`, `STANDARD_IA`, `ONEZONE_IA`, `GLACIER_INSTANT_RETRIEVAL`, `GLACIER_DEEP_ARCHIVE` and `GLACIER_FLEXIBLE_RETRIEVAL`. Default value is `STANDARD_IA`.
 

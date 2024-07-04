@@ -4,6 +4,14 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.9.0-beta.9
+* Add the field `setup_yaml` to the `polaris_aws_exocompute_cluster_attachment` resource. The `setup_yaml` fields
+  contains K8s specs that can be passed to `kubectl` to establish a connection between the cluster and RSC.
+  [[docs](../resources/aws_exocompute_cluster_attachment)]
+* Fix a bug in the AWS feature removal code that causes removal of the `CLOUD_NATIVE_S3_PROTECTION` feature to fail.
+* Improve the code that waits for RSC features to be disabled. The code now checks both the status of the job and the
+  status of the cloud account.
+
 ## v0.9.0-beta.8
 * Improve the documentation for AWS data sources and resources.
 * Update guides.

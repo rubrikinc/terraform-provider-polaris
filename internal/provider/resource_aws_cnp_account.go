@@ -46,10 +46,6 @@ when specifying the feature set.
 ### CLOUD_NATIVE_ARCHIVAL
   * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
 
-### CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
-  * ´ENCRYPTION´ - Represents the set of permissions required for encryption operations.
-
 ### CLOUD_NATIVE_PROTECTION
   * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
   * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export and
@@ -398,11 +394,10 @@ func featureResource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
-					"`EXOCOMPUTE` and `RDS_PROTECTION`.",
+					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.",
 				ValidateFunc: validation.StringInSlice([]string{
-					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_PROTECTION",
-					"CLOUD_NATIVE_S3_PROTECTION", "EXOCOMPUTE", "RDS_PROTECTION",
+					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION", "EXOCOMPUTE",
+					"RDS_PROTECTION",
 				}, false),
 			},
 			keyPermissionGroups: {
@@ -410,14 +405,15 @@ func featureResource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "EXPORT_AND_RESTORE",
-						"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+						"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS",
+						"PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
 					}, false),
 				},
 				Required: true,
-				Description: "RSC permission groups for the feature. Possible values are `BASIC`, `ENCRYPTION`, " +
-					"`EXPORT_AND_RESTORE`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. " +
-					"For backwards compatibility, `[]` is interpreted as all applicable permission groups.",
+				Description: "RSC permission groups for the feature. Possible values are `BASIC`, " +
+					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` " +
+					"and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable " +
+					"permission groups.",
 			},
 		},
 	}

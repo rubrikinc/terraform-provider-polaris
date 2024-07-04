@@ -84,12 +84,13 @@ func resourceAwsAccount() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "EXPORT_AND_RESTORE",
-									"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+									"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS",
 								}, false),
 							},
-							Optional:    true,
-							Description: "Permission groups to assign to the Cloud Native Protection feature.",
+							Optional: true,
+							Description: "Permission groups to assign to the Cloud Native Protection feature. " +
+								"Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and " +
+								"`SNAPSHOT_PRIVATE_ACCESS`.",
 						},
 						keyRegions: {
 							Type: schema.TypeSet,
@@ -132,12 +133,12 @@ func resourceAwsAccount() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "EXPORT_AND_RESTORE",
-									"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+									"BASIC", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
 								}, false),
 							},
-							Optional:    true,
-							Description: "Permission groups to assign to the Exocompute feature.",
+							Optional: true,
+							Description: "Permission groups to assign to the Exocompute feature. Possible values " +
+								"are `BASIC`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`.",
 						},
 						keyRegions: {
 							Type: schema.TypeSet,
