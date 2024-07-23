@@ -85,11 +85,9 @@ func resourceAwsArchivalLocation() *schema.Resource {
 				ValidateFunc: validation.StringLenBetween(1, 19),
 			},
 			keyBucketTags: {
-				Type:     schema.TypeMap,
-				Optional: true,
-				ForceNew: true,
-				Description: "AWS bucket tags. Each tag will be added to the bucket created by RSC. Changing this " +
-					"forces a new resource to be created.",
+				Type:        schema.TypeMap,
+				Optional:    true,
+				Description: "AWS bucket tags. Each tag will be added to the bucket created by RSC.",
 			},
 			keyConnectionStatus: {
 				Type:        schema.TypeString,
@@ -246,10 +244,14 @@ func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 	kmsMasterKey := d.Get(keyKMSMasterKey).(string)
 	name := d.Get(keyName).(string)
 	storageClass := d.Get(keyStorageClass).(string)
+	bucketTags, err := fromBucketTags(d.Get(keyBucketTags).(map[string]any))
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Update the AWS archival location. Note, the API doesn't support updating
 	// all arguments.
-	err = aws.Wrap(client).UpdateStorageSetting(ctx, targetMappingID, name, storageClass, kmsMasterKey)
+	err = aws.Wrap(client).UpdateStorageSetting(ctx, targetMappingID, name, storageClass, kmsMasterKey, bucketTags)
 	if err != nil {
 		return diag.FromErr(err)
 	}
