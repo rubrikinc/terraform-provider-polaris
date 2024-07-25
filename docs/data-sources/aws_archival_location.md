@@ -17,7 +17,7 @@ AWS archival location. An archival location is looked up using either the ID or 
 ```terraform
 # Using the archival location ID.
 data "polaris_aws_archival_location" "location" {
-  archival_location_id = "db34f042-79ea-48b1-bab8-c40dfbf2ab82"
+  id = "db34f042-79ea-48b1-bab8-c40dfbf2ab82"
 }
 
 # Using the name.
@@ -31,7 +31,8 @@ data "polaris_aws_archival_location" "location" {
 
 ### Optional
 
-- `archival_location_id` (String) Cloud native archival location ID (UUID).
+- `archival_location_id` (String, Deprecated) Cloud native archival location ID (UUID). **Deprecated:** use `id` instead.
+- `id` (String) Cloud native archival location ID (UUID).
 - `name` (String) Name of the cloud native archival location.
 
 ### Read-Only
@@ -39,7 +40,6 @@ data "polaris_aws_archival_location" "location" {
 - `bucket_prefix` (String) AWS bucket prefix. Note, `rubrik-` will always be prepended to the prefix.
 - `bucket_tags` (Map of String) AWS bucket tags.
 - `connection_status` (String) Connection status of the archival location.
-- `id` (String) Cloud native archival location ID (UUID).
 - `kms_master_key` (String, Sensitive) AWS KMS master key alias/ID.
 - `location_template` (String) RSC location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.
 - `region` (String) AWS region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.

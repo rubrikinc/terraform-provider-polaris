@@ -44,16 +44,19 @@ func dataSourceAwsArchivalLocation() *schema.Resource {
 		Description: description(dataSourceAWSArchivalLocationDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Cloud native archival location ID (UUID).",
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
+				Description:  "Cloud native archival location ID (UUID).",
+				ValidateFunc: validation.IsUUID,
 			},
 			keyArchivalLocationID: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{keyArchivalLocationID, keyName},
-				Description:  "Cloud native archival location ID (UUID).",
+				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
+				Description:  "Cloud native archival location ID (UUID). **Deprecated:** use `id` instead.",
 				ValidateFunc: validation.IsUUID,
+				Deprecated:   "Use `id` instead.",
 			},
 			keyBucketPrefix: {
 				Type:        schema.TypeString,
@@ -85,7 +88,7 @@ func dataSourceAwsArchivalLocation() *schema.Resource {
 			keyName: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{keyArchivalLocationID, keyName},
+				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
 				Description:  "Name of the cloud native archival location.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
@@ -116,12 +119,15 @@ func awsArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any)
 
 	// Read the archival location using either the ID or the name.
 	var targetMapping aws.TargetMapping
-	if targetMappingID, ok := d.GetOk(keyArchivalLocationID); ok {
-		id, err := uuid.Parse(targetMappingID.(string))
+	targetMappingID := d.Get(keyID).(string)
+	if targetMappingID == "" {
+		targetMappingID = d.Get(keyArchivalLocationID).(string)
+	}
+	if targetMappingID != "" {
+		id, err := uuid.Parse(targetMappingID)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-
 		targetMapping, err = aws.Wrap(client).TargetMappingByID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
@@ -133,6 +139,9 @@ func awsArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any)
 		}
 	}
 
+	if err := d.Set(keyArchivalLocationID, targetMapping.ID.String()); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetMapping.BucketPrefix, "rubrik-")); err != nil {
 		return diag.FromErr(err)
 	}
