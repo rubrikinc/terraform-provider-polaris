@@ -32,6 +32,12 @@ The latest beta release introduces changes to the following data sources and res
   `polaris_deployment` data source. Note, the `features` field is a set and not a list.
 * `polaris_aws_exocompute_cluster_attachment` - New field, `setup_yaml`, which holds the K8s spec which can be passed
   to `kubectl apply` inside the EKS cluster to create a connection between the cluster and RSC.
+* `polaris_aws_account` - New data source for accessing information about an AWS account added to RSC. The account can
+  be looked up by the AWS account ID or the account name. Currently, only the cloud account ID of the account is
+  exposed.
+* `polaris_azure_subscription` - New data source for accessing information about an Azure subscription added to RSC.
+  The subscription can be looked up by the Azure subscription ID or the subscription name. Currently, only the cloud
+  account ID of the subscription is exposed.
 
 Deprecated fields will be removed in a future release, please migrate your configurations to use the replacement field
 as soon as possible.

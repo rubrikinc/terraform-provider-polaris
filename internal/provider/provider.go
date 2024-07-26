@@ -77,11 +77,13 @@ func Provider() *schema.Provider {
 
 		DataSourcesMap: map[string]*schema.Resource{
 			keyPolarisAccount:               dataSourceAccount(),
+			keyPolarisAWSAccount:            dataSourceAwsAccount(),
 			keyPolarisAWSArchivalLocation:   dataSourceAwsArchivalLocation(),
 			keyPolarisAWSCNPArtifacts:       dataSourceAwsArtifacts(),
 			keyPolarisAWSCNPPermissions:     dataSourceAwsPermissions(),
 			keyPolarisAzureArchivalLocation: dataSourceAzureArchivalLocation(),
 			keyPolarisAzurePermissions:      dataSourceAzurePermissions(),
+			keyPolarisAzureSubscription:     dataSourceAzureSubscription(),
 			keyPolarisDeployment:            dataSourceDeployment(),
 			keyPolarisFeatures:              dataSourceFeatures(),
 			"polaris_gcp_permissions":       dataSourceGcpPermissions(),

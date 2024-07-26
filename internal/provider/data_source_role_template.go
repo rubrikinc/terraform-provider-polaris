@@ -108,16 +108,18 @@ func roleTemplateRead(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		return diag.FromErr(err)
 	}
 
-	name := d.Get("name").(string)
-	roleTemplate, err := access.Wrap(client).RoleTemplateByName(ctx, name)
+	roleTemplate, err := access.Wrap(client).RoleTemplateByName(ctx, d.Get(keyName).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set("description", roleTemplate.Description); err != nil {
+	if err := d.Set(keyDescription, roleTemplate.Description); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("permission", fromPermissions(roleTemplate.AssignedPermissions)); err != nil {
+	if err := d.Set(keyName, roleTemplate.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyPermission, fromPermissions(roleTemplate.AssignedPermissions)); err != nil {
 		return diag.FromErr(err)
 	}
 

@@ -4,6 +4,14 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.9.0-beta.10
+* Add `polaris_aws_account` data source. [[docs](../data-sources/aws_account)]
+* Add `polaris_azure_subscription` data source. [[docs](../data-sources/azure_subscription)]
+* Deprecate the `archival_location_id` field in the `polaris_aws_archival_location` data source. Use the `id` field
+  instead.
+* Deprecate the `archival_location_id` field in the `polaris_azure_archival_location` data source. Use the `id` field
+  instead.
+
 ## v0.9.0-beta.9
 * Add the field `setup_yaml` to the `polaris_aws_exocompute_cluster_attachment` resource. The `setup_yaml` fields
   contains K8s specs that can be passed to `kubectl` to establish a connection between the cluster and RSC.

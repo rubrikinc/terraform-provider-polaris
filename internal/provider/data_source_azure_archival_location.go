@@ -47,16 +47,19 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 		Description: description(dataSourceAzureArchivalLocationDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Cloud native archival location ID (UUID).",
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
+				Description:  "Cloud native archival location ID (UUID).",
+				ValidateFunc: validation.IsUUID,
 			},
 			keyArchivalLocationID: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{keyArchivalLocationID, keyName},
-				Description:  "Cloud native archival location ID (UUID).",
+				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
+				Description:  "Cloud native archival location ID (UUID). **Deprecated:** use `id` instead.",
 				ValidateFunc: validation.IsUUID,
+				Deprecated:   "Use `id` instead.",
 			},
 			keyConnectionStatus: {
 				Type:        schema.TypeString,
@@ -84,7 +87,7 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			keyName: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{keyArchivalLocationID, keyName},
+				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
 				Description:  "Cloud native archival location name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
@@ -131,23 +134,29 @@ func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m in
 
 	// Read the archival location using either the ID or the name.
 	var targetMapping azure.TargetMapping
-	if targetMappingID, ok := d.GetOk("id"); ok {
-		id, err := uuid.Parse(targetMappingID.(string))
+	targetMappingID := d.Get(keyID).(string)
+	if targetMappingID == "" {
+		targetMappingID = d.Get(keyArchivalLocationID).(string)
+	}
+	if targetMappingID != "" {
+		id, err := uuid.Parse(targetMappingID)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-
 		targetMapping, err = azure.Wrap(client).TargetMappingByID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		targetMapping, err = azure.Wrap(client).TargetMappingByName(ctx, d.Get("name").(string))
+		targetMapping, err = azure.Wrap(client).TargetMappingByName(ctx, d.Get(keyName).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
+	if err := d.Set(keyArchivalLocationID, targetMapping.ID.String()); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
 		return diag.FromErr(err)
 	}

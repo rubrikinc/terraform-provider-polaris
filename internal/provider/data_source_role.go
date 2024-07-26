@@ -112,19 +112,21 @@ func roleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 		return diag.FromErr(err)
 	}
 
-	name := d.Get("name").(string)
-	role, err := access.Wrap(client).RoleByName(ctx, name)
+	role, err := access.Wrap(client).RoleByName(ctx, d.Get(keyName).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set("description", role.Description); err != nil {
+	if err := d.Set(keyDescription, role.Description); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("is_org_admin", role.IsOrgAdmin); err != nil {
+	if err := d.Set(keyIsOrgAdmin, role.IsOrgAdmin); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("permission", fromPermissions(role.AssignedPermissions)); err != nil {
+	if err := d.Set(keyName, role.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyPermission, fromPermissions(role.AssignedPermissions)); err != nil {
 		return diag.FromErr(err)
 	}
 
