@@ -219,8 +219,17 @@ type testAzureSubscription struct {
 	PrincipalName    string `json:"principalName"`
 	PrincipalSecret  string `json:"principalSecret"`
 
+	CloudNativeProtection struct {
+		Regions             []string `json:"regions"`
+		ResourceGroupName   string   `json:"resourceGroupName"`
+		ResourceGroupRegion string   `json:"resourceGroupRegion"`
+	} `json:"cloudNativeProtection"`
+
 	Exocompute struct {
-		SubnetID string `json:"subnetId"`
+		Regions             []string `json:"regions"`
+		ResourceGroupName   string   `json:"resourceGroupName"`
+		ResourceGroupRegion string   `json:"resourceGroupRegion"`
+		SubnetID            string   `json:"subnetId"`
 	} `json:"exocompute"`
 }
 

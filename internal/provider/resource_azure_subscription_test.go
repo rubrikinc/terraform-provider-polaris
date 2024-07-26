@@ -42,6 +42,9 @@ resource "polaris_azure_subscription" "default" {
 	tenant_domain     = "{{ .Resource.TenantDomain }}"
 
 	cloud_native_protection {
+		resource_group_name   = "{{ .Resource.CloudNativeProtection.ResourceGroupName }}"
+		resource_group_region = "{{ .Resource.CloudNativeProtection.ResourceGroupRegion }}"
+
 		regions = [
 			"eastus2",
 		]
@@ -67,6 +70,9 @@ resource "polaris_azure_subscription" "default" {
 	tenant_domain     = "{{ .Resource.TenantDomain }}"
 
 	cloud_native_protection {
+		resource_group_name   = "{{ .Resource.CloudNativeProtection.ResourceGroupName }}"
+		resource_group_region = "{{ .Resource.CloudNativeProtection.ResourceGroupRegion }}"
+
 		regions = [
 			"eastus2",
 			"westus2",
@@ -105,9 +111,13 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
 
 				// Cloud Native Protection feature
-				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "CONNECTED"),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "eastus2"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.resource_group_name",
+					subscription.CloudNativeProtection.ResourceGroupName),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.resource_group_region",
+					subscription.CloudNativeProtection.ResourceGroupRegion),
 			),
 		}, {
 			Config: subscriptionTwoRegions,
@@ -119,10 +129,14 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
 
 				// Cloud Native Protection feature
-				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "CONNECTED"),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.#", "2"),
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "eastus2"),
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "westus2"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.resource_group_name",
+					subscription.CloudNativeProtection.ResourceGroupName),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.resource_group_region",
+					subscription.CloudNativeProtection.ResourceGroupRegion),
 			),
 		}, {
 			Config: subscriptionOneRegion,
@@ -134,9 +148,13 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "delete_snapshots_on_destroy", "false"),
 
 				// Cloud Native Protection feature
-				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "connected"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "CONNECTED"),
 				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default", "cloud_native_protection.0.regions.*", "eastus2"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.resource_group_name",
+					subscription.CloudNativeProtection.ResourceGroupName),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.resource_group_region",
+					subscription.CloudNativeProtection.ResourceGroupRegion),
 			),
 		}},
 	})
