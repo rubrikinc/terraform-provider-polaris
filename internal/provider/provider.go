@@ -23,14 +23,11 @@ package provider
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/cdm"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -45,9 +42,30 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			keyCredentials: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Description:  "The service account file or local user account name to use when accessing RSC.",
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "The service account credentials, service account credentials file name or local user " +
+					"account name to use when accessing RSC.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyTokenCache: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Enable or disable the token cache. The token cache is enabled by default.",
+			},
+			keyTokenCacheDir: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "The directory where cached authentication tokens are stored. The OS directory for " +
+					"temporary files is used by default.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyTokenCacheSecret: {
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
+				Description: "The secret used as input when generating an encryption key for the authentication " +
+					"token. The encryption key is derived from the RSC account information by default.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
@@ -100,6 +118,18 @@ type client struct {
 	polarisClient *polaris.Client
 }
 
+func newClient(account polaris.Account, params polaris.CacheParams, logger log.Logger) (*client, diag.Diagnostics) {
+	polarisClient, err := polaris.NewClientWithLoggerAndCacheParams(account, params, logger)
+	if err != nil {
+		return nil, diag.FromErr(err)
+	}
+
+	return &client{
+		cdmClient:     cdm.NewBootstrapClientWithLogger(true, logger),
+		polarisClient: polarisClient,
+	}, nil
+}
+
 func (c *client) cdm() (*cdm.BootstrapClient, error) {
 	if c.cdmClient == nil {
 		return nil, errors.New("cdm functionality has not been configured in the provider block")
@@ -123,46 +153,17 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 		return nil, diag.FromErr(err)
 	}
 
-	client := &client{
-		cdmClient: cdm.NewBootstrapClientWithLogger(true, logger),
+	account, err := polaris.FindAccount(d.Get("credentials").(string), true)
+	if err != nil {
+		return nil, diag.FromErr(err)
 	}
 
-	var account polaris.Account
-	if c, ok := d.GetOk(keyCredentials); ok {
-		credentials := c.(string)
-
-		// When credentials refer to an existing file, we load the file as a
-		// service account, otherwise we assume that it's a user account name.
-		if _, err := os.Stat(credentials); err == nil {
-			if account, err = polaris.ServiceAccountFromFile(credentials, true); err != nil {
-				return nil, diag.FromErr(err)
-			}
-		} else {
-			if account, err = polaris.DefaultUserAccount(credentials, true); err != nil {
-				return nil, diag.FromErr(err)
-			}
-		}
-	} else {
-		var err error
-		if account, err = polaris.ServiceAccountFromEnv(); err != nil {
-			if !errors.Is(err, graphql.ErrNotFound) {
-				return nil, diag.FromErr(err)
-			}
-
-			// Make sure the interface value is an untyped nil, see SA4023 for
-			// details.
-			account = nil
-		}
+	cacheParams := polaris.CacheParams{
+		Enable: d.Get("token_cache").(bool),
+		Dir:    d.Get("token_cache_dir").(string),
+		Secret: d.Get("token_cache_secret").(string),
 	}
-	if account != nil {
-		polarisClient, err := polaris.NewClientWithLogger(account, logger)
-		if err != nil {
-			return nil, diag.FromErr(err)
-		}
-		client.polarisClient = polarisClient
-	}
-
-	return client, nil
+	return newClient(account, cacheParams, logger)
 }
 
 // description returns the description string with all acute accents replaced
