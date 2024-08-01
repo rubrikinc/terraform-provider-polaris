@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.9.0-beta.11
+* Update the `polaris_aws_archival_location` resource to support updates of the `bucket_tags` field without recreating
+  the resources.
+
 ## v0.9.0-beta.10
 * Add `polaris_aws_account` data source. [[docs](../data-sources/aws_account)]
 * Add `polaris_azure_subscription` data source. [[docs](../data-sources/azure_subscription)]
