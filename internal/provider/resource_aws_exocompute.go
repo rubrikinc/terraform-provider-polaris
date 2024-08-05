@@ -34,67 +34,106 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
-// resourceAwsExocompute defines the schema for the AWS exocompute resource.
+const resourceAWSExocomputeDescription = `
+The ´polaris_aws_exocompute´ resource creates an RSC Exocompute configuration for AWS
+workloads.
+
+There are 3 types of Exocompute configurations:
+ 1. *RSC Managed Host* - When an RSC managed host configuration is created, RSC will
+    automatically deploy the necessary resources in the specified AWS region to run the
+    Exocompute service. AWS security groups can be managed by RSC or by the customer.
+ 2. *Customer Managed Host* - When a customer managed host configuration is created,
+    RSC will not deploy any resources. Instead it will use the AWS EKS cluster attached
+    by the customer, using the ´aws_exocompute_cluster_attachment´ resource, for all
+    operations.
+ 3. *Application* - An application configuration is created by mapping the application
+    cloud account to a host cloud account. The application cloud account will leverage
+    the Exocompute resources deployed for the host configuration.
+
+Items 1 and 2 above requires that the AWS account has been onboarded with the
+´EXOCOMPUTE´ feature.
+
+Since there are 3 types of Exocompute configurations, there are 3 ways to create a
+´polaris_azure_exocompute´ resource:
+ 1. Using the ´cloud_account_id´, ´region´, ´subnet´ and ´pod_overlay_network_cidr´
+    fields creates an RSC managed host configuration.
+ 2. Using the ´cloud_account_id´ and ´region´ fields creates a customer managed host
+    configuration. Note, the ´aws_exocompute_cluster_attachment´ resource must be used
+    to attach an AWS EKS cluster to the Exocompute configuration.
+ 3. Using the ´cloud_account_id´ and ´host_cloud_account_id´ fields creates an
+    application configuration.
+
+-> **Note:** Customer-managed Exocompute is sometimes referred to as Bring Your Own
+   Kubernetes (BYOK). Using both host and application Exocompute configurations is
+   sometimes referred to as shared Exocompute.
+`
+
 func resourceAwsExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateExocompute,
 		ReadContext:   awsReadExocompute,
 		DeleteContext: awsDeleteExocompute,
 
+		Description: description(resourceAWSExocomputeDescription),
 		Schema: map[string]*schema.Schema{
-			"account_id": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "RSC account id.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Exocompute configuration ID (UUID).",
 			},
-			"cluster_security_group_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Computed:         true,
-				ForceNew:         true,
-				ConflictsWith:    []string{"host_account_id"},
-				RequiredWith:     []string{"node_security_group_id"},
-				Description:      "AWS security group id for the cluster.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyAccountID: {
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "RSC cloud account ID (UUID). Changing this forces a new resource to be created.",
+				ValidateFunc: validation.IsUUID,
 			},
-			"host_account_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				AtLeastOneOf:     []string{"host_account_id", "region"},
-				Description:      "Shared exocompute host RSC account id.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
-			},
-			"node_security_group_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Computed:         true,
-				ForceNew:         true,
-				ConflictsWith:    []string{"host_account_id"},
-				RequiredWith:     []string{"cluster_security_group_id"},
-				Description:      "AWS security group id for the nodes.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
-			},
-			"polaris_managed": {
-				Type:          schema.TypeBool,
+			keyClusterSecurityGroupID: {
+				Type:          schema.TypeString,
 				Optional:      true,
 				Computed:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{"host_account_id"},
-				Description:   "If true the security groups are managed by Polaris.",
+				RequiredWith:  []string{"node_security_group_id"},
+				Description: "AWS security group ID for the cluster. Changing this forces a new resource to be " +
+					"created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"region": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				AtLeastOneOf:     []string{"host_account_id", "region"},
-				ConflictsWith:    []string{"host_account_id"},
-				Description:      "AWS region to run the exocompute instance in.",
-				ValidateDiagFunc: validateAwsRegion,
+			keyHostAccountID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				AtLeastOneOf: []string{"host_account_id", "region"},
+				Description:  "Exocompute host cloud account ID. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.IsUUID,
 			},
-			"subnets": {
+			keyNodeSecurityGroupID: {
+				Type:          schema.TypeString,
+				Optional:      true,
+				Computed:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"host_account_id"},
+				RequiredWith:  []string{"cluster_security_group_id"},
+				Description: "AWS security group ID for the nodes. Changing this forces a new resource to be " +
+					"created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyPolarisManaged: {
+				Type:        schema.TypeBool,
+				Computed:    true,
+				Description: "If true the security groups are managed by RSC.",
+			},
+			keyRegion: {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				AtLeastOneOf:  []string{"host_account_id", "region"},
+				ConflictsWith: []string{"host_account_id"},
+				Description: "AWS region to run the Exocompute instance in. Changing this forces a new resource " +
+					"to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keySubnets: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
@@ -105,24 +144,22 @@ func resourceAwsExocompute() *schema.Resource {
 				ForceNew:      true,
 				ConflictsWith: []string{"host_account_id"},
 				RequiredWith:  []string{"vpc_id"},
-				Description:   "AWS subnet ids for the cluster subnets.",
+				Description: "AWS subnet IDs for the cluster subnets. Changing this forces a new resource to be " +
+					"created.",
 			},
-			"vpc_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				ConflictsWith:    []string{"host_account_id"},
-				RequiredWith:     []string{"subnets"},
-				Description:      "AWS VPC id for the cluster network.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyVPCID: {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"host_account_id"},
+				RequiredWith:  []string{"subnets"},
+				Description:   "AWS VPC ID for the cluster network. Changing this forces a new resource to be created.",
+				ValidateFunc:  validation.StringIsNotWhiteSpace,
 			},
 		},
 	}
 }
 
-// awsCreateExocompute run the Create operation for the AWS exocompute
-// resource. This enables the exocompute feature and adds an exocompute config
-// to the Polaris cloud account.
 func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsCreateExocompute")
 
@@ -131,12 +168,12 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	accountID, err := uuid.Parse(d.Get("account_id").(string))
+	accountID, err := uuid.Parse(d.Get(keyAccountID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if host, ok := d.GetOk("host_account_id"); ok {
+	if host, ok := d.GetOk(keyHostAccountID); ok {
 		hostID, err := uuid.Parse(host.(string))
 		if err != nil {
 			return diag.FromErr(err)
@@ -147,14 +184,14 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 		d.SetId("app-" + accountID.String())
 	} else {
-		clusterSecurityGroupID := d.Get("cluster_security_group_id").(string)
-		nodeSecurityGroupID := d.Get("node_security_group_id").(string)
-		region := d.Get("region").(string)
+		clusterSecurityGroupID := d.Get(keyClusterSecurityGroupID).(string)
+		nodeSecurityGroupID := d.Get(keyNodeSecurityGroupID).(string)
+		region := d.Get(keyRegion).(string)
 		var subnets []string
-		for _, s := range d.Get("subnets").(*schema.Set).List() {
+		for _, s := range d.Get(keySubnets).(*schema.Set).List() {
 			subnets = append(subnets, s.(string))
 		}
-		vpcID := d.Get("vpc_id").(string)
+		vpcID := d.Get(keyVPCID).(string)
 
 		// Note that Managed and Unmanaged below refer to whether the security
 		// groups are managed by RSC or not, and not the cluster.
@@ -181,8 +218,6 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	return nil
 }
 
-// awsReadExocompute run the Read operation for the AWS exocompute resource.
-// This reads the state of the exocompute config in Polaris.
 func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadExocompute")
 
@@ -192,8 +227,8 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 	}
 
 	id := d.Id()
-	if strings.HasPrefix(d.Id(), "app-") {
-		appID, err := uuid.Parse(strings.TrimPrefix(id, "app-"))
+	if strings.HasPrefix(d.Id(), appCloudAccountPrefix) {
+		appID, err := uuid.Parse(strings.TrimPrefix(id, appCloudAccountPrefix))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -206,7 +241,7 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 
-		if err := d.Set("host_account_id", hostID.String()); err != nil {
+		if err := d.Set(keyHostAccountID, hostID.String()); err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
@@ -223,28 +258,28 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 
-		if err := d.Set("region", exoConfig.Region); err != nil {
+		if err := d.Set(keyRegion, exoConfig.Region); err != nil {
 			return diag.FromErr(err)
 		}
 
 		// Rubrik managed cluster
-		if err := d.Set("cluster_security_group_id", exoConfig.ClusterSecurityGroupID); err != nil {
+		if err := d.Set(keyClusterSecurityGroupID, exoConfig.ClusterSecurityGroupID); err != nil {
 			return diag.FromErr(err)
 		}
-		if err := d.Set("node_security_group_id", exoConfig.NodeSecurityGroupID); err != nil {
+		if err := d.Set(keyNodeSecurityGroupID, exoConfig.NodeSecurityGroupID); err != nil {
 			return diag.FromErr(err)
 		}
-		if err := d.Set("polaris_managed", exoConfig.ManagedByRubrik); err != nil {
+		if err := d.Set(keyPolarisManaged, exoConfig.ManagedByRubrik); err != nil {
 			return diag.FromErr(err)
 		}
 		subnets := schema.Set{F: schema.HashString}
 		for _, subnet := range exoConfig.Subnets {
 			subnets.Add(subnet.ID)
 		}
-		if err := d.Set("subnets", &subnets); err != nil {
+		if err := d.Set(keySubnets, &subnets); err != nil {
 			return diag.FromErr(err)
 		}
-		if err := d.Set("vpc_id", exoConfig.VPCID); err != nil {
+		if err := d.Set(keyVPCID, exoConfig.VPCID); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -252,8 +287,6 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 	return nil
 }
 
-// awsDeleteExocompute run the Delete operation for the AWS exocompute
-// resource. This removes the exocompute config from Polaris.
 func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsDeleteExocompute")
 
@@ -263,8 +296,8 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	}
 
 	id := d.Id()
-	if strings.HasPrefix(id, "app-") {
-		appID, err := uuid.Parse(strings.TrimPrefix(id, "app-"))
+	if strings.HasPrefix(id, appCloudAccountPrefix) {
+		appID, err := uuid.Parse(strings.TrimPrefix(id, appCloudAccountPrefix))
 		if err != nil {
 			return diag.FromErr(err)
 		}

@@ -31,6 +31,12 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 )
 
+const awsExocomputeClusterAttachmentDescription = `
+The ´polaris_aws_exocompute_cluster_attachment´ resource attaches an AWS EKS cluster
+to a customer managed host Exocompute configuration, allowing RSC to use the cluster
+for Exocompute operations.
+`
+
 func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateAwsExocomputeClusterAttachment,
@@ -38,30 +44,46 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 		UpdateContext: awsUpdateAwsExocomputeClusterAttachment,
 		DeleteContext: awsDeleteAwsExocomputeClusterAttachment,
 
+		Description: description(awsExocomputeClusterAttachmentDescription),
 		Schema: map[string]*schema.Schema{
-			"cluster_name": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "AWS EKS cluster name.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
-			},
-			"connection_command": {
+			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Cluster connection command.",
+				Description: "RSC cluster ID (UUID).",
 			},
-			"exocompute_id": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "RSC exocompute id.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyClusterName: {
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "AWS EKS cluster name. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"token_refresh": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Description: "To force a refresh of the token, part of the connection command, increase the value of this field.",
+			keyConnectionCommand: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "`kubectl` command which can be executed inside the EKS cluster to create a connection " +
+					"between the cluster and RSC. See " + keySetupYAML + " for an alternative connection method.",
+			},
+			keyExocomputeID: {
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+				Description: "RSC exocompute configuration ID (UUID). Changing this forces a new resource to be " +
+					"created.",
+				ValidateFunc: validation.IsUUID,
+			},
+			keySetupYAML: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "K8s spec which can be passed to `kubectl apply` inside the EKS cluster to create a " +
+					"connection between the cluster and RSC. See " + keyConnectionCommand + " for an alternative " +
+					"connection method.",
+			},
+			keyTokenRefresh: {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Description: "To force a refresh of the token, part of the connection command, increase the value " +
+					"of this field. The token is valid for 24 hours.",
 			},
 		},
 	}
@@ -75,25 +97,24 @@ func awsCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
-	configID, err := uuid.Parse(d.Get("exocompute_id").(string))
+	configID, err := uuid.Parse(d.Get(keyExocomputeID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	clusterName := d.Get("cluster_name").(string)
+	clusterName := d.Get(keyClusterName).(string)
 
-	// Request cluster attachment.
-	clusterID, cmd, err := aws.Wrap(client).AddClusterToExocomputeConfig(ctx, configID, clusterName)
+	clusterID, kubectlCmd, setupYAML, err := aws.Wrap(client).AddClusterToExocomputeConfig(ctx, configID, clusterName)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	if err := d.Set(keyConnectionCommand, kubectlCmd); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keySetupYAML, setupYAML); err != nil {
+		return diag.FromErr(err)
+	}
 
-	// Set read-only attributes.
 	d.SetId(clusterID.String())
-	if err := d.Set("connection_command", cmd); err != nil {
-		return diag.FromErr(err)
-	}
-
 	return nil
 }
 
@@ -102,14 +123,13 @@ func awsReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Resour
 
 	// There is no way to read the state of the cluster attachment without
 	// updating the token.
-
 	return nil
 }
 
 func awsUpdateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsUpdateAwsExocomputeClusterAttachment")
 
-	if d.HasChange("token_refresh") {
+	if d.HasChange(keyTokenRefresh) {
 		return awsCreateAwsExocomputeClusterAttachment(ctx, d, m)
 	}
 

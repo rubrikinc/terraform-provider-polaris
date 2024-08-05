@@ -2,14 +2,18 @@
 page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
 subcategory: ""
 description: |-
-  
+  {{.Description}}
 ---
 
 # {{.Name}} ({{.Type}})
 
+{{.Description}}
+
+{{if .HasExample}}
 ## Example Usage
 
-{{printf "examples/resources/%s/resource.tf" .Name | tffile}}
+{{tffile .ExampleFile}}
+{{end}}
 
 ## Schema
 

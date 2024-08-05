@@ -1,6 +1,5 @@
 ---
-page_title: "Upgrade Guide: v0.6.0 "
-subcategory: "Upgrade"
+page_title: "Upgrade Guide: v0.6.0"
 ---
 
 # RSC provider version v0.6.0

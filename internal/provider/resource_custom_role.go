@@ -33,6 +33,10 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
+const resourceCustomRoleDescription = `
+The ´polaris_custom_role´ resource is used to manage custom roles in RSC.
+`
+
 // resourceCustomRole defines the schema for the custom role resource.
 func resourceCustomRole() *schema.Resource {
 	return &schema.Resource{
@@ -41,28 +45,34 @@ func resourceCustomRole() *schema.Resource {
 		UpdateContext: updateCustomRole,
 		DeleteContext: deleteCustomRole,
 
+		Description: description(resourceCustomRoleDescription),
 		Schema: map[string]*schema.Schema{
-			"description": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Role ID (UUID).",
+			},
+			keyDescription: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Description:  "Role description.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"name": {
+			keyName: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "Role name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"permission": {
+			keyPermission: {
 				Type: schema.TypeSet,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"hierarchy": {
+						keyHierarchy: {
 							Type: schema.TypeSet,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"object_ids": {
+									keyObjectIDs: {
 										Type: schema.TypeSet,
 										Elem: &schema.Schema{
 											Type:         schema.TypeString,
@@ -72,7 +82,7 @@ func resourceCustomRole() *schema.Resource {
 										MinItems:    1,
 										Description: "Object/workload identifiers.",
 									},
-									"snappable_type": {
+									keySnappableType: {
 										Type:         schema.TypeString,
 										Required:     true,
 										Description:  "Snappable/workload type.",
@@ -84,10 +94,10 @@ func resourceCustomRole() *schema.Resource {
 							MinItems:    1,
 							Description: "Snappable hierarchy.",
 						},
-						"operation": {
+						keyOperation: {
 							Type:         schema.TypeString,
 							Required:     true,
-							Description:  "Operation to allow on object ids under the snappable hierarchy.",
+							Description:  "Operation to allow on object IDs under the snappable hierarchy.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 					},
@@ -109,9 +119,9 @@ func createCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		return diag.FromErr(err)
 	}
 
-	name := d.Get("name").(string)
-	description := d.Get("description").(string)
-	permissions := toPermissions(d.Get("permission"))
+	name := d.Get(keyName).(string)
+	description := d.Get(keyDescription).(string)
+	permissions := toPermissions(d.Get(keyPermission))
 
 	id, err := access.Wrap(client).AddRole(ctx, name, description, permissions, access.NoProtectableClusters)
 	if err != nil {
@@ -119,7 +129,6 @@ func createCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 	}
 
 	d.SetId(id.String())
-
 	readCustomRole(ctx, d, m)
 	return nil
 }
@@ -147,13 +156,13 @@ func readCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set("name", role.Name); err != nil {
+	if err := d.Set(keyName, role.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("description", role.Description); err != nil {
+	if err := d.Set(keyDescription, role.Description); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("permission", fromPermissions(role.AssignedPermissions)); err != nil {
+	if err := d.Set(keyPermission, fromPermissions(role.AssignedPermissions)); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -174,10 +183,10 @@ func updateCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		return diag.FromErr(err)
 	}
 
-	if d.HasChanges("name", "description", "permission") {
-		name := d.Get("name").(string)
-		description := d.Get("description").(string)
-		permissions := toPermissions(d.Get("permission"))
+	if d.HasChanges(keyName, keyDescription, keyPermission) {
+		name := d.Get(keyName).(string)
+		description := d.Get(keyDescription).(string)
+		permissions := toPermissions(d.Get(keyPermission))
 
 		if err := access.Wrap(client).UpdateRole(ctx, id, name, description, permissions, access.NoProtectableClusters); err != nil {
 			return diag.FromErr(err)
@@ -211,7 +220,7 @@ func deleteCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 }
 
 func permissionHash(v any) int {
-	return schema.HashString(v.(map[string]any)["operation"])
+	return schema.HashString(v.(map[string]any)[keyOperation])
 }
 
 func fromPermissions(permissions []access.Permission) any {
@@ -225,15 +234,15 @@ func fromPermissions(permissions []access.Permission) any {
 
 func fromPermission(permission access.Permission) any {
 	hierarchyBlocks := &schema.Set{F: func(v any) int {
-		return schema.HashString(v.(map[string]any)["snappable_type"])
+		return schema.HashString(v.(map[string]any)[keySnappableType])
 	}}
 	for _, hierarchy := range permission.Hierarchies {
 		hierarchyBlocks.Add(fromSnappableHierarchy(hierarchy))
 	}
 
 	return map[string]any{
-		"operation": permission.Operation,
-		"hierarchy": hierarchyBlocks,
+		keyOperation: permission.Operation,
+		keyHierarchy: hierarchyBlocks,
 	}
 }
 
@@ -244,8 +253,8 @@ func fromSnappableHierarchy(hierarchy access.SnappableHierarchy) any {
 	}
 
 	return map[string]any{
-		"snappable_type": hierarchy.SnappableType,
-		"object_ids":     objectIDs,
+		keySnappableType: hierarchy.SnappableType,
+		keyObjectIDs:     objectIDs,
 	}
 }
 
@@ -260,24 +269,24 @@ func toPermissions(permissionBlocks any) []access.Permission {
 
 func toPermission(permissionBlock map[string]any) access.Permission {
 	var hierarchies []access.SnappableHierarchy
-	for _, hierarchy := range permissionBlock["hierarchy"].(*schema.Set).List() {
+	for _, hierarchy := range permissionBlock[keyHierarchy].(*schema.Set).List() {
 		hierarchies = append(hierarchies, toSnappableHierarchy(hierarchy.(map[string]any)))
 	}
 
 	return access.Permission{
-		Operation:   permissionBlock["operation"].(string),
+		Operation:   permissionBlock[keyOperation].(string),
 		Hierarchies: hierarchies,
 	}
 }
 
 func toSnappableHierarchy(hierarchyBlock map[string]any) access.SnappableHierarchy {
 	var objectIDs []string
-	for _, objectID := range hierarchyBlock["object_ids"].(*schema.Set).List() {
+	for _, objectID := range hierarchyBlock[keyObjectIDs].(*schema.Set).List() {
 		objectIDs = append(objectIDs, objectID.(string))
 	}
 
 	return access.SnappableHierarchy{
-		SnappableType: hierarchyBlock["snappable_type"].(string),
+		SnappableType: hierarchyBlock[keySnappableType].(string),
 		ObjectIDs:     objectIDs,
 	}
 }

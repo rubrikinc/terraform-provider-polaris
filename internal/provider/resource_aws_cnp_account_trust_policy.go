@@ -36,6 +36,15 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+const resourceAWSCNPAccountTrustPolicyDescription = `
+The ´aws_cnp_account_trust_policy´ resource gets the AWS IAM trust policies required
+by RSC. The ´policy´ field of ´aws_cnp_account_trust_policy´ resource should be used
+with the ´assume_role_policy´ of the ´aws_iam_role´ resource.
+
+-> **Note:** The ´features´ field takes only the feature names and not the permission
+   groups associated with the features.
+`
+
 func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateCnpAccountTrustPolicy,
@@ -43,40 +52,51 @@ func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 		UpdateContext: awsUpdateCnpAccountTrustPolicy,
 		DeleteContext: awsDeleteCnpAccountTrustPolicy,
 
+		Description: description(resourceAWSCNPAccountTrustPolicyDescription),
 		Schema: map[string]*schema.Schema{
-			"account_id": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "RSC cloud account ID (UUID).",
+			},
+			keyAccountID: {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "RSC account id.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				Description:  "RSC cloud account ID (UUID). Changing this forces a new resource to be created.",
+				ValidateFunc: validation.IsUUID,
 			},
-			"external_id": {
+			keyExternalID: {
 				Type:        schema.TypeString,
 				Optional:    true,
 				ForceNew:    true,
-				Description: "External id.",
+				Description: "External ID. Changing this forces a new resource to be created.",
 			},
-			"features": {
+			keyFeatures: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validation.StringIsNotWhiteSpace,
+					Type: schema.TypeString,
+					ValidateFunc: validation.StringInSlice([]string{
+						"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION",
+						"EXOCOMPUTE", "RDS_PROTECTION",
+					}, false),
 				},
-				MinItems:    1,
-				Required:    true,
-				ForceNew:    true,
-				Description: "RSC features.",
+				MinItems: 1,
+				Required: true,
+				ForceNew: true,
+				Description: "RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
+					"`CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`. Changing this forces a new " +
+					"resource to be created.",
 			},
-			"policy": {
+			keyPolicy: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Trust policy.",
+				Description: "AWS IAM trust policy.",
 			},
-			"role_key": {
+			keyRoleKey: {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "Role key.",
+				Description:  "RSC artifact key for the AWS role.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
@@ -92,11 +112,11 @@ func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 	}
 
 	// Get attributes.
-	accountID := d.Get("account_id").(string)
-	externalID := d.Get("external_id").(string)
-	roleKey := d.Get("role_key").(string)
+	accountID := d.Get(keyAccountID).(string)
+	externalID := d.Get(keyExternalID).(string)
+	roleKey := d.Get(keyRoleKey).(string)
 	var features []core.Feature
-	for _, feature := range d.Get("features").(*schema.Set).List() {
+	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
 		features = append(features, core.Feature{Name: feature.(string)})
 	}
 
@@ -107,7 +127,7 @@ func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 	}
 
 	// Set attributes.
-	if err := d.Set("policy", policy); err != nil {
+	if err := d.Set(keyPolicy, policy); err != nil {
 		return diag.FromErr(err)
 	}
 	d.SetId(accountID)
@@ -129,7 +149,7 @@ func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	roleKey := d.Get("role_key").(string)
+	roleKey := d.Get(keyRoleKey).(string)
 
 	// Request the cloud account.
 	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
@@ -156,10 +176,10 @@ func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m
 	for _, feature := range features {
 		featuresAttr.Add(feature.Name)
 	}
-	if err := d.Set("features", featuresAttr); err != nil {
+	if err := d.Set(keyFeatures, featuresAttr); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("policy", policy); err != nil {
+	if err := d.Set(keyPolicy, policy); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -175,9 +195,9 @@ func awsUpdateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 	}
 
 	// Get attributes.
-	roleKey := d.Get("role_key").(string)
+	roleKey := d.Get(keyRoleKey).(string)
 	var features []core.Feature
-	for _, feature := range d.Get("features").(*schema.Set).List() {
+	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
 		features = append(features, core.Feature{Name: feature.(string)})
 	}
 
@@ -193,7 +213,7 @@ func awsUpdateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 	}
 
 	// Set attributes.
-	if err := d.Set("policy", policy); err != nil {
+	if err := d.Set(keyPolicy, policy); err != nil {
 		return diag.FromErr(err)
 	}
 

@@ -25,14 +25,20 @@ import (
 	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+func validateAzureRegion(m interface{}, p cty.Path) diag.Diagnostics {
+	return nil
+}
+
 // resourceAzureSubscriptionV0 defines the schema for version 0 of the Azure
-// subscription resource.
+// subscription resource and how to migrate to version 1.
 func resourceAzureSubscriptionV0() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -73,7 +79,7 @@ func resourceAzureSubscriptionV0() *schema.Resource {
 // resourceAzureSubscriptionStateUpgradeV0 migrates the resource id from the
 // Azure subscription id to the Polaris cloud account id.
 func resourceAzureSubscriptionStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAzureSubscriptionStateUpgradeV0")
+	log.Print("[TRACE] azureSubscriptionStateUpgradeV0")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -82,7 +88,7 @@ func resourceAzureSubscriptionStateUpgradeV0(ctx context.Context, state map[stri
 
 	id, err := uuid.Parse(state["id"].(string))
 	if err != nil {
-		return state, err
+		return nil, err
 	}
 
 	account, err := azure.Wrap(client).Subscription(ctx, azure.SubscriptionID(id), core.FeatureCloudNativeProtection)

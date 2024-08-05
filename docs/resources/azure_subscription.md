@@ -3,44 +3,139 @@
 page_title: "polaris_azure_subscription Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_azure_subscription resource adds an Azure subscription to RSC. When
+  the first subscription for an Azure tenant is added, a corresponding tenant is
+  created in RSC. The RSC tenant is automatically destroyed when it's last subscription
+  is removed.
+  Any combination of different RSC features can be enabled for a subscription:
+    1. cloud_native_archival - Provides archival of data from data center workloads
+       for disaster recovery and long-term retention.
+    2. cloud_native_archival_encryption - Allows cloud archival locations to be
+       encrypted with customer managed keys.
+    3. cloud_native_protection - Provides protection for Azure virtual machines and
+       managed disks through the rules and policies of SLA Domains.
+    4. exocompute - Provides snapshot indexing, file recovery, storage tiering, and
+       application-consistent protection of Azure objects.
+    5. sql_db_protection - Provides centralized database backup management and
+       recovery in an Azure SQL Database deployment.
+    6. sql_mi_protection - Provides centralized database backup management and
+       recovery for an Azure SQL Managed Instance deployment.
+  Each feature's permissions field can be used with the polaris_azure_permissions
+  data source to inform RSC about permission updates when the Terraform configuration
+  is applied.
+  ~> Note: Even though the resource_group_name and the resource_group_region
+     fields are marked as optional you should always specify them. They are marked as
+     optional to simplify the migration of existing Terraform configurations. If
+     omitted, RSC will generate a unique resource group name but it will not create
+     the actual resource group. Until the resource group is created, the RSC feature
+     depending on the resource group will not function as expected.
+  ~> Note: As mentioned in the documentation for each feature below, changing
+     certain fields causes features to be re-onboarded. Take care when the subscription
+     only has a single feature, as it could cause the tenant to be removed from RSC.
+  -> Note: As of now, sql_db_protection and sql_mi_protection does not support
+     specifying an Azure resource group.
 ---
 
 # polaris_azure_subscription (Resource)
 
+The `polaris_azure_subscription` resource adds an Azure subscription to RSC. When
+the first subscription for an Azure tenant is added, a corresponding tenant is
+created in RSC. The RSC tenant is automatically destroyed when it's last subscription
+is removed.
 
+Any combination of different RSC features can be enabled for a subscription:
+  1. `cloud_native_archival` - Provides archival of data from data center workloads
+     for disaster recovery and long-term retention.
+  2. `cloud_native_archival_encryption` - Allows cloud archival locations to be
+     encrypted with customer managed keys.
+  3. `cloud_native_protection` - Provides protection for Azure virtual machines and
+     managed disks through the rules and policies of SLA Domains.
+  4. `exocompute` - Provides snapshot indexing, file recovery, storage tiering, and
+     application-consistent protection of Azure objects.
+  5. `sql_db_protection` - Provides centralized database backup management and
+     recovery in an Azure SQL Database deployment.
+  6. `sql_mi_protection` - Provides centralized database backup management and
+     recovery for an Azure SQL Managed Instance deployment.
+
+Each feature's `permissions` field can be used with the `polaris_azure_permissions`
+data source to inform RSC about permission updates when the Terraform configuration
+is applied.
+
+~> **Note:** Even though the `resource_group_name` and the `resource_group_region`
+   fields are marked as optional you should always specify them. They are marked as
+   optional to simplify the migration of existing Terraform configurations. If
+   omitted, RSC will generate a unique resource group name but it will not create
+   the actual resource group. Until the resource group is created, the RSC feature 
+   depending on the resource group will not function as expected.
+
+~> **Note:** As mentioned in the documentation for each feature below, changing
+   certain fields causes features to be re-onboarded. Take care when the subscription
+   only has a single feature, as it could cause the tenant to be removed from RSC.
+
+-> **Note:** As of now, `sql_db_protection` and `sql_mi_protection` does not support
+   specifying an Azure resource group.
 
 ## Example Usage
 
 ```terraform
-# Enable Cloud Native Protection
-resource "polaris_azure_subscription" "default" {
+# Enable the Cloud Native Protection feature for the EastUS2 region.
+resource "polaris_azure_subscription" "subscription" {
   subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
-  tenant_domain   = "mydomain.onmicrosoft.com"
+  tenant_domain   = "my-domain.onmicrosoft.com"
 
   cloud_native_protection {
     regions = [
       "eastus2",
     ]
+    resource_group_name   = "my-resource-group"
+    resource_group_region = "eastus2"
   }
 }
 
-# Enable Cloud Native Protection and Exocompte. 
-resource "polaris_azure_subscription" "default" {
+# Enable the Cloud Native Protection feature for the EastUS2 and the
+# WestUS2 regions and the Exocompute feature for the EastUS2 region.
+resource "polaris_azure_subscription" "subscription" {
   subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
-  tenant_domain   = "mydomain.onmicrosoft.com"
+  tenant_domain   = "my-domain.onmicrosoft.com"
 
   cloud_native_protection {
     regions = [
       "eastus2",
       "westus2",
     ]
+    resource_group_name   = "my-west-resource-group"
+    resource_group_region = "westus2"
+    resource_group_tags = {
+      environment = "production"
+    }
   }
 
   exocompute {
     regions = [
       "eastus2",
     ]
+    resource_group_name   = "my-east-resource-group"
+    resource_group_region = "eastus2"
+  }
+}
+
+# Using the polaris_azure_permissions data source to inform RSC about
+# permission updates for the feature.
+data "polaris_azure_permissions" "exocompute" {
+  feature = "EXOCOMPUTE"
+}
+
+resource "polaris_azure_subscription" "default" {
+  subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
+  tenant_domain   = "my-domain.onmicrosoft.com"
+
+  exocompute {
+    permissions = data.polaris_azure_permissions.exocompute.id
+    regions = [
+      "eastus2",
+    ]
+    resource_group_name   = "my-resource-group"
+    resource_group_region = "eastus2"
   }
 }
 ```
@@ -50,26 +145,79 @@ resource "polaris_azure_subscription" "default" {
 
 ### Required
 
-- `cloud_native_protection` (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the GCP project. (see [below for nested schema](#nestedblock--cloud_native_protection))
-- `subscription_id` (String) Subscription id.
-- `tenant_domain` (String) Tenant directory/domain name.
+- `subscription_id` (String) Azure subscription ID. Changing this forces a new resource to be created.
+- `tenant_domain` (String) Azure tenant primary domain. Changing this forces a new resource to be created.
 
 ### Optional
 
-- `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed.
-- `exocompute` (Block List, Max: 1) Enable the exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
-- `subscription_name` (String) Subscription name.
+- `cloud_native_archival` (Block List, Max: 1) Enable the RSC Cloud Native Archival feature for the Azure subscription. (see [below for nested schema](#nestedblock--cloud_native_archival))
+- `cloud_native_archival_encryption` (Block List, Max: 1) Enable the RSC Cloud Native Archival Encryption feature for the Azure subscription. (see [below for nested schema](#nestedblock--cloud_native_archival_encryption))
+- `cloud_native_protection` (Block List, Max: 1) Enable the RSC Cloud Native Protection feature for the Azure subscription. (see [below for nested schema](#nestedblock--cloud_native_protection))
+- `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed. Default value is `false`.
+- `exocompute` (Block List, Max: 1) Enable the RSC Exocompute feature for the Azure subscription. (see [below for nested schema](#nestedblock--exocompute))
+- `sql_db_protection` (Block List, Max: 1) Enable the RSC SQL DB Protection feature for the Azure subscription. (see [below for nested schema](#nestedblock--sql_db_protection))
+- `sql_mi_protection` (Block List, Max: 1) Enable the RSC SQL MI Protection feature for the Azure subscription. (see [below for nested schema](#nestedblock--sql_mi_protection))
+- `subscription_name` (String) Azure subscription name.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) RSC cloud account ID (UUID).
+
+<a id="nestedblock--cloud_native_archival"></a>
+### Nested Schema for `cloud_native_archival`
+
+Required:
+
+- `regions` (Set of String) Azure regions to enable the Cloud Native Archival feature in. Should be specified in the standard Azure style, e.g. `eastus`.
+
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
+
+Read-Only:
+
+- `status` (String) Status of the Cloud Native Archival feature.
+
+
+<a id="nestedblock--cloud_native_archival_encryption"></a>
+### Nested Schema for `cloud_native_archival_encryption`
+
+Required:
+
+- `regions` (Set of String) Azure regions to enable the Cloud Native Archival Encryption feature in. Should be specified in the standard Azure style, e.g. `eastus`.
+- `user_assigned_managed_identity_name` (String) User-assigned managed identity name.
+- `user_assigned_managed_identity_principal_id` (String) ID of the service principal object associated with the user-assigned managed identity.
+- `user_assigned_managed_identity_region` (String) User-assigned managed identity region. Should be specified in the standard Azure style, e.g. `eastus`.
+- `user_assigned_managed_identity_resource_group_name` (String) User-assigned managed identity resource group name.
+
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
+
+Read-Only:
+
+- `status` (String) Status of the Cloud Native Archival Encryption feature.
+
 
 <a id="nestedblock--cloud_native_protection"></a>
 ### Nested Schema for `cloud_native_protection`
 
 Required:
 
-- `regions` (Set of String) Regions that Polaris will monitor for instances to automatically protect.
+- `regions` (Set of String) Azure regions that RSC will monitor for resources to protect according to SLA Domains. Should be specified in the standard Azure style, e.g. `eastus`.
+
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
 
 Read-Only:
 
@@ -81,8 +229,47 @@ Read-Only:
 
 Required:
 
-- `regions` (Set of String) Regions to enable the exocompute feature in.
+- `regions` (Set of String) Azure regions to enable the Exocompute feature in. Should be specified in the standard Azure style, e.g. `eastus`.
+
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+- `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
+- `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
 
 Read-Only:
 
 - `status` (String) Status of the Exocompute feature.
+
+
+<a id="nestedblock--sql_db_protection"></a>
+### Nested Schema for `sql_db_protection`
+
+Required:
+
+- `regions` (Set of String) Azure regions to enable the SQL DB Protection feature in. Should be specified in the standard Azure style, e.g. `eastus`.
+
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+
+Read-Only:
+
+- `status` (String) Status of the SQL DB Protection feature.
+
+
+<a id="nestedblock--sql_mi_protection"></a>
+### Nested Schema for `sql_mi_protection`
+
+Required:
+
+- `regions` (Set of String) Azure regions to enable the SQL MI Protection feature in. Should be specified in the standard Azure style, e.g. `eastus`.
+
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+
+Read-Only:
+
+- `status` (String) Status of the SQL MI Protection feature.

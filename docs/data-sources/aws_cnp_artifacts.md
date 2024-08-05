@@ -3,18 +3,110 @@
 page_title: "polaris_aws_cnp_artifacts Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_aws_archival_location data source is used to access information about
+  instance profiles and roles required by RSC for a specified feature set.
+  Permission Groups
+  Following is a list of features and their applicable permission groups. These are used
+  when specifying the feature set.
+  CLOUDNATIVEARCHIVAL
+  BASIC - Represents the basic set of permissions required to onboard the feature.
+  CLOUDNATIVEPROTECTION
+  BASIC - Represents the basic set of permissions required to onboard the feature.EXPORT_AND_RESTORE - Represents the set of permissions required for export and
+  restore operations.FILE_LEVEL_RECOVERY - Represents the set of permissions required for file-level
+  recovery operations.SNAPSHOT_PRIVATE_ACCESS - Represents the set of permissions required for private
+  access to disk snapshots.
+  CLOUDNATIVES3_PROTECTION
+  BASIC - Represents the basic set of permissions required to onboard the feature.
+  EXOCOMPUTE
+  BASIC - Represents the basic set of permissions required to onboard the feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage of private
+  endpoints.RSC_MANAGED_CLUSTER - Represents the set of permissions required for the Rubrik-
+  managed Exocompute cluster.
+  RDS_PROTECTION
+  BASIC - Represents the basic set of permissions required to onboard the feature.
+  -> Note: When permission groups are specified, the BASIC permission group must
+     always be included.
 ---
 
 # polaris_aws_cnp_artifacts (Data Source)
 
+The `polaris_aws_archival_location` data source is used to access information about
+instance profiles and roles required by RSC for a specified feature set.
 
+## Permission Groups
+Following is a list of features and their applicable permission groups. These are used
+when specifying the feature set.
+
+### CLOUD_NATIVE_ARCHIVAL
+  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
+
+### CLOUD_NATIVE_PROTECTION
+  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
+  * `EXPORT_AND_RESTORE` - Represents the set of permissions required for export and
+    restore operations.
+  * `FILE_LEVEL_RECOVERY` - Represents the set of permissions required for file-level
+    recovery operations.
+  * `SNAPSHOT_PRIVATE_ACCESS` - Represents the set of permissions required for private
+    access to disk snapshots.
+
+### CLOUD_NATIVE_S3_PROTECTION
+  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
+
+### EXOCOMPUTE
+  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
+  * `PRIVATE_ENDPOINTS` - Represents the set of permissions required for usage of private
+    endpoints.
+  * `RSC_MANAGED_CLUSTER` - Represents the set of permissions required for the Rubrik-
+    managed Exocompute cluster.
+
+### RDS_PROTECTION
+  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
+
+-> **Note:** When permission groups are specified, the `BASIC` permission group must
+   always be included.
 
 ## Example Usage
 
 ```terraform
+# Permission groups defaults to BASIC.
 data "polaris_aws_cnp_artifacts" "artifacts" {
-  features = ["CLOUD_NATIVE_PROTECTION"]
+  feature {
+    name = "CLOUD_NATIVE_PROTECTION"
+  }
+}
+
+# Multiple permission groups. When permission groups are specified,
+# the BASIC permission group must always be included.
+data "polaris_aws_cnp_artifacts" "artifacts" {
+  feature {
+    name = "CLOUD_NATIVE_PROTECTION"
+
+    permission_groups = [
+      "BASIC",
+      "EXPORT_AND_RESTORE",
+      "FILE_LEVEL_RECOVERY",
+    ]
+  }
+}
+
+# Multiple features with permission groups.
+data "polaris_aws_cnp_artifacts" "artifacts" {
+  feature {
+    name = "CLOUD_NATIVE_ARCHIVAL"
+
+    permission_groups = [
+      "BASIC",
+    ]
+  }
+
+  feature {
+    name = "CLOUD_NATIVE_PROTECTION"
+
+    permission_groups = [
+      "BASIC",
+      "EXPORT_AND_RESTORE",
+      "FILE_LEVEL_RECOVERY",
+    ]
+  }
 }
 ```
 
@@ -27,11 +119,11 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 
 ### Optional
 
-- `cloud` (String) AWS cloud type.
+- `cloud` (String) AWS cloud type. Possible values are `STANDARD`, `CHINA` and `GOV`. Default value is `STANDARD`.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) SHA-256 hash of the instance profile keys and the roleskeys.
 - `instance_profile_keys` (Set of String) Instance profile keys for the RSC features.
 - `role_keys` (Set of String) Role keys for the RSC features.
 
@@ -40,5 +132,5 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 
 Required:
 
-- `name` (String) Feature name.
-- `permission_groups` (Set of String) Permission groups to assign to the feature.
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.

@@ -3,19 +3,75 @@
 page_title: "polaris_aws_exocompute Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_aws_exocompute resource creates an RSC Exocompute configuration for AWS
+  workloads.
+  There are 3 types of Exocompute configurations:
+   1. RSC Managed Host - When an RSC managed host configuration is created, RSC will
+      automatically deploy the necessary resources in the specified AWS region to run the
+      Exocompute service. AWS security groups can be managed by RSC or by the customer.
+   2. Customer Managed Host - When a customer managed host configuration is created,
+      RSC will not deploy any resources. Instead it will use the AWS EKS cluster attached
+      by the customer, using the aws_exocompute_cluster_attachment resource, for all
+      operations.
+   3. Application - An application configuration is created by mapping the application
+      cloud account to a host cloud account. The application cloud account will leverage
+      the Exocompute resources deployed for the host configuration.
+  Items 1 and 2 above requires that the AWS account has been onboarded with the
+  EXOCOMPUTE feature.
+  Since there are 3 types of Exocompute configurations, there are 3 ways to create a
+  polaris_azure_exocompute resource:
+   1. Using the cloud_account_id, region, subnet and pod_overlay_network_cidr
+      fields creates an RSC managed host configuration.
+   2. Using the cloud_account_id and region fields creates a customer managed host
+      configuration. Note, the aws_exocompute_cluster_attachment resource must be used
+      to attach an AWS EKS cluster to the Exocompute configuration.
+   3. Using the cloud_account_id and host_cloud_account_id fields creates an
+      application configuration.
+  -> Note: Customer-managed Exocompute is sometimes referred to as Bring Your Own
+     Kubernetes (BYOK). Using both host and application Exocompute configurations is
+     sometimes referred to as shared Exocompute.
 ---
 
 # polaris_aws_exocompute (Resource)
 
+The `polaris_aws_exocompute` resource creates an RSC Exocompute configuration for AWS
+workloads.
 
+There are 3 types of Exocompute configurations:
+ 1. *RSC Managed Host* - When an RSC managed host configuration is created, RSC will
+    automatically deploy the necessary resources in the specified AWS region to run the
+    Exocompute service. AWS security groups can be managed by RSC or by the customer.
+ 2. *Customer Managed Host* - When a customer managed host configuration is created,
+    RSC will not deploy any resources. Instead it will use the AWS EKS cluster attached
+    by the customer, using the `aws_exocompute_cluster_attachment` resource, for all
+    operations.
+ 3. *Application* - An application configuration is created by mapping the application
+    cloud account to a host cloud account. The application cloud account will leverage
+    the Exocompute resources deployed for the host configuration.
+
+Items 1 and 2 above requires that the AWS account has been onboarded with the
+`EXOCOMPUTE` feature.
+
+Since there are 3 types of Exocompute configurations, there are 3 ways to create a
+`polaris_azure_exocompute` resource:
+ 1. Using the `cloud_account_id`, `region`, `subnet` and `pod_overlay_network_cidr`
+    fields creates an RSC managed host configuration.
+ 2. Using the `cloud_account_id` and `region` fields creates a customer managed host
+    configuration. Note, the `aws_exocompute_cluster_attachment` resource must be used
+    to attach an AWS EKS cluster to the Exocompute configuration.
+ 3. Using the `cloud_account_id` and `host_cloud_account_id` fields creates an
+    application configuration.
+
+-> **Note:** Customer-managed Exocompute is sometimes referred to as Bring Your Own
+   Kubernetes (BYOK). Using both host and application Exocompute configurations is
+   sometimes referred to as shared Exocompute.
 
 ## Example Usage
 
 ```terraform
-# With security groups managed by RSC.
-resource "polaris_aws_exocompute" "default" {
-  account_id = polaris_aws_account.default.id
+# RSC managed Exocompute with security groups managed by RSC.
+resource "polaris_aws_exocompute" "exocompute" {
+  account_id = polaris_aws_account.account.id
   region     = "us-east-2"
   vpc_id     = "vpc-4859acb9"
 
@@ -25,9 +81,9 @@ resource "polaris_aws_exocompute" "default" {
   ]
 }
 
-# With security groups managed by the user.
-resource "polaris_aws_exocompute" "default" {
-  account_id                = polaris_aws_account.default.id
+# RSC managed Exocompute with security groups managed by the customer.
+resource "polaris_aws_exocompute" "exocompute" {
+  account_id                = polaris_aws_account.account.id
   cluster_security_group_id = "sg-005656347687b8170"
   node_security_group_id    = "sg-00e147656785d7e2f"
   region                    = "us-east-2"
@@ -39,9 +95,20 @@ resource "polaris_aws_exocompute" "default" {
   ]
 }
 
-# Using the exocompute resources shared by an exocompute host.
-resource "polaris_aws_exocompute" "default" {
-  account_id      = polaris_aws_account.app.id
+# Customer managed Exocompute.
+resource "polaris_aws_exocompute" "exocompute" {
+  account_id = polaris_aws_account.account.id
+  region     = "us-east-2"
+}
+
+resource "polaris_aws_exocompute_cluster_attachment" "cluster" {
+  cluster_name  = "my-eks-cluster"
+  exocompute_id = polaris_aws_exocompute.exocompute.id
+}
+
+# Using the exocompute resources shared by an Exocompute host.
+resource "polaris_aws_exocompute" "exocompute" {
+  account_id      = polaris_aws_account.account.id
   host_account_id = polaris_aws_account.host.id
 }
 ```
@@ -51,18 +118,18 @@ resource "polaris_aws_exocompute" "default" {
 
 ### Required
 
-- `account_id` (String) RSC account id.
+- `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
 
 ### Optional
 
-- `cluster_security_group_id` (String) AWS security group id for the cluster.
-- `host_account_id` (String) Shared exocompute host RSC account id.
-- `node_security_group_id` (String) AWS security group id for the nodes.
-- `polaris_managed` (Boolean) If true the security groups are managed by Polaris.
-- `region` (String) AWS region to run the exocompute instance in.
-- `subnets` (Set of String) AWS subnet ids for the cluster subnets.
-- `vpc_id` (String) AWS VPC id for the cluster network.
+- `cluster_security_group_id` (String) AWS security group ID for the cluster. Changing this forces a new resource to be created.
+- `host_account_id` (String) Exocompute host cloud account ID. Changing this forces a new resource to be created.
+- `node_security_group_id` (String) AWS security group ID for the nodes. Changing this forces a new resource to be created.
+- `region` (String) AWS region to run the Exocompute instance in. Changing this forces a new resource to be created.
+- `subnets` (Set of String) AWS subnet IDs for the cluster subnets. Changing this forces a new resource to be created.
+- `vpc_id` (String) AWS VPC ID for the cluster network. Changing this forces a new resource to be created.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) Exocompute configuration ID (UUID).
+- `polaris_managed` (Boolean) If true the security groups are managed by RSC.

@@ -31,9 +31,36 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 )
 
+const resourceAzureServicePrincipalDescription = `
+The ´polaris_azure_service_principal´ resource adds an Azure service principal to
+RSC. A service principal must be added for each Azure tenant before subscriptions
+for the tenants can be added to RSC.
+
+There are 3 ways to create a ´polaris_azure_service principal´ resource:
+  1. Using the ´app_id´, ´app_name´, ´app_secret´, ´tenant_id´ and ´tenant_domain´
+     fields.
+  2. Using the ´credentials´ field which is the path to a custom service principal 
+     file. A description of the custom format can be found
+     [here](https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials).
+  3. Using the ' sdk_auth´ field which is the path to an Azure service principal
+     created with the Azure SDK using the ´--sdk-auth´ parameter.
+
+~> **Note:** Removing the last subscription from an RSC tenant will automatically
+   remove the tenant, which also removes the service principal.
+
+~> **Note:** Destroying the ´polaris_azure_service_principal´ resource only updates
+   the local state, it does not remove the service principal from RSC. However,
+   creating another ´polaris_azure_service_principal´ resource for the same Azure
+   tenant will overwrite the old service principal in RSC.
+
+-> **Note:** There is no way to verify if a service principal has been added to RSC
+   using the UI. RSC tenants don't show up in the UI until the first subscription is
+   added.
+`
+
 // resourceAzureServicePrincipal defines the schema for the Azure service
 // principal resource. Note that the delete function cannot remove the service
-// principal since there is no delete operation in the Polaris API.
+// principal since there is no delete operation in the RSC API.
 func resourceAzureServicePrincipal() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateServicePrincipal,
@@ -41,67 +68,92 @@ func resourceAzureServicePrincipal() *schema.Resource {
 		UpdateContext: azureUpdateServicePrincipal,
 		DeleteContext: azureDeleteServicePrincipal,
 
+		Description: description(resourceAzureServicePrincipalDescription),
 		Schema: map[string]*schema.Schema{
-			"app_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ExactlyOneOf:     []string{"app_id", "credentials", "sdk_auth"},
-				ConflictsWith:    []string{"credentials", "sdk_auth"},
-				RequiredWith:     []string{"app_name", "app_secret", "tenant_id"},
-				Description:      "App registration application id.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
+			keyID: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "Azure app registration application ID (UUID). Also known as the client ID. " +
+					"Note, this might change in the future, use the `app_id` field to reference the application ID " +
+					"in configurations.",
 			},
-			"app_name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				RequiredWith:     []string{"app_id", "app_secret", "tenant_id"},
-				Description:      "App registration display name.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyAppID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
+				RequiredWith: []string{keyAppName, keyAppSecret, keyTenantID},
+				Description: "Azure app registration application ID. Also known as the client ID. Changing this " +
+					"forces a new resource to be created.",
+				ValidateFunc: validation.IsUUID,
 			},
-			"app_secret": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Sensitive:        true,
-				RequiredWith:     []string{"app_id", "app_name", "tenant_id"},
-				Description:      "App registration client secret.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyAppName: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				RequiredWith: []string{keyAppID, keyAppSecret, keyTenantID},
+				Description:  "Azure app registration display name. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"credentials": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				ConflictsWith:    []string{"app_id", "sdk_auth"},
-				Description:      "Path to Azure service principal file.",
-				ValidateDiagFunc: fileExists,
+			keyAppSecret: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				Sensitive:    true,
+				RequiredWith: []string{keyAppID, keyAppName, keyTenantID},
+				Description:  "Azure app registration client secret. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"sdk_auth": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				ConflictsWith:    []string{"app_id", "credentials"},
-				Description:      "Path to Azure service principal created with the Azure SDK using the --sdk-auth parameter",
-				ValidateDiagFunc: fileExists,
+			keyCredentials: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
+				Description: "Path to a custom service principal file. Changing this forces a new resource to be " +
+					"created.",
+				ValidateFunc: isExistingFile,
 			},
-			"permissions_hash": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Description:      "Signals that the permissions has been updated.",
-				ValidateDiagFunc: validateHash,
+			keySDKAuth: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
+				Description: "Path to an Azure service principal created with the Azure SDK using the `--sdk-auth` " +
+					"parameter. Changing this forces a new resource to be created.",
+				ValidateFunc: isExistingFile,
 			},
-			"tenant_domain": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				Description:      "Tenant directory/domain name.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+			keyPermissions: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "Permissions updated signal. When this field is updated, the provider will notify RSC " +
+					"that permissions has been updated. Use this field with the `polaris_azure_permissions` data " +
+					"source. **Deprecated:** use the `polaris_azure_subscription` resource's `permissions` fields " +
+					"instead.",
+				Deprecated:   "use the `polaris_azure_subscription` resource's `permissions` fields instead.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"tenant_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				RequiredWith:     []string{"app_id", "app_name", "app_secret"},
-				Description:      "Tenant/domain id.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
+			keyPermissionsHash: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "Permissions updated signal. **Deprecated:** use `permissions` instead.",
+				Deprecated:   "use `permissions` instead.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyTenantDomain: {
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "Azure tenant primary domain. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyTenantID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				RequiredWith: []string{keyAppID, keyAppName, keyAppSecret},
+				Description: "Azure tenant ID. Also known as the directory ID. Changing this forces a new resource to " +
+					"be created.",
+				ValidateFunc: validation.IsUUID,
 			},
 		},
 		SchemaVersion: 1,
@@ -114,7 +166,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 }
 
 // azureCreateServicePrincipal run the Create operation for the Azure service
-// principal resource. This adds the Azure service principal to the Polaris
+// principal resource. This adds the Azure service principal to the RSC
 // platform.
 func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureCreateServicePrincipal")
@@ -124,40 +176,39 @@ func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	tenantDomain := d.Get("tenant_domain").(string)
+	tenantDomain := d.Get(keyTenantDomain).(string)
 	var principal azure.ServicePrincipalFunc
 	switch {
-	case d.Get("credentials").(string) != "":
-		principal = azure.KeyFile(d.Get("credentials").(string), tenantDomain)
-	case d.Get("sdk_auth").(string) != "":
-		principal = azure.SDKAuthFile(d.Get("sdk_auth").(string), tenantDomain)
+	case d.Get(keyCredentials).(string) != "":
+		principal = azure.KeyFile(d.Get(keyCredentials).(string), tenantDomain)
+	case d.Get(keySDKAuth).(string) != "":
+		principal = azure.SDKAuthFile(d.Get(keySDKAuth).(string), tenantDomain)
 	default:
-		appID, err := uuid.Parse(d.Get("app_id").(string))
+		appID, err := uuid.Parse(d.Get(keyAppID).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		tenantID, err := uuid.Parse(d.Get("tenant_id").(string))
+		tenantID, err := uuid.Parse(d.Get(keyTenantID).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		principal = azure.ServicePrincipal(appID, d.Get("app_secret").(string), tenantID, tenantDomain)
+		principal = azure.ServicePrincipal(appID, d.Get(keyAppName).(string), d.Get(keyAppSecret).(string), tenantID, tenantDomain)
 	}
 
-	id, err := azure.Wrap(client).SetServicePrincipal(ctx, principal)
+	appID, err := azure.Wrap(client).SetServicePrincipal(ctx, principal)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.SetId(id.String())
-
+	d.SetId(appID.String())
 	azureReadServicePrincipal(ctx, d, m)
 	return nil
 }
 
 // azureReadServicePrincipal run the Read operation for the Azure service
 // principal resource. This reads the state of the Azure service principal in
-// Polaris.
+// RSC.
 func azureReadServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureReadServicePrincipal")
 
@@ -165,7 +216,7 @@ func azureReadServicePrincipal(ctx context.Context, d *schema.ResourceData, m in
 }
 
 // azureUpdateServiceAccount run the Update operation for the Azure service
-// principal resource. This updates the Azure service principal in Polaris.
+// principal resource. This updates the Azure service principal in RSC.
 func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureUpdateServicePrincipal")
 
@@ -174,8 +225,8 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	if d.HasChange("permissions_hash") {
-		err := azure.Wrap(client).PermissionsUpdatedForTenantDomain(ctx, d.Get("tenant_domain").(string), nil)
+	if d.HasChanges(keyPermissions, keyPermissionsHash) {
+		err := azure.Wrap(client).PermissionsUpdatedForTenantDomain(ctx, d.Get(keyTenantDomain).(string), nil)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -187,7 +238,7 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 
 // azureDeleteServicePrincipal run the Delete operation for the Azure service
 // principal resource. This only removes the local state of the GCP service
-// account since the service account cannot be removed using the Polaris API.
+// account since the service account cannot be removed using the RSC API.
 func azureDeleteServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] azureDeleteServicePrincipal")
 

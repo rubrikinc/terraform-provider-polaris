@@ -35,6 +35,26 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
+const (
+	implicitPrefix = "rubrik-"
+)
+
+const resourceAWSArchivalLocationDescription = `
+The ´polaris_aws_archival_location´ resource creates an RSC archival location for
+cloud-native workloads. This resource requires that the AWS account has been
+onboarded with the ´CLOUD_NATIVE_ARCHIVAL´ feature.
+
+When creating an archival location, the region where the snapshots are stored needs
+to be specified:
+  * ´SOURCE_REGION´ - Store snapshots in the same region to minimize data transfer
+    charges. This is the default behaviour when the ´region´ field is not specified.
+  * ´SPECIFIC_REGION´ - Storing snapshots in another region can increase total data
+    transfer charges. The ´region´ field specifies the region.
+
+-> **Note:** The AWS bucket holding the archived data is not created until the first
+   protected object is archived.
+`
+
 func resourceAwsArchivalLocation() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateArchivalLocation,
@@ -42,64 +62,77 @@ func resourceAwsArchivalLocation() *schema.Resource {
 		UpdateContext: awsUpdateArchivalLocation,
 		DeleteContext: awsDeleteArchivalLocation,
 
+		Description: description(resourceAWSArchivalLocationDescription),
 		Schema: map[string]*schema.Schema{
-			"account_id": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "RSC cloud account ID.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
-			},
-			"bucket_prefix": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "AWS bucket prefix. Note that `rubrik-` will always be prepended to the prefix.",
-				ValidateFunc: validation.StringLenBetween(1, 19),
-			},
-			"bucket_tags": {
-				Type:        schema.TypeMap,
-				Optional:    true,
-				ForceNew:    true,
-				Description: "AWS bucket tags. Each tag will be added to the bucket created by RSC.",
-			},
-			"connection_status": {
+			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Connection status of the archival location.",
+				Description: "Cloud native archival location ID (UUID).",
 			},
-			"kms_master_key": {
+			keyAccountID: {
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "RSC cloud account ID (UUID). Changing this forces a new resource to be created.",
+				ValidateFunc: validation.IsUUID,
+			},
+			keyBucketPrefix: {
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+				Description: "AWS bucket prefix. The prefix cannot be longer than 19 characters. Note that `rubrik-` " +
+					"will always be prepended to the prefix. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.StringLenBetween(1, 19),
+			},
+			keyBucketTags: {
+				Type:        schema.TypeMap,
+				Optional:    true,
+				Description: "AWS bucket tags. Each tag will be added to the bucket created by RSC.",
+			},
+			keyConnectionStatus: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Connection status of the cloud native archival location.",
+			},
+			keyKMSMasterKey: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Sensitive:    true,
 				Default:      "aws/s3",
-				Description:  "AWS KMS master key alias/ID.",
+				Description:  "AWS KMS master key alias/ID. Default value is `aws/s3`.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"location_template": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.",
+			keyLocationTemplate: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "Location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise " +
+					"`SOURCE_REGION`.",
 			},
-			"name": {
+			keyName: {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "Name of the archival location.",
+				Description:  "Name of the cloud native archival location.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"region": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				Description:  "AWS region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.",
+			keyRegion: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Description: "AWS region to store the snapshots in. If not specified, the snapshots will be " +
+					"stored in the same region as the workload. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"storage_class": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Default:      "STANDARD_IA",
-				Description:  "AWS bucket storage class.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+			keyStorageClass: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "STANDARD_IA",
+				Description: "AWS bucket storage class. Possible values are `STANDARD`, `STANDARD_IA`, `ONEZONE_IA`, " +
+					"`GLACIER_INSTANT_RETRIEVAL`, `GLACIER_DEEP_ARCHIVE` and `GLACIER_FLEXIBLE_RETRIEVAL`. Default " +
+					"value is `STANDARD_IA`.",
+				ValidateFunc: validation.StringInSlice([]string{
+					"STANDARD", "STANDARD_IA", "ONEZONE_IA", "GLACIER_INSTANT_RETRIEVAL", "GLACIER_DEEP_ARCHIVE",
+					"GLACIER_FLEXIBLE_RETRIEVAL",
+				}, false),
 			},
 		},
 	}
@@ -115,20 +148,18 @@ func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 
 	// Lookup and parse the cloud account ID argument. Note, if this argument
 	// changes the resource will be recreated.
-	accountID, err := uuid.Parse(d.Get("account_id").(string))
+	accountID, err := uuid.Parse(d.Get(keyAccountID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Lookup the resource string arguments.
-	bucketPrefix := d.Get("bucket_prefix").(string)
-	kmsMasterKey := d.Get("kms_master_key").(string)
-	name := d.Get("name").(string)
-	region := d.Get("region").(string)
-	storageClass := d.Get("storage_class").(string)
+	bucketPrefix := d.Get(keyBucketPrefix).(string)
+	kmsMasterKey := d.Get(keyKMSMasterKey).(string)
+	name := d.Get(keyName).(string)
+	region := d.Get(keyRegion).(string)
+	storageClass := d.Get(keyStorageClass).(string)
 
-	// Lookup the resource bucket tags argument.
-	bucketTags, err := fromBucketTags(d.Get("bucket_tags").(map[string]any))
+	bucketTags, err := fromBucketTags(d.Get(keyBucketTags).(map[string]any))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -140,9 +171,7 @@ func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	// Set the resource ID to the target mapping ID.
 	d.SetId(targetMappingID.String())
-
 	awsReadArchivalLocation(ctx, d, m)
 	return nil
 }
@@ -155,7 +184,6 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
-	// Lookup and parse the target mapping ID from the resource ID.
 	targetMappingID, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
@@ -172,31 +200,28 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
-	// Set the resource string arguments.
-	if err := d.Set("bucket_prefix", strings.TrimPrefix(targetMapping.BucketPrefix, "rubrik-")); err != nil {
+	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetMapping.BucketPrefix, implicitPrefix)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("connection_status", targetMapping.ConnectionStatus); err != nil {
+	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("kms_master_key", targetMapping.KMSMasterKey); err != nil {
+	if err := d.Set(keyKMSMasterKey, targetMapping.KMSMasterKey); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("location_template", targetMapping.LocTemplate); err != nil {
+	if err := d.Set(keyLocationTemplate, targetMapping.LocTemplate); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("name", targetMapping.Name); err != nil {
+	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("region", targetMapping.Region); err != nil {
+	if err := d.Set(keyRegion, targetMapping.Region); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("storage_class", targetMapping.StorageClass); err != nil {
+	if err := d.Set(keyStorageClass, targetMapping.StorageClass); err != nil {
 		return diag.FromErr(err)
 	}
-
-	// Set the resource bucket tags argument.
-	if err := d.Set("bucket_tags", toBucketTags(targetMapping.BucketTags)); err != nil {
+	if err := d.Set(keyBucketTags, toBucketTags(targetMapping.BucketTags)); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -211,21 +236,22 @@ func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	// Lookup and parse the target mapping ID from the resource ID.
 	targetMappingID, err := uuid.Parse(d.Id())
 	if err != nil {
-		d.SetId("")
 		return diag.FromErr(err)
 	}
 
-	// Lookup the resource string arguments.
-	kmsMasterKey := d.Get("kms_master_key").(string)
-	name := d.Get("name").(string)
-	storageClass := d.Get("storage_class").(string)
+	kmsMasterKey := d.Get(keyKMSMasterKey).(string)
+	name := d.Get(keyName).(string)
+	storageClass := d.Get(keyStorageClass).(string)
+	bucketTags, err := fromBucketTags(d.Get(keyBucketTags).(map[string]any))
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Update the AWS archival location. Note, the API doesn't support updating
 	// all arguments.
-	err = aws.Wrap(client).UpdateStorageSetting(ctx, targetMappingID, name, storageClass, kmsMasterKey)
+	err = aws.Wrap(client).UpdateStorageSetting(ctx, targetMappingID, name, storageClass, kmsMasterKey, bucketTags)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -241,7 +267,6 @@ func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	// Lookup and parse the target mapping ID from the resource ID.
 	targetMappingID, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
@@ -255,8 +280,8 @@ func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 	return nil
 }
 
-// fromBucketTags converts from the bucket tags argument to a standard string to
-// string map.
+// fromBucketTags converts from the bucket tags argument to a standard
+// string-to-string map.
 func fromBucketTags(bucketTags map[string]any) (map[string]string, error) {
 	tags := make(map[string]string, len(bucketTags))
 	for key, value := range bucketTags {
@@ -270,8 +295,8 @@ func fromBucketTags(bucketTags map[string]any) (map[string]string, error) {
 	return tags, nil
 }
 
-// toBucketTags converts to the bucket tags argument from a standard string to
-// string map.
+// toBucketTags converts to the bucket tags argument from a standard
+// string-to-string map.
 func toBucketTags(tags map[string]string) map[string]any {
 	bucketTags := make(map[string]any, len(tags))
 	for key, value := range tags {

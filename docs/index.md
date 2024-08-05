@@ -40,8 +40,7 @@ provider "polaris" {
 The service account can also be passed to the provider using the `RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS` environment
 variable. When passing the service account using the environment variable, leave the provider configuration empty:
 ```terraform
-provider "polaris" {
-}
+provider "polaris" {}
 ```
 
 For documentation on how to create a service account using RSC, visit the

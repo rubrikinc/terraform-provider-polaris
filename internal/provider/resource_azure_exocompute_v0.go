@@ -28,7 +28,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-// resourceAzureExocompute defines the schema for the Azure exocompute resource.
+// resourceAzureExocomputeV0 defines the schema for version 0 of the Azure
+// service principal resource and how to migrate to version 1.
 func resourceAzureExocomputeV0() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -66,7 +67,7 @@ func resourceAzureExocomputeV0() *schema.Resource {
 // resourceAzureExocomputeStateUpgradeV0 removes the polaris_managed parameter.
 // Exocompute on Azure only supports RSC managed configurations.
 func resourceAzureExocomputeStateUpgradeV0(ctx context.Context, state map[string]any, m any) (map[string]any, error) {
-	log.Print("[TRACE] resourceAzureExocomputeStateUpgradeV0")
+	log.Print("[TRACE] azureExocomputeStateUpgradeV0")
 
 	delete(state, "polaris_managed")
 

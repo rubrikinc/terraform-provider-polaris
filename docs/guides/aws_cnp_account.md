@@ -7,34 +7,50 @@ The `polaris_aws_account` resource uses a CloudFormation stack to grant RSC perm
 granted to RSC by the CloudFormation stack can be difficult to understand and track as RSC will request the permissions
 to be updated as new features, requiring new permissions, are released.
 
-To make the process of granting AWS permissions more transparent, a couple of new resources and data sources have been added to
-the RSC Terraform provider:
+To make the process of granting AWS permissions more transparent, a couple of new resources and data sources have been
+added to the RSC Terraform provider:
  * `polaris_aws_cnp_account`
  * `polaris_aws_cnp_account_attachments`
  * `polaris_aws_cnp_account_trust_policy`
  * `polaris_aws_cnp_artifacts`
  * `polaris_aws_cnp_permissions`
- * `polaris_features`
+ * `polaris_account`
 
 Using these resources, it's possible to add an AWS account to RSC without using a CloudFormation stack.
 
 To add an AWS account to RSC using the new CNP resources, start by using the `polaris_aws_cnp_artifacts` data source:
 ```terraform
 data "polaris_aws_cnp_artifacts" "artifacts" {
-  features = ["CLOUD_NATIVE_PROTECTION"]
+  feature {
+    name = "CLOUD_NATIVE_PROTECTION"
+
+    permission_groups = [
+      "BASIC",
+      "EXPORT_AND_RESTORE",
+      "FILE_LEVEL_RECOVERY",
+      "SNAPSHOT_PRIVATE_ACCESS",
+    ]
+  }
 }
 ```
-`features` lists the RSC features to enabled for the AWS account. Use the `polaris_features` data source to obtain a
-list of RSC features available for the RSC account. The `polaris_aws_cnp_artifacts` data source returns the instance
-profiles and roles, referred to as _artifacts_ by RSC, which are required by RSC.
+One or more `feature` blocks lists the RSC features to enabled for the AWS account. Use the `polaris_account` data
+source to obtain a list of RSC features available for the RSC account. The `polaris_aws_cnp_artifacts` data source
+returns the instance profiles and roles, referred to as _artifacts_ by RSC, which are required by RSC.
 
 Next, use the `polaris_aws_cnp_permissions` data source to obtain the role permission policies, customer managed
 policies and managed policies, required by RSC:
 ```terraform
 data "polaris_aws_cnp_permissions" "permissions" {
   for_each = data.polaris_aws_cnp_artifacts.artifacts.role_keys
-  features = data.polaris_aws_cnp_artifacts.artifacts.features
   role_key = each.key
+
+  dynamic "feature" {
+    for_each = data.polaris_aws_cnp_artifacts.artifacts.feature
+    content {
+      name              = feature.value["name"]
+      permission_groups = feature.value["permission_groups"]
+    }
+  }
 }
 ```
 
@@ -42,23 +58,31 @@ After defining the two data sources, use the `polaris_aws_cnp_account` resource 
 account:
 ```terraform
 resource "polaris_aws_cnp_account" "account" {
-  features  = polaris_aws_cnp_artifacts.artifacts.features
   name      = "My Account"
   native_id = "123456789123"
   regions   = ["us-east-2", "us-west-2"]
+
+  dynamic "feature" {
+    for_each = polaris_aws_cnp_artifacts.artifacts.features
+    content {
+      name              = feature.value["name"]
+      permission_groups = feature.value["permission_groups"]
+    }
+  }
 }
 ```
-`name` is the name given to the AWS account in RSC, `native_id` is the AWS account ID and `regions` the AWS regions.
-When Terraform processes this resource, the AWS account will show up in the connecting state in the RSC UI.
+`name` is the name given to the AWS account in RSC, `native_id` is the AWS account ID and `regions` the AWS regions to
+protect with RSC. When Terraform processes this resource, the AWS account will show up in the connecting state in the
+RSC UI.
 
 Next, the `polaris_aws_cnp_account_trust_policy` resource needs to be used to define the trust policies required by RSC
 for the AWS account:
 ```terraform
 resource "polaris_aws_cnp_account_trust_policy" "trust_policy" {
-  for_each    = data.polaris_aws_cnp_artifacts.artifacts.role_keys
-  account_id  = polaris_aws_cnp_account.account.id
-  features    = polaris_aws_cnp_account.account.features
-  role_key    = each.key
+  for_each   = data.polaris_aws_cnp_artifacts.artifacts.role_keys
+  account_id = polaris_aws_cnp_account.account.id
+  features   = polaris_aws_cnp_account.account.feature.*.name
+  role_key   = each.key
 }
 ```
 This resource provides the trust policies to attach to the IAM roles created, so that RSC can assume the roles to
@@ -95,13 +119,13 @@ Lastly, to finalize the onboarding of the AWS account, use the `polaris_aws_cnp_
 ```terraform
 resource "polaris_aws_cnp_account_attachments" "attachments" {
   account_id = polaris_aws_cnp_account.account.id
-  features   = polaris_aws_cnp_account.account.features
+  features   = polaris_aws_cnp_account.account.feature.*.name
 
   dynamic "instance_profile" {
     for_each = aws_iam_instance_profile.profile
     content {
       key  = instance_profile.key
-      name = instance_profile.value["name"]
+      name = instance_profile.value["arn"]
     }
   }
 

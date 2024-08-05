@@ -30,37 +30,49 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
-// dataSourceRole defines the schema for the role data source.
+const dataSourceRoleDescription = `
+The ´polaris_role´ data source is used to access information about RSC roles.
+`
+
+// This data source uses a template for its documentation due to a bug in the TF
+// docs generator. Remember to update the template if the documentation for any
+// fields are changed.
 func dataSourceRole() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: roleRead,
 
+		Description: description(dataSourceRoleDescription),
 		Schema: map[string]*schema.Schema{
-			"description": {
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Role ID (UUID).",
+			},
+			keyDescription: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "Role description.",
 			},
-			"is_org_admin": {
+			keyIsOrgAdmin: {
 				Type:        schema.TypeBool,
 				Computed:    true,
 				Description: "True if the role is the organization administrator.",
 			},
-			"name": {
+			keyName: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "Role name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"permission": {
+			keyPermission: {
 				Type: schema.TypeSet,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"hierarchy": {
+						keyHierarchy: {
 							Type: schema.TypeSet,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"object_ids": {
+									keyObjectIDs: {
 										Type: schema.TypeSet,
 										Elem: &schema.Schema{
 											Type: schema.TypeString,
@@ -68,7 +80,7 @@ func dataSourceRole() *schema.Resource {
 										Computed:    true,
 										Description: "Object/workload identifiers.",
 									},
-									"snappable_type": {
+									keySnappableType: {
 										Type:        schema.TypeString,
 										Computed:    true,
 										Description: "Snappable/workload type.",
@@ -78,10 +90,10 @@ func dataSourceRole() *schema.Resource {
 							Computed:    true,
 							Description: "Snappable hierarchy.",
 						},
-						"operation": {
+						keyOperation: {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "Operation allowed on object ids under the snappable hierarchy.",
+							Description: "Operation allowed on object IDs under the snappable hierarchy.",
 						},
 					},
 				},
@@ -92,7 +104,6 @@ func dataSourceRole() *schema.Resource {
 	}
 }
 
-// roleRead run the Read operation for the role data source.
 func roleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] roleRead")
 
@@ -101,19 +112,21 @@ func roleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 		return diag.FromErr(err)
 	}
 
-	name := d.Get("name").(string)
-	role, err := access.Wrap(client).RoleByName(ctx, name)
+	role, err := access.Wrap(client).RoleByName(ctx, d.Get(keyName).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set("description", role.Description); err != nil {
+	if err := d.Set(keyDescription, role.Description); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("is_org_admin", role.IsOrgAdmin); err != nil {
+	if err := d.Set(keyIsOrgAdmin, role.IsOrgAdmin); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set("permission", fromPermissions(role.AssignedPermissions)); err != nil {
+	if err := d.Set(keyName, role.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyPermission, fromPermissions(role.AssignedPermissions)); err != nil {
 		return diag.FromErr(err)
 	}
 

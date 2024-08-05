@@ -3,12 +3,12 @@
 page_title: "polaris_custom_role Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_custom_role resource is used to manage custom roles in RSC.
 ---
 
 # polaris_custom_role (Resource)
 
-
+The `polaris_custom_role` resource is used to manage custom roles in RSC.
 
 ## Example Usage
 
@@ -79,7 +79,7 @@ resource "polaris_custom_role" "compliance_auditor" {
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) Role ID (UUID).
 
 <a id="nestedblock--permission"></a>
 ### Nested Schema for `permission`
@@ -87,7 +87,7 @@ resource "polaris_custom_role" "compliance_auditor" {
 Required:
 
 - `hierarchy` (Block Set, Min: 1) Snappable hierarchy. (see [below for nested schema](#nestedblock--permission--hierarchy))
-- `operation` (String) Operation to allow on object ids under the snappable hierarchy.
+- `operation` (String) Operation to allow on object IDs under the snappable hierarchy.
 
 <a id="nestedblock--permission--hierarchy"></a>
 ### Nested Schema for `permission.hierarchy`
