@@ -1,11 +1,9 @@
 ---
-page_title: "Upgrade Guide: beta release"
+page_title: "Upgrade Guide: v0.9.0"
 ---
 
-~> **Note:** The beta provider might have breaking changes between beta releases.
-
-# RSC provider beta changes
-The latest beta release introduces changes to the following data sources and resources:
+# RSC provider changes
+The v0.9.0 release introduces changes to the following data sources and resources:
 * `polaris_account` - New data source with 3 fields, `features`, `fqdn` and `name`. `features` holds the features
   enabled for the RSC account. `fqdn` holds the fully qualified domain name for the RSC account. `name` holds the RSC
   account name.
@@ -38,6 +36,8 @@ The latest beta release introduces changes to the following data sources and res
 * `polaris_azure_subscription` - New data source for accessing information about an Azure subscription added to RSC.
   The subscription can be looked up by the Azure subscription ID or the subscription name. Currently, only the cloud
   account ID of the subscription is exposed.
+* `polaris_aws_archival_location` - The `bucket_tags` field now supports being updated without the resource being
+  recreating.
 
 Deprecated fields will be removed in a future release, please migrate your configurations to use the replacement field
 as soon as possible.
@@ -46,24 +46,24 @@ as soon as possible.
 * The user-assigned managed identity for `cloud_native_archival_encryption` is not refreshed when the
   `polaris_azure_subscription` resource is updated. This will be fixed in a future release.
 
-In addition to the issues listed above, affecting this particular beta release of the provider, additional issues
-reported can be found on [GitHub](https://github.com/rubrikinc/terraform-provider-polaris/issues).
+In addition to the issues listed above, affecting this particular release of the provider, additional issues reported
+can be found on [GitHub](https://github.com/rubrikinc/terraform-provider-polaris/issues).
 
-# Upgrade to the latest beta release
-Start by assigning the version of the latest beta release to the `version` field in the `provider` block of the
-Terraform configuration:
+# How to upgrade
+Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v0.9.0 release. One
+way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
+release within the same minor version:
 ```hcl
 terraform {
   required_providers {
     polaris = {
       source  = "rubrikinc/polaris"
-      version = "=<beta-version>
+      version = "~> 0.9.0"
     }
   }
 }
 ```
-With beta releases, it's important the version is pinned to the exact version number otherwise Terraform will not find
-the version in the Terraform registry. Next, upgrade the Terraform provider to the new version by running:
+Next, upgrade the Terraform provider to the new version by running:
 ```bash
 $ terraform init -upgrade
 ```
@@ -75,10 +75,10 @@ If this doesn't produce an error or unwanted diff, proceed by running:
 ```bash
 $ terraform apply -refresh-only
 ```
-This will read the remote state of the resources and migrate the local Terraform state to the latest beta version.
+This will read the remote state of the resources and migrate the local Terraform state to the v0.9.0 version.
 
 ## Upgrade issues
-When upgrading to the latest beta release you may encounter one or more of the following issues.
+When upgrading to the v0.9.0 release you may encounter one or more of the following issues.
 
 ### polaris_azure_exocompute
 Replacing the `subscription_id` field with the `cloud_account_id` field will result in the `polaris_azure_exocompute`
