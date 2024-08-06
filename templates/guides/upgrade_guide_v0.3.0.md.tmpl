@@ -2,31 +2,46 @@
 page_title: "Upgrade Guide: v0.3.0"
 ---
 
-# RSC provider version v0.3.0
-v0.3.0 introduces breaking changes to the following resources:
+# Upgrade Guide v0.3.0
+
+## RSC provider changes
+The v0.3.0 release introduces breaking changes to the following resources:
 * `polaris_aws_account`
 * `polaris_azure_subscription`
 * `polaris_azure_service_principal`
 * `polaris_gcp_project`
 
-After the Terraform configuration files have been updated according to the instructions in this guide and the version
-number has been bumped, update the RSC Terraform provider by running:
+## How to upgrade
+Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v0.3.0 release. One
+way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
+release within the same minor version:
+```hcl
+terraform {
+  required_providers {
+    polaris = {
+      source  = "rubrikinc/polaris"
+      version = "~> 0.3.0"
+    }
+  }
+}
+```
+Next, upgrade the Terraform provider to the new version by running:
 ```bash
 $ terraform init -upgrade
 ```
-
-Next, validate the correctness of the Terraform configuration files by running:
+After the Terraform provider has been updated, validate the correctness of the Terraform configuration files by running:
 ```bash
 $ terraform plan
 ```
-
-If this doesn't produce any error, proceed by running:
+If this doesn't produce an error or unwanted diff, proceed by running:
 ```bash
 $ terraform apply -refresh-only
 ```
-This will read the remote state of the resources and migrate the local Terraform state to v0.3.0.
+This will read the remote state of the resources and migrate the local Terraform state to the v0.3.0 version.
 
-## AWS
+## Upgrade issues
+When upgrading to the v0.3.0 release you may encounter one or more of the following issues.
+
 ### polaris_aws_account
 To update the resource add a new `cloud_native_protection` block. Then move the `regions` argument from the resource
 into the new `cloud_native_protection` block.
@@ -55,7 +70,6 @@ resource "polaris_aws_account" "default" {
 }
 ```
 
-## Azure
 ### polaris_azure_subscription
 To update the resource add a new `cloud_native_protection` block. Then move the `regions` argument from the resource
 into the new `cloud_native_protection` block.
@@ -105,7 +119,6 @@ resource "polaris_azure_service_principal" "default" {
 }
 ```
 
-## GCP
 ### polaris_gcp_project
 To update the resource add a new `cloud_native_protection` block.
 
