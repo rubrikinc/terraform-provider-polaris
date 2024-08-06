@@ -8,12 +8,6 @@ Additional examples on how to use the provider are available in the
 [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples) GitHub
 repository. Documentation for the Rubrik Security Cloud is available at https://docs.rubrik.com/en-us/saas/index.html.
 
-~> Upgrading from v0.2.0 to v0.3.0 requires that the definition of certain resources are updated on disk. Please see the
-upgrade guide for more information.
-
-~> Upgrading from v0.5.0 to v0.6.0 requires that the definition of certain resources are updated on disk. Please see the
-upgrade guide for more information.
-
 !> Since v0.7.0, all RSC authentication tokens are cached on disk by default. This default behavior can be turned off by
 setting the `RUBRIK_POLARIS_TOKEN_CACHE` environment variable to `FALSE`.
 
