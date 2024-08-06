@@ -2,7 +2,9 @@
 page_title: "Upgrade Guide: v0.9.0"
 ---
 
-# RSC provider changes
+# Upgrade Guide v0.9.0
+
+## RSC provider changes
 The v0.9.0 release introduces changes to the following data sources and resources:
 * `polaris_account` - New data source with 3 fields, `features`, `fqdn` and `name`. `features` holds the features
   enabled for the RSC account. `fqdn` holds the fully qualified domain name for the RSC account. `name` holds the RSC
@@ -42,14 +44,14 @@ The v0.9.0 release introduces changes to the following data sources and resource
 Deprecated fields will be removed in a future release, please migrate your configurations to use the replacement field
 as soon as possible.
 
-# Known issues
+## Known issues
 * The user-assigned managed identity for `cloud_native_archival_encryption` is not refreshed when the
   `polaris_azure_subscription` resource is updated. This will be fixed in a future release.
 
 In addition to the issues listed above, affecting this particular release of the provider, additional issues reported
 can be found on [GitHub](https://github.com/rubrikinc/terraform-provider-polaris/issues).
 
-# How to upgrade
+## How to upgrade
 Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v0.9.0 release. One
 way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
 release within the same minor version:
