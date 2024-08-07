@@ -2,22 +2,21 @@
 page_title: "Upgrade Guide: beta release"
 ---
 
+# Upgrade Guide Beta Release
 ~> **Note:** The beta provider might have breaking changes between beta releases.
 
-# RSC provider changes
+## RSC provider changes
 The latest beta release introduces changes to the following data sources and resources:
-  *
+  * Add 3 new fields to the `polaris` provider configuration: `token_cache`, `token_cache_dir` and `token_cache_secret`.
+    The fields can be used to control the authentication token cache through the provider configuration. The cache can
+    already be controlled through environment variables.
+  * Update the  `credentials` field of the `polaris` provider configuration to accept, in addition to what it already
+    accepts, the content of an RSC service account credentials file.
 
 Deprecated fields will be removed in a future release, please migrate your configurations to use the replacement field
 as soon as possible.
 
-# Known issues
-  *
-
-In addition to the issues listed above, affecting this particular release of the provider, additional issues reported
-can be found on [GitHub](https://github.com/rubrikinc/terraform-provider-polaris/issues).
-
-# How to upgrade
+## How to upgrade
 Start by assigning the version of the latest beta release to the `version` field in the `provider` block of the
 Terraform configuration:
 ```hcl
@@ -44,7 +43,3 @@ If this doesn't produce an error or unwanted diff, proceed by running:
 $ terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to the latest beta version.
-
-## Upgrade issues
-
-None at this time.

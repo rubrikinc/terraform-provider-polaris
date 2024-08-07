@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.10.0-beta.1
+* The authentication token cache can now be controlled by the `polaris` provider configuration.
+* The `credentials` field of the `polaris` provider configuration now accepts, in addition to what it already accepts,
+  the content of an RSC service account credentials file.
+
 ## v0.9.0
 * Update the `polaris_aws_archival_location` resource to support updates of the `bucket_tags` field without recreating
   the resources.
