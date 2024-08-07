@@ -26,8 +26,7 @@ configuration field or the `RUBRIK_POLARIS_TOKEN_CACHE_SECRET` environmental var
 encryption key will be derived from the secret instead of the account information.
 
 The cache can be disabled by setting the `token_cache` provider configuration field to `false` or the
-`RUBRIK_POLARIS_TOKEN_CACHE` environmental variable to `FALSE`. Disabling the a cache is not recommended, as it can
-lead to the RSC Terraform provider becoming rate limited by RSC.
+`RUBRIK_POLARIS_TOKEN_CACHE` environmental variable to `FALSE`.
 
 ### Service Account
 First download the service account credentials as a JSON file from the RSC User Management UI page. Next, configure the
