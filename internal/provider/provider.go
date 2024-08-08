@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -116,23 +117,12 @@ func Provider() *schema.Provider {
 type client struct {
 	cdmClient     *cdm.BootstrapClient
 	polarisClient *polaris.Client
-}
-
-func newClient(account polaris.Account, params polaris.CacheParams, logger log.Logger) (*client, diag.Diagnostics) {
-	polarisClient, err := polaris.NewClientWithLoggerAndCacheParams(account, params, logger)
-	if err != nil {
-		return nil, diag.FromErr(err)
-	}
-
-	return &client{
-		cdmClient:     cdm.NewBootstrapClientWithLogger(true, logger),
-		polarisClient: polarisClient,
-	}, nil
+	polarisErr    error
 }
 
 func (c *client) cdm() (*cdm.BootstrapClient, error) {
 	if c.cdmClient == nil {
-		return nil, errors.New("cdm functionality has not been configured in the provider block")
+		return nil, errors.New("CDM functionality has not been configured in the provider block")
 	}
 
 	return c.cdmClient, nil
@@ -140,7 +130,11 @@ func (c *client) cdm() (*cdm.BootstrapClient, error) {
 
 func (c *client) polaris() (*polaris.Client, error) {
 	if c.polarisClient == nil {
-		return nil, errors.New("polaris functionality has not been configured in the provider block")
+		err := errors.New("RSC functionality has not been configured in the provider block")
+		if c.polarisErr != nil {
+			err = fmt.Errorf("%s: %s", err, c.polarisErr)
+		}
+		return nil, err
 	}
 
 	return c.polarisClient, nil
@@ -153,17 +147,29 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 		return nil, diag.FromErr(err)
 	}
 
-	account, err := polaris.FindAccount(d.Get("credentials").(string), true)
-	if err != nil {
-		return nil, diag.FromErr(err)
+	client := &client{
+		cdmClient: cdm.NewBootstrapClientWithLogger(true, logger),
 	}
 
-	cacheParams := polaris.CacheParams{
-		Enable: d.Get("token_cache").(bool),
-		Dir:    d.Get("token_cache_dir").(string),
-		Secret: d.Get("token_cache_secret").(string),
+	account, err := polaris.FindAccount(d.Get("credentials").(string), true)
+	switch {
+	case errors.Is(err, polaris.ErrAccountNotFound):
+		client.polarisErr = err
+	case err != nil:
+		return nil, diag.FromErr(err)
+	default:
+		cacheParams := polaris.CacheParams{
+			Enable: d.Get("token_cache").(bool),
+			Dir:    d.Get("token_cache_dir").(string),
+			Secret: d.Get("token_cache_secret").(string),
+		}
+		client.polarisClient, err = polaris.NewClientWithLoggerAndCacheParams(account, cacheParams, logger)
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
 	}
-	return newClient(account, cacheParams, logger)
+
+	return client, nil
 }
 
 // description returns the description string with all acute accents replaced
