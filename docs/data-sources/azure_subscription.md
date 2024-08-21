@@ -26,12 +26,12 @@ for the name.
 ## Example Usage
 
 ```terraform
-data "polaris_azure_subscription" "example" {
+data "polaris_azure_subscription" "subscription" {
   name = "example"
 }
 
-output "example_azure_subscription" {
-  value = data.polaris_azure_subscription.example
+output "cloud_account_id" {
+  value = data.polaris_azure_subscription.subscription.id
 }
 ```
 
