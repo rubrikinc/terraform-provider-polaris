@@ -36,5 +36,98 @@ data "polaris_sla_domain" "sla_domain" {
 
 ### Read-Only
 
+- `archival_spec` (Set of Object) (see [below for nested schema](#nestedatt--archival_spec))
+- `daily_schedule` (List of Object) Daily schedule of the SLA Domain. (see [below for nested schema](#nestedatt--daily_schedule))
 - `description` (String) SLA domain description.
+- `hourly_schedule` (List of Object) Hourly schedule. (see [below for nested schema](#nestedatt--hourly_schedule))
+- `minute_schedule` (List of Object) Minute schedule. (see [below for nested schema](#nestedatt--minute_schedule))
+- `monthly_schedule` (List of Object) Monthly schedule. (see [below for nested schema](#nestedatt--monthly_schedule))
 - `object_types` (Set of String) Object types which can be protected by the SLA domain.
+- `quarterly_schedule` (List of Object) Quarterly schedule. (see [below for nested schema](#nestedatt--quarterly_schedule))
+- `weekly_schedule` (List of Object) Weekly schedule. (see [below for nested schema](#nestedatt--weekly_schedule))
+- `yearly_schedule` (List of Object) Yearly schedule. (see [below for nested schema](#nestedatt--yearly_schedule))
+
+<a id="nestedatt--archival_spec"></a>
+### Nested Schema for `archival_spec`
+
+Read-Only:
+
+- `frequencies` (Set of String)
+- `threshold` (Number)
+- `threshold_unit` (String)
+
+
+<a id="nestedatt--daily_schedule"></a>
+### Nested Schema for `daily_schedule`
+
+Read-Only:
+
+- `frequency` (Number)
+- `retention` (Number)
+- `retention_unit` (String)
+
+
+<a id="nestedatt--hourly_schedule"></a>
+### Nested Schema for `hourly_schedule`
+
+Read-Only:
+
+- `frequency` (Number)
+- `retention` (Number)
+- `retention_unit` (String)
+
+
+<a id="nestedatt--minute_schedule"></a>
+### Nested Schema for `minute_schedule`
+
+Read-Only:
+
+- `frequency` (Number)
+- `retention` (Number)
+- `retention_unit` (String)
+
+
+<a id="nestedatt--monthly_schedule"></a>
+### Nested Schema for `monthly_schedule`
+
+Read-Only:
+
+- `day_of_month` (String)
+- `frequency` (Number)
+- `retention` (Number)
+- `retention_unit` (String)
+
+
+<a id="nestedatt--quarterly_schedule"></a>
+### Nested Schema for `quarterly_schedule`
+
+Read-Only:
+
+- `day_of_quarter` (String)
+- `frequency` (Number)
+- `quarter_start_month` (String)
+- `retention` (Number)
+- `retention_unit` (String)
+
+
+<a id="nestedatt--weekly_schedule"></a>
+### Nested Schema for `weekly_schedule`
+
+Read-Only:
+
+- `day_of_week` (String)
+- `frequency` (Number)
+- `retention` (Number)
+- `retention_unit` (String)
+
+
+<a id="nestedatt--yearly_schedule"></a>
+### Nested Schema for `yearly_schedule`
+
+Read-Only:
+
+- `day_of_year` (String)
+- `frequency` (Number)
+- `retention` (Number)
+- `retention_unit` (String)
+- `year_start_month` (String)
