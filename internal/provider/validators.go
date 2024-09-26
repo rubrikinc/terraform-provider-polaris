@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/mail"
 	"os"
+	"regexp"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
@@ -118,5 +119,34 @@ func validateNumNodes(i interface{}, k string) ([]string, []error) {
 	if v < 1 {
 		return nil, []error{fmt.Errorf("num_nodes must be greater than 0")}
 	}
+	return nil, nil
+}
+
+var startAtRegexp = regexp.MustCompile(`^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), (\d{2}):(\d{2})$`)
+
+func validateStartAt(i interface{}, k string) ([]string, []error) {
+	v, ok := i.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+	}
+
+	matches := startAtRegexp.FindAllStringSubmatch(v, -1)
+	if len(matches) != 1 {
+		return nil, []error{fmt.Errorf("invalid time format, expected \"DAY, HH:MM\"")}
+	}
+
+	match := matches[0]
+	if len(match) != 4 {
+		return nil, []error{fmt.Errorf("invalid time format, expected \"DAY, HH:MM\"")}
+	}
+
+	if n, err := strconv.Atoi(match[2]); err != nil || n < 0 || n > 23 {
+		return nil, []error{fmt.Errorf("invalid time format, expected \"DAY, HH:MM\"")}
+	}
+
+	if n, err := strconv.Atoi(match[3]); err != nil || n < 0 || n > 59 {
+		return nil, []error{fmt.Errorf("invalid time format, expected \"DAY, HH:MM\"")}
+	}
+
 	return nil, nil
 }
