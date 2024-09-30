@@ -4,6 +4,21 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.10.0-beta.3
+* Add support for creating data center AWS accounts. [[docs](../resources/data_center_aws_account)]
+* Add support for creating data center Azure subscriptions. [[docs](../resources/data_center_azure_subscription)]
+* Add support for creating Amazon S3 data center archival locations.
+  [[docs](../resources/data_center_archival_location_amazon_s3)]
+* Add `polaris_data_center_aws_account` data source. [[docs](../data-sources/data_center_aws_account)]
+* Add `polaris_data_center_azure_subscription` data source. [[docs](../data-sources/data_center_azure_subscription)]
+
+## v0.10.0-beta.2
+* Add the field `manifest` to the `polaris_aws_exocompute_cluster_attachment` resource. The `manifest` field contains
+  a Kubernetes manifest that can be passed to the Kubernetes Terraform provider or `kubectl` to establish a connection
+  between the AWS EKS cluster and RSC. [[docs](../resources/aws_exocompute_cluster_attachment)]
+* Deprecate the `setup_yaml` field in the `polaris_aws_exocompute_cluster_attachment` resource. Use the `manifest` field
+  instead.
+
 ## v0.10.0-beta.1
 * The authentication token cache can now be controlled by the `polaris` provider configuration.
 * The `credentials` field of the `polaris` provider configuration now accepts, in addition to what it already accepts,
@@ -18,8 +33,8 @@ page_title: "Changelog"
   instead.
 * Deprecate the `archival_location_id` field in the `polaris_azure_archival_location` data source. Use the `id` field
   instead.
-* Add the field `setup_yaml` to the `polaris_aws_exocompute_cluster_attachment` resource. The `setup_yaml` fields
-  contains K8s specs that can be passed to `kubectl` to establish a connection between the cluster and RSC.
+* Add the field `setup_yaml` to the `polaris_aws_exocompute_cluster_attachment` resource. The `setup_yaml` field
+  contains K8s specs that can be passed to `kubectl` to establish a connection between the AWS EKS cluster and RSC.
   [[docs](../resources/aws_exocompute_cluster_attachment)]
 * Fix a bug in the AWS feature removal code that causes removal of the `CLOUD_NATIVE_S3_PROTECTION` feature to fail.
 * Improve the code that waits for RSC features to be disabled. The code now checks both the status of the job and the
