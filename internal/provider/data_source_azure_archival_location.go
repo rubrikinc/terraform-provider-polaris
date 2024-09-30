@@ -28,7 +28,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
+	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 )
 
 const dataSourceAzureArchivalLocationDescription = `
@@ -110,7 +111,10 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 					"stored in the same region as the workload.",
 			},
 			keyStorageAccountTags: {
-				Type:     schema.TypeMap,
+				Type: schema.TypeMap,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 				Computed: true,
 				Description: "Azure storage account tags. Each tag will be added to the storage account created by " +
 					"RSC.",
@@ -133,7 +137,7 @@ func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m in
 	}
 
 	// Read the archival location using either the ID or the name.
-	var targetMapping azure.TargetMapping
+	var targetMapping gqlarchival.AzureTargetMapping
 	targetMappingID := d.Get(keyID).(string)
 	if targetMappingID == "" {
 		targetMappingID = d.Get(keyArchivalLocationID).(string)
@@ -143,48 +147,50 @@ func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m in
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		targetMapping, err = azure.Wrap(client).TargetMappingByID(ctx, id)
+		targetMapping, err = archival.Wrap(client).AzureTargetMappingByID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		targetMapping, err = azure.Wrap(client).TargetMappingByName(ctx, d.Get(keyName).(string))
+		targetMapping, err = archival.Wrap(client).AzureTargetMappingByName(ctx, d.Get(keyName).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
+	targetTemplate := targetMapping.TargetTemplate
+	cloudNativeCompanion := targetMapping.TargetTemplate.CloudNativeCompanion
 	if err := d.Set(keyArchivalLocationID, targetMapping.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyContainerName, targetMapping.ContainerName); err != nil {
+	if err := d.Set(keyContainerName, targetTemplate.ContainerNamePrefix); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyCustomerManagedKey, toCustomerManagedKeys(targetMapping.CustomerKeys)); err != nil {
+	if err := d.Set(keyCustomerManagedKey, fromAzureCustomerManagedKeys(cloudNativeCompanion.CMKInfo)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyLocationTemplate, targetMapping.LocTemplate); err != nil {
+	if err := d.Set(keyLocationTemplate, cloudNativeCompanion.LocTemplate); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyRedundancy, targetMapping.Redundancy); err != nil {
+	if err := d.Set(keyRedundancy, cloudNativeCompanion.Redundancy); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageAccountNamePrefix, targetMapping.StorageAccountName); err != nil {
+	if err := d.Set(keyStorageAccountNamePrefix, targetTemplate.StorageAccountName); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageAccountRegion, targetMapping.StorageAccountRegion); err != nil {
+	if err := d.Set(keyStorageAccountRegion, cloudNativeCompanion.StorageAccountRegion.Name()); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageAccountTags, toStorageAccountTags(targetMapping.StorageAccountTags)); err != nil {
+	if err := d.Set(keyStorageAccountTags, fromAzureStorageAccountTags(cloudNativeCompanion.StorageAccountTags)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageTier, targetMapping.StorageTier); err != nil {
+	if err := d.Set(keyStorageTier, cloudNativeCompanion.StorageTier); err != nil {
 		return diag.FromErr(err)
 	}
 

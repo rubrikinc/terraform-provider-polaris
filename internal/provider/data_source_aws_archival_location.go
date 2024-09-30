@@ -29,7 +29,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
+	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 )
 
 const dataSourceAWSArchivalLocationDescription = `
@@ -64,7 +65,10 @@ func dataSourceAwsArchivalLocation() *schema.Resource {
 				Description: "AWS bucket prefix. Note, `rubrik-` will always be prepended to the prefix.",
 			},
 			keyBucketTags: {
-				Type:        schema.TypeMap,
+				Type: schema.TypeMap,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 				Computed:    true,
 				Description: "AWS bucket tags.",
 			},
@@ -118,7 +122,7 @@ func awsArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any)
 	}
 
 	// Read the archival location using either the ID or the name.
-	var targetMapping aws.TargetMapping
+	var targetMapping gqlarchival.AWSTargetMapping
 	targetMappingID := d.Get(keyID).(string)
 	if targetMappingID == "" {
 		targetMappingID = d.Get(keyArchivalLocationID).(string)
@@ -128,42 +132,43 @@ func awsArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		targetMapping, err = aws.Wrap(client).TargetMappingByID(ctx, id)
+		targetMapping, err = archival.Wrap(client).AWSTargetMappingByID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		targetMapping, err = aws.Wrap(client).TargetMappingByName(ctx, d.Get(keyName).(string))
+		targetMapping, err = archival.Wrap(client).AWSTargetMappingByName(ctx, d.Get(keyName).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
+	targetTemplate := targetMapping.TargetTemplate
 	if err := d.Set(keyArchivalLocationID, targetMapping.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetMapping.BucketPrefix, "rubrik-")); err != nil {
+	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetTemplate.BucketPrefix, "rubrik-")); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyKMSMasterKey, targetMapping.KMSMasterKey); err != nil {
+	if err := d.Set(keyKMSMasterKey, targetTemplate.KMSMasterKey); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyLocationTemplate, targetMapping.LocTemplate); err != nil {
+	if err := d.Set(keyLocationTemplate, targetTemplate.LocTemplate); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyRegion, targetMapping.Region); err != nil {
+	if err := d.Set(keyRegion, targetTemplate.Region); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageClass, targetMapping.StorageClass); err != nil {
+	if err := d.Set(keyStorageClass, targetTemplate.StorageClass); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyBucketTags, toBucketTags(targetMapping.BucketTags)); err != nil {
+	if err := d.Set(keyBucketTags, fromAWSBucketTags(targetTemplate.BucketTags)); err != nil {
 		return diag.FromErr(err)
 	}
 

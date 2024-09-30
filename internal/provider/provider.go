@@ -72,46 +72,67 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			keyPolarisAWSAccount:                     resourceAwsAccount(),
-			keyPolarisAWSArchivalLocation:            resourceAwsArchivalLocation(),
-			keyPolarisAWSCNPAccount:                  resourceAwsCnpAccount(),
-			keyPolarisAWSCNPAccountAttachments:       resourceAwsCnpAccountAttachments(),
-			keyPolarisAWSCNPAccountTrustPolicy:       resourceAwsCnpAccountTrustPolicy(),
-			keyPolarisAWSExocompute:                  resourceAwsExocompute(),
-			keyPolarisAWSExocomputeClusterAttachment: resourceAwsExocomputeClusterAttachment(),
-			keyPolarisAWSPrivateContainerRegistry:    resourceAwsPrivateContainerRegistry(),
-			keyPolarisAzureArchivalLocation:          resourceAzureArchivalLocation(),
-			keyPolarisAzureExocompute:                resourceAzureExocompute(),
-			keyPolarisAzureServicePrincipal:          resourceAzureServicePrincipal(),
-			keyPolarisAzureSubscription:              resourceAzureSubscription(),
-			"polaris_cdm_bootstrap":                  resourceCDMBootstrap(),
-			"polaris_cdm_bootstrap_cces_aws":         resourceCDMBootstrapCCESAWS(),
-			"polaris_cdm_bootstrap_cces_azure":       resourceCDMBootstrapCCESAzure(),
-			keyPolarisCustomRole:                     resourceCustomRole(),
-			"polaris_gcp_project":                    resourceGcpProject(),
-			"polaris_gcp_service_account":            resourceGcpServiceAccount(),
-			keyPolarisRoleAssignment:                 resourceRoleAssignment(),
-			keyPolarisUser:                           resourceUser(),
+			keyPolarisAWSAccount:                         resourceAwsAccount(),
+			keyPolarisAWSArchivalLocation:                resourceAwsArchivalLocation(),
+			keyPolarisAWSCNPAccount:                      resourceAwsCnpAccount(),
+			keyPolarisAWSCNPAccountAttachments:           resourceAwsCnpAccountAttachments(),
+			keyPolarisAWSCNPAccountTrustPolicy:           resourceAwsCnpAccountTrustPolicy(),
+			keyPolarisAWSExocompute:                      resourceAwsExocompute(),
+			keyPolarisAWSExocomputeClusterAttachment:     resourceAwsExocomputeClusterAttachment(),
+			keyPolarisAWSPrivateContainerRegistry:        resourceAwsPrivateContainerRegistry(),
+			keyPolarisAzureArchivalLocation:              resourceAzureArchivalLocation(),
+			keyPolarisAzureExocompute:                    resourceAzureExocompute(),
+			keyPolarisAzureServicePrincipal:              resourceAzureServicePrincipal(),
+			keyPolarisAzureSubscription:                  resourceAzureSubscription(),
+			"polaris_cdm_bootstrap":                      resourceCDMBootstrap(),
+			"polaris_cdm_bootstrap_cces_aws":             resourceCDMBootstrapCCESAWS(),
+			"polaris_cdm_bootstrap_cces_azure":           resourceCDMBootstrapCCESAzure(),
+			keyPolarisCustomRole:                         resourceCustomRole(),
+			keyPolarisDataCenterAWSAccount:               resourceDataCenterAWSAccount(),
+			keyPolarisDataCenterAzureSubscription:        resourceDataCenterAzureSubscription(),
+			keyPolarisDataCenterArchivalLocationAmazonS3: resourceDataCenterArchivalLocationAmazonS3(),
+			"polaris_gcp_project":                        resourceGcpProject(),
+			"polaris_gcp_service_account":                resourceGcpServiceAccount(),
+			keyPolarisRoleAssignment:                     resourceRoleAssignment(),
+			keyPolarisUser:                               resourceUser(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
-			keyPolarisAccount:               dataSourceAccount(),
-			keyPolarisAWSAccount:            dataSourceAwsAccount(),
-			keyPolarisAWSArchivalLocation:   dataSourceAwsArchivalLocation(),
-			keyPolarisAWSCNPArtifacts:       dataSourceAwsArtifacts(),
-			keyPolarisAWSCNPPermissions:     dataSourceAwsPermissions(),
-			keyPolarisAzureArchivalLocation: dataSourceAzureArchivalLocation(),
-			keyPolarisAzurePermissions:      dataSourceAzurePermissions(),
-			keyPolarisAzureSubscription:     dataSourceAzureSubscription(),
-			keyPolarisDeployment:            dataSourceDeployment(),
-			keyPolarisFeatures:              dataSourceFeatures(),
-			"polaris_gcp_permissions":       dataSourceGcpPermissions(),
-			keyPolarisRole:                  dataSourceRole(),
-			keyPolarisRoleTemplate:          dataSourceRoleTemplate(),
+			keyPolarisAccount:                     dataSourceAccount(),
+			keyPolarisAWSAccount:                  dataSourceAwsAccount(),
+			keyPolarisAWSArchivalLocation:         dataSourceAwsArchivalLocation(),
+			keyPolarisAWSCNPArtifacts:             dataSourceAwsArtifacts(),
+			keyPolarisAWSCNPPermissions:           dataSourceAwsPermissions(),
+			keyPolarisAzureArchivalLocation:       dataSourceAzureArchivalLocation(),
+			keyPolarisAzurePermissions:            dataSourceAzurePermissions(),
+			keyPolarisAzureSubscription:           dataSourceAzureSubscription(),
+			keyPolarisDataCenterAWSAccount:        dataSourceDataCenterAWSAccount(),
+			keyPolarisDataCenterAzureSubscription: dataSourceDataCenterAzureSubscription(),
+			keyPolarisDeployment:                  dataSourceDeployment(),
+			keyPolarisFeatures:                    dataSourceFeatures(),
+			"polaris_gcp_permissions":             dataSourceGcpPermissions(),
+			keyPolarisRole:                        dataSourceRole(),
+			keyPolarisRoleTemplate:                dataSourceRoleTemplate(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
 	}
+}
+
+// providerConfigure configures the RSC provider.
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
+	cacheParams := polaris.CacheParams{
+		Enable: d.Get("token_cache").(bool),
+		Dir:    d.Get("token_cache_dir").(string),
+		Secret: d.Get("token_cache_secret").(string),
+	}
+
+	client, err := newClient(d.Get("credentials").(string), cacheParams)
+	if err != nil {
+		return nil, diag.FromErr(err)
+	}
+
+	return client, nil
 }
 
 type client struct {
@@ -120,9 +141,38 @@ type client struct {
 	polarisErr    error
 }
 
+func newClient(credentials string, cacheParams polaris.CacheParams) (*client, error) {
+	logger := log.NewStandardLogger()
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		return nil, err
+	}
+
+	account, err := polaris.FindAccount(credentials, true)
+	if err != nil && !errors.Is(err, polaris.ErrAccountNotFound) {
+		return nil, err
+	}
+
+	var polarisClient *polaris.Client
+	var accountErr error
+	if err == nil {
+		polarisClient, err = polaris.NewClientWithLoggerAndCacheParams(account, cacheParams, logger)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		accountErr = err
+	}
+
+	return &client{
+		cdmClient:     cdm.NewBootstrapClientWithLogger(true, logger),
+		polarisClient: polarisClient,
+		polarisErr:    accountErr,
+	}, nil
+}
+
 func (c *client) cdm() (*cdm.BootstrapClient, error) {
 	if c.cdmClient == nil {
-		return nil, errors.New("CDM functionality has not been configured in the provider block")
+		return nil, errors.New("CDM functionality has not been configured")
 	}
 
 	return c.cdmClient, nil
@@ -130,7 +180,7 @@ func (c *client) cdm() (*cdm.BootstrapClient, error) {
 
 func (c *client) polaris() (*polaris.Client, error) {
 	if c.polarisClient == nil {
-		err := errors.New("RSC functionality has not been configured in the provider block")
+		err := errors.New("RSC functionality has not been configured")
 		if c.polarisErr != nil {
 			err = fmt.Errorf("%s: %s", err, c.polarisErr)
 		}
@@ -138,38 +188,6 @@ func (c *client) polaris() (*polaris.Client, error) {
 	}
 
 	return c.polarisClient, nil
-}
-
-// providerConfigure configures the RSC provider.
-func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
-	logger := log.NewStandardLogger()
-	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
-		return nil, diag.FromErr(err)
-	}
-
-	client := &client{
-		cdmClient: cdm.NewBootstrapClientWithLogger(true, logger),
-	}
-
-	account, err := polaris.FindAccount(d.Get("credentials").(string), true)
-	switch {
-	case errors.Is(err, polaris.ErrAccountNotFound):
-		client.polarisErr = err
-	case err != nil:
-		return nil, diag.FromErr(err)
-	default:
-		cacheParams := polaris.CacheParams{
-			Enable: d.Get("token_cache").(bool),
-			Dir:    d.Get("token_cache_dir").(string),
-			Secret: d.Get("token_cache_secret").(string),
-		}
-		client.polarisClient, err = polaris.NewClientWithLoggerAndCacheParams(account, cacheParams, logger)
-		if err != nil {
-			return nil, diag.FromErr(err)
-		}
-	}
-
-	return client, nil
 }
 
 // description returns the description string with all acute accents replaced

@@ -23,7 +23,6 @@ package provider
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"regexp"
 
@@ -31,8 +30,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 )
 
 const resourceAzureArchivalLocationDescription = `
@@ -135,7 +136,10 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyStorageAccountTags: {
-				Type:     schema.TypeMap,
+				Type: schema.TypeMap,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 				Optional: true,
 				Description: "Azure storage account tags. Each tag will be added to the storage account created by " +
 					"RSC.",
@@ -159,25 +163,27 @@ func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	accountID, err := uuid.Parse(d.Get(keyCloudAccountID).(string))
+	cloudAccountID, err := uuid.Parse(d.Get(keyCloudAccountID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	customerKeys := fromCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set))
-	name := d.Get(keyName).(string)
-	redundancy := d.Get(keyRedundancy).(string)
-	storageAccountName := d.Get(keyStorageAccountNamePrefix).(string)
-	storageAccountRegion := d.Get(keyStorageAccountRegion).(string)
-	storageAccountTags, err := fromBucketTags(d.Get(keyStorageAccountTags).(map[string]any))
-	if err != nil {
-		return diag.FromErr(err)
+	var storageAccountTags *gqlarchival.AzureTags
+	if tags := toAzureStorageAccountTags(d.Get(keyStorageAccountTags).(map[string]any)); len(tags.TagList) > 0 {
+		storageAccountTags = &tags
 	}
-	storageTier := d.Get(keyStorageTier).(string)
 
-	// Create the archival location.
-	targetMappingID, err := azure.Wrap(client).CreateStorageSetting(
-		ctx, azure.CloudAccountID(accountID), name, redundancy, storageTier, storageAccountName, storageAccountRegion, storageAccountTags, customerKeys)
+	// Create the Azure cloud native archival location.
+	targetMappingID, err := archival.Wrap(client).CreateAzureStorageSetting(ctx, gqlarchival.CreateAzureStorageSettingParams{
+		CloudAccountID:       cloudAccountID,
+		Name:                 d.Get(keyName).(string),
+		Redundancy:           d.Get(keyRedundancy).(string),
+		StorageTier:          d.Get(keyStorageTier).(string),
+		StorageAccountName:   d.Get(keyStorageAccountNamePrefix).(string),
+		StorageAccountRegion: toAzureStorageAccountRegion(d.Get(keyStorageAccountRegion).(string)),
+		StorageAccountTags:   storageAccountTags,
+		CMKInfo:              toAzureCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set)),
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -200,9 +206,9 @@ func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	// Read the archival location. If the archival location isn't found, we
-	// remove it from the local state and return.
-	targetMapping, err := azure.Wrap(client).TargetMappingByID(ctx, targetMappingID)
+	// Read the Azure cloud native archival location. If the archival location
+	// isn't found, we remove it from the local state and return.
+	targetMapping, err := archival.Wrap(client).AzureTargetMappingByID(ctx, targetMappingID)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -211,34 +217,36 @@ func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
+	targetTemplate := targetMapping.TargetTemplate
+	cloudNativeCompanion := targetTemplate.CloudNativeCompanion
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyContainerName, targetMapping.ContainerName); err != nil {
+	if err := d.Set(keyContainerName, targetTemplate.ContainerNamePrefix); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyCustomerManagedKey, toCustomerManagedKeys(targetMapping.CustomerKeys)); err != nil {
+	if err := d.Set(keyCustomerManagedKey, fromAzureCustomerManagedKeys(cloudNativeCompanion.CMKInfo)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyLocationTemplate, targetMapping.LocTemplate); err != nil {
+	if err := d.Set(keyLocationTemplate, cloudNativeCompanion.LocTemplate); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyRedundancy, targetMapping.Redundancy); err != nil {
+	if err := d.Set(keyRedundancy, cloudNativeCompanion.Redundancy); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageAccountNamePrefix, targetMapping.StorageAccountName); err != nil {
+	if err := d.Set(keyStorageAccountNamePrefix, targetTemplate.StorageAccountName); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageAccountRegion, targetMapping.StorageAccountRegion); err != nil {
+	if err := d.Set(keyStorageAccountRegion, cloudNativeCompanion.StorageAccountRegion.Name()); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageAccountTags, toStorageAccountTags(targetMapping.StorageAccountTags)); err != nil {
+	if err := d.Set(keyStorageAccountTags, fromAzureStorageAccountTags(cloudNativeCompanion.StorageAccountTags)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageTier, targetMapping.StorageTier); err != nil {
+	if err := d.Set(keyStorageTier, cloudNativeCompanion.StorageTier); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -258,17 +266,14 @@ func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	customerKeys := fromCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set))
-	name := d.Get(keyName).(string)
-	storageAccountTags, err := fromStorageAccountTags(d.Get(keyStorageAccountTags).(map[string]any))
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	storageTier := d.Get(keyStorageTier).(string)
-
-	// Update the archival location. Note, the API doesn't support updating
-	// all arguments.
-	err = azure.Wrap(client).UpdateStorageSetting(ctx, targetMappingID, name, storageTier, storageAccountTags, customerKeys)
+	// Update the Azure cloud native archival location. Note, the API doesn't
+	// support updating all arguments.
+	err = archival.Wrap(client).UpdateAzureStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAzureStorageSettingParams{
+		Name:               d.Get(keyName).(string),
+		StorageTier:        d.Get(keyStorageTier).(string),
+		StorageAccountTags: toAzureStorageAccountTags(d.Get(keyStorageAccountTags).(map[string]any)),
+		CMKInfo:            toAzureCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set)),
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -289,8 +294,8 @@ func azureDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	// Delete the archival location.
-	if err := azure.Wrap(client).DeleteTargetMapping(ctx, targetMappingID); err != nil {
+	// Delete the Azure cloud native archival location.
+	if err := archival.Wrap(client).DeleteTargetMapping(ctx, targetMappingID); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -324,59 +329,67 @@ func customerKeyResource() *schema.Resource {
 	}
 }
 
-// fromCustomerManagedKeys converts from the customer managed keys field type
-// to a customer key slice.
-func fromCustomerManagedKeys(customerManagedKeys *schema.Set) []azure.CustomerKey {
-	var customerKeys []azure.CustomerKey
-	for _, key := range customerManagedKeys.List() {
+// toAzureCustomerManagedKeys converts from the customer managed keys field type
+// to a slice of Azure customer keys.
+func toAzureCustomerManagedKeys(keys *schema.Set) []gqlarchival.AzureCustomerKey {
+	var customerKeys []gqlarchival.AzureCustomerKey
+	for _, key := range keys.List() {
 		key := key.(map[string]any)
-		customerKeys = append(customerKeys, azure.CustomerKey{
-			Name:      key[keyName].(string),
-			Region:    key[keyRegion].(string),
-			VaultName: key[keyVaultName].(string),
+		customerKeys = append(customerKeys, gqlarchival.AzureCustomerKey{
+			KeyName:      key[keyName].(string),
+			KeyVaultName: key[keyVaultName].(string),
+			Region:       azure.RegionFromName(key[keyRegion].(string)).ToRegionEnum(),
 		})
 	}
 
 	return customerKeys
 }
 
-// toStorageAccountTags converts to the customer managed keys field type from
-// a customer key slice.
-func toCustomerManagedKeys(customerKeys []azure.CustomerKey) *schema.Set {
-	customerManagedKeys := &schema.Set{F: schema.HashResource(customerKeyResource())}
+// fromAzureCustomerManagedKeys converts to the customer managed keys field type from
+// a slice of Azure customer keys.
+func fromAzureCustomerManagedKeys(customerKeys []gqlarchival.AzureCustomerKey) *schema.Set {
+	keys := &schema.Set{F: schema.HashResource(customerKeyResource())}
 	for _, key := range customerKeys {
-		customerManagedKeys.Add(map[string]any{
-			keyName:      key.Name,
+		keys.Add(map[string]any{
+			keyName:      key.KeyName,
+			keyVaultName: key.KeyVaultName,
 			keyRegion:    key.Region,
-			keyVaultName: key.VaultName,
 		})
 	}
 
-	return customerManagedKeys
+	return keys
 }
 
-// fromStorageAccountTags converts from the storage account tags field type to
-// a standard string-to-string map.
-func fromStorageAccountTags(storageAccountTags map[string]any) (map[string]string, error) {
-	tags := make(map[string]string, len(storageAccountTags))
-	for key, value := range storageAccountTags {
-		value, ok := value.(string)
-		if !ok {
-			return nil, fmt.Errorf("storage account tag value for key %q is not a string", key)
-		}
-		tags[key] = value
-	}
-
-	return tags, nil
-}
-
-// toStorageAccountTags converts to the storage account tags field type from a
-// standard string-to-string map.
-func toStorageAccountTags(tags map[string]string) map[string]any {
-	storageAccountTags := make(map[string]any, len(tags))
+// toAzureStorageAccountTags converts from the storage account tags field type
+// to the Azure tags type.
+func toAzureStorageAccountTags(tags map[string]any) gqlarchival.AzureTags {
+	tagList := make([]azure.Tag, 0, len(tags))
 	for key, value := range tags {
-		storageAccountTags[key] = value
+		tagList = append(tagList, azure.Tag{Key: key, Value: value.(string)})
 	}
 
-	return storageAccountTags
+	return gqlarchival.AzureTags{TagList: tagList}
+}
+
+// fromAzureStorageAccountTags converts to the storage account tags field type
+// from the Azure tags type.
+func fromAzureStorageAccountTags(storageAccountTags []azure.Tag) map[string]any {
+	tags := make(map[string]any, len(storageAccountTags))
+	for _, tag := range storageAccountTags {
+		tags[tag.Key] = tag.Value
+	}
+
+	return tags
+}
+
+// toAzureStorageAccountRegion converts from the storage account region field
+// type to the Azure region enum type. If no region is specified, nil is
+// returned.
+func toAzureStorageAccountRegion(region string) *azure.RegionEnum {
+	if storageAccountRegion := azure.RegionFromName(region); storageAccountRegion != azure.RegionUnknown {
+		regionEnum := storageAccountRegion.ToRegionEnum()
+		return &regionEnum
+	}
+
+	return nil
 }

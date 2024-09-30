@@ -1,24 +1,52 @@
+// Copyright 2024 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 package provider
 
 const (
+	keyAccessKey                                    = "access_key"
 	keyAccountID                                    = "account_id"
 	keyActions                                      = "actions"
 	keyAppID                                        = "app_id"
 	keyAppName                                      = "app_name"
 	keyAppSecret                                    = "app_secret"
+	keyArchivalConsolidation                        = "archival_consolidation"
 	keyArchivalLocationID                           = "archival_location_id"
+	keyArchivalProxySettings                        = "archival_proxy_settings"
 	keyARN                                          = "arn"
 	keyAssumeRole                                   = "assume_role"
 	keyBucketPrefix                                 = "bucket_prefix"
+	keyBucketName                                   = "bucket_name"
 	keyBucketTags                                   = "bucket_tags"
+	keyBypassProxy                                  = "bypass_proxy"
 	keyCredentials                                  = "credentials"
 	keyCloud                                        = "cloud"
 	keyCloudAccountID                               = "cloud_account_id"
+	keyCloudComputeSettings                         = "cloud_compute_settings"
 	keyCloudNativeArchival                          = "cloud_native_archival"
 	keyCloudNativeArchivalEncryption                = "cloud_native_archival_encryption"
 	keyCloudNativeProtection                        = "cloud_native_protection"
+	keyClusterID                                    = "cluster_id"
 	keyClusterName                                  = "cluster_name"
 	keyClusterSecurityGroupID                       = "cluster_security_group_id"
+	keyComputeProxySettings                         = "compute_proxy_settings"
 	keyConnectionCommand                            = "connection_command"
 	keyConnectionCommandExecuted                    = "connection_command_executed"
 	keyConnectionStatus                             = "connection_status"
@@ -30,6 +58,8 @@ const (
 	keyDescription                                  = "description"
 	keyEC2RecoveryRolePath                          = "ec2_recovery_role_path"
 	keyEmail                                        = "email"
+	keyEncryptionPassword                           = "encryption_password"
+	keyEndpointSettings                             = "endpoint_settings"
 	keyExocompute                                   = "exocompute"
 	keyExocomputeID                                 = "exocompute_id"
 	keyExternalID                                   = "external_id"
@@ -41,14 +71,17 @@ const (
 	keyHostAccountID                                = "host_account_id"
 	keyHostCloudAccountID                           = "host_cloud_account_id"
 	keyID                                           = "id"
+	keyImmutabilitySettings                         = "immutability_settings"
 	keyInstanceProfile                              = "instance_profile"
 	keyInstanceProfileKeys                          = "instance_profile_keys"
 	keyIPAddresses                                  = "ip_addresses"
 	keyIsAccountOwner                               = "is_account_owner"
 	keyIsOrgAdmin                                   = "is_org_admin"
 	keyKey                                          = "key"
+	keyKMSEndpoint                                  = "kms_endpoint"
 	keyKMSMasterKey                                 = "kms_master_key"
 	keyLocationTemplate                             = "location_template"
+	keyLockPeriod                                   = "lock_period"
 	keyManagedPolicies                              = "managed_policies"
 	keyManifest                                     = "manifest"
 	keyName                                         = "name"
@@ -58,6 +91,7 @@ const (
 	keyNotDataActions                               = "not_data_actions"
 	keyObjectIDs                                    = "object_ids"
 	keyOperation                                    = "operation"
+	keyPassword                                     = "password"
 	keyPermissionGroups                             = "permission_groups"
 	keyPermission                                   = "permission"
 	keyPermissions                                  = "permissions"
@@ -80,6 +114,9 @@ const (
 	keyPolarisAzureServicePrincipal                 = "polaris_azure_service_principal"
 	keyPolarisAzureSubscription                     = "polaris_azure_subscription"
 	keyPolarisCustomRole                            = "polaris_custom_role"
+	keyPolarisDataCenterArchivalLocationAmazonS3    = "polaris_data_center_archival_location_amazon_s3"
+	keyPolarisDataCenterAWSAccount                  = "polaris_data_center_aws_account"
+	keyPolarisDataCenterAzureSubscription           = "polaris_data_center_azure_subscription"
 	keyPolarisDeployment                            = "polaris_deployment"
 	keyPolarisFeatures                              = "polaris_features"
 	keyPolarisManaged                               = "polaris_managed"
@@ -88,7 +125,10 @@ const (
 	keyPolarisRoleTemplate                          = "polaris_role_template"
 	keyPolarisUser                                  = "polaris_user"
 	keyPolicy                                       = "policy"
+	keyPortNumber                                   = "port_number"
 	keyProfile                                      = "profile"
+	keyProtocol                                     = "protocol"
+	keyProxyServer                                  = "proxy_server"
 	keyRedundancy                                   = "redundancy"
 	keyRegion                                       = "region"
 	keyRegions                                      = "regions"
@@ -99,12 +139,17 @@ const (
 	keyResourceGroupNotDataActions                  = "resource_group_not_data_actions"
 	keyResourceGroupTags                            = "resource_group_tags"
 	keyResourceGroupRegion                          = "resource_group_region"
+	keyRetrievalTier                                = "retrieval_tier"
 	keyRole                                         = "role"
 	keyRoleID                                       = "role_id"
 	keyRoleIDs                                      = "role_ids"
 	keyRoleKey                                      = "role_key"
 	keyRoleKeys                                     = "role_keys"
+	keyRSAKey                                       = "rsa_key"
+	keyS3Endpoint                                   = "s3_endpoint"
 	keySDKAuth                                      = "sdk_auth"
+	keySecretKey                                    = "secret_key"
+	keySecurityGroupID                              = "security_group_id"
 	keySnappableType                                = "snappable_type"
 	keySQLDBProtection                              = "sql_db_protection"
 	keySQLMIProtection                              = "sql_mi_protection"
@@ -117,6 +162,7 @@ const (
 	keyStorageClass                                 = "storage_class"
 	keyStorageTier                                  = "storage_tier"
 	keySubnet                                       = "subnet"
+	keySubnetID                                     = "subnet_id"
 	keySubnets                                      = "subnets"
 	keySubscriptionActions                          = "subscription_actions"
 	keySubscriptionDataActions                      = "subscription_data_actions"
@@ -124,6 +170,7 @@ const (
 	keySubscriptionName                             = "subscription_name"
 	keySubscriptionNotActions                       = "subscription_not_actions"
 	keySubscriptionNotDataActions                   = "subscription_not_data_actions"
+	keySyncStatus                                   = "sync_status"
 	keyTenantDomain                                 = "tenant_domain"
 	keyTenantID                                     = "tenant_id"
 	keyTokenCache                                   = "token_cache"
@@ -135,6 +182,7 @@ const (
 	keyUserAssignedManagedIdentityRegion            = "user_assigned_managed_identity_region"
 	keyUserAssignedManagedIdentityResourceGroupName = "user_assigned_managed_identity_resource_group_name"
 	keyUserEmail                                    = "user_email"
+	keyUsername                                     = "username"
 	keyURL                                          = "url"
 	keyVaultName                                    = "vault_name"
 	keyVersion                                      = "version"
