@@ -52,7 +52,7 @@ func resourceDataCenterAWSAccount() *schema.Resource {
 		UpdateContext: dataCenterAWSUpdateAccount,
 		DeleteContext: dataCenterAWSDeleteAccount,
 
-		Description: description(resourceAWSAccountDescription),
+		Description: description(resourceDataCenterAWSAccountDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,

@@ -3,42 +3,24 @@
 page_title: "polaris_data_center_aws_account Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_aws_account resource adds an AWS account to RSC. To grant RSC
-  permissions to perform certain operations on the account, a Cloud Formation stack
-  is created from a template provided by RSC.
-  There are two ways to specify the AWS account to onboard:
-   1. Using the profile field. The AWS profile is used to create the Cloud
-      Formation stack and lookup the AWS account ID.
-   2. Using the assume_rolefield with, or without, the profile field. If the
-      profile field is omitted, the default profile is used. The profile is used
-      to assume the role. The assumed role is then used and create the Cloud
-      Formation stack and lookup the account ID.
-  Any combination of different RSC features can be enabled for an account:
-    1. cloud_native_protection - Provides protection for AWS EC2 instances and
-       EBS volumes through the rules and policies of SLA Domains.
-    2. exocompute - Provides snapshot indexing, file recovery and application
-       protection of AWS objects.
+  The polaris_data_center_aws_account resource adds a data center AWS account to
+  RSC. A data center account can only be used with data center archival.
+  ~> Note: Due to technical issue in RSC, names of removed data center AWS
+     accounts cannot be reused.
+  -> Note: Data center accounts and cloud native accounts are different and
+     cannot be used interchangeably.
 ---
 
 # polaris_data_center_aws_account (Resource)
 
-The `polaris_aws_account` resource adds an AWS account to RSC. To grant RSC
-permissions to perform certain operations on the account, a Cloud Formation stack
-is created from a template provided by RSC.
+The `polaris_data_center_aws_account` resource adds a data center AWS account to
+RSC. A data center account can only be used with data center archival.
 
-There are two ways to specify the AWS account to onboard:
- 1. Using the `profile` field. The AWS profile is used to create the Cloud
-    Formation stack and lookup the AWS account ID.
- 2. Using the `assume_role`field with, or without, the `profile` field. If the
-    `profile` field is omitted, the default profile is used. The profile is used
-    to assume the role. The assumed role is then used and create the Cloud
-    Formation stack and lookup the account ID.
+~> **Note:** Due to technical issue in RSC, names of removed data center AWS
+   accounts cannot be reused.
 
-Any combination of different RSC features can be enabled for an account:
-  1. `cloud_native_protection` - Provides protection for AWS EC2 instances and
-     EBS volumes through the rules and policies of SLA Domains.
-  2. `exocompute` - Provides snapshot indexing, file recovery and application
-     protection of AWS objects.
+-> **Note:** Data center accounts and cloud native accounts are different and
+   cannot be used interchangeably.
 
 ## Example Usage
 
