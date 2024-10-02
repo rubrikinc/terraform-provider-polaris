@@ -317,7 +317,7 @@ func resourceDataCenterArchivalLocationAmazonS3() *schema.Resource {
 				Optional:     true,
 				Sensitive:    true,
 				ExactlyOneOf: []string{keyEncryptionPassword, keyKMSMasterKey},
-				Description:  "RSA key. Cannot be used with immutable archival locations.",
+				Description:  "PEM encoded private RSA key. Cannot be used with immutable archival locations.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyStorageClass: {
@@ -367,7 +367,7 @@ func dataCenterCreateArchivalLocationAmazonS3(ctx context.Context, d *schema.Res
 		ClusterID:              clusterID,
 		CloudAccountID:         cloudAccountID,
 		BucketName:             d.Get(keyBucketName).(string),
-		Region:                 aws.ParseRegionNoValidation(d.Get(keyRegion).(string)),
+		Region:                 aws.RegionFromName(d.Get(keyRegion).(string)).ToRegionEnum(),
 		StorageClass:           d.Get(keyStorageClass).(string),
 		RetrievalTier:          d.Get(keyRetrievalTier).(string),
 		KMSMasterKeyID:         d.Get(keyKMSMasterKey).(string),
@@ -429,7 +429,7 @@ func dataCenterReadArchivalLocationAmazonS3(ctx context.Context, d *schema.Resou
 	if err := d.Set(keyBucketName, target.Bucket); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyRegion, aws.FormatRegion(target.Region)); err != nil {
+	if err := d.Set(keyRegion, target.Region.Name()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyStorageClass, target.StorageClass); err != nil {

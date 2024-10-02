@@ -161,7 +161,7 @@ func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		Name:           d.Get(keyName).(string),
 		BucketPrefix:   d.Get(keyBucketPrefix).(string),
 		StorageClass:   d.Get(keyStorageClass).(string),
-		Region:         aws.ParseRegionNoValidation(d.Get(keyRegion).(string)),
+		Region:         aws.RegionFromName(d.Get(keyRegion).(string)).ToRegionEnum(),
 		KmsMasterKey:   d.Get(keyKMSMasterKey).(string),
 		BucketTags:     toAWSBucketTags(d.Get(keyBucketTags).(map[string]any)),
 	})
@@ -202,7 +202,7 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetTemplate.BucketPrefix, implicitPrefix)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
+	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyKMSMasterKey, targetTemplate.KMSMasterKey); err != nil {
@@ -214,7 +214,7 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyRegion, targetTemplate.Region); err != nil {
+	if err := d.Set(keyRegion, targetTemplate.Region.Name()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyStorageClass, targetTemplate.StorageClass); err != nil {
