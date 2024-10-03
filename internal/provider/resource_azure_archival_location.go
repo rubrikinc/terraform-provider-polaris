@@ -180,7 +180,7 @@ func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 		Redundancy:           d.Get(keyRedundancy).(string),
 		StorageTier:          d.Get(keyStorageTier).(string),
 		StorageAccountName:   d.Get(keyStorageAccountNamePrefix).(string),
-		StorageAccountRegion: toAzureStorageAccountRegion(d.Get(keyStorageAccountRegion).(string)),
+		StorageAccountRegion: azure.RegionFromName(d.Get(keyStorageAccountRegion).(string)).ToRegionEnum(),
 		StorageAccountTags:   storageAccountTags,
 		CMKInfo:              toAzureCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set)),
 	})
@@ -219,7 +219,7 @@ func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 
 	targetTemplate := targetMapping.TargetTemplate
 	cloudNativeCompanion := targetTemplate.CloudNativeCompanion
-	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
+	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyContainerName, targetTemplate.ContainerNamePrefix); err != nil {
@@ -380,16 +380,4 @@ func fromAzureStorageAccountTags(storageAccountTags []azure.Tag) map[string]any 
 	}
 
 	return tags
-}
-
-// toAzureStorageAccountRegion converts from the storage account region field
-// type to the Azure region enum type. If no region is specified, nil is
-// returned.
-func toAzureStorageAccountRegion(region string) *azure.RegionEnum {
-	if storageAccountRegion := azure.RegionFromName(region); storageAccountRegion != azure.RegionUnknown {
-		regionEnum := storageAccountRegion.ToRegionEnum()
-		return &regionEnum
-	}
-
-	return nil
 }

@@ -75,7 +75,7 @@ resource "polaris_data_center_archival_location_amazon_s3" "archival_location" {
 - `immutability_settings` (Block List, Max: 1) Enables immutable storage with a time-based retention lock using the AWS immutability feature for your archival location. Once enabled, you cannot delete the snapshots in this archival location before the specified immutability lock period expires. Requires an encryption password policy. (see [below for nested schema](#nestedblock--immutability_settings))
 - `kms_master_key` (String) AWS KMS master key ID. Cannot be used with immutable archival locations.
 - `retrieval_tier` (String) AWS bucket retrieval tier. Determines the speed and cost of retrieving data from the Glacier and Glacier Flexible Retrieval storage classes. Possible values are `BULK_TIER`, `EXPEDITED_TIER` and `STANDARD_TIER`. Default value is `STANDARD_TIER`.
-- `rsa_key` (String, Sensitive) RSA key. Cannot be used with immutable archival locations.
+- `rsa_key` (String, Sensitive) PEM encoded private RSA key. Cannot be used with immutable archival locations.
 - `storage_class` (String) AWS bucket storage class. Possible values are `STANDARD`, `STANDARD_IA` and `ONEZONE_IA`. Default value is `STANDARD`.
 
 ### Read-Only
