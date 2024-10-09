@@ -42,6 +42,7 @@ const (
 	keyCloudComputeSettings                         = "cloud_compute_settings"
 	keyCloudNativeArchival                          = "cloud_native_archival"
 	keyCloudNativeArchivalEncryption                = "cloud_native_archival_encryption"
+	keyCloudNativeBlobProtection                    = "cloud_native_blob_protection"
 	keyCloudNativeProtection                        = "cloud_native_protection"
 	keyClusterID                                    = "cluster_id"
 	keyClusterName                                  = "cluster_name"

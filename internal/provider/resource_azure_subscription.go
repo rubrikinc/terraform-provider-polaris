@@ -157,7 +157,7 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
-					keyCloudNativeArchival,
+					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
 					keySQLDBProtection,
@@ -261,6 +261,46 @@ func resourceAzureSubscription() *schema.Resource {
 				},
 				Description: "Enable the RSC Cloud Native Archival Encryption feature for the Azure subscription.",
 			},
+			keyCloudNativeBlobProtection: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyPermissions: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "Permissions updated signal. When this field changes, the provider will notify " +
+								"RSC that the permissions for the feature has been updated. Use this field with the " +
+								"`polaris_azure_permissions` data source.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							MinItems: 1,
+							Required: true,
+							Description: "Azure regions that RSC will monitor for resources to protect according to " +
+								"SLA Domains. Should be specified in the standard Azure style, e.g. `eastus`.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cloud Native Blob Protection feature.",
+						},
+					},
+				},
+				MaxItems: 1,
+				Optional: true,
+				AtLeastOneOf: []string{
+					keyCloudNativeArchival,
+					keyCloudNativeProtection,
+					keyExocompute,
+					keySQLDBProtection,
+					keySQLMIProtection,
+				},
+				Description: "Enable the RSC Cloud Native Protection feature for Azure Blob Storage.",
+			},
 			keyCloudNativeProtection: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -328,7 +368,7 @@ func resourceAzureSubscription() *schema.Resource {
 				Optional: true,
 				AtLeastOneOf: []string{
 					keyCloudNativeArchival,
-					keyCloudNativeProtection,
+					keyCloudNativeBlobProtection,
 					keyExocompute,
 					keySQLDBProtection,
 					keySQLMIProtection,
@@ -408,8 +448,8 @@ func resourceAzureSubscription() *schema.Resource {
 				Optional: true,
 				AtLeastOneOf: []string{
 					keyCloudNativeArchival,
+					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
-					keyExocompute,
 					keySQLDBProtection,
 					keySQLMIProtection,
 				},
@@ -448,9 +488,9 @@ func resourceAzureSubscription() *schema.Resource {
 				Optional: true,
 				AtLeastOneOf: []string{
 					keyCloudNativeArchival,
+					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
-					keySQLDBProtection,
 					keySQLMIProtection,
 				},
 				Description: "Enable the RSC SQL DB Protection feature for the Azure subscription.",
@@ -488,10 +528,10 @@ func resourceAzureSubscription() *schema.Resource {
 				Optional: true,
 				AtLeastOneOf: []string{
 					keyCloudNativeArchival,
+					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
 					keySQLDBProtection,
-					keySQLMIProtection,
 				},
 				Description: "Enable the RSC SQL MI Protection feature for the Azure subscription.",
 			},
@@ -841,33 +881,40 @@ var azureKeyFeatureMap = map[string]orderedFeature{
 		orderSplitAdd:    203,
 		orderSplitRemove: 200,
 	},
-	keyCloudNativeProtection: {
-		feature:          core.FeatureCloudNativeProtection,
+	keyCloudNativeBlobProtection: {
+		feature:          core.FeatureCloudNativeBlobProtection,
 		orderAdd:         102,
 		orderRemove:      302,
 		orderSplitAdd:    205,
 		orderSplitRemove: 204,
 	},
-	keyExocompute: {
-		feature:          core.FeatureExocompute,
+	keyCloudNativeProtection: {
+		feature:          core.FeatureCloudNativeProtection,
 		orderAdd:         103,
 		orderRemove:      303,
 		orderSplitAdd:    207,
 		orderSplitRemove: 206,
 	},
-	keySQLDBProtection: {
-		feature:          core.FeatureAzureSQLDBProtection,
+	keyExocompute: {
+		feature:          core.FeatureExocompute,
 		orderAdd:         104,
 		orderRemove:      304,
 		orderSplitAdd:    209,
 		orderSplitRemove: 208,
 	},
-	keySQLMIProtection: {
-		feature:          core.FeatureAzureSQLMIProtection,
+	keySQLDBProtection: {
+		feature:          core.FeatureAzureSQLDBProtection,
 		orderAdd:         105,
 		orderRemove:      305,
 		orderSplitAdd:    211,
 		orderSplitRemove: 210,
+	},
+	keySQLMIProtection: {
+		feature:          core.FeatureAzureSQLMIProtection,
+		orderAdd:         106,
+		orderRemove:      306,
+		orderSplitAdd:    213,
+		orderSplitRemove: 212,
 	},
 }
 
