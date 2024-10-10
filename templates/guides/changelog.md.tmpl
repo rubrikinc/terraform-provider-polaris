@@ -4,6 +4,14 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.10.0-beta.5
+* The data_center_archival_location_amazon_s3 resource will now monitor and wait for the asynchronous CDM operations to
+  finish.
+
+## v0.10.0-beta.4
+* Fix a regression in the cloud native archival location resources. An extra level of structure in the RSC response
+  caused resource refreshes to fail.
+
 ## v0.10.0-beta.3
 * Add support for creating data center AWS accounts. [[docs](../resources/data_center_aws_account)]
 * Add support for creating data center Azure subscriptions. [[docs](../resources/data_center_azure_subscription)]
