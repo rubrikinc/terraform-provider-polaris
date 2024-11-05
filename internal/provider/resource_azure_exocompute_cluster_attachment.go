@@ -31,20 +31,23 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 )
 
-const awsExocomputeClusterAttachmentDescription = `
-The ´polaris_aws_exocompute_cluster_attachment´ resource attaches an AWS EKS cluster
-to a customer managed host Exocompute configuration, allowing RSC to use the cluster
-for Exocompute operations.
+const azureExocomputeClusterAttachmentDescription = `
+The ´polaris_azure_exocompute_cluster_attachment´ resource attaches an Azure AKS
+cluster to a customer managed host Exocompute configuration, allowing RSC to use
+the cluster for Exocompute operations.
+
+The cluster name must be specified as ´<resource-group>/<cluster-name>´, e.g.
+´my-resource-group/my-cluster´.
 `
 
-func resourceAwsExocomputeClusterAttachment() *schema.Resource {
+func resourceAzureExocomputeClusterAttachment() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: awsCreateAwsExocomputeClusterAttachment,
-		ReadContext:   awsReadAwsExocomputeClusterAttachment,
-		UpdateContext: awsUpdateAwsExocomputeClusterAttachment,
-		DeleteContext: awsDeleteAwsExocomputeClusterAttachment,
+		CreateContext: azureCreateAwsExocomputeClusterAttachment,
+		ReadContext:   azureReadAwsExocomputeClusterAttachment,
+		UpdateContext: azureUpdateAwsExocomputeClusterAttachment,
+		DeleteContext: azureDeleteAwsExocomputeClusterAttachment,
 
-		Description: description(awsExocomputeClusterAttachmentDescription),
+		Description: description(azureExocomputeClusterAttachmentDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -55,19 +58,8 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "AWS EKS cluster name. Changing this forces a new resource to be created.",
+				Description:  "Azure AKS cluster name. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
-			},
-			keyConnectionCommand: {
-				Type:     schema.TypeString,
-				Computed: true,
-				Description: "Kubernetes `kubectl` command used to create a connection between the cluster and RSC. " +
-					"See `" + keyManifest + "` for an alternative connection method.",
-			},
-			keyConnectionCommandExecuted: {
-				Type:        schema.TypeBool,
-				Computed:    true,
-				Description: "Whether the connection command has been executed or the manifest has been applied.",
 			},
 			keyExocomputeID: {
 				Type:     schema.TypeString,
@@ -84,14 +76,6 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 					"between the cluster and RSC. See `" + keyConnectionCommand + "` for an alternative connection " +
 					"method.",
 			},
-			keySetupYAML: {
-				Type:     schema.TypeString,
-				Computed: true,
-				Description: "Kubernetes manifest which can be passed to `kubectl apply` to create a connection " +
-					"between the cluster and RSC. See `" + keyConnectionCommand + "` for an alternative connection " +
-					"method. **Deprecated:** use `manifest` instead.",
-				Deprecated: "Use `manifest` instead.",
-			},
 			keyTokenRefresh: {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -102,8 +86,8 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 	}
 }
 
-func awsCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsCreateAwsExocomputeClusterAttachment")
+func azureCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] azureCreateAwsExocomputeClusterAttachment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -116,24 +100,11 @@ func awsCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 	}
 	clusterName := d.Get(keyClusterName).(string)
 
-	clusterID, info, err := exocompute.Wrap(client).ConnectAWSCluster(ctx, clusterName, configID)
+	clusterID, info, err := exocompute.Wrap(client).ConnectAzureCluster(ctx, clusterName, configID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-
-	// We initialize the resource fields in create instead of calling read,
-	// this is because the read operation will fail until the customer runs the
-	// connection command or applies the manifest.
-	if err := d.Set(keyConnectionCommand, info.Command); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keyConnectionCommandExecuted, false); err != nil {
-		return diag.FromErr(err)
-	}
 	if err := d.Set(keyManifest, info.Manifest); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keySetupYAML, info.Manifest); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -141,8 +112,8 @@ func awsCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 	return nil
 }
 
-func awsReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsReadAwsExocomputeClusterAttachment")
+func azureReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] azureReadAwsExocomputeClusterAttachment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -155,29 +126,20 @@ func awsReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Resour
 	}
 	clusterName := d.Get(keyClusterName).(string)
 
-	info, err := exocompute.Wrap(client).AWSClusterConnection(ctx, clusterName, configID)
+	info, err := exocompute.Wrap(client).AzureClusterConnection(ctx, clusterName, configID)
 	if err != nil {
 		log.Printf("[INFO] failed to read cluster attachment: %s", err)
 		return nil
 	}
-	if err := d.Set(keyConnectionCommand, info.Command); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keyConnectionCommandExecuted, true); err != nil {
-		return diag.FromErr(err)
-	}
 	if err := d.Set(keyManifest, info.Manifest); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keySetupYAML, info.Manifest); err != nil {
 		return diag.FromErr(err)
 	}
 
 	return nil
 }
 
-func awsUpdateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsUpdateAwsExocomputeClusterAttachment")
+func azureUpdateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] azureUpdateAwsExocomputeClusterAttachment")
 
 	if d.HasChange(keyTokenRefresh) {
 		return awsCreateAwsExocomputeClusterAttachment(ctx, d, m)
@@ -186,8 +148,8 @@ func awsUpdateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 	return nil
 }
 
-func awsDeleteAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsDeleteAwsExocomputeClusterAttachment")
+func azureDeleteAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	log.Print("[TRACE] azureDeleteAwsExocomputeClusterAttachment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -199,7 +161,7 @@ func awsDeleteAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 		return diag.FromErr(err)
 	}
 
-	if err := exocompute.Wrap(client).DisconnectAWSCluster(ctx, id); err != nil {
+	if err := exocompute.Wrap(client).DisconnectAzureCluster(ctx, id); err != nil {
 		return diag.FromErr(err)
 	}
 

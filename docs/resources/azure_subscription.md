@@ -12,13 +12,15 @@ description: |-
        for disaster recovery and long-term retention.
     2. cloud_native_archival_encryption - Allows cloud archival locations to be
        encrypted with customer managed keys.
-    3. cloud_native_protection - Provides protection for Azure virtual machines and
+    3. cloud_native_blob_protection - Provides protection for Azure Blob Storage
+       through the rules and policies of SLA Domains.
+    4. cloud_native_protection - Provides protection for Azure virtual machines and
        managed disks through the rules and policies of SLA Domains.
-    4. exocompute - Provides snapshot indexing, file recovery, storage tiering, and
+    5. exocompute - Provides snapshot indexing, file recovery, storage tiering, and
        application-consistent protection of Azure objects.
-    5. sql_db_protection - Provides centralized database backup management and
+    6. sql_db_protection - Provides centralized database backup management and
        recovery in an Azure SQL Database deployment.
-    6. sql_mi_protection - Provides centralized database backup management and
+    7. sql_mi_protection - Provides centralized database backup management and
        recovery for an Azure SQL Managed Instance deployment.
   Each feature's permissions field can be used with the polaris_azure_permissions
   data source to inform RSC about permission updates when the Terraform configuration
@@ -48,13 +50,15 @@ Any combination of different RSC features can be enabled for a subscription:
      for disaster recovery and long-term retention.
   2. `cloud_native_archival_encryption` - Allows cloud archival locations to be
      encrypted with customer managed keys.
-  3. `cloud_native_protection` - Provides protection for Azure virtual machines and
+  3. `cloud_native_blob_protection` - Provides protection for Azure Blob Storage
+     through the rules and policies of SLA Domains.
+  4. `cloud_native_protection` - Provides protection for Azure virtual machines and
      managed disks through the rules and policies of SLA Domains.
-  4. `exocompute` - Provides snapshot indexing, file recovery, storage tiering, and
+  5. `exocompute` - Provides snapshot indexing, file recovery, storage tiering, and
      application-consistent protection of Azure objects.
-  5. `sql_db_protection` - Provides centralized database backup management and
+  6. `sql_db_protection` - Provides centralized database backup management and
      recovery in an Azure SQL Database deployment.
-  6. `sql_mi_protection` - Provides centralized database backup management and
+  7. `sql_mi_protection` - Provides centralized database backup management and
      recovery for an Azure SQL Managed Instance deployment.
 
 Each feature's `permissions` field can be used with the `polaris_azure_permissions`

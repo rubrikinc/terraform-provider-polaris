@@ -124,7 +124,7 @@ func resourceAwsArchivalLocation() *schema.Resource {
 				ForceNew: true,
 				Description: "AWS region to store the snapshots in. If not specified, the snapshots will be " +
 					"stored in the same region as the workload. Changing this forces a new resource to be created.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				ValidateFunc: validation.StringInSlice(aws.AllRegionNames(), false),
 			},
 			keyStorageClass: {
 				Type:     schema.TypeString,

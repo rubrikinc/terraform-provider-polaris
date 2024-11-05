@@ -30,8 +30,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 )
 
 const resourceAzureExocomputeDescription = `
@@ -111,7 +112,7 @@ func resourceAzureExocompute() *schema.Resource {
 				ForceNew: true,
 				Description: "Azure region to run the exocompute service in. Should be specified in the standard " +
 					"Azure style, e.g. `eastus`. Changing this forces a new resource to be created.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
 			},
 			keySubnet: {
 				Type:     schema.TypeString,
@@ -164,20 +165,23 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		err = azure.Wrap(client).MapExocompute(ctx, azure.CloudAccountID(hostCloudAccountID), azure.CloudAccountID(accountID))
+		err = exocompute.Wrap(client).MapAWSCloudAccount(ctx, accountID, hostCloudAccountID)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 		d.SetId(appCloudAccountPrefix + accountID.String())
 	} else {
-		var exoConfig azure.ExoConfigFunc
+		var exoConfig exocompute.AzureConfigurationFunc
+		region := gqlazure.RegionFromName(d.Get(keyRegion).(string))
 		if podOverlayNetworkCIDR, ok := d.GetOk(keyPodOverlayNetworkCIDR); ok {
-			exoConfig = azure.ManagedWithOverlayNetwork(d.Get(keyRegion).(string), d.Get(keySubnet).(string),
+			exoConfig = exocompute.AzureManagedWithOverlayNetwork(region, d.Get(keySubnet).(string),
 				podOverlayNetworkCIDR.(string))
+		} else if subnet, ok := d.GetOk(keySubnet); ok {
+			exoConfig = exocompute.AzureManaged(region, subnet.(string))
 		} else {
-			exoConfig = azure.Managed(d.Get(keyRegion).(string), d.Get(keySubnet).(string))
+			exoConfig = exocompute.AzureBYOKCluster(region)
 		}
-		exoConfigID, err := azure.Wrap(client).AddExocomputeConfig(ctx, azure.CloudAccountID(accountID), exoConfig)
+		exoConfigID, err := exocompute.Wrap(client).AddAzureConfiguration(ctx, accountID, exoConfig)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -202,7 +206,7 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 			return diag.FromErr(err)
 		}
 
-		hostID, err := azure.Wrap(client).ExocomputeHostAccount(ctx, azure.CloudAccountID(appID))
+		hostID, err := exocompute.Wrap(client).AzureHostCloudAccount(ctx, appID)
 		if errors.Is(err, graphql.ErrNotFound) {
 			d.SetId("")
 			return nil
@@ -220,7 +224,7 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 			return diag.FromErr(err)
 		}
 
-		exoConfig, err := azure.Wrap(client).ExocomputeConfig(ctx, exoConfigID)
+		exoConfig, err := exocompute.Wrap(client).AzureConfigurationByID(ctx, exoConfigID)
 		if errors.Is(err, graphql.ErrNotFound) {
 			d.SetId("")
 			return nil
@@ -229,7 +233,7 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 			return diag.FromErr(err)
 		}
 
-		if err := d.Set(keyRegion, exoConfig.Region); err != nil {
+		if err := d.Set(keyRegion, exoConfig.Region.Name()); err != nil {
 			return diag.FromErr(err)
 		}
 		if err := d.Set(keySubnet, exoConfig.SubnetID); err != nil {
@@ -256,7 +260,7 @@ func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		err = azure.Wrap(client).UnmapExocompute(ctx, azure.CloudAccountID(appID))
+		err = exocompute.Wrap(client).UnmapAzureCloudAccount(ctx, appID)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -266,7 +270,7 @@ func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interf
 			return diag.FromErr(err)
 		}
 
-		err = azure.Wrap(client).RemoveExocomputeConfig(ctx, exoConfigID)
+		err = exocompute.Wrap(client).RemoveAzureConfiguration(ctx, exoConfigID)
 		if err != nil {
 			return diag.FromErr(err)
 		}

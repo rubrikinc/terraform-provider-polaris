@@ -5,11 +5,7 @@ subcategory: ""
 description: |-
   The polaris_aws_private_container_registry resource enables the private container
   registry (PCR) feature for the RSC customer account. This disables the standard
-  Rubrik container registry. Once PCR has been enabled, it can only be disabled by
-  Rubrik customer support.
-  !> Note: Creating a polaris_aws_private_container_registry resource enables
-     the PCR feature for the RSC customer account. Destroying the resource will not
-     disabled PCR, it can only be disabled by contacting Rubrik customer support.
+  Rubrik container registry.
   ~> Note: Even though the polaris_aws_private_container_registry resource ID
      is an RSC cloud account ID, there can only be a single PCR per RSC customer
      account.
@@ -70,12 +66,7 @@ description: |-
 
 The `polaris_aws_private_container_registry` resource enables the private container
 registry (PCR) feature for the RSC customer account. This disables the standard
-Rubrik container registry. Once PCR has been enabled, it can only be disabled by
-Rubrik customer support.
-
-!> **Note:** Creating a `polaris_aws_private_container_registry` resource enables
-   the PCR feature for the RSC customer account. Destroying the resource will not
-   disabled PCR, it can only be disabled by contacting Rubrik customer support.
+Rubrik container registry.
 
 ~> **Note:** Even though the `polaris_aws_private_container_registry` resource ID
    is an RSC cloud account ID, there can only be a single PCR per RSC customer

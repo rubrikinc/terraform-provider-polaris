@@ -294,7 +294,7 @@ func resourceDataCenterArchivalLocationAmazonS3() *schema.Resource {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "AWS region.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				ValidateFunc: validation.StringInSlice(aws.AllRegionNames(), false),
 			},
 			keyRetrievalTier: {
 				Type:     schema.TypeString,
