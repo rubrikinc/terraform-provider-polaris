@@ -152,6 +152,7 @@ resource "polaris_azure_subscription" "default" {
 
 - `cloud_native_archival` (Block List, Max: 1) Enable the RSC Cloud Native Archival feature for the Azure subscription. (see [below for nested schema](#nestedblock--cloud_native_archival))
 - `cloud_native_archival_encryption` (Block List, Max: 1) Enable the RSC Cloud Native Archival Encryption feature for the Azure subscription. (see [below for nested schema](#nestedblock--cloud_native_archival_encryption))
+- `cloud_native_blob_protection` (Block List, Max: 1) Enable the RSC Cloud Native Protection feature for Azure Blob Storage. (see [below for nested schema](#nestedblock--cloud_native_blob_protection))
 - `cloud_native_protection` (Block List, Max: 1) Enable the RSC Cloud Native Protection feature for the Azure subscription. (see [below for nested schema](#nestedblock--cloud_native_protection))
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed. Default value is `false`.
 - `exocompute` (Block List, Max: 1) Enable the RSC Exocompute feature for the Azure subscription. (see [below for nested schema](#nestedblock--exocompute))
@@ -203,6 +204,22 @@ Optional:
 Read-Only:
 
 - `status` (String) Status of the Cloud Native Archival Encryption feature.
+
+
+<a id="nestedblock--cloud_native_blob_protection"></a>
+### Nested Schema for `cloud_native_blob_protection`
+
+Required:
+
+- `regions` (Set of String) Azure regions that RSC will monitor for resources to protect according to SLA Domains. Should be specified in the standard Azure style, e.g. `eastus`.
+
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+
+Read-Only:
+
+- `status` (String) Status of the Cloud Native Blob Protection feature.
 
 
 <a id="nestedblock--cloud_native_protection"></a>
