@@ -5,12 +5,6 @@ subcategory: ""
 description: |-
   The polaris_data_center_archival_location_amazon_s3 resource create a data
   center archival location with the Amazon S3 storage type.
-  ~> The actual creation/deletion of a data center archival location runs
-     asynchronously on a CDM cluster outside the control of Terraform. This means
-     the operation can fail after Terraform has succeeded. A failure in the
-     asynchronous task which creates an archival location will result in the
-     archival location getting removed from RSC or its sync_status never
-     reaching the SYNCED state.
   ~> Before configuring the immutability settings, see
      KB article https://support.rubrik.com/s/article/000005468 or the Rubrik
      User Guide documentation to determine the proper immutability lock period.
@@ -22,13 +16,6 @@ description: |-
 
 The `polaris_data_center_archival_location_amazon_s3` resource create a data
 center archival location with the Amazon S3 storage type.
-
-~> The actual creation/deletion of a data center archival location runs
-   asynchronously on a CDM cluster outside the control of Terraform. This means
-   the operation can fail after Terraform has succeeded. A failure in the
-   asynchronous task which creates an archival location will result in the
-   archival location getting removed from RSC or its `sync_status` never
-   reaching the `SYNCED` state.
 
 ~> Before configuring the immutability settings, see
    [KB article](https://support.rubrik.com/s/article/000005468) or the Rubrik
