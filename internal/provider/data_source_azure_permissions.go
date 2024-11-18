@@ -159,6 +159,23 @@ func dataSourceAzurePermissions() *schema.Resource {
 					"`resource_group_not_data_actions` instead.",
 				Deprecated: "use `subscription_not_data_actions` and `resource_group_not_data_actions` instead.",
 			},
+			keyPermissionGroups: {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+					ValidateFunc: validation.StringInSlice([]string{
+						"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "CLOUD_CLUSTER_ES",
+						"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC",
+						"ENCRYPTION", "SQL_ARCHIVAL", "RECOVERY", "BACKUP_V2",
+					}, false),
+				},
+				Optional:      true,
+				ConflictsWith: []string{keyFeatures},
+				Description: "Permission groups for the RSC feature. Possible values are `BASIC`, " +
+					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `CLOUD_CLUSTER_ES`, `SNAPSHOT_PRIVATE_ACCESS`, " +
+					"`PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY` and " +
+					"`BACKUP_V2`.",
+			},
 			keyResourceGroupActions: {
 				Type: schema.TypeList,
 				Elem: &schema.Schema{
@@ -238,8 +255,13 @@ func azurePermissionsRead(ctx context.Context, d *schema.ResourceData, m any) di
 	// Check both feature and features.
 	var perms []azure.Permissions
 	var groups []azure.PermissionGroupWithVersion
-	if f := d.Get(keyFeature).(string); f != "" {
-		perms, groups, err = azure.Wrap(client).ScopedPermissions(ctx, core.Feature{Name: f})
+	if featureName := d.Get(keyFeature).(string); featureName != "" {
+		var permGroups []core.PermissionGroup
+		for _, permGroup := range d.Get(keyPermissionGroups).(*schema.Set).List() {
+			permGroups = append(permGroups, core.PermissionGroup(permGroup.(string)))
+		}
+		feature := core.Feature{Name: featureName, PermissionGroups: permGroups}
+		perms, groups, err = azure.Wrap(client).ScopedPermissions(ctx, feature)
 	} else {
 		var features []core.Feature
 		for _, f := range d.Get(keyFeatures).(*schema.Set).List() {

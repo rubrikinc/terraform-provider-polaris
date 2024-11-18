@@ -177,6 +177,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Archival feature. Possible values are `BASIC`, `ENCRYPTION` and `SQL_ARCHIVAL`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -200,6 +201,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Archival Encryption feature. Possible values are `BASIC` and `ENCRYPTION`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -219,6 +221,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Blob Protection feature. Possible values are `BASIC` and `RECOVERY`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 
 Read-Only:
@@ -235,6 +238,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `CLOUD_CLUSTER_ES` and `SNAPSHOT_PRIVATE_ACCESS`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -254,6 +258,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC`, `PRIVATE_ENDPOINTS` and `CUSTOMER_MANAGED_BASIC`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -273,6 +278,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the SQL DB Protection feature. Possible values are `BASIC`, `RECOVERY` and `BACKUP_V2`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 
 Read-Only:
@@ -289,6 +295,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the SQL MI Protection feature. Possible values are `BASIC`, `RECOVERY` and `BACKUP_V2`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 
 Read-Only:

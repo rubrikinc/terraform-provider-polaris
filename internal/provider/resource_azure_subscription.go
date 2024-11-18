@@ -98,6 +98,18 @@ func resourceAzureSubscription() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "ENCRYPTION", "SQL_ARCHIVAL",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the Cloud Native Archival feature. " +
+								"Possible values are `BASIC`, `ENCRYPTION` and `SQL_ARCHIVAL`.",
+						},
 						keyPermissions: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -172,6 +184,18 @@ func resourceAzureSubscription() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "ENCRYPTION",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the Cloud Native Archival Encryption " +
+								"feature. Possible values are `BASIC` and `ENCRYPTION`.",
+						},
 						keyPermissions: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -268,6 +292,18 @@ func resourceAzureSubscription() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "RECOVERY",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the Cloud Native Blob Protection feature. " +
+								"Possible values are `BASIC` and `RECOVERY`.",
+						},
 						keyPermissions: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -308,6 +344,20 @@ func resourceAzureSubscription() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "CLOUD_CLUSTER_ES",
+									"SNAPSHOT_PRIVATE_ACCESS",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the Cloud Native Protection feature. " +
+								"Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, " +
+								"`CLOUD_CLUSTER_ES` and `SNAPSHOT_PRIVATE_ACCESS`.",
+						},
 						keyPermissions: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -388,6 +438,18 @@ func resourceAzureSubscription() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the Exocompute feature. Possible values " +
+								"are `BASIC`, `PRIVATE_ENDPOINTS` and `CUSTOMER_MANAGED_BASIC`.",
+						},
 						keyPermissions: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -462,6 +524,18 @@ func resourceAzureSubscription() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "RECOVERY", "BACKUP_V2",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the SQL DB Protection feature. " +
+								"Possible values are `BASIC`, `RECOVERY` and `BACKUP_V2`.",
+						},
 						keyPermissions: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -502,6 +576,18 @@ func resourceAzureSubscription() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "RECOVERY", "BACKUP_V2",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the SQL MI Protection feature. " +
+								"Possible values are `BASIC`, `RECOVERY` and `BACKUP_V2`.",
+						},
 						keyPermissions: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -686,7 +772,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		opAddFeature = iota
 		opRemoveFeature
 		opTemporaryRemoveFeature
-		opUpdateRegions
+		opUpdateSubscription
 		opUpdatePermissions
 	)
 	type updateOp struct {
@@ -721,8 +807,10 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			oldBlock := oldBlock.([]any)[0].(map[string]any)
 			newBlock := newBlock.([]any)[0].(map[string]any)
 
-			switch {
-			case diffAzureFeatureResourceGroup(oldBlock, newBlock) || diffAzureUserAssignedManagedIdentity(oldBlock, newBlock):
+			// Changes in resource group or managed identity requires the
+			// feature to be re-onboarded, any other changes to the feature will
+			// be updated when the feature is re-onboarded.
+			if diffAzureFeatureResourceGroup(oldBlock, newBlock) || diffAzureUserAssignedManagedIdentity(oldBlock, newBlock) {
 				updates = append(updates, updateOp{
 					op:      opAddFeature,
 					feature: feature.feature,
@@ -734,15 +822,16 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 					feature: feature.feature,
 					order:   feature.orderSplitRemove,
 				})
-
-			case diffAzureFeatureRegions(oldBlock, newBlock):
+				continue
+			}
+			if diffAzureFeaturePermissionGroups(oldBlock, newBlock) || diffAzureFeatureRegions(oldBlock, newBlock) {
 				updates = append(updates, updateOp{
-					op:      opUpdateRegions,
+					op:      opUpdateSubscription,
 					feature: feature.feature,
 					block:   newBlock,
 				})
-
-			case newBlock[keyPermissions] != oldBlock[keyPermissions]:
+			}
+			if diffAzureFeaturePermissions(newBlock, oldBlock) {
 				updates = append(updates, updateOp{
 					op:      opUpdatePermissions,
 					feature: feature.feature,
@@ -775,7 +864,10 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			if err := azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), feature, deleteSnapshots); err != nil {
 				return diag.FromErr(err)
 			}
-		case opUpdateRegions:
+		case opUpdateSubscription:
+			for _, permGroup := range update.block[keyPermissionGroups].(*schema.Set).List() {
+				feature = feature.WithPermissionGroups(core.PermissionGroup(permGroup.(string)))
+			}
 			var opts []azure.OptionFunc
 			for _, region := range update.block[keyRegions].(*schema.Set).List() {
 				opts = append(opts, azure.Region(region.(string)))
@@ -816,6 +908,7 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 
+	// Remove features in the correct order.
 	featureKeys := make([]featureKey, 0, len(azureKeyFeatureMap))
 	for key, feature := range azureKeyFeatureMap {
 		featureKeys = append(featureKeys, featureKey{key: key, feature: feature.feature, order: feature.orderRemove})
@@ -830,7 +923,8 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		}
 
 		deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
-		if err = azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), featureKey.feature, deleteSnapshots); err != nil {
+		err = azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), featureKey.feature, deleteSnapshots)
+		if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 			return diag.FromErr(err)
 		}
 	}
@@ -945,6 +1039,12 @@ func addAzureFeature(ctx context.Context, d *schema.ResourceData, client *polari
 		opts = append(opts, miOpt)
 	}
 
+	if permGroups, ok := block[keyPermissionGroups]; ok {
+		for _, permGroup := range permGroups.(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(permGroup.(string)))
+		}
+	}
+
 	return azure.Wrap(client).AddSubscription(ctx, azure.Subscription(id, d.Get(keyTenantDomain).(string)), feature, opts...)
 }
 
@@ -956,6 +1056,12 @@ func updateAzureFeatureState(d *schema.ResourceData, key string, feature azure.F
 	} else {
 		block = make(map[string]any)
 	}
+
+	permGroups := schema.Set{F: schema.HashString}
+	for _, permGroup := range feature.PermissionGroups {
+		permGroups.Add(string(permGroup))
+	}
+	block[keyPermissionGroups] = &permGroups
 
 	regions := schema.Set{F: schema.HashString}
 	for _, region := range feature.Regions {
@@ -1056,6 +1162,37 @@ func diffAzureFeatureRegions(oldBlock, newBlock map[string]any) bool {
 	})
 
 	return !slices.Equal(oldRegions, newRegions)
+}
+
+// diffAzureFeaturePermissionGroups returns true if the old and new permission
+// groups blocks are different.
+func diffAzureFeaturePermissionGroups(oldBlock, newBlock map[string]any) bool {
+	var oldPermGroups []string
+	if v, ok := oldBlock[keyPermissionGroups]; ok {
+		for _, permGroup := range v.(*schema.Set).List() {
+			oldPermGroups = append(oldPermGroups, permGroup.(string))
+		}
+	}
+	var newPermGroups []string
+	if v, ok := newBlock[keyPermissionGroups]; ok {
+		for _, permGroup := range v.(*schema.Set).List() {
+			newPermGroups = append(newPermGroups, permGroup.(string))
+		}
+	}
+	slices.SortFunc(oldPermGroups, func(i, j string) int {
+		return cmp.Compare(i, j)
+	})
+	slices.SortFunc(newPermGroups, func(i, j string) int {
+		return cmp.Compare(i, j)
+	})
+
+	return !slices.Equal(oldPermGroups, newPermGroups)
+}
+
+// diffAzureFeaturePermissionGroups returns true if the old and new permissions
+// strings are different.
+func diffAzureFeaturePermissions(oldBlock, newBlock map[string]any) bool {
+	return oldBlock[keyPermissions].(string) != newBlock[keyPermissions].(string)
 }
 
 // diffAzureFeatureResourceGroup returns true if the old and new resource group
