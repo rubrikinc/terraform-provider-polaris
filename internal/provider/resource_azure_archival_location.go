@@ -133,7 +133,7 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				ForceNew: true,
 				Description: "Azure region to store the snapshots in. If not specified, the snapshots will be stored " +
 					"in the same region as the workload. Changing this forces a new resource to be created.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				ValidateFunc: validation.StringInSlice(azure.AllRegionNames(), false),
 			},
 			keyStorageAccountTags: {
 				Type: schema.TypeMap,
@@ -317,7 +317,7 @@ func customerKeyResource() *schema.Resource {
 				Required: true,
 				Description: "The region in which the key will be used. Regions without customer managed keys will " +
 					"use platform managed keys.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				ValidateFunc: validation.StringInSlice(azure.AllRegionNames(), false),
 			},
 			keyVaultName: {
 				Type:         schema.TypeString,

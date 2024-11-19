@@ -12,13 +12,15 @@ description: |-
        for disaster recovery and long-term retention.
     2. cloud_native_archival_encryption - Allows cloud archival locations to be
        encrypted with customer managed keys.
-    3. cloud_native_protection - Provides protection for Azure virtual machines and
+    3. cloud_native_blob_protection - Provides protection for Azure Blob Storage
+       through the rules and policies of SLA Domains.
+    4. cloud_native_protection - Provides protection for Azure virtual machines and
        managed disks through the rules and policies of SLA Domains.
-    4. exocompute - Provides snapshot indexing, file recovery, storage tiering, and
+    5. exocompute - Provides snapshot indexing, file recovery, storage tiering, and
        application-consistent protection of Azure objects.
-    5. sql_db_protection - Provides centralized database backup management and
+    6. sql_db_protection - Provides centralized database backup management and
        recovery in an Azure SQL Database deployment.
-    6. sql_mi_protection - Provides centralized database backup management and
+    7. sql_mi_protection - Provides centralized database backup management and
        recovery for an Azure SQL Managed Instance deployment.
   Each feature's permissions field can be used with the polaris_azure_permissions
   data source to inform RSC about permission updates when the Terraform configuration
@@ -48,13 +50,15 @@ Any combination of different RSC features can be enabled for a subscription:
      for disaster recovery and long-term retention.
   2. `cloud_native_archival_encryption` - Allows cloud archival locations to be
      encrypted with customer managed keys.
-  3. `cloud_native_protection` - Provides protection for Azure virtual machines and
+  3. `cloud_native_blob_protection` - Provides protection for Azure Blob Storage
+     through the rules and policies of SLA Domains.
+  4. `cloud_native_protection` - Provides protection for Azure virtual machines and
      managed disks through the rules and policies of SLA Domains.
-  4. `exocompute` - Provides snapshot indexing, file recovery, storage tiering, and
+  5. `exocompute` - Provides snapshot indexing, file recovery, storage tiering, and
      application-consistent protection of Azure objects.
-  5. `sql_db_protection` - Provides centralized database backup management and
+  6. `sql_db_protection` - Provides centralized database backup management and
      recovery in an Azure SQL Database deployment.
-  6. `sql_mi_protection` - Provides centralized database backup management and
+  7. `sql_mi_protection` - Provides centralized database backup management and
      recovery for an Azure SQL Managed Instance deployment.
 
 Each feature's `permissions` field can be used with the `polaris_azure_permissions`
@@ -173,6 +177,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Archival feature. Possible values are `BASIC`, `ENCRYPTION` and `SQL_ARCHIVAL`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -196,6 +201,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Archival Encryption feature. Possible values are `BASIC` and `ENCRYPTION`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -215,6 +221,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Blob Protection feature. Possible values are `BASIC` and `RECOVERY`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 
 Read-Only:
@@ -231,6 +238,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `CLOUD_CLUSTER_ES` and `SNAPSHOT_PRIVATE_ACCESS`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -250,6 +258,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC`, `PRIVATE_ENDPOINTS` and `CUSTOMER_MANAGED_BASIC`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -269,6 +278,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the SQL DB Protection feature. Possible values are `BASIC`, `RECOVERY` and `BACKUP_V2`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 
 Read-Only:
@@ -285,6 +295,7 @@ Required:
 
 Optional:
 
+- `permission_groups` (Set of String) Permission groups to assign to the SQL MI Protection feature. Possible values are `BASIC`, `RECOVERY` and `BACKUP_V2`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 
 Read-Only:
