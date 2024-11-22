@@ -70,6 +70,10 @@ Required:
 - `arn` (String) AWS role ARN.
 - `key` (String) RSC artifact key for the AWS role.
 
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `id` field of the `polaris_aws_cnp_permissions` data source.
+
 
 <a id="nestedblock--instance_profile"></a>
 ### Nested Schema for `instance_profile`
