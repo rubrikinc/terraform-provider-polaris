@@ -4,6 +4,19 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.10.0-beta.8
+* Add the `permissions` field to the `polaris_aws_cnp_account_attachments` resource. The `permissions` field should be
+  used with the `id` field of the `polaris_aws_cnp_permissions` data source to trigger an update of the resource
+  whenever the permissions changes. This update will move the RSC cloud account from the missing permissions state.
+
+## v0.10.0-beta.7
+* Add support for Azure Bring Your Own Kubernetes Exocompute, also known as BYOK and customer managed Exocompute.
+  [[docs](../resources/azure_exocompute_cluster_attachment)], [[docs](../resources/azure_private_container_registry)]
+
+## v0.10.0-beta.6
+* Add support for the Cloud Native Blob Protection feature to the `polaris_azure_subscription` resource.
+  [[docs](../resources/azure_subscription#nested-schema-for-cloud_native_blob_protection)]
+
 ## v0.10.0-beta.5
 * The data_center_archival_location_amazon_s3 resource will now monitor and wait for the asynchronous CDM operations to
   finish.
