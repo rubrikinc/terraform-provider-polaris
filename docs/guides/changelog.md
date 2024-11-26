@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.10.0-beta.9
+* Fix a bug in the `polaris_aws_cnp_permissions` data source where the data source's id was accidentally calculated for
+  the complete set of role keys and not just the specified role key.
+
 ## v0.10.0-beta.8
 * Add the `permissions` field to the `polaris_aws_cnp_account_attachments` resource. The `permissions` field should be
   used with the `id` field of the `polaris_aws_cnp_permissions` data source to trigger an update of the resource
