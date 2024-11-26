@@ -16,8 +16,9 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
   dynamic "role" {
     for_each = aws_iam_role.role
     content {
-      key = role.key
-      arn = role.value["arn"]
+      key         = role.key
+      arn         = role.value["arn"]
+      permissions = data.polaris_aws_cnp_permissions.permissions[role.key].id
     }
   }
 }
