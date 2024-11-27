@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v0.10.0-beta.10
+* Fix a type conversion error in the `polaris_aws_exocompute` resource. During a prior refactoring, a new type was
+  introduced for AWS regions to handle cases where the same region has multiple representations in the GraphQL API.
+  This type was not properly converted in all code paths.
+
 ## v0.10.0-beta.9
 * Fix a bug in the `polaris_aws_cnp_permissions` data source where the data source's id was accidentally calculated for
   the complete set of role keys and not just the specified role key.
@@ -22,8 +27,8 @@ page_title: "Changelog"
   [[docs](../resources/azure_subscription#nested-schema-for-cloud_native_blob_protection)]
 
 ## v0.10.0-beta.5
-* The data_center_archival_location_amazon_s3 resource will now monitor and wait for the asynchronous CDM operations to
-  finish.
+* The `data_center_archival_location_amazon_s3` resource will now monitor and wait for the asynchronous CDM operations
+  to finish.
 
 ## v0.10.0-beta.4
 * Fix a regression in the cloud native archival location resources. An extra level of structure in the RSC response
