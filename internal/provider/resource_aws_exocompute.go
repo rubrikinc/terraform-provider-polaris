@@ -259,7 +259,7 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 
-		if err := d.Set(keyRegion, exoConfig.Region); err != nil {
+		if err := d.Set(keyRegion, exoConfig.Region.Name()); err != nil {
 			return diag.FromErr(err)
 		}
 
@@ -274,8 +274,8 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 		subnets := schema.Set{F: schema.HashString}
-		subnets.Add(exoConfig.Subnet1)
-		subnets.Add(exoConfig.Subnet2)
+		subnets.Add(exoConfig.Subnet1.ID)
+		subnets.Add(exoConfig.Subnet2.ID)
 		if err := d.Set(keySubnets, &subnets); err != nil {
 			return diag.FromErr(err)
 		}
