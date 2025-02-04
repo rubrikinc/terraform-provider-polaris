@@ -1,3 +1,23 @@
+// Copyright 2024 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 package provider
 
 import (
@@ -23,13 +43,13 @@ func resourceCDMBootstrap() *schema.Resource {
 		DeleteContext: resourceCDMBootstrapDelete,
 
 		Schema: map[string]*schema.Schema{
-			"admin_email": {
+			keyAdminEmail: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "The Rubrik cluster sends messages for the admin account to this email address.",
 				ValidateFunc: validateEmailAddress,
 			},
-			"admin_password": {
+			keyAdminPassword: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Sensitive:    true,
@@ -42,7 +62,7 @@ func resourceCDMBootstrap() *schema.Resource {
 				Description:  "Unique name to assign to the Rubrik cluster.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"cluster_nodes": {
+			keyClusterNodes: {
 				Type:     schema.TypeMap,
 				Required: true,
 				Elem: &schema.Schema{
@@ -167,13 +187,11 @@ func resourceCDMBootstrap() *schema.Resource {
 func resourceCDMBootstrapCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCreate")
 
-	client, err := m.(*client).cdm()
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	client := cdm.NewBootstrapClientWithLogger(true, m.(*client).logger)
 
 	var timeout time.Duration
 	if t, ok := d.GetOk("timeout"); ok {
+		var err error
 		timeout, err = time.ParseDuration(t.(string))
 		if err != nil {
 			return diag.FromErr(err)
@@ -205,13 +223,11 @@ func resourceCDMBootstrapCreate(ctx context.Context, d *schema.ResourceData, m i
 func resourceCDMBootstrapRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapRead")
 
-	client, err := m.(*client).cdm()
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	client := cdm.NewBootstrapClientWithLogger(true, m.(*client).logger)
 
 	var timeout time.Duration
 	if t, ok := d.GetOk("timeout"); ok {
+		var err error
 		timeout, err = time.ParseDuration(t.(string))
 		if err != nil {
 			return diag.FromErr(err)
@@ -241,9 +257,11 @@ func resourceCDMBootstrapUpdate(ctx context.Context, d *schema.ResourceData, m i
 	return resourceCDMBootstrapRead(ctx, d, m)
 }
 
-// Once a Cluster has been bootstrapped it can not be deleted.
+// Once a Cluster has been bootstrapped it cannot be un-bootstrapped, delete
+// simply removes the resource from the local state.
 func resourceCDMBootstrapDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapDelete")
+	d.SetId("")
 	return nil
 }
 
