@@ -163,7 +163,7 @@ func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m in
 	if err := d.Set(keyArchivalLocationID, targetMapping.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
+	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyContainerName, targetTemplate.ContainerNamePrefix); err != nil {
