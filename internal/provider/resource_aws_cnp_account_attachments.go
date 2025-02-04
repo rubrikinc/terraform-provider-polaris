@@ -155,7 +155,7 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 	}
 	features := &schema.Set{F: schema.HashString}
 	for _, feature := range account.Features {
-		features.Add(string(feature.Feature.Name))
+		features.Add(feature.Feature.Name)
 	}
 
 	// Request the cloud account artifacts.
@@ -176,9 +176,14 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
+	oldRoles := make(map[string]string)
+	for _, role := range d.Get(keyRole).(*schema.Set).List() {
+		block := role.(map[string]any)
+		oldRoles[block[keyKey].(string)] = block[keyPermissions].(string)
+	}
 	rolesAttr := &schema.Set{F: schema.HashResource(roleResource())}
 	for key, arn := range roles {
-		rolesAttr.Add(map[string]any{keyKey: key, keyARN: arn})
+		rolesAttr.Add(map[string]any{keyKey: key, keyARN: arn, keyPermissions: oldRoles[key]})
 	}
 	if err := d.Set(keyRole, rolesAttr); err != nil {
 		return diag.FromErr(err)
@@ -199,6 +204,7 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	var features []core.Feature
 	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
 		features = append(features, core.Feature{Name: feature.(string)})
@@ -214,9 +220,17 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		roles[block[keyKey].(string)] = block[keyARN].(string)
 	}
 
-	// Request artifacts be added to account.
+	// Update artifacts.
 	_, err = aws.Wrap(client).AddAccountArtifacts(ctx, aws.CloudAccountID(id), features, profiles, roles)
 	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Notify RSC about updated permissions. Note, we notify RSC that the
+	// permissions for all features have been updated without checking the
+	// permissions hash, the reason is there is no way for us to connect a role
+	// to a feature.
+	if err := aws.Wrap(client).PermissionsUpdated(ctx, id, nil); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -264,6 +278,14 @@ func roleResource() *schema.Resource {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "AWS role ARN.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyPermissions: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "Permissions updated signal. When this field changes, the provider will notify " +
+					"RSC that the permissions for the feature has been updated. Use this field with the `id` field " +
+					"of the `polaris_aws_cnp_permissions` data source.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},

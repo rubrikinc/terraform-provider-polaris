@@ -132,11 +132,13 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
   dynamic "role" {
     for_each = aws_iam_role.role
     content {
-      key = role.key
-      arn = role.value["arn"]
+      key         = role.key
+      arn         = role.value["arn"]
+      permissions = data.polaris_aws_cnp_permissions.permissions[role.key].id
     }
   }
 }
 ```
 This attaches the instance profiles and roles to the AWS account in RSC. When Terraform processes this resource the AWS
-account will transition from the connecting state to the connected state in the RSC UI.
+account will transition from the connecting state to the connected state in the RSC UI. Note the `permissions` field of
+the `polaris_aws_cnp_account_attachments` resource requires version `0.10.0-beta.8` or later of the provider.

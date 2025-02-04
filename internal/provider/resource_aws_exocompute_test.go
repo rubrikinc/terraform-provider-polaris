@@ -49,6 +49,7 @@ resource "polaris_aws_account" "default" {
 			"BASIC",
 			"RSC_MANAGED_CLUSTER",
 		]
+
 		regions = [
 			"us-east-2",
 		]
@@ -105,7 +106,7 @@ func TestAccPolarisAWSExocompute_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_exocompute.default", "vpc_id", account.Exocompute.VPCID),
 				resource.TestCheckResourceAttr("polaris_aws_exocompute.default", "polaris_managed", "true"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_exocompute.default", "subnets.*", account.Exocompute.Subnets[0].ID),
-				resource.TestCheckTypeSetElemAttr("polaris_aws_exocompute.default", "subnets.*", account.Exocompute.Subnets[0].ID),
+				resource.TestCheckTypeSetElemAttr("polaris_aws_exocompute.default", "subnets.*", account.Exocompute.Subnets[1].ID),
 			),
 		}},
 	})

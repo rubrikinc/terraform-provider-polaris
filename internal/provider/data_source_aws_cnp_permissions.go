@@ -171,6 +171,10 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(err)
 	}
 
+	// The hash is created from customer managed policies and managed policies
+	// matching the role key.
+	hash := sha256.New()
+
 	var customerPoliciesAttr []map[string]string
 	for _, policy := range customerPolicies {
 		if roleKey == policy.Artifact {
@@ -179,6 +183,10 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 				keyName:    policy.Name,
 				keyPolicy:  policy.Policy,
 			})
+			hash.Write([]byte(policy.Artifact))
+			hash.Write([]byte(policy.Feature.Name))
+			hash.Write([]byte(policy.Name))
+			hash.Write([]byte(policy.Policy))
 		}
 	}
 	if err := d.Set(keyCustomerManagedPolicies, customerPoliciesAttr); err != nil {
@@ -189,23 +197,14 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	for _, policy := range managedPolicies {
 		if roleKey == policy.Artifact {
 			managedPoliciesAttr = append(managedPoliciesAttr, policy.Name)
+			hash.Write([]byte(policy.Artifact))
+			hash.Write([]byte(policy.Name))
 		}
 	}
 	if err := d.Set(keyManagedPolicies, managedPoliciesAttr); err != nil {
 		return diag.FromErr(err)
 	}
 
-	hash := sha256.New()
-	for _, policy := range customerPolicies {
-		hash.Write([]byte(policy.Artifact))
-		hash.Write([]byte(policy.Feature.Name))
-		hash.Write([]byte(policy.Name))
-		hash.Write([]byte(policy.Policy))
-	}
-	for _, policy := range managedPolicies {
-		hash.Write([]byte(policy.Artifact))
-		hash.Write([]byte(policy.Name))
-	}
 	d.SetId(fmt.Sprintf("%x", hash.Sum(nil)))
 
 	return nil

@@ -23,7 +23,6 @@ package provider
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"strings"
 
@@ -31,8 +30,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 )
 
 const (
@@ -85,7 +86,10 @@ func resourceAwsArchivalLocation() *schema.Resource {
 				ValidateFunc: validation.StringLenBetween(1, 19),
 			},
 			keyBucketTags: {
-				Type:        schema.TypeMap,
+				Type: schema.TypeMap,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 				Optional:    true,
 				Description: "AWS bucket tags. Each tag will be added to the bucket created by RSC.",
 			},
@@ -120,7 +124,7 @@ func resourceAwsArchivalLocation() *schema.Resource {
 				ForceNew: true,
 				Description: "AWS region to store the snapshots in. If not specified, the snapshots will be " +
 					"stored in the same region as the workload. Changing this forces a new resource to be created.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				ValidateFunc: validation.StringInSlice(aws.AllRegionNames(), false),
 			},
 			keyStorageClass: {
 				Type:     schema.TypeString,
@@ -146,27 +150,21 @@ func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	// Lookup and parse the cloud account ID argument. Note, if this argument
-	// changes the resource will be recreated.
-	accountID, err := uuid.Parse(d.Get(keyAccountID).(string))
+	cloudAccountID, err := uuid.Parse(d.Get(keyAccountID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	bucketPrefix := d.Get(keyBucketPrefix).(string)
-	kmsMasterKey := d.Get(keyKMSMasterKey).(string)
-	name := d.Get(keyName).(string)
-	region := d.Get(keyRegion).(string)
-	storageClass := d.Get(keyStorageClass).(string)
-
-	bucketTags, err := fromBucketTags(d.Get(keyBucketTags).(map[string]any))
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Create the AWS archival location.
-	targetMappingID, err := aws.Wrap(client).CreateStorageSetting(
-		ctx, aws.CloudAccountID(accountID), name, bucketPrefix, storageClass, region, kmsMasterKey, bucketTags)
+	// Create the AWS cloud native archival location.
+	targetMappingID, err := archival.Wrap(client).CreateAWSStorageSetting(ctx, gqlarchival.CreateAWSStorageSettingParams{
+		CloudAccountID: cloudAccountID,
+		Name:           d.Get(keyName).(string),
+		BucketPrefix:   d.Get(keyBucketPrefix).(string),
+		StorageClass:   d.Get(keyStorageClass).(string),
+		Region:         aws.RegionFromName(d.Get(keyRegion).(string)).ToRegionEnum(),
+		KmsMasterKey:   d.Get(keyKMSMasterKey).(string),
+		BucketTags:     toAWSBucketTags(d.Get(keyBucketTags).(map[string]any)),
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -189,9 +187,9 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
-	// Read the AWS archival location. If the archival location isn't found we
-	// remove it from the local state and return.
-	targetMapping, err := aws.Wrap(client).TargetMappingByID(ctx, targetMappingID)
+	// Read the AWS cloud native archival location. If the archival location
+	// isn't found we remove it from the local state and return.
+	targetMapping, err := archival.Wrap(client).AWSTargetMappingByID(ctx, targetMappingID)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -200,28 +198,29 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetMapping.BucketPrefix, implicitPrefix)); err != nil {
+	targetTemplate := targetMapping.TargetTemplate
+	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetTemplate.BucketPrefix, implicitPrefix)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
+	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyKMSMasterKey, targetMapping.KMSMasterKey); err != nil {
+	if err := d.Set(keyKMSMasterKey, targetTemplate.KMSMasterKey); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyLocationTemplate, targetMapping.LocTemplate); err != nil {
+	if err := d.Set(keyLocationTemplate, targetTemplate.LocTemplate); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyRegion, targetMapping.Region); err != nil {
+	if err := d.Set(keyRegion, targetTemplate.Region.Name()); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageClass, targetMapping.StorageClass); err != nil {
+	if err := d.Set(keyStorageClass, targetTemplate.StorageClass); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyBucketTags, toBucketTags(targetMapping.BucketTags)); err != nil {
+	if err := d.Set(keyBucketTags, fromAWSBucketTags(targetTemplate.BucketTags)); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -241,17 +240,17 @@ func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	kmsMasterKey := d.Get(keyKMSMasterKey).(string)
-	name := d.Get(keyName).(string)
-	storageClass := d.Get(keyStorageClass).(string)
-	bucketTags, err := fromBucketTags(d.Get(keyBucketTags).(map[string]any))
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	bucketTags := toAWSBucketTags(d.Get(keyBucketTags).(map[string]any))
 
-	// Update the AWS archival location. Note, the API doesn't support updating
-	// all arguments.
-	err = aws.Wrap(client).UpdateStorageSetting(ctx, targetMappingID, name, storageClass, kmsMasterKey, bucketTags)
+	// Update the AWS cloud native archival location. Note, the API doesn't
+	// support updating all arguments.
+	err = archival.Wrap(client).UpdateAWSStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAWSStorageSettingParams{
+		Name:                d.Get(keyName).(string),
+		StorageClass:        d.Get(keyStorageClass).(string),
+		KmsMasterKey:        d.Get(keyKMSMasterKey).(string),
+		DeleteAllBucketTags: bucketTags == nil,
+		BucketTags:          bucketTags,
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -272,35 +271,34 @@ func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	// Delete the AWS archival location.
-	if err := aws.Wrap(client).DeleteTargetMapping(ctx, targetMappingID); err != nil {
+	// Delete the AWS cloud native archival location.
+	if err := archival.Wrap(client).DeleteTargetMapping(ctx, targetMappingID); err != nil {
 		return diag.FromErr(err)
 	}
 
 	return nil
 }
 
-// fromBucketTags converts from the bucket tags argument to a standard
-// string-to-string map.
-func fromBucketTags(bucketTags map[string]any) (map[string]string, error) {
-	tags := make(map[string]string, len(bucketTags))
-	for key, value := range bucketTags {
-		value, ok := value.(string)
-		if !ok {
-			return nil, fmt.Errorf("bucket tag value for key %q is not a string", key)
-		}
-		tags[key] = value
+// toAWSBucketTags converts from the bucket tags argument to an archival AWS
+// tags. If the bucket tags argument is empty, nil is returned.
+func toAWSBucketTags(tags map[string]any) *gqlarchival.AWSTags {
+	tagList := make([]aws.Tag, 0, len(tags))
+	for key, value := range tags {
+		tagList = append(tagList, aws.Tag{Key: key, Value: value.(string)})
+	}
+	if len(tagList) > 0 {
+		return &gqlarchival.AWSTags{TagList: tagList}
 	}
 
-	return tags, nil
+	return nil
 }
 
-// toBucketTags converts to the bucket tags argument from a standard
-// string-to-string map.
-func toBucketTags(tags map[string]string) map[string]any {
+// fromAWSBucketTags converts to the bucket tags argument from a slice of AWS
+// tags.
+func fromAWSBucketTags(tags []aws.Tag) map[string]any {
 	bucketTags := make(map[string]any, len(tags))
-	for key, value := range tags {
-		bucketTags[key] = value
+	for _, tag := range tags {
+		bucketTags[tag.Key] = tag.Value
 	}
 
 	return bucketTags

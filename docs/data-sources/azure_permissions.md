@@ -10,6 +10,7 @@ description: |-
     * AZURE_SQL_MI_PROTECTION
     * CLOUD_NATIVE_ARCHIVAL
     * CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
+    * CLOUD_NATIVE_BLOB_PROTECTION
     * CLOUD_NATIVE_PROTECTION
     * EXOCOMPUTE
   See the subscription ../resources/azure_subscription resource for more information
@@ -40,6 +41,7 @@ supported for Azure subscriptions are:
   * `AZURE_SQL_MI_PROTECTION`
   * `CLOUD_NATIVE_ARCHIVAL`
   * `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`
+  * `CLOUD_NATIVE_BLOB_PROTECTION`
   * `CLOUD_NATIVE_PROTECTION`
   * `EXOCOMPUTE`
 
@@ -99,8 +101,9 @@ resource "polaris_azure_subscription" "subscription" {
 
 ### Optional
 
-- `feature` (String) RSC feature. Note that the feature name must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`.
-- `features` (Set of String, Deprecated) RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`. **Deprecated:** use `feature` instead.
+- `feature` (String) RSC feature. Note that the feature name must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`.
+- `features` (Set of String, Deprecated) RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`. **Deprecated:** use `feature` instead.
+- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `CLOUD_CLUSTER_ES`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY` and `BACKUP_V2`.
 
 ### Read-Only
 

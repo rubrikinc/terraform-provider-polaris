@@ -1,7 +1,7 @@
-data "polaris_aws_account" "example" {
+data "polaris_aws_account" "account" {
   name = "example"
 }
 
-output "example_aws_account" {
-  value = data.polaris_aws_account.example
+output "cloud_account_id" {
+  value = data.polaris_aws_account.account.id
 }

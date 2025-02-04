@@ -28,18 +28,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/pcr"
 )
 
 const awsPrivateContainerRegistryDescription = `
 The ´polaris_aws_private_container_registry´ resource enables the private container
 registry (PCR) feature for the RSC customer account. This disables the standard
-Rubrik container registry. Once PCR has been enabled, it can only be disabled by
-Rubrik customer support.
-
-!> **Note:** Creating a ´polaris_aws_private_container_registry´ resource enables
-   the PCR feature for the RSC customer account. Destroying the resource will not
-   disabled PCR, it can only be disabled by contacting Rubrik customer support.
+Rubrik container registry.
 
 ~> **Note:** Even though the ´polaris_aws_private_container_registry´ resource ID
    is an RSC cloud account ID, there can only be a single PCR per RSC customer
@@ -152,7 +147,7 @@ func awsCreatePrivateContainerRegistry(ctx context.Context, d *schema.ResourceDa
 	}
 	nativeID := d.Get(keyNativeID).(string)
 	url := d.Get(keyURL).(string)
-	if err := aws.Wrap(client).SetPrivateContainerRegistry(ctx, aws.CloudAccountID(id), url, nativeID); err != nil {
+	if err := pcr.Wrap(client).SetAWSRegistry(ctx, id, nativeID, url); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -161,7 +156,6 @@ func awsCreatePrivateContainerRegistry(ctx context.Context, d *schema.ResourceDa
 	return nil
 }
 
-// There is no API endpoint to read the state of the private container registry.
 func awsReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadPrivateContainerRegistry")
 
@@ -174,15 +168,15 @@ func awsReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceData
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	nativeID, url, err := aws.Wrap(client).PrivateContainerRegistry(ctx, aws.CloudAccountID(id))
+	pcrInfo, err := pcr.Wrap(client).AWSRegistry(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set(keyNativeID, nativeID); err != nil {
+	if err := d.Set(keyNativeID, pcrInfo.PCRDetails.ImagePullDetails.NativeID); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyURL, url); err != nil {
+	if err := d.Set(keyURL, pcrInfo.PCRDetails.RegistryURL); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -203,16 +197,30 @@ func awsUpdatePrivateContainerRegistry(ctx context.Context, d *schema.ResourceDa
 	}
 	nativeID := d.Get(keyNativeID).(string)
 	url := d.Get(keyURL).(string)
-	if err := aws.Wrap(client).SetPrivateContainerRegistry(ctx, aws.CloudAccountID(id), url, nativeID); err != nil {
+	if err := pcr.Wrap(client).SetAWSRegistry(ctx, id, nativeID, url); err != nil {
 		return diag.FromErr(err)
 	}
 
 	return nil
 }
 
-// There is no API endpoint to remove the private container registry from the
-// account.
 func awsDeletePrivateContainerRegistry(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsDeletePrivateContainerRegistry")
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	id, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	if err := pcr.Wrap(client).RemoveRegistry(ctx, id); err != nil {
+		return diag.FromErr(err)
+	}
+
+	d.SetId("")
 	return nil
 }

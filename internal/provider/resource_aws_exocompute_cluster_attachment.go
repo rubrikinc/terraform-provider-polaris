@@ -28,7 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 )
 
 const awsExocomputeClusterAttachmentDescription = `
@@ -61,8 +61,13 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 			keyConnectionCommand: {
 				Type:     schema.TypeString,
 				Computed: true,
-				Description: "`kubectl` command which can be executed inside the EKS cluster to create a connection " +
-					"between the cluster and RSC. See " + keySetupYAML + " for an alternative connection method.",
+				Description: "Kubernetes `kubectl` command used to create a connection between the cluster and RSC. " +
+					"See `" + keyManifest + "` for an alternative connection method.",
+			},
+			keyConnectionCommandExecuted: {
+				Type:        schema.TypeBool,
+				Computed:    true,
+				Description: "Whether the connection command has been executed or the manifest has been applied.",
 			},
 			keyExocomputeID: {
 				Type:     schema.TypeString,
@@ -72,18 +77,26 @@ func resourceAwsExocomputeClusterAttachment() *schema.Resource {
 					"created.",
 				ValidateFunc: validation.IsUUID,
 			},
+			keyManifest: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "Kubernetes manifest which can be passed to `kubectl apply` to create a connection " +
+					"between the cluster and RSC. See `" + keyConnectionCommand + "` for an alternative connection " +
+					"method.",
+			},
 			keySetupYAML: {
 				Type:     schema.TypeString,
 				Computed: true,
-				Description: "K8s spec which can be passed to `kubectl apply` inside the EKS cluster to create a " +
-					"connection between the cluster and RSC. See " + keyConnectionCommand + " for an alternative " +
-					"connection method.",
+				Description: "Kubernetes manifest which can be passed to `kubectl apply` to create a connection " +
+					"between the cluster and RSC. See `" + keyConnectionCommand + "` for an alternative connection " +
+					"method. **Deprecated:** use `manifest` instead.",
+				Deprecated: "Use `manifest` instead.",
 			},
 			keyTokenRefresh: {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Description: "To force a refresh of the token, part of the connection command, increase the value " +
-					"of this field. The token is valid for 24 hours.",
+				Description: "To force a refresh of the authentication token, part of the connection command and " +
+					"manifest, increase the value of this field. The token is valid for 24 hours.",
 			},
 		},
 	}
@@ -103,14 +116,24 @@ func awsCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 	}
 	clusterName := d.Get(keyClusterName).(string)
 
-	clusterID, kubectlCmd, setupYAML, err := aws.Wrap(client).AddClusterToExocomputeConfig(ctx, configID, clusterName)
+	clusterID, info, err := exocompute.Wrap(client).ConnectAWSCluster(ctx, clusterName, configID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyConnectionCommand, kubectlCmd); err != nil {
+
+	// We initialize the resource fields in create instead of calling read,
+	// this is because the read operation will fail until the customer runs the
+	// connection command or applies the manifest.
+	if err := d.Set(keyConnectionCommand, info.Command); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keySetupYAML, setupYAML); err != nil {
+	if err := d.Set(keyConnectionCommandExecuted, false); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyManifest, info.Manifest); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keySetupYAML, info.Manifest); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -121,8 +144,35 @@ func awsCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 func awsReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] awsReadAwsExocomputeClusterAttachment")
 
-	// There is no way to read the state of the cluster attachment without
-	// updating the token.
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	configID, err := uuid.Parse(d.Get(keyExocomputeID).(string))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	clusterName := d.Get(keyClusterName).(string)
+
+	info, err := exocompute.Wrap(client).AWSClusterConnection(ctx, clusterName, configID)
+	if err != nil {
+		log.Printf("[INFO] failed to read cluster attachment: %s", err)
+		return nil
+	}
+	if err := d.Set(keyConnectionCommand, info.Command); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyConnectionCommandExecuted, true); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyManifest, info.Manifest); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keySetupYAML, info.Manifest); err != nil {
+		return diag.FromErr(err)
+	}
+
 	return nil
 }
 
@@ -149,7 +199,7 @@ func awsDeleteAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 		return diag.FromErr(err)
 	}
 
-	if err := aws.Wrap(client).RemoveExocomputeCluster(ctx, id); err != nil {
+	if err := exocompute.Wrap(client).DisconnectAWSCluster(ctx, id); err != nil {
 		return diag.FromErr(err)
 	}
 
