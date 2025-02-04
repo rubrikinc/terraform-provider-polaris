@@ -30,8 +30,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 )
 
 const resourceAWSExocomputeDescription = `
@@ -131,7 +132,7 @@ func resourceAwsExocompute() *schema.Resource {
 				ConflictsWith: []string{"host_account_id"},
 				Description: "AWS region to run the Exocompute instance in. Changing this forces a new resource " +
 					"to be created.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				ValidateFunc: validation.StringInSlice(gqlaws.AllRegionNames(), false),
 			},
 			keySubnets: {
 				Type: schema.TypeSet,
@@ -178,7 +179,7 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		err = aws.Wrap(client).MapExocompute(ctx, aws.CloudAccountID(hostID), aws.CloudAccountID(accountID))
+		err = exocompute.Wrap(client).MapAWSCloudAccount(ctx, accountID, hostID)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -195,19 +196,19 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 
 		// Note that Managed and Unmanaged below refer to whether the security
 		// groups are managed by RSC or not, and not the cluster.
-		var config aws.ExoConfigFunc
+		var config exocompute.AWSConfigurationFunc
 		switch {
 		case region != "" && vpcID != "" && len(subnets) > 0 && clusterSecurityGroupID != "" && nodeSecurityGroupID != "":
-			config = aws.Unmanaged(region, vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID)
+			config = exocompute.AWSUnmanaged(gqlaws.RegionFromName(region), vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID)
 		case region != "" && vpcID != "" && len(subnets) > 0:
-			config = aws.Managed(region, vpcID, subnets)
+			config = exocompute.AWSManaged(gqlaws.RegionFromName(region), vpcID, subnets)
 		case region != "":
-			config = aws.BYOKCluster(region)
+			config = exocompute.AWSBYOKCluster(gqlaws.RegionFromName(region))
 		default:
 			return diag.Errorf("invalid exocompute configuration")
 		}
 
-		id, err := aws.Wrap(client).AddExocomputeConfig(ctx, aws.CloudAccountID(accountID), config)
+		id, err := exocompute.Wrap(client).AddAWSConfiguration(ctx, accountID, config)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -232,7 +233,7 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		hostID, err := aws.Wrap(client).ExocomputeHostAccount(ctx, aws.CloudAccountID(appID))
+		hostID, err := exocompute.Wrap(client).AWSHostCloudAccount(ctx, appID)
 		if errors.Is(err, graphql.ErrNotFound) {
 			d.SetId("")
 			return nil
@@ -249,7 +250,7 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		exoConfig, err := aws.Wrap(client).ExocomputeConfig(ctx, configID)
+		exoConfig, err := exocompute.Wrap(client).AWSConfigurationByID(ctx, configID)
 		if errors.Is(err, graphql.ErrNotFound) {
 			d.SetId("")
 			return nil
@@ -258,7 +259,7 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 
-		if err := d.Set(keyRegion, exoConfig.Region); err != nil {
+		if err := d.Set(keyRegion, exoConfig.Region.Name()); err != nil {
 			return diag.FromErr(err)
 		}
 
@@ -269,13 +270,12 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		if err := d.Set(keyNodeSecurityGroupID, exoConfig.NodeSecurityGroupID); err != nil {
 			return diag.FromErr(err)
 		}
-		if err := d.Set(keyPolarisManaged, exoConfig.ManagedByRubrik); err != nil {
+		if err := d.Set(keyPolarisManaged, exoConfig.IsManagedByRubrik); err != nil {
 			return diag.FromErr(err)
 		}
 		subnets := schema.Set{F: schema.HashString}
-		for _, subnet := range exoConfig.Subnets {
-			subnets.Add(subnet.ID)
-		}
+		subnets.Add(exoConfig.Subnet1.ID)
+		subnets.Add(exoConfig.Subnet2.ID)
 		if err := d.Set(keySubnets, &subnets); err != nil {
 			return diag.FromErr(err)
 		}
@@ -301,7 +301,7 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		if err = aws.Wrap(client).UnmapExocompute(ctx, aws.CloudAccountID(appID)); err != nil {
+		if err = exocompute.Wrap(client).UnmapAWSCloudAccount(ctx, appID); err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
@@ -309,7 +309,7 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		if err = aws.Wrap(client).RemoveExocomputeConfig(ctx, configID); err != nil {
+		if err = exocompute.Wrap(client).RemoveAWSConfiguration(ctx, configID); err != nil {
 			return diag.FromErr(err)
 		}
 	}

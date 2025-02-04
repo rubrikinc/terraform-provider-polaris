@@ -38,8 +38,9 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
   dynamic "role" {
     for_each = aws_iam_role.role
     content {
-      key = role.key
-      arn = role.value["arn"]
+      key         = role.key
+      arn         = role.value["arn"]
+      permissions = data.polaris_aws_cnp_permissions.permissions[role.key].id
     }
   }
 }
@@ -69,6 +70,10 @@ Required:
 
 - `arn` (String) AWS role ARN.
 - `key` (String) RSC artifact key for the AWS role.
+
+Optional:
+
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `id` field of the `polaris_aws_cnp_permissions` data source.
 
 
 <a id="nestedblock--instance_profile"></a>
