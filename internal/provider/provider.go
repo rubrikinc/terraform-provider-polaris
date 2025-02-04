@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/cdm"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -86,9 +85,10 @@ func Provider() *schema.Provider {
 			keyPolarisAzurePrivateContainerRegistry:      resourceAzurePrivateContainerRegistry(),
 			keyPolarisAzureServicePrincipal:              resourceAzureServicePrincipal(),
 			keyPolarisAzureSubscription:                  resourceAzureSubscription(),
-			"polaris_cdm_bootstrap":                      resourceCDMBootstrap(),
-			"polaris_cdm_bootstrap_cces_aws":             resourceCDMBootstrapCCESAWS(),
-			"polaris_cdm_bootstrap_cces_azure":           resourceCDMBootstrapCCESAzure(),
+			keyPolarisCDMBootstrap:                       resourceCDMBootstrap(),
+			keyPolarisCDMBootstrapCCESAWS:                resourceCDMBootstrapCCESAWS(),
+			keyPolarisCDMBootstrapCCESAzure:              resourceCDMBootstrapCCESAzure(),
+			keyPolarisCDMRegistration:                    resourceCDMRegistration(),
 			keyPolarisCustomRole:                         resourceCustomRole(),
 			keyPolarisDataCenterAWSAccount:               resourceDataCenterAWSAccount(),
 			keyPolarisDataCenterAzureSubscription:        resourceDataCenterAzureSubscription(),
@@ -138,7 +138,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 }
 
 type client struct {
-	cdmClient     *cdm.BootstrapClient
+	logger        log.Logger
 	polarisClient *polaris.Client
 	polarisErr    error
 }
@@ -166,18 +166,10 @@ func newClient(credentials string, cacheParams polaris.CacheParams) (*client, er
 	}
 
 	return &client{
-		cdmClient:     cdm.NewBootstrapClientWithLogger(true, logger),
+		logger:        logger,
 		polarisClient: polarisClient,
 		polarisErr:    accountErr,
 	}, nil
-}
-
-func (c *client) cdm() (*cdm.BootstrapClient, error) {
-	if c.cdmClient == nil {
-		return nil, errors.New("CDM functionality has not been configured")
-	}
-
-	return c.cdmClient, nil
 }
 
 func (c *client) polaris() (*polaris.Client, error) {
