@@ -5,16 +5,10 @@ page_title: "Upgrade Guide: beta release"
 # Upgrade Guide Beta Release
 ~> **Note:** The beta provider might have breaking changes between beta releases.
 
-## RSC provider changes
-The latest beta release introduces changes to the following data sources and resources:
-  * Add 3 new fields to the `polaris` provider configuration: `token_cache`, `token_cache_dir` and `token_cache_secret`.
-    The fields can be used to control the authentication token cache through the provider configuration. The cache can
-    already be controlled through environment variables.
-  * Update the  `credentials` field of the `polaris` provider configuration to accept, in addition to what it already
-    accepts, the content of an RSC service account credentials file.
-
-Deprecated fields will be removed in a future release, please migrate your configurations to use the replacement field
-as soon as possible.
+## Before upgrading
+Review the [changelog](changelog.md) to understand what has changed and what might cause an issue when upgrading.
+Note, deprecated resources and fields will be removed in a future release, please migrate your configurations to use the
+recommended replacements as soon as possible.
 
 ## How to upgrade
 Start by assigning the version of the latest beta release to the `version` field in the `provider` block of the

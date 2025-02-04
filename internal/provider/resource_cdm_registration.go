@@ -32,7 +32,7 @@ import (
 )
 
 const resourceCDMRegistrationDescription = `
-The ´polaris_cdm_registration´ resource registers Rubrik clusters with the
+The ´polaris_cdm_registration´ resource registers a Rubrik cluster with the
 Rubrik Security Cloud (RSC).
 
 ~> **Note:** The Terraform provider can only register clusters, it cannot
@@ -46,7 +46,7 @@ func resourceCDMRegistration() *schema.Resource {
 		ReadContext:   resourceCDMRegistrationRead,
 		DeleteContext: resourceCDMRegistrationDelete,
 
-		Description: resourceCDMRegistrationDescription,
+		Description: description(resourceCDMRegistrationDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
