@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0-beta.2
+* Fix a bug in the `polaris_azure_excompute` resource where an AWS GraphQL endpoint was incorrectly called when mapping
+  an Azure cloud account.
+
 ## v1.1.0-beta.1
 * Add support for registering clusters with RSC using the `polaris_cdm_registration` resource.
   [[docs](../resources/cdm_registration)]
