@@ -165,7 +165,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		err = exocompute.Wrap(client).MapAWSCloudAccount(ctx, accountID, hostCloudAccountID)
+		err = exocompute.Wrap(client).MapAzureCloudAccount(ctx, accountID, hostCloudAccountID)
 		if err != nil {
 			return diag.FromErr(err)
 		}
