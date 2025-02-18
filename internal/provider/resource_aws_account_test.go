@@ -124,7 +124,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
-				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups.#", "0"),
 			),
 		}, {
 			Config: accountTwoRegions,
@@ -137,7 +137,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "2"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-west-2"),
-				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups.#", "0"),
 			),
 		}, {
 			Config: accountOneRegion,
@@ -149,7 +149,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
-				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups.#", "0"),
 			),
 		}},
 	})
@@ -177,7 +177,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
-				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups.#", "0"),
 			),
 		}, {
 			Config: crossAccountTwoRegions,
@@ -190,7 +190,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "2"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-west-2"),
-				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups.#", "0"),
 			),
 		}, {
 			Config: crossAccountOneRegion,
@@ -202,7 +202,7 @@ func TestAccPolarisAWSAccount_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.status", "connected"),
 				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.#", "1"),
 				resource.TestCheckTypeSetElemAttr("polaris_aws_account.default", "cloud_native_protection.0.regions.*", "us-east-2"),
-				resource.TestCheckNoResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups"),
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "cloud_native_protection.0.permission_groups.#", "0"),
 			),
 		}},
 	})
