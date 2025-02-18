@@ -74,7 +74,7 @@ func TestAccProviderCredentialsInEnv_basic(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
 			Config:      credentialsFromEnv,
-			ExpectError: regexp.MustCompile("RSC functionality has not been configured in the provider block: account not found, searched: default service account file and env"),
+			ExpectError: regexp.MustCompile("RSC functionality has not been configured: account not found, searched: default service account file and env"),
 		}},
 	})
 
@@ -98,7 +98,7 @@ func TestAccProviderCredentialsInEnv_basic(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
 			Config:      credentialsFromEnv,
-			ExpectError: regexp.MustCompile("RSC functionality has not been configured in the provider block: account not found, searched: default service account file and env"),
+			ExpectError: regexp.MustCompile("RSC functionality has not been configured: account not found, searched: default service account file and env"),
 		}},
 	})
 
@@ -122,7 +122,7 @@ func TestAccProviderCredentialsInEnv_basic(t *testing.T) {
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
 			Config:      credentialsFromEnv,
-			ExpectError: regexp.MustCompile("RSC functionality has not been configured in the provider block: account not found, searched: default service account file and env"),
+			ExpectError: regexp.MustCompile("RSC functionality has not been configured: account not found, searched: default service account file and env"),
 		}},
 	})
 }
