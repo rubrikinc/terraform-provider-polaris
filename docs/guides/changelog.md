@@ -4,8 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0-beta.3
+* The `polaris_cdm_bootstrap`, `polaris_cdm_bootstrap_cces_aws` and `polaris_cdm_bootstrap_cces_azure` resources now
+  captures any status information returned in response to a bootstrap request failing.
+
 ## v1.1.0-beta.2
-* Fix a bug in the `polaris_azure_excompute` resource where an AWS GraphQL endpoint was incorrectly called when mapping
+* Fix a bug in the `polaris_azure_exocompute` resource where an AWS GraphQL endpoint was incorrectly called when mapping
   an Azure cloud account.
 
 ## v1.1.0-beta.1
