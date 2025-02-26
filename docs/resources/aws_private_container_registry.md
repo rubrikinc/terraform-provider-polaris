@@ -59,7 +59,8 @@ description: |-
   }
   
   Where approvalStatus can be either ACCEPTED or REJECTED. bundleVersion is
-  the the bundle version being approved or rejected. bundleMetadata is optional.
+  the the bundle version being approved or rejected. eksVersion is the version
+  of the customer's EKS cluster.
 ---
 
 # polaris_aws_private_container_registry (Resource)
@@ -124,7 +125,8 @@ The input is an object with the following structure:
 }
 ```
 Where `approvalStatus` can be either `ACCEPTED` or `REJECTED`. `bundleVersion` is
-the the bundle version being approved or rejected. `bundleMetadata` is optional.
+the the bundle version being approved or rejected. `eksVersion` is the version
+of the customer's EKS cluster.
 
 ## Example Usage
 

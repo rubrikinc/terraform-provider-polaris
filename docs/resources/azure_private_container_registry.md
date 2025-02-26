@@ -39,14 +39,17 @@ description: |-
   json
   {
     "input": {
-      "approvalStatus": "APPROVED",
+      "approvalStatus": "ACCEPTED",
       "bundleVersion": "1.164",
+      "bundleMetadata": {
+        "eksVersion": "1.29"
+      }
     }
   }
   
-  Where approvalStatus can be either APPROVED or REJECTED. bundleVersion
-  is the the bundle version being approved or rejected. bundleMetadata is
-  optional.
+  Where approvalStatus can be either ACCEPTED or REJECTED. bundleVersion
+  is the the bundle version being approved or rejected. eksVersion is the
+  version of the customer's EKS cluster.
 ---
 
 # polaris_azure_private_container_registry (Resource)
@@ -90,14 +93,17 @@ The input is an object with the following structure:
 ```json
 {
   "input": {
-    "approvalStatus": "APPROVED",
+    "approvalStatus": "ACCEPTED",
     "bundleVersion": "1.164",
+	"bundleMetadata": {
+      "eksVersion": "1.29"
+    }
   }
 }
 ```
-Where `approvalStatus` can be either `APPROVED` or `REJECTED`. `bundleVersion`
-is the the bundle version being approved or rejected. `bundleMetadata` is
-optional.
+Where `approvalStatus` can be either `ACCEPTED` or `REJECTED`. `bundleVersion`
+is the the bundle version being approved or rejected. `eksVersion` is the
+version of the customer's EKS cluster.
 
 
 
