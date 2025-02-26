@@ -50,7 +50,7 @@ description: |-
   json
   {
     "input": {
-      "approvalStatus": "APPROVED",
+      "approvalStatus": "ACCEPTED",
       "bundleVersion": "1.164",
       "bundleMetadata": {
         "eksVersion": "1.29"
@@ -58,7 +58,7 @@ description: |-
     }
   }
   
-  Where approvalStatus can be either APPROVED or REJECTED. bundleVersion is
+  Where approvalStatus can be either ACCEPTED or REJECTED. bundleVersion is
   the the bundle version being approved or rejected. bundleMetadata is optional.
 ---
 
@@ -115,7 +115,7 @@ The input is an object with the following structure:
 ```json
 {
   "input": {
-    "approvalStatus": "APPROVED",
+    "approvalStatus": "ACCEPTED",
     "bundleVersion": "1.164",
     "bundleMetadata": {
       "eksVersion": "1.29"
@@ -123,7 +123,7 @@ The input is an object with the following structure:
   }
 }
 ```
-Where `approvalStatus` can be either `APPROVED` or `REJECTED`. `bundleVersion` is
+Where `approvalStatus` can be either `ACCEPTED` or `REJECTED`. `bundleVersion` is
 the the bundle version being approved or rejected. `bundleMetadata` is optional.
 
 ## Example Usage
