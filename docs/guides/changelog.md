@@ -5,6 +5,8 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.0.0
+* Fix a bug in the `polaris_aws_exocompute` resource. The `subnets` field was erroneously populated with subnets even
+  when the Exocompute configuration did not contain any subnets.
 * Fix a regression in the `polaris_azure_archival_location` data source. An extra level of structure in the RSC response
   caused reading the data source to fail.
 * Fix a type conversion error in the `polaris_aws_exocompute` resource. During a prior refactoring, a new type was
