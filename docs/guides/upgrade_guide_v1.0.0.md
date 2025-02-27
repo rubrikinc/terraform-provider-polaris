@@ -75,8 +75,102 @@ similar to this will occur:
 }
 ```
 This is expected, since the `cloud_native_blob_protection` is not in the Terraform configuration. Do NOT apply the diff,
-instead add the `cloud_native_blob_protection` definition that Terraform wants to remove to your configuration. When the
-configuration has been updated correctly, there will be no diff when running `terraform plan`.
+instead add the `cloud_native_blob_protection` definition that Terraform wants to remove to your configuration. Note,
+the Cloud Native Blob Protection feature requires additional role definitions and role assignments. By passing the
+`CLOUD_NATIVE_BLOB_PROTECTION` value to the `polaris_azure_permissions` data source, and using the
+`polaris_azure_permissions` data source as input to the `azurerm_role_definition` and `azurerm_role_assignment`
+resources, the required role definitions and role assignments will be created, see
+[here](https://github.com/rubrikinc/terraform-provider-polaris-examples/blob/d2b0bf0b5458b3cd3ebcc6ab401a43f4daa89cd7/azure/main.tf#L72),
+[here](https://github.com/rubrikinc/terraform-provider-polaris-examples/blob/d2b0bf0b5458b3cd3ebcc6ab401a43f4daa89cd7/azure/main.tf#L107)
+and
+[here](https://github.com/rubrikinc/terraform-provider-polaris-examples/blob/d2b0bf0b5458b3cd3ebcc6ab401a43f4daa89cd7/azure/main.tf#L123)
+in the example.
+
+After updating the `polaris_azure_permissions` data source and adding the `cloud_native_blob_protection` nested schema
+to the configuration, a diff similar to this will occur:
+```hcl
+# azurerm_role_assignment.resource_group["CLOUD_NATIVE_BLOB_PROTECTION"] will be created
++ resource "azurerm_role_assignment" "resource_group" {
+  + id                               = (known after apply)
+  + name                             = (known after apply)
+  + principal_id                     = "32bbeaba-92b4-4162-9a69-0d39753b82c7"
+  + principal_type                   = (known after apply)
+  + role_definition_id               = (known after apply)
+  + role_definition_name             = (known after apply)
+  + scope                            = "/subscriptions/18677418-4fe7-43db-baf1-99646d610dd6/resourceGroups/terraform-azure-permissions-example"
+  + skip_service_principal_aad_check = (known after apply)
+}
+
+# azurerm_role_assignment.subscription["CLOUD_NATIVE_BLOB_PROTECTION"] will be created
++ resource "azurerm_role_assignment" "subscription" {
+  + id                               = (known after apply)
+  + name                             = (known after apply)
+  + principal_id                     = "32bbeaba-92b4-4162-9a69-0d39753b82c7"
+  + principal_type                   = (known after apply)
+  + role_definition_id               = (known after apply)
+  + role_definition_name             = (known after apply)
+  + scope                            = "/subscriptions/18677418-4fe7-43db-baf1-99646d610dd6"
+  + skip_service_principal_aad_check = (known after apply)
+}
+
+# azurerm_role_definition.resource_group["CLOUD_NATIVE_BLOB_PROTECTION"] will be created
++ resource "azurerm_role_definition" "resource_group" {
+  + assignable_scopes           = (known after apply)
+  + id                          = (known after apply)
+  + name                        = "Terraform3 - Azure Permissions Example Resource Group Level - CLOUD_NATIVE_BLOB_PROTECTION"
+  + role_definition_id          = (known after apply)
+  + role_definition_resource_id = (known after apply)
+  + scope                       = "/subscriptions/18677418-4fe7-43db-baf1-99646d610dd6/resourceGroups/terraform-azure-permissions-example"
+}
+
+# azurerm_role_definition.subscription["CLOUD_NATIVE_BLOB_PROTECTION"] will be created
++ resource "azurerm_role_definition" "subscription" {
+  + assignable_scopes           = (known after apply)
+  + id                          = (known after apply)
+  + name                        = "Terraform3 - Azure Permissions Example Subscription Level - CLOUD_NATIVE_BLOB_PROTECTION"
+  + role_definition_id          = (known after apply)
+  + role_definition_resource_id = (known after apply)
+  + scope                       = "/subscriptions/18677418-4fe7-43db-baf1-99646d610dd6"
+
+  + permissions {
+      + actions      = [
+          + "Microsoft.Insights/Metrics/Read",
+          + "Microsoft.Resources/subscriptions/resourceGroups/read",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/delete",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/read",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/write",
+          + "Microsoft.Storage/storageAccounts/delete",
+          + "Microsoft.Storage/storageAccounts/read",
+          + "Microsoft.Storage/storageAccounts/write",
+        ]
+      + data_actions = [
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/manageOwnership/action",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/modifyPermissions/action",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/read",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write",
+          + "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write",
+        ]
+      + not_actions  = []
+    }
+}
+
+# polaris_azure_subscription.subscription will be updated in-place
+~ resource "polaris_azure_subscription" "subscription" {
+    id                          = "60967b1e-20cb-4b61-acf6-454a55599b82"
+    # (4 unchanged attributes hidden)
+
+  ~ cloud_native_blob_protection {
+      + permissions       = "b7dba84b286e4088f12b3a90852483add05b68f17be9cdab5e5eac055b6584d6"
+        # (3 unchanged attributes hidden)
+    }
+
+    # (1 unchanged block hidden)
+}
+```
+If the only thing changing is the `permissions` field of the nested `cloud_native_blob_protection` schema, along with
+new Cloud Native Blob Protection role definitions and role assignments, the diff can be applied without any issues.
 
 ### New Permissions Field
 A new `permissions` field has been added to the nested `role` schema of the `polaris_aws_cnp_account_attachments`
