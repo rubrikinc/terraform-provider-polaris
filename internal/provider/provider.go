@@ -96,6 +96,7 @@ func Provider() *schema.Provider {
 			"polaris_gcp_project":                        resourceGcpProject(),
 			"polaris_gcp_service_account":                resourceGcpServiceAccount(),
 			keyPolarisRoleAssignment:                     resourceRoleAssignment(),
+			keyPolarisTagRule:                            resourceTagRule(),
 			keyPolarisUser:                               resourceUser(),
 		},
 
@@ -115,6 +116,7 @@ func Provider() *schema.Provider {
 			"polaris_gcp_permissions":             dataSourceGcpPermissions(),
 			keyPolarisRole:                        dataSourceRole(),
 			keyPolarisRoleTemplate:                dataSourceRoleTemplate(),
+			keyPolarisTagRule:                     dataSourceTagRule(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
