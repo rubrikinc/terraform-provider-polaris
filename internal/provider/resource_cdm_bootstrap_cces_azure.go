@@ -63,12 +63,13 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 			},
 			keyClusterNodes: {
 				Type:     schema.TypeMap,
-				Required: true,
+				Optional: true,
 				Elem: &schema.Schema{
 					Type:         schema.TypeString,
 					ValidateFunc: validation.IsIPAddress,
 				},
-				Description: "The node name and IP formatted as a map.",
+				ExactlyOneOf: []string{keyNodeConfig},
+				Description:  "The node name and IP formatted as a map.",
 			},
 			"connection_string": {
 				Type:         schema.TypeString,
@@ -102,6 +103,13 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				MinItems:    1,
 				Description: "The search domain that the DNS Service will use to resolve hostnames that are not fully qualified.",
 			},
+			keyEnableEncryption: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "When bootstrapping a Cloud Cluster this value must be `false`. Only kept for backwards compatibility. ",
+				Deprecated:  "Not used. Only kept for backwards compatibility.",
+			},
 			"enable_immutability": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -119,6 +127,16 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				Required:     true,
 				Description:  "Subnet mask assigned to the management network.",
 				ValidateFunc: validation.IsIPAddress,
+			},
+			keyNodeConfig: {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type:         schema.TypeString,
+					ValidateFunc: validation.IsIPAddress,
+				},
+				Description: "The node name and IP formatted as a map.",
+				Deprecated:  "Use `cluster_nodes` instead. Only kept for backwards compatibility.",
 			},
 			"ntp_server1_name": {
 				Type:         schema.TypeString,
@@ -172,12 +190,11 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				Description:  "Symmetric key type for NTP server #2.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"timeout": {
+			keyTimeout: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				Default:      "4m",
 				Description:  "The time to wait to establish a connection the Rubrik cluster before returning an error (defaults to `4m`).",
-				ValidateFunc: validateDuration,
+				ValidateFunc: validateBackwardsCompatibleTimeout,
 			},
 			"wait_for_completion": {
 				Type:        schema.TypeBool,
@@ -200,13 +217,9 @@ func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.Resource
 
 	client := cdm.NewBootstrapClientWithLogger(true, m.(*client).logger)
 
-	var timeout time.Duration
-	if t, ok := d.GetOk("timeout"); ok {
-		var err error
-		timeout, err = time.ParseDuration(t.(string))
-		if err != nil {
-			return diag.FromErr(err)
-		}
+	timeout, err := toBackwardsCompatibleTimeout(d)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
 	config := toClusterConfig(d)
@@ -238,13 +251,9 @@ func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceDa
 
 	client := cdm.NewBootstrapClientWithLogger(true, m.(*client).logger)
 
-	var timeout time.Duration
-	if t, ok := d.GetOk("timeout"); ok {
-		var err error
-		timeout, err = time.ParseDuration(t.(string))
-		if err != nil {
-			return diag.FromErr(err)
-		}
+	timeout, err := toBackwardsCompatibleTimeout(d)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
 	config := toClusterConfig(d)
