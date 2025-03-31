@@ -215,8 +215,6 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAzureCreate")
 
-	client := cdm.NewBootstrapClientWithLogger(true, m.(*client).logger)
-
 	timeout, err := toBackwardsCompatibleTimeout(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -231,13 +229,15 @@ func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.Resource
 	if len(config.ClusterNodes) == 0 {
 		return diag.Errorf("At least one cluster node is required")
 	}
+
 	nodeIP := config.ClusterNodes[0].ManagementIP
-	requestID, err := client.BootstrapCluster(ctx, nodeIP, config, timeout)
+	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
+	requestID, err := client.BootstrapCluster(ctx, config, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	if d.Get("wait_for_completion").(bool) {
-		if err := client.WaitForBootstrap(ctx, nodeIP, requestID, timeout); err != nil {
+		if err := client.WaitForBootstrap(ctx, requestID, timeout, bootstrapWaitTime); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -249,8 +249,6 @@ func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.Resource
 func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAzureRead")
 
-	client := cdm.NewBootstrapClientWithLogger(true, m.(*client).logger)
-
 	timeout, err := toBackwardsCompatibleTimeout(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -260,8 +258,10 @@ func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceDa
 	if len(config.ClusterNodes) == 0 {
 		return diag.Errorf("At least one cluster node is required")
 	}
+
 	nodeIP := config.ClusterNodes[0].ManagementIP
-	isBootstrapped, err := client.IsBootstrapped(ctx, nodeIP, timeout)
+	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
+	isBootstrapped, err := client.IsBootstrapped(ctx, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
