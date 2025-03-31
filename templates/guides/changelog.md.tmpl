@@ -4,6 +4,13 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0-beta.4
+* Improve CDM resource backwards compatibility. Align the CDM resource state of the RSC provider with the state of the
+  older Rubrik (CDM) provider. This simplifies the state migration of Terraform modules switching to the RSC provider.
+* Only add AWS subnets with names to the set of subnets. When using AWS Bring Your Own Kubernetes (BYOK) no subnets are
+  specified. In this case RSC will return an empty string in the API response.
+* Replace `APPROVED` with `ACCEPTED` in the Private Container Registry (PCR) documentation.
+
 ## v1.1.0-beta.3
 * The `polaris_cdm_bootstrap`, `polaris_cdm_bootstrap_cces_aws` and `polaris_cdm_bootstrap_cces_azure` resources now
   captures any status information returned in response to a bootstrap request failing.
