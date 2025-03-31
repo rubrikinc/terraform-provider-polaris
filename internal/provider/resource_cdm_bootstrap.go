@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	waitTime = 30 * time.Second
+	bootstrapWaitTime = 30 * time.Second
 )
 
 // This resource uses a template for its documentation due to a bug in the TF
@@ -217,12 +217,12 @@ func resourceCDMBootstrapCreate(ctx context.Context, d *schema.ResourceData, m i
 
 	nodeIP := config.ClusterNodes[0].ManagementIP
 	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
-	requestID, err := client.BootstrapCluster(ctx, config, timeout, waitTime)
+	requestID, err := client.BootstrapCluster(ctx, config, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	if d.Get("wait_for_completion").(bool) {
-		if err := client.WaitForBootstrap(ctx, requestID, timeout, waitTime); err != nil {
+		if err := client.WaitForBootstrap(ctx, requestID, timeout, bootstrapWaitTime); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -246,7 +246,7 @@ func resourceCDMBootstrapRead(ctx context.Context, d *schema.ResourceData, m int
 
 	nodeIP := config.ClusterNodes[0].ManagementIP
 	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
-	isBootstrapped, err := client.IsBootstrapped(ctx, timeout, waitTime)
+	isBootstrapped, err := client.IsBootstrapped(ctx, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}

@@ -232,12 +232,12 @@ func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.Resource
 
 	nodeIP := config.ClusterNodes[0].ManagementIP
 	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
-	requestID, err := client.BootstrapCluster(ctx, config, timeout, waitTime)
+	requestID, err := client.BootstrapCluster(ctx, config, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	if d.Get("wait_for_completion").(bool) {
-		if err := client.WaitForBootstrap(ctx, requestID, timeout, waitTime); err != nil {
+		if err := client.WaitForBootstrap(ctx, requestID, timeout, bootstrapWaitTime); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -261,7 +261,7 @@ func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceDa
 
 	nodeIP := config.ClusterNodes[0].ManagementIP
 	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
-	isBootstrapped, err := client.IsBootstrapped(ctx, timeout, waitTime)
+	isBootstrapped, err := client.IsBootstrapped(ctx, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
