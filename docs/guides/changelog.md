@@ -4,6 +4,13 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0-beta.5
+* Add support for updating the `app_name` and `app_secret` fields of the `polaris_azure_service_principal` resource
+  without recreating the resource.
+* Add `feature` field to the `polaris_aws_account` data source.
+* Add support for looking up an AWS account in RSC using the `polaris_aws_account` data source by the RSC cloud account
+  ID.
+
 ## v1.1.0-beta.4
 * Improve CDM resource backwards compatibility. Align the CDM resource state of the RSC provider with the state of the
   older Rubrik (CDM) provider. This simplifies the state migration of Terraform modules switching to the RSC provider.

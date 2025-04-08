@@ -33,10 +33,12 @@ import (
 )
 
 const dataSourceAwsAccountDescription = `
-The ´polaris_aws_account´ data source is used to access information about an AWS account
-added to RSC. An AWS account is looked up using either the AWS account ID or the name.
+The ´polaris_aws_account´ data source is used to access information about an AWS
+account added to RSC. An AWS account is looked up using either the AWS account
+ID, the RSC cloud account ID or the name.
 
--> **Note:** The account name is the name of the AWS account as it appears in RSC.
+-> **Note:** The account name is the name of the AWS account as it appears in
+   RSC.
 `
 
 func dataSourceAwsAccount() *schema.Resource {
