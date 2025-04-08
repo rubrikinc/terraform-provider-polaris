@@ -3,17 +3,21 @@
 page_title: "polaris_aws_account Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_aws_account data source is used to access information about an AWS account
-  added to RSC. An AWS account is looked up using either the AWS account ID or the name.
-  -> Note: The account name is the name of the AWS account as it appears in RSC.
+  The polaris_aws_account data source is used to access information about an AWS
+  account added to RSC. An AWS account is looked up using either the AWS account
+  ID, the RSC cloud account ID or the name.
+  -> Note: The account name is the name of the AWS account as it appears in
+     RSC.
 ---
 
 # polaris_aws_account (Data Source)
 
-The `polaris_aws_account` data source is used to access information about an AWS account
-added to RSC. An AWS account is looked up using either the AWS account ID or the name.
+The `polaris_aws_account` data source is used to access information about an AWS
+account added to RSC. An AWS account is looked up using either the AWS account
+ID, the RSC cloud account ID or the name.
 
--> **Note:** The account name is the name of the AWS account as it appears in RSC.
+-> **Note:** The account name is the name of the AWS account as it appears in
+   RSC.
 
 ## Example Usage
 
@@ -33,8 +37,18 @@ output "cloud_account_id" {
 ### Optional
 
 - `account_id` (String) AWS account ID.
+- `cloud_account_id` (String) RSC cloud account ID (UUID).
 - `name` (String) AWS account name.
 
 ### Read-Only
 
+- `feature` (Set of Object) RSC feature with permission groups. (see [below for nested schema](#nestedatt--feature))
 - `id` (String) RSC cloud account ID (UUID).
+
+<a id="nestedatt--feature"></a>
+### Nested Schema for `feature`
+
+Read-Only:
+
+- `name` (String)
+- `permission_groups` (Set of String)
