@@ -163,9 +163,7 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 	for _, object := range objects {
-		if _, ok := idSet[object.ID]; ok {
-			delete(idSet, object.ID)
-		}
+		delete(idSet, object.ID)
 	}
 
 	for id := range idSet {
@@ -294,9 +292,7 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, domainID uui
 			return err
 		}
 		for _, object := range objects {
-			if _, ok := idSet[object.ID]; ok {
-				delete(idSet, object.ID)
-			}
+			delete(idSet, object.ID)
 		}
 		if len(idSet) == 0 {
 			return nil
@@ -325,9 +321,7 @@ func waitForUnassignment(ctx context.Context, client *polaris.Client, domainID u
 			return err
 		}
 		for _, object := range objects {
-			if _, ok := idSet[object.ID]; ok {
-				delete(idSet, object.ID)
-			}
+			delete(idSet, object.ID)
 		}
 		n := len(objectIDs) - len(idSet)
 		if len(idSet) == len(objectIDs) {
