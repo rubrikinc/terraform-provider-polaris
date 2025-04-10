@@ -93,6 +93,7 @@ func Provider() *schema.Provider {
 			keyPolarisDataCenterAWSAccount:               resourceDataCenterAWSAccount(),
 			keyPolarisDataCenterAzureSubscription:        resourceDataCenterAzureSubscription(),
 			keyPolarisDataCenterArchivalLocationAmazonS3: resourceDataCenterArchivalLocationAmazonS3(),
+			keyPolarisSLADomainAssignment:                resourceSLADomainAssignment(),
 			"polaris_gcp_project":                        resourceGcpProject(),
 			"polaris_gcp_service_account":                resourceGcpServiceAccount(),
 			keyPolarisRoleAssignment:                     resourceRoleAssignment(),
@@ -116,6 +117,7 @@ func Provider() *schema.Provider {
 			"polaris_gcp_permissions":             dataSourceGcpPermissions(),
 			keyPolarisRole:                        dataSourceRole(),
 			keyPolarisRoleTemplate:                dataSourceRoleTemplate(),
+			keyPolarisSLADomain:                   dataSourceSLADomain(),
 			keyPolarisTagRule:                     dataSourceTagRule(),
 		},
 

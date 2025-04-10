@@ -7,6 +7,8 @@ page_title: "Changelog"
 ## v1.1.0-beta.6
 * Add `polaris_tag_rule` data source and resource. The `polaris_tag_rule` resource is used to create and manage RSC tag
   rules. [[docs](../data-sources/tag_rule)]  [[docs](../resources/tag_rule)]
+* Add `polaris_sla_domain_assignment` resource. The `polaris_sla_domain_assignment` resource is used to assign an SLA
+  domain to a workload. [[docs](../resources/sla_domain_assignment)]
 
 ## v1.1.0-beta.5
 * Add support for updating the `app_name` and `app_secret` fields of the `polaris_azure_service_principal` resource
