@@ -82,18 +82,18 @@ func slaDomainRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
-	var slaDomain gqlsla.GlobalSLADomain
+	var slaDomain gqlsla.Domain
 	if id := d.Get(keyID).(string); id != "" {
 		id, err := uuid.Parse(id)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		slaDomain, err = sla.Wrap(client).GlobalSLADomainByID(ctx, id)
+		slaDomain, err = sla.Wrap(client).DomainByID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		slaDomain, err = sla.Wrap(client).GlobalSLADomainByName(ctx, d.Get(keyName).(string))
+		slaDomain, err = sla.Wrap(client).DomainByName(ctx, d.Get(keyName).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}

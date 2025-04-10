@@ -5,12 +5,28 @@ subcategory: ""
 description: |-
   The polaris_sla_domain_assignment resource is used to assign SLA domains to
   objects.
+  When an object is removed from the polaris_sla_domain_assignment resource, it
+  will inherit the SLA Domain of its parent object. If there is no parent object
+  or the parent object doesn't have an SLA Domain, the object will be unprotected.
+  Existing snapshots of the object will be retained according to the SLA Domain
+  inherited from the parent object. If the parent object doesn't have an SLA
+  Domain, the existing snapshots will be retained forever.
+  -> Note: As of now, it's not possible to assign objects as Do Not Protect.
 ---
 
 # polaris_sla_domain_assignment (Resource)
 
 The `polaris_sla_domain_assignment` resource is used to assign SLA domains to
 objects.
+
+When an object is removed from the `polaris_sla_domain_assignment` resource, it
+will inherit the SLA Domain of its parent object. If there is no parent object
+or the parent object doesn't have an SLA Domain, the object will be unprotected.
+Existing snapshots of the object will be retained according to the SLA Domain
+inherited from the parent object. If the parent object doesn't have an SLA
+Domain, the existing snapshots will be retained forever.
+
+-> **Note:** As of now, it's not possible to assign objects as Do Not Protect.
 
 ## Example Usage
 
@@ -35,7 +51,7 @@ resource "polaris_tag_rule" "azure_bronze" {
   tag_value   = "true"
 }
 
-# Assign the bronze SLA domain to the tag rules.
+# Assign the tag rules to the bronze SLA domain.
 resource "polaris_sla_domain_assignment" "bronze" {
   sla_domain_id = data.polaris_sla_domain.bronze.id
 
@@ -52,7 +68,7 @@ resource "polaris_sla_domain_assignment" "bronze" {
 ### Required
 
 - `object_ids` (Set of String) Object IDs (UUID).
-- `sla_domain_id` (String) SLA domain ID (UUID). Changing this forces a new resource to be created.
+- `sla_domain_id` (String) SLA domain ID (UUID).
 
 ### Read-Only
 

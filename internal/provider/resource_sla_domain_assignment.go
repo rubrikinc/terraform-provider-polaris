@@ -39,6 +39,15 @@ import (
 const resourceSLADomainAssignmentDescription = `
 The ´polaris_sla_domain_assignment´ resource is used to assign SLA domains to
 objects.
+
+When an object is removed from the ´polaris_sla_domain_assignment´ resource, it
+will inherit the SLA Domain of its parent object. If there is no parent object
+or the parent object doesn't have an SLA Domain, the object will be unprotected.
+Existing snapshots of the object will be retained according to the SLA Domain
+inherited from the parent object. If the parent object doesn't have an SLA
+Domain, the existing snapshots will be retained forever.
+
+-> **Note:** As of now, it's not possible to assign objects as Do Not Protect.
 `
 
 func resourceSLADomainAssignment() *schema.Resource {
@@ -68,8 +77,7 @@ func resourceSLADomainAssignment() *schema.Resource {
 			keySLADomainID: {
 				Type:         schema.TypeString,
 				Required:     true,
-				ForceNew:     true,
-				Description:  "SLA domain ID (UUID). Changing this forces a new resource to be created.",
+				Description:  "SLA domain ID (UUID).",
 				ValidateFunc: validation.IsUUID,
 			},
 		},
@@ -84,7 +92,7 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		return diag.FromErr(err)
 	}
 
-	slaID, err := uuid.Parse(d.Get(keySLADomainID).(string))
+	domainID, err := uuid.Parse(d.Get(keySLADomainID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -98,19 +106,20 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		objectIDs = append(objectIDs, id)
 	}
 
-	if err := sla.Wrap(client).AssignSLADomain(ctx, gqlsla.AssignSLAParams{
-		SLAID:               &slaID,
-		SLADomainAssignType: gqlsla.ProtectWithSLA,
-		ObjectIDs:           objectIDs,
+	if err := sla.Wrap(client).AssignDomain(ctx, gqlsla.AssignDomainParams{
+		DomainID:                  &domainID,
+		DomainAssignType:          gqlsla.ProtectWithSLA,
+		ObjectIDs:                 objectIDs,
+		ApplyToExistingSnapshots:  ptr(true),
+		ApplyToNonPolicySnapshots: ptr(false),
 	}); err != nil {
 		return diag.FromErr(err)
 	}
-
-	if err := waitForSLADomainAssignment(ctx, client, slaID, objectIDs); err != nil {
+	if err := waitForAssignment(ctx, client, domainID, objectIDs); err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.SetId(slaID.String())
+	d.SetId(domainID.String())
 	return nil
 }
 
@@ -122,32 +131,45 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 
-	slaID, err := uuid.Parse(d.Id())
+	domainID, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	// Make sure the SLA domain still exists.
-	_, err = sla.Wrap(client).GlobalSLADomainByID(ctx, slaID)
-	if errors.Is(err, graphql.ErrNotFound) {
-		d.SetId("")
-		return nil
-	}
-	if err != nil {
+	if _, err := sla.Wrap(client).DomainByID(ctx, domainID); err != nil {
+		if errors.Is(err, graphql.ErrNotFound) {
+			d.SetId("")
+			return nil
+		}
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keySLADomainID, slaID.String()); err != nil {
-		return diag.FromErr(err)
-	}
-
-	objects, err := sla.Wrap(client).GlobalSLADomainProtectedObjects(ctx, slaID, "")
-	if err != nil {
+	if err := d.Set(keySLADomainID, domainID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 
-	objectIDs := schema.Set{F: schema.HashString}
+	objectIDs := d.Get(keyObjectIDs).(*schema.Set)
+	idSet := make(map[uuid.UUID]struct{}, objectIDs.Len())
+	for _, id := range d.Get(keyObjectIDs).(*schema.Set).List() {
+		id, err := uuid.Parse(id.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		idSet[id] = struct{}{}
+	}
+
+	objects, err := sla.Wrap(client).DomainObjects(ctx, domainID, "")
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	for _, object := range objects {
-		objectIDs.Add(object.ID.String())
+		if _, ok := idSet[object.ID]; ok {
+			delete(idSet, object.ID)
+		}
+	}
+
+	for id := range idSet {
+		objectIDs.Remove(id.String())
 	}
 	if err := d.Set(keyObjectIDs, &objectIDs); err != nil {
 		return diag.FromErr(err)
@@ -164,40 +186,57 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		return diag.FromErr(err)
 	}
 
-	slaID, err := uuid.Parse(d.Id())
+	addObjectIDs, removeObjectIDs, totalObjectIDs, err := diffObjectIDs(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if d.HasChange(keyObjectIDs) {
-		addObjectIDs, removeObjectIDs, totalObjectIDs, err := diffObjectIDs(d)
+	domainID, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	newDomainID := domainID
+	if d.HasChange(keySLADomainID) {
+		newDomainID, err = uuid.Parse(d.Get(keySLADomainID).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		if len(addObjectIDs) > 0 {
-			if err := sla.Wrap(client).AssignSLADomain(ctx, gqlsla.AssignSLAParams{
-				SLAID:               &slaID,
-				SLADomainAssignType: gqlsla.ProtectWithSLA,
-				ObjectIDs:           addObjectIDs,
-			}); err != nil {
-				return diag.FromErr(err)
-			}
-		}
-		if len(removeObjectIDs) > 0 {
-			if err := sla.Wrap(client).AssignSLADomain(ctx, gqlsla.AssignSLAParams{
-				SLADomainAssignType: gqlsla.NoAssignment,
-				ObjectIDs:           removeObjectIDs,
-			}); err != nil {
-				return diag.FromErr(err)
-			}
-		}
+		// If the SLA domain ID has changed, we need to move the new objects
+		// and the objects to keep.
+		addObjectIDs = totalObjectIDs
+	}
 
-		if err := waitForSLADomainAssignment(ctx, client, slaID, totalObjectIDs); err != nil {
+	if len(addObjectIDs) > 0 {
+		if err := sla.Wrap(client).AssignDomain(ctx, gqlsla.AssignDomainParams{
+			DomainID:                  &newDomainID,
+			DomainAssignType:          gqlsla.ProtectWithSLA,
+			ObjectIDs:                 addObjectIDs,
+			ApplyToExistingSnapshots:  ptr(true),
+			ApplyToNonPolicySnapshots: ptr(false),
+		}); err != nil {
+			return diag.FromErr(err)
+		}
+		if err := waitForAssignment(ctx, client, newDomainID, addObjectIDs); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+	if len(removeObjectIDs) > 0 {
+		if err := sla.Wrap(client).AssignDomain(ctx, gqlsla.AssignDomainParams{
+			DomainAssignType:          gqlsla.NoAssignment,
+			ObjectIDs:                 removeObjectIDs,
+			ApplyToExistingSnapshots:  ptr(true),
+			ApplyToNonPolicySnapshots: ptr(false),
+		}); err != nil {
+			return diag.FromErr(err)
+		}
+		if err := waitForUnassignment(ctx, client, domainID, removeObjectIDs); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
+	d.SetId(newDomainID.String())
 	return nil
 }
 
@@ -209,7 +248,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		return diag.FromErr(err)
 	}
 
-	slaID, err := uuid.Parse(d.Id())
+	domainID, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -224,66 +263,88 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	}
 
 	if len(objectIDs) > 0 {
-		if err := sla.Wrap(client).AssignSLADomain(ctx, gqlsla.AssignSLAParams{
-			SLADomainAssignType: gqlsla.NoAssignment,
-			ObjectIDs:           objectIDs,
+		if err := sla.Wrap(client).AssignDomain(ctx, gqlsla.AssignDomainParams{
+			DomainAssignType:          gqlsla.NoAssignment,
+			ObjectIDs:                 objectIDs,
+			ApplyToExistingSnapshots:  ptr(true),
+			ApplyToNonPolicySnapshots: ptr(false),
 		}); err != nil {
 			return diag.FromErr(err)
 		}
-	}
-
-	if err := waitForSLADomainAssignment(ctx, client, slaID, []uuid.UUID{}); err != nil {
-		return diag.FromErr(err)
+		if err := waitForUnassignment(ctx, client, domainID, objectIDs); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	d.SetId("")
 	return nil
 }
 
-// waitForSLADomainAssignment
-func waitForSLADomainAssignment(ctx context.Context, client *polaris.Client, slaID uuid.UUID, objectIDs []uuid.UUID) error {
-	log.Print("[DEBUG] waiting for SLA domain assigment")
-
-	waitCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+func waitForAssignment(ctx context.Context, client *polaris.Client, domainID uuid.UUID, objectIDs []uuid.UUID) error {
+	log.Print("[DEBUG] waiting for SLA domain assignment")
 
 	for {
-		objectIDSet := make(map[uuid.UUID]struct{}, len(objectIDs))
+		idSet := make(map[uuid.UUID]struct{}, len(objectIDs))
 		for _, id := range objectIDs {
-			objectIDSet[id] = struct{}{}
+			idSet[id] = struct{}{}
 		}
 
-		objects, err := sla.Wrap(client).GlobalSLADomainProtectedObjects(waitCtx, slaID, "")
-		if errors.Is(err, context.DeadlineExceeded) {
-			log.Print("[WARN] abort waiting for SLA domain assignment")
-			return nil
-		}
+		objects, err := sla.Wrap(client).DomainObjects(ctx, domainID, "")
 		if err != nil {
 			return err
 		}
-
 		for _, object := range objects {
-			if _, ok := objectIDSet[object.ID]; !ok {
-				objectIDSet[object.ID] = struct{}{}
-			} else {
-				delete(objectIDSet, object.ID)
+			if _, ok := idSet[object.ID]; ok {
+				delete(idSet, object.ID)
 			}
 		}
-		if len(objectIDSet) == 0 {
+		if len(idSet) == 0 {
 			return nil
 		}
 
-		log.Printf("[DEBUG] waiting for SLA domain assignment of %d objects", len(objectIDSet))
+		log.Printf("[DEBUG] waiting for SLA domain assignment of %d objects", len(idSet))
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-waitCtx.Done():
 		case <-time.After(5 * time.Second):
 		}
 	}
 }
 
-// diffObjectIDs returns the object IDs to add and remove.
+func waitForUnassignment(ctx context.Context, client *polaris.Client, domainID uuid.UUID, objectIDs []uuid.UUID) error {
+	log.Print("[DEBUG] waiting for SLA domain unassignment")
+
+	for {
+		idSet := make(map[uuid.UUID]struct{}, len(objectIDs))
+		for _, id := range objectIDs {
+			idSet[id] = struct{}{}
+		}
+
+		objects, err := sla.Wrap(client).DomainObjects(ctx, domainID, "")
+		if err != nil {
+			return err
+		}
+		for _, object := range objects {
+			if _, ok := idSet[object.ID]; ok {
+				delete(idSet, object.ID)
+			}
+		}
+		n := len(objectIDs) - len(idSet)
+		if len(idSet) == len(objectIDs) {
+			return nil
+		}
+
+		log.Printf("[DEBUG] waiting for SLA domain unassignment of %d objects", n)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Second):
+		}
+	}
+}
+
+// diffObjectIDs returns the object IDs to add, remove and all which should be
+// assigned to the SLA domain after the assignment.
 func diffObjectIDs(d *schema.ResourceData) ([]uuid.UUID, []uuid.UUID, []uuid.UUID, error) {
 	oldObjIDs, newObjIDs := d.GetChange(keyObjectIDs)
 
@@ -296,7 +357,7 @@ func diffObjectIDs(d *schema.ResourceData) ([]uuid.UUID, []uuid.UUID, []uuid.UUI
 		addSet[id] = struct{}{}
 	}
 
-	// Total object IDs are the union of object IDs to keep and new object IDs.
+	// Total object IDs is the union of new object IDs and object IDs to keep.
 	totalObjIDs := make([]uuid.UUID, 0, len(addSet))
 	for id := range addSet {
 		totalObjIDs = append(totalObjIDs, id)
@@ -321,4 +382,8 @@ func diffObjectIDs(d *schema.ResourceData) ([]uuid.UUID, []uuid.UUID, []uuid.UUI
 	}
 
 	return addObjIDs, removeObjIDs, totalObjIDs, nil
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

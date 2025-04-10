@@ -18,7 +18,7 @@ resource "polaris_tag_rule" "azure_bronze" {
   tag_value   = "true"
 }
 
-# Assign the bronze SLA domain to the tag rules.
+# Assign the tag rules to the bronze SLA domain.
 resource "polaris_sla_domain_assignment" "bronze" {
   sla_domain_id = data.polaris_sla_domain.bronze.id
 
