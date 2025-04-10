@@ -79,18 +79,7 @@ func resourceTagRule() *schema.Resource {
 					"`AZURE_MANAGED_DISK`, `AZURE_SQL_DATABASE_DB`, `AZURE_SQL_DATABASE_SERVER`, " +
 					"`AZURE_SQL_MANAGED_INSTANCE_SERVER`, `AZURE_STORAGE_ACCOUNT` and `AZURE_VIRTUAL_MACHINE`. " +
 					"Changing this forces a new resource to be created.",
-				ValidateFunc: validation.StringInSlice([]string{
-					string(gqlsla.TagObjectAWSEBSVolume),
-					string(gqlsla.TagObjectAWSEC2Instance),
-					string(gqlsla.TagObjectAWSRDSInstance),
-					string(gqlsla.TagObjectAWSS3Bucket),
-					string(gqlsla.TagObjectAzureManagedDisk),
-					string(gqlsla.TagObjectAzureSQLDatabaseDB),
-					string(gqlsla.TagObjectAzureSQLDatabaseServer),
-					string(gqlsla.TagObjectAzureSQLManagedInstanceServer),
-					string(gqlsla.TagObjectAzureStorageAccount),
-					string(gqlsla.TagObjectAzureVirtualMachine),
-				}, false),
+				ValidateFunc: validation.StringInSlice(gqlsla.AllCloudNativeTagObjectTypesAsStrings(), false),
 			},
 			keyTagKey: {
 				Type:         schema.TypeString,
@@ -184,6 +173,10 @@ func readTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 	}
 
 	tagRule, err := sla.Wrap(client).TagRuleByID(ctx, id)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
