@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0-beta.6
+* Add `polaris_tag_rule` data source and resource. The `polaris_tag_rule` resource is used to create and manage RSC tag
+  rules. [[docs](../data-sources/tag_rule)]  [[docs](../resources/tag_rule)]
+
 ## v1.1.0-beta.5
 * Add support for updating the `app_name` and `app_secret` fields of the `polaris_azure_service_principal` resource
   without recreating the resource.

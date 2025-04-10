@@ -61,7 +61,7 @@ func dataSourceFeatures() *schema.Resource {
 				Description: "Features enabled for the RSC account.",
 			},
 		},
-		DeprecationMessage: "use `polaris_deployment` instead.",
+		DeprecationMessage: "use `polaris_account` instead.",
 	}
 }
 
