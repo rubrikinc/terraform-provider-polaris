@@ -23,7 +23,6 @@ package provider
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 
 	"github.com/google/uuid"
@@ -35,7 +34,7 @@ import (
 )
 
 const resourceUserDescription = `
-The ´polaris_user´ resource is used to manage users in RSC.
+The ´polaris_user´ resource is used to create and manage local users in RSC.
 `
 
 func resourceUser() *schema.Resource {
@@ -50,7 +49,7 @@ func resourceUser() *schema.Resource {
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "User email address.",
+				Description: "User ID.",
 			},
 			keyEmail: {
 				Type:         schema.TypeString,
@@ -79,6 +78,12 @@ func resourceUser() *schema.Resource {
 				Description: "User status.",
 			},
 		},
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceUserV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceUserStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
@@ -91,17 +96,22 @@ func createUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 	}
 
 	userEmail := d.Get(keyEmail).(string)
-	roleIDs, err := parseRoleIDs(d.Get(keyRoleIDs).(*schema.Set))
+
+	var roleIDs []uuid.UUID
+	for _, roleID := range d.Get(keyRoleIDs).(*schema.Set).List() {
+		roleID, err := uuid.Parse(roleID.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		roleIDs = append(roleIDs, roleID)
+	}
+
+	id, err := access.Wrap(client).CreateUser(ctx, userEmail, roleIDs)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := access.Wrap(client).AddUser(ctx, userEmail, roleIDs); err != nil {
-		return diag.FromErr(err)
-	}
-
-	d.SetId(userEmail)
-
+	d.SetId(id)
 	readUser(ctx, d, m)
 	return nil
 }
@@ -114,7 +124,7 @@ func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 		return diag.FromErr(err)
 	}
 
-	user, err := access.Wrap(client).User(ctx, d.Id())
+	user, err := access.Wrap(client).UserByID(ctx, d.Id())
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -145,17 +155,23 @@ func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 }
 
 func updateUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	roleIDs, err := parseRoleIDs(d.Get(keyRoleIDs).(*schema.Set))
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	log.Print("[TRACE] updateUser")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := access.Wrap(client).ReplaceRoles(ctx, d.Id(), roleIDs); err != nil {
+	var roleIDs []uuid.UUID
+	for _, roleID := range d.Get(keyRoleIDs).(*schema.Set).List() {
+		roleID, err := uuid.Parse(roleID.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		roleIDs = append(roleIDs, roleID)
+	}
+
+	if err := access.Wrap(client).ReplaceUserRoles(ctx, d.Id(), roleIDs); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -171,29 +187,10 @@ func deleteUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 		return diag.FromErr(err)
 	}
 
-	if err := access.Wrap(client).RemoveUser(ctx, d.Id()); err != nil {
+	if err := access.Wrap(client).DeleteUser(ctx, d.Id()); err != nil {
 		return diag.FromErr(err)
 	}
 
 	d.SetId("")
 	return nil
-}
-
-func parseRoleIDs(roleIDs *schema.Set) ([]uuid.UUID, error) {
-	ids := make([]uuid.UUID, 0, roleIDs.Len())
-	for _, roleID := range roleIDs.List() {
-		s, ok := roleID.(string)
-		if !ok {
-			return nil, fmt.Errorf("invalid role id: wrong type")
-		}
-
-		id, err := uuid.Parse(s)
-		if err != nil {
-			return nil, fmt.Errorf("invalid role id: %w", err)
-		}
-
-		ids = append(ids, id)
-	}
-
-	return ids, nil
 }

@@ -31,13 +31,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
 const resourceCustomRoleDescription = `
-The ´polaris_custom_role´ resource is used to manage custom roles in RSC.
+The ´polaris_custom_role´ resource is used to create and manage custom roles in
+RSC.
 `
 
-// resourceCustomRole defines the schema for the custom role resource.
 func resourceCustomRole() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: createCustomRole,
@@ -123,7 +124,7 @@ func createCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 	description := d.Get(keyDescription).(string)
 	permissions := toPermissions(d.Get(keyPermission))
 
-	id, err := access.Wrap(client).AddRole(ctx, name, description, permissions, access.NoProtectableClusters)
+	id, err := access.Wrap(client).CreateRole(ctx, name, description, permissions)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -147,7 +148,7 @@ func readCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 		return diag.FromErr(err)
 	}
 
-	role, err := access.Wrap(client).Role(ctx, id)
+	role, err := access.Wrap(client).RoleByID(ctx, id)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -188,7 +189,7 @@ func updateCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		description := d.Get(keyDescription).(string)
 		permissions := toPermissions(d.Get(keyPermission))
 
-		if err := access.Wrap(client).UpdateRole(ctx, id, name, description, permissions, access.NoProtectableClusters); err != nil {
+		if err := access.Wrap(client).UpdateRole(ctx, id, name, description, permissions); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -211,7 +212,7 @@ func deleteCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		return diag.FromErr(err)
 	}
 
-	if err := access.Wrap(client).RemoveRole(ctx, id); err != nil {
+	if err := access.Wrap(client).DeleteRole(ctx, id); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -223,7 +224,7 @@ func permissionHash(v any) int {
 	return schema.HashString(v.(map[string]any)[keyOperation])
 }
 
-func fromPermissions(permissions []access.Permission) any {
+func fromPermissions(permissions []gqlaccess.Permission) any {
 	permissionBlocks := &schema.Set{F: permissionHash}
 	for _, permission := range permissions {
 		permissionBlocks.Add(fromPermission(permission))
@@ -232,11 +233,11 @@ func fromPermissions(permissions []access.Permission) any {
 	return permissionBlocks
 }
 
-func fromPermission(permission access.Permission) any {
+func fromPermission(permission gqlaccess.Permission) any {
 	hierarchyBlocks := &schema.Set{F: func(v any) int {
 		return schema.HashString(v.(map[string]any)[keySnappableType])
 	}}
-	for _, hierarchy := range permission.Hierarchies {
+	for _, hierarchy := range permission.ObjectsForHierarchyTypes {
 		hierarchyBlocks.Add(fromSnappableHierarchy(hierarchy))
 	}
 
@@ -246,7 +247,7 @@ func fromPermission(permission access.Permission) any {
 	}
 }
 
-func fromSnappableHierarchy(hierarchy access.SnappableHierarchy) any {
+func fromSnappableHierarchy(hierarchy gqlaccess.ObjectsForHierarchyType) any {
 	objectIDs := &schema.Set{F: schema.HashString}
 	for _, objectID := range hierarchy.ObjectIDs {
 		objectIDs.Add(objectID)
@@ -258,8 +259,8 @@ func fromSnappableHierarchy(hierarchy access.SnappableHierarchy) any {
 	}
 }
 
-func toPermissions(permissionBlocks any) []access.Permission {
-	var permissions []access.Permission
+func toPermissions(permissionBlocks any) []gqlaccess.Permission {
+	var permissions []gqlaccess.Permission
 	for _, permissionBlock := range permissionBlocks.(*schema.Set).List() {
 		permissions = append(permissions, toPermission(permissionBlock.(map[string]any)))
 	}
@@ -267,25 +268,25 @@ func toPermissions(permissionBlocks any) []access.Permission {
 	return permissions
 }
 
-func toPermission(permissionBlock map[string]any) access.Permission {
-	var hierarchies []access.SnappableHierarchy
+func toPermission(permissionBlock map[string]any) gqlaccess.Permission {
+	var hierarchies []gqlaccess.ObjectsForHierarchyType
 	for _, hierarchy := range permissionBlock[keyHierarchy].(*schema.Set).List() {
 		hierarchies = append(hierarchies, toSnappableHierarchy(hierarchy.(map[string]any)))
 	}
 
-	return access.Permission{
-		Operation:   permissionBlock[keyOperation].(string),
-		Hierarchies: hierarchies,
+	return gqlaccess.Permission{
+		Operation:                permissionBlock[keyOperation].(string),
+		ObjectsForHierarchyTypes: hierarchies,
 	}
 }
 
-func toSnappableHierarchy(hierarchyBlock map[string]any) access.SnappableHierarchy {
+func toSnappableHierarchy(hierarchyBlock map[string]any) gqlaccess.ObjectsForHierarchyType {
 	var objectIDs []string
 	for _, objectID := range hierarchyBlock[keyObjectIDs].(*schema.Set).List() {
 		objectIDs = append(objectIDs, objectID.(string))
 	}
 
-	return access.SnappableHierarchy{
+	return gqlaccess.ObjectsForHierarchyType{
 		SnappableType: hierarchyBlock[keySnappableType].(string),
 		ObjectIDs:     objectIDs,
 	}

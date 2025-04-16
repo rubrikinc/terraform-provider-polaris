@@ -4,6 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0-beta.7
+* Add `polaris_sso_group` data source. The `polaris_sso_group` data source is used to look up SSO groups in RSC.
+  [[docs](../data-sources/sso_group)]
+* Add `polaris_user` data source. The `polaris_user` data source is used to look up users in RSC.
+  ß[[docs](../data-sources/user)]
+
 ## v1.1.0-beta.6
 * Add `polaris_tag_rule` data source and resource. The `polaris_tag_rule` resource is used to create and manage RSC tag
   rules. [[docs](../data-sources/tag_rule)]  [[docs](../resources/tag_rule)]

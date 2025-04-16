@@ -3,26 +3,50 @@
 page_title: "polaris_role_assignment Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_role_assignment resource is used to assign roles to users in RSC.
+  The polaris_role_assignment resource is used to assign a role in RSC.
 ---
 
 # polaris_role_assignment (Resource)
 
-The `polaris_role_assignment` resource is used to assign roles to users in RSC.
+The `polaris_role_assignment` resource is used to assign a role in RSC.
 
 ## Example Usage
 
 ```terraform
-# Assign a role to a user using the polaris_role data source.
-resource "polaris_role_assignment" "compliance_auditor" {
-  role_id = data.polaris_role.compliance_auditor.id
-  user_email = "name@example.com"
+data "polaris_role" "compliance_auditor" {
+  name = "Compliance Auditor Role"
 }
 
-# Assign a role to a user using the polaris_custom_role resource.
+data "polaris_user" "compliance_auditor" {
+  email = "auditor@example.org"
+}
+
+# Assign role to user using data sources.
+resource "polaris_role_assignment" "compliance_auditor" {
+  role_id = data.polaris_role.compliance_auditor.id
+  user_id = data.polaris_user.compliance_auditor.id
+}
+
+# Assign role to user using email address.
+resource "polaris_role_assignment" "compliance_auditor" {
+  role_id    = data.polaris_role.compliance_auditor.id
+  user_email = "auditor@example.org"
+}
+
+# Assign custom compliance auditor role to user.
 resource "polaris_role_assignment" "compliance_auditor" {
   role_id = polaris_custom_role.compliance_auditor.id
-  user_email = "name@example.com"
+  user_id = data.polaris_user.compliance_auditor.id
+}
+
+data "polaris_sso_group" "compliance_auditors" {
+  name = "ComplianceAuditors"
+}
+
+# Assign role to SSO users using an SSO group.
+resource "polaris_role_assignment" "compliance_auditor" {
+  role_id      = data.polaris_role.compliance_auditor.id
+  sso_group_id = data.polaris_sso_group.compliance_auditors.id
 }
 ```
 
@@ -32,8 +56,13 @@ resource "polaris_role_assignment" "compliance_auditor" {
 ### Required
 
 - `role_id` (String) Role ID (UUID). Changing this forces a new resource to be created.
+
+### Optional
+
+- `sso_group_id` (String) SSO group ID. Changing this forces a new resource to be created.
 - `user_email` (String) User email address. Changing this forces a new resource to be created.
+- `user_id` (String) User ID. Changing this forces a new resource to be created.
 
 ### Read-Only
 
-- `id` (String) SHA-256 hash of the user email and the role ID.
+- `id` (String) SHA-256 hash of the user ID / SSO group ID and the role ID.
