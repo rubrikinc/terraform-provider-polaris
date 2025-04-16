@@ -84,6 +84,12 @@ func resourceRoleAssignment() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceRoleAssignmentV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceRoleAssignmentStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
