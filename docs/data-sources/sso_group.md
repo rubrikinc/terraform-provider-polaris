@@ -36,7 +36,7 @@ data "polaris_sso_group" "admins" {
 
 ### Read-Only
 
-- `domain_name` (Boolean) The domain name of the SSO group.
+- `domain_name` (String) The domain name of the SSO group.
 - `id` (String) SSO group ID.
 - `roles` (Set of Object) Roles assigned to the SSO group. (see [below for nested schema](#nestedatt--roles))
 - `users` (Set of Object) Users in the SSO group. (see [below for nested schema](#nestedatt--users))
@@ -55,5 +55,5 @@ Read-Only:
 
 Read-Only:
 
+- `email` (String)
 - `id` (String)
-- `name` (String)

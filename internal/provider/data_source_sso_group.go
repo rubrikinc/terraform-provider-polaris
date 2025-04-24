@@ -48,7 +48,7 @@ func dataSourceSSOGroup() *schema.Resource {
 				Description: "SSO group ID.",
 			},
 			keyDomainName: {
-				Type:        schema.TypeBool,
+				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "The domain name of the SSO group.",
 			},
@@ -127,8 +127,8 @@ func ssoGroupRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagn
 	users := &schema.Set{F: schema.HashResource(rscUserResource())}
 	for _, user := range group.Users {
 		users.Add(map[string]any{
-			keyID:   user.ID,
-			keyName: user.Name,
+			keyID:    user.ID,
+			keyEmail: user.Email,
 		})
 	}
 	if err := d.Set(keyUsers, users); err != nil {
@@ -164,10 +164,10 @@ func rscUserResource() *schema.Resource {
 				Computed:    true,
 				Description: "User ID.",
 			},
-			keyName: {
+			keyEmail: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "User name.",
+				Description: "User email address.",
 			},
 		},
 	}
