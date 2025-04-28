@@ -36,7 +36,11 @@ The ´polaris_user´ data source is used to access information about an RSC user
 Information for both local and SSO users can be accessed. A user is looked up
 using either the ID or the email address.
 
-Note, ´status´ will always be ´UNKNOWN´ for SSO users.
+-> **Note:** RSC allows the same email address to be used, at the same time, by
+   both local and SSO users. Use the ´domain´ field to specify in which domain
+   to look for a user.
+
+-> **Note:** The ´status´ field will always be ´UNKNOWN´ for SSO users.
 `
 
 func dataSourceUser() *schema.Resource {
@@ -49,6 +53,14 @@ func dataSourceUser() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "User ID.",
+			},
+			keyDomain: {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{keyUserID},
+				Description: "The domain in which to look for a user when an email address is specified. Possible " +
+					"values are `LOCAL` and `SSO`.",
+				ValidateFunc: validation.StringInSlice([]string{"LOCAL", "SSO"}, false),
 			},
 			keyEmail: {
 				Type:         schema.TypeString,
@@ -99,12 +111,15 @@ func userRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 			return diag.FromErr(err)
 		}
 	} else {
-		user, err = access.Wrap(client).UserByEmail(ctx, d.Get(keyEmail).(string))
+		user, err = access.Wrap(client).UserByEmail(ctx, d.Get(keyEmail).(string), gqlaccess.UserDomain(d.Get(keyDomain).(string)))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
+	if err := d.Set(keyDomain, user.Domain); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyEmail, user.Email); err != nil {
 		return diag.FromErr(err)
 	}

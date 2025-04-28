@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
+	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
 func resourceRoleAssignmentV0() *schema.Resource {
@@ -57,8 +58,8 @@ func resourceRoleAssignmentV0() *schema.Resource {
 	}
 }
 
-// resourceRoleAssignmentStateUpgradeV0 changes the resource ID to be the hash
-// of the user ID and role ID and not the user email address and role ID.
+// resourceRoleAssignmentStateUpgradeV0 changes the resource ID to be the user
+// ID and not the hash of the user email address and role ID.
 func resourceRoleAssignmentStateUpgradeV0(ctx context.Context, state map[string]any, m any) (map[string]any, error) {
 	log.Print("[TRACE] resourceRoleAssignmentStateUpgradeV0")
 
@@ -70,14 +71,14 @@ func resourceRoleAssignmentStateUpgradeV0(ctx context.Context, state map[string]
 	email := state[keyUserEmail].(string)
 	roleID := state[keyRoleID].(string)
 	if id := state[keyID].(string); id != fmt.Sprintf("%x", sha256.Sum256([]byte(email+roleID))) {
-		return nil, fmt.Errorf("failed to upgrade role assignment state, unexpected id: %s", id)
+		return nil, fmt.Errorf("failed to upgrade role assignment state, unexpected resource id: %s", id)
 	}
 
-	user, err := access.Wrap(client).UserByEmail(ctx, email)
+	user, err := access.Wrap(client).UserByEmail(ctx, email, gqlaccess.DomainLocal)
 	if err != nil {
 		return nil, err
 	}
 
-	state[keyID] = fmt.Sprintf("%x", sha256.Sum256([]byte(user.ID+roleID)))
+	state[keyID] = user.ID
 	return nil, nil
 }

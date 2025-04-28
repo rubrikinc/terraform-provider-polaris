@@ -6,7 +6,10 @@ description: |-
   The polaris_user data source is used to access information about an RSC user.
   Information for both local and SSO users can be accessed. A user is looked up
   using either the ID or the email address.
-  Note, status will always be UNKNOWN for SSO users.
+  -> Note: RSC allows the same email address to be used, at the same time, by
+     both local and SSO users. Use the domain field to specify in which domain
+     to look for a user.
+  -> Note: The status field will always be UNKNOWN for SSO users.
 ---
 
 # polaris_user (Data Source)
@@ -15,7 +18,11 @@ The `polaris_user` data source is used to access information about an RSC user.
 Information for both local and SSO users can be accessed. A user is looked up
 using either the ID or the email address.
 
-Note, `status` will always be `UNKNOWN` for SSO users.
+-> **Note:** RSC allows the same email address to be used, at the same time, by
+   both local and SSO users. Use the `domain` field to specify in which domain
+   to look for a user.
+
+-> **Note:** The `status` field will always be `UNKNOWN` for SSO users.
 
 ## Example Usage
 
@@ -25,14 +32,15 @@ data "polaris_user" "admin" {
   email = "admin@example.org"
 }
 
-# Look up user by user ID.
+# Look up user by email address and user domain.
 data "polaris_user" "admin" {
-  user_id = "auth0|700265c9583ef80078bb36b0"
+  email  = "admin@example.org"
+  domain = "SSO"
 }
 
-# Look up SSO user by user ID.
+# Look up user by user ID.
 data "polaris_user" "admin" {
-  user_id = "samlp|...my-rubrik-account|admin@example.org"
+  user_id = "<id>"
 }
 ```
 
@@ -41,6 +49,7 @@ data "polaris_user" "admin" {
 
 ### Optional
 
+- `domain` (String) The domain in which to look for a user when an email address is specified. Possible values are `LOCAL` and `SSO`.
 - `email` (String) User email address.
 - `user_id` (String) User ID.
 

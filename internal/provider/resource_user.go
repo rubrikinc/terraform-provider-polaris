@@ -49,7 +49,12 @@ func resourceUser() *schema.Resource {
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "User ID.",
+				Description: "User ID (UUID).",
+			},
+			keyDomain: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "User domain. Possible values are `LOCAL` and `SSO`.",
 			},
 			keyEmail: {
 				Type:         schema.TypeString,
@@ -133,6 +138,9 @@ func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 		return diag.FromErr(err)
 	}
 
+	if err := d.Set(keyDomain, user.Domain); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyEmail, user.Email); err != nil {
 		return diag.FromErr(err)
 	}

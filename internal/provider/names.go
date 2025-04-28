@@ -62,6 +62,7 @@ const (
 	keyDataActions                                  = "data_actions"
 	keyDeleteSnapshotsOnDestroy                     = "delete_snapshots_on_destroy"
 	keyDescription                                  = "description"
+	keyDomain                                       = "domain"
 	keyDomainName                                   = "domain_name"
 	keyEC2RecoveryRolePath                          = "ec2_recovery_role_path"
 	keyEmail                                        = "email"

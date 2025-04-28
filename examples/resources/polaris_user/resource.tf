@@ -3,7 +3,8 @@ data "polaris_role" "compliance_auditor" {
 }
 
 resource "polaris_user" "auditor" {
-  email    = "auditor@example.com"
+  email = "auditor@example.com"
+
   role_ids = [
     data.polaris_role.compliance_auditor.id
   ]

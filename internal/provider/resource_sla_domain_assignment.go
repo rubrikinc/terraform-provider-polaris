@@ -150,7 +150,7 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 
 	objectIDs := d.Get(keyObjectIDs).(*schema.Set)
 	idSet := make(map[uuid.UUID]struct{}, objectIDs.Len())
-	for _, id := range d.Get(keyObjectIDs).(*schema.Set).List() {
+	for _, id := range objectIDs.List() {
 		id, err := uuid.Parse(id.(string))
 		if err != nil {
 			return diag.FromErr(err)
@@ -337,8 +337,8 @@ func waitForUnassignment(ctx context.Context, client *polaris.Client, domainID u
 	}
 }
 
-// diffObjectIDs returns the object IDs to add, remove and all which should be
-// assigned to the SLA domain after the assignment.
+// diffObjectIDs returns the object IDs to add, remove and the total which
+// should be assigned to the SLA domain after the assignment.
 func diffObjectIDs(d *schema.ResourceData) ([]uuid.UUID, []uuid.UUID, []uuid.UUID, error) {
 	oldObjIDs, newObjIDs := d.GetChange(keyObjectIDs)
 

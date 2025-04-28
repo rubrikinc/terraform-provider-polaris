@@ -22,7 +22,7 @@ data "polaris_sso_group" "admins" {
 
 # Look up SSO group by ID.
 data "polaris_sso_group" "admins" {
-  sso_group_id = "samlpgroup|...my-rubrik-account|Administrators"
+  sso_group_id = "<id>"
 }
 ```
 

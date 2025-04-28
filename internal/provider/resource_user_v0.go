@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
+	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
 func resourceUserV0() *schema.Resource {
@@ -83,7 +84,7 @@ func resourceUserStateUpgradeV0(ctx context.Context, state map[string]any, m any
 		return nil, fmt.Errorf("failed to upgrade user state, unexpected mismatch between user ID and email address id: %s != %s", id, email)
 	}
 
-	user, err := access.Wrap(client).UserByEmail(ctx, email)
+	user, err := access.Wrap(client).UserByEmail(ctx, email, gqlaccess.DomainLocal)
 	if err != nil {
 		return nil, err
 	}

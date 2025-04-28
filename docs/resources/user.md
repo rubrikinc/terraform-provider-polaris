@@ -18,7 +18,8 @@ data "polaris_role" "compliance_auditor" {
 }
 
 resource "polaris_user" "auditor" {
-  email    = "auditor@example.com"
+  email = "auditor@example.com"
+
   role_ids = [
     data.polaris_role.compliance_auditor.id
   ]
@@ -35,6 +36,7 @@ resource "polaris_user" "auditor" {
 
 ### Read-Only
 
-- `id` (String) User ID.
+- `domain` (String) User domain. Possible values are `LOCAL` and `SSO`.
+- `id` (String) User ID (UUID).
 - `is_account_owner` (Boolean) True if the user is the account owner.
 - `status` (String) User status.
