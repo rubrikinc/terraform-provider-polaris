@@ -90,5 +90,6 @@ func resourceUserStateUpgradeV0(ctx context.Context, state map[string]any, m any
 	}
 
 	state[keyID] = user.ID
-	return nil, nil
+	state[keyDomain] = user.Domain
+	return state, nil
 }
