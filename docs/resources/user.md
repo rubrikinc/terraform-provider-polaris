@@ -3,19 +3,23 @@
 page_title: "polaris_user Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_user resource is used to manage users in RSC.
+  The polaris_user resource is used to create and manage local users in RSC.
 ---
 
 # polaris_user (Resource)
 
-The `polaris_user` resource is used to manage users in RSC.
+The `polaris_user` resource is used to create and manage local users in RSC.
 
 ## Example Usage
 
 ```terraform
-# Create a compliance auditor user using the polaris_role data source.
+data "polaris_role" "compliance_auditor" {
+  name = "Compliance Auditor Role"
+}
+
 resource "polaris_user" "auditor" {
-  email    = "name@example.com"
+  email = "auditor@example.com"
+
   role_ids = [
     data.polaris_role.compliance_auditor.id
   ]
@@ -32,6 +36,7 @@ resource "polaris_user" "auditor" {
 
 ### Read-Only
 
-- `id` (String) User email address.
+- `domain` (String) User domain. Possible values are `LOCAL` and `SSO`.
+- `id` (String) User ID (UUID).
 - `is_account_owner` (Boolean) True if the user is the account owner.
 - `status` (String) User status.

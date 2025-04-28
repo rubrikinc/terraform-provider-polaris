@@ -3,33 +3,40 @@ page_title: "polaris_role_template Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
   
-The `polaris_role_template` data source is used to access information about RSC role
-templates.
+The `polaris_role_template` data source is used to access information about an
+RSC role template. A role template is looked up using either the ID or the name.
 
 ---
 
 # polaris_role_template (Data Source)
 
 
-The `polaris_role_template` data source is used to access information about RSC role
-templates.
+The `polaris_role_template` data source is used to access information about an
+RSC role template. A role template is looked up using either the ID or the name.
 
 
 
 ## Example Usage
 
 ```terraform
+# Look up role template by name.
 data "polaris_role_template" "compliance_auditor" {
   name = "Compliance Auditor"
+}
+
+# Look up role template by ID.
+data "polaris_role_template" "compliance_auditor" {
+  role_template_id = "00000000-0000-0000-0000-000000000007"
 }
 ```
 
 
 ## Schema
 
-### Required
+### Optional
 
 - `name` (String) Role template name.
+- `role_template_id` (String) Role template ID (UUID).
 
 ### Read-Only
 

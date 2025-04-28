@@ -24,15 +24,17 @@ import (
 	"context"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
+	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
 const dataSourceRoleTemplateDescription = `
-The ´polaris_role_template´ data source is used to access information about RSC role
-templates.
+The ´polaris_role_template´ data source is used to access information about an
+RSC role template. A role template is looked up using either the ID or the name.
 `
 
 // This data source uses a template for its documentation due to a bug in the TF
@@ -56,7 +58,8 @@ func dataSourceRoleTemplate() *schema.Resource {
 			},
 			keyName: {
 				Type:         schema.TypeString,
-				Required:     true,
+				Optional:     true,
+				ExactlyOneOf: []string{keyRoleTemplateID},
 				Description:  "Role template name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
@@ -96,6 +99,13 @@ func dataSourceRoleTemplate() *schema.Resource {
 				Computed:    true,
 				Description: "Role permission.",
 			},
+			keyRoleTemplateID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: []string{keyName},
+				Description:  "Role template ID.",
+				ValidateFunc: validation.IsUUID,
+			},
 		},
 	}
 }
@@ -108,9 +118,21 @@ func roleTemplateRead(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		return diag.FromErr(err)
 	}
 
-	roleTemplate, err := access.Wrap(client).RoleTemplateByName(ctx, d.Get(keyName).(string))
-	if err != nil {
-		return diag.FromErr(err)
+	var roleTemplate gqlaccess.RoleTemplate
+	if roleTemplateID := d.Get(keyRoleTemplateID).(string); roleTemplateID != "" {
+		roleTemplateID, err := uuid.Parse(roleTemplateID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		roleTemplate, err = access.Wrap(client).RoleTemplateByID(ctx, roleTemplateID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		roleTemplate, err = access.Wrap(client).RoleTemplateByName(ctx, d.Get(keyName).(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if err := d.Set(keyDescription, roleTemplate.Description); err != nil {
@@ -120,6 +142,9 @@ func roleTemplateRead(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyPermission, fromPermissions(roleTemplate.AssignedPermissions)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyRoleTemplateID, roleTemplate.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 

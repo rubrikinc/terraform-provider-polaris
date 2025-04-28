@@ -4,6 +4,24 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0-beta.7
+* The behavior of the `sdk_auth` field of the `polaris_azure_service_principal` resource has changed. The Azure app name
+  is no longer looked up using the Azure AD Graph API. Instead, the app name is generated in a consistent way using the
+  Azure app and tenant IDs. This change is made because of the deprecation of the Azure AD Graph API by Microsoft.
+* Deprecate the `role_id` field in the `polaris_role_assignment` resource. Use the `role_ids` field instead.
+* Deprecate the `user_email` field in the `polaris_role_assignment` resource. Use the `user_id` field with the
+  `polaris_user` data source instead.
+* Add `sso_group_id` field to the `polaris_role_assignment` resource. The `sso_group_id` field can be used to assign RSC
+  roles to an SSO group.
+* The `id` field of the `polaris_role_assignment` resource has changed from being the hash of the user email address and
+  the role ID to being the user ID or SSO group ID.
+* The `id` field of the `polaris_user` resource has changed from being the email address to being the user ID. Note,
+  this is a breaking change if a Terraform configuration expects the `id` field be an email address.
+* Add `polaris_sso_group` data source. The `polaris_sso_group` data source is used to look up SSO groups in RSC.
+  [[docs](../data-sources/sso_group)]
+* Add `polaris_user` data source. The `polaris_user` data source is used to look up users in RSC.
+  [[docs](../data-sources/user)]
+
 ## v1.1.0-beta.6
 * Add `polaris_tag_rule` data source and resource. The `polaris_tag_rule` resource is used to create and manage RSC tag
   rules. [[docs](../data-sources/tag_rule)]  [[docs](../resources/tag_rule)]
