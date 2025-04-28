@@ -5,6 +5,9 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.1.0-beta.7
+* The behavior of the `sdk_auth` field of the `polaris_azure_service_principal` resource has changed. The Azure app name
+  is no longer looked up using the Azure AD Graph API. Instead, the app name is generated in a consistent way using the
+  Azure app and tenant IDs. This change is made because of the deprecation of the Azure AD Graph API by Microsoft.
 * Deprecate the `role_id` field in the `polaris_role_assignment` resource. Use the `role_ids` field instead.
 * Deprecate the `user_email` field in the `polaris_role_assignment` resource. Use the `user_id` field with the
   `polaris_user` data source instead.
