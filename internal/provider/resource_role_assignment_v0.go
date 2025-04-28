@@ -80,5 +80,5 @@ func resourceRoleAssignmentStateUpgradeV0(ctx context.Context, state map[string]
 	}
 
 	state[keyID] = user.ID
-	return nil, nil
+	return state, nil
 }
