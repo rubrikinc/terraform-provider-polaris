@@ -32,6 +32,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 )
 
 const resourceDataCenterAWSAccountDescription = `
@@ -99,8 +100,8 @@ func dataCenterAWSCreateAccount(ctx context.Context, d *schema.ResourceData, m i
 	id, err := archival.Wrap(client).CreateAWSCloudAccount(ctx, gqlarchival.CreateAWSCloudAccountParams{
 		Name:        d.Get(keyName).(string),
 		Description: d.Get(keyDescription).(string),
-		AccessKey:   d.Get(keyAccessKey).(string),
-		SecretKey:   d.Get(keySecretKey).(string),
+		AccessKey:   secret.String(d.Get(keyAccessKey).(string)),
+		SecretKey:   secret.String(d.Get(keySecretKey).(string)),
 	})
 	if err != nil {
 		return diag.FromErr(err)
@@ -161,8 +162,8 @@ func dataCenterAWSUpdateAccount(ctx context.Context, d *schema.ResourceData, m i
 	err = archival.Wrap(client).UpdateAWSCloudAccount(ctx, id, gqlarchival.UpdateAWSCloudAccountParams{
 		Name:        d.Get(keyName).(string),
 		Description: d.Get(keyDescription).(string),
-		AccessKey:   d.Get(keyAccessKey).(string),
-		SecretKey:   d.Get(keySecretKey).(string),
+		AccessKey:   secret.String(d.Get(keyAccessKey).(string)),
+		SecretKey:   secret.String(d.Get(keySecretKey).(string)),
 	})
 	if err != nil {
 		return diag.FromErr(err)
