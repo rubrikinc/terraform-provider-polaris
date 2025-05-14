@@ -143,7 +143,7 @@ resource "polaris_aws_private_container_registry" "registry" {
 
 ### Required
 
-- `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
+- `account_id` (String) RSC cloud account ID (UUID) of the AWS account hosting the Exocompute. Changing this forces a new resource to be created.
 - `native_id` (String) AWS account ID of the AWS account that will pull images from the RSC container registry.
 - `url` (String) URL for customer provided private container registry.
 

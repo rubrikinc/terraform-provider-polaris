@@ -33,6 +33,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 )
 
 const resourceDataCenterArchivalLocationAmazonS3Description = `
@@ -364,8 +365,8 @@ func dataCenterCreateArchivalLocationAmazonS3(ctx context.Context, d *schema.Res
 		StorageClass:           d.Get(keyStorageClass).(string),
 		RetrievalTier:          d.Get(keyRetrievalTier).(string),
 		KMSMasterKeyID:         d.Get(keyKMSMasterKey).(string),
-		RSAKey:                 d.Get(keyRSAKey).(string),
-		EncryptionPassword:     d.Get(keyEncryptionPassword).(string),
+		RSAKey:                 secret.String(d.Get(keyRSAKey).(string)),
+		EncryptionPassword:     secret.String(d.Get(keyEncryptionPassword).(string)),
 		CloudComputeSettings:   cloudComputeSettings,
 		IsConsolidationEnabled: archiveConsolidation,
 		ProxySettings:          archivalProxySettings,
@@ -527,7 +528,7 @@ func fromArchivalProxySettings(d *schema.ResourceData) (*gqlarchival.AWSTargetPr
 	settings := data.([]any)[0].(map[string]any)
 	return &gqlarchival.AWSTargetProxySettings{
 		Username:    settings[keyUsername].(string),
-		Password:    settings[keyPassword].(string),
+		Password:    secret.String(settings[keyPassword].(string)),
 		ProxyServer: settings[keyProxyServer].(string),
 		Protocol:    settings[keyProtocol].(string),
 		PortNumber:  settings[keyPortNumber].(int),
@@ -596,7 +597,7 @@ func fromComputeProxySettings(d *schema.ResourceData) *gqlarchival.AWSTargetProx
 	settings := data.([]any)[0].(map[string]any)
 	return &gqlarchival.AWSTargetProxySettings{
 		Username:    settings[keyUsername].(string),
-		Password:    settings[keyPassword].(string),
+		Password:    secret.String(settings[keyPassword].(string)),
 		ProxyServer: settings[keyProxyServer].(string),
 		Protocol:    settings[keyProtocol].(string),
 		PortNumber:  settings[keyPortNumber].(int),

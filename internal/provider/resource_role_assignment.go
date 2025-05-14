@@ -41,7 +41,7 @@ group in RSC.
 ~> **Warning:** When using multiple ´polaris_role_assignment´ resources to
    assign roles to the same user or SSO group, there is a risk for a race
    condition when the resources are destroyed. This can result in RSC roles
-   still being assingned to the user or SSO group. The race condition can be
+   still being assigned to the user or SSO group. The race condition can be
    avoided by either assigning all roles to the user using a single
    ´polaris_role_assignment´ resource or by using the ´depends_on´ field to make
    sure that the resources are destroyed in a serial fashion.
@@ -389,8 +389,8 @@ func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 	return nil
 }
 
-// diffRoleIDs returns the role IDs to add, remove and the total which should be
-// assigned to the user or SSO group after the assignment.
+// diffRoleIDs returns the role IDs to add and remove given the changes to the
+// resource data.
 func diffRoleIDs(d *schema.ResourceData) ([]uuid.UUID, []uuid.UUID, error) {
 	oldRoleIDs, newRoleIDs := d.GetChange(keyRoleIDs)
 
