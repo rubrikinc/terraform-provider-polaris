@@ -120,7 +120,7 @@ func awsAccountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 	if err := d.Set(keyAccountID, account.NativeID); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyCloudAccountID, account.ID); err != nil {
+	if err := d.Set(keyCloudAccountID, account.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyName, account.Name); err != nil {
