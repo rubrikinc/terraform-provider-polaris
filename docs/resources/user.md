@@ -31,7 +31,7 @@ resource "polaris_user" "auditor" {
 
 ### Required
 
-- `email` (String) User email address. Changing this forces a new resource to be created.
+- `email` (String) User email address. Note, all letters must be lower case. Changing this forces a new resource to be created.
 - `role_ids` (Set of String) Roles assigned to the user (UUIDs).
 
 ### Read-Only

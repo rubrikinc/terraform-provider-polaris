@@ -4,6 +4,16 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0-beta.10
+* Fix a bug in the `polaris_aws_account` data source where the cloud account ID was not properly converted to a string
+  causing the data source to error out.
+* Require user email addresses of the `polaris_user` resources to be all lower case. RSC automatically converts all
+  letters to lower case before storing the email addresses.
+
+## v1.1.0-beta.9
+* Add support for AWS custom tags. [[docs](../resources/aws_custom_tags)]
+* Add support for Azure custom tags. [[docs](../resources/azure_custom_tags)]
+
 ## v1.1.0-beta.8
 * Add upgrade guide for version `v1.0.0` to beta releases.
 
