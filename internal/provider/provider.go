@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -137,7 +138,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 		Secret: d.Get("token_cache_secret").(string),
 	}
 
-	client, err := newClient(d.Get("credentials").(string), cacheParams)
+	client, err := newClient(ctx, d.Get("credentials").(string), cacheParams)
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}
@@ -149,9 +150,10 @@ type client struct {
 	logger        log.Logger
 	polarisClient *polaris.Client
 	polarisErr    error
+	flags         map[string]bool
 }
 
-func newClient(credentials string, cacheParams polaris.CacheParams) (*client, error) {
+func newClient(ctx context.Context, credentials string, cacheParams polaris.CacheParams) (*client, error) {
 	logger := log.NewStandardLogger()
 	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
 		return nil, err
@@ -164,10 +166,19 @@ func newClient(credentials string, cacheParams polaris.CacheParams) (*client, er
 
 	var polarisClient *polaris.Client
 	var accountErr error
+	flags := make(map[string]bool)
 	if err == nil {
 		polarisClient, err = polaris.NewClientWithLoggerAndCacheParams(account, cacheParams, logger)
 		if err != nil {
 			return nil, err
+		}
+
+		featureFlags, err := core.Wrap(polarisClient.GQL).FeatureFlags(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, flag := range featureFlags {
+			flags[flag.Name] = flag.Enabled
 		}
 	} else {
 		accountErr = err
@@ -177,6 +188,7 @@ func newClient(credentials string, cacheParams polaris.CacheParams) (*client, er
 		logger:        logger,
 		polarisClient: polarisClient,
 		polarisErr:    accountErr,
+		flags:         flags,
 	}, nil
 }
 
