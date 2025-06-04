@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"regexp"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -57,11 +58,12 @@ func resourceUser() *schema.Resource {
 				Description: "User domain. Possible values are `LOCAL` and `SSO`.",
 			},
 			keyEmail: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "User email address. Changing this forces a new resource to be created.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+				Description: "User email address. Note, all letters must be lower case. Changing this forces a new " +
+					"resource to be created.",
+				ValidateFunc: validation.StringDoesNotMatch(regexp.MustCompile("[A-Z]"), "letters must be lower case"),
 			},
 			keyIsAccountOwner: {
 				Type:        schema.TypeBool,
