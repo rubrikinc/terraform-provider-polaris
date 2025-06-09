@@ -23,6 +23,8 @@
 pipeline {
     agent any
     tools {
+        // Note that this version is only used to bootstrap the version
+        // specified in go.mod.
         go 'go-1.22'
     }
     triggers {
@@ -59,9 +61,10 @@ pipeline {
     stages {
         stage('Lint') {
             steps {
+                sh 'go version' // Log Go version used.
                 sh 'go mod tidy'
                 sh 'go vet ./...'
-                sh 'go run honnef.co/go/tools/cmd/staticcheck@v0.4.1 ./...'
+                sh 'go run honnef.co/go/tools/cmd/staticcheck@v0.6.1 ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
