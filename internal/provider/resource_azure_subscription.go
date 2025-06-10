@@ -680,7 +680,7 @@ func resourceAzureSubscription() *schema.Resource {
 			},
 		},
 
-		SchemaVersion: 3,
+		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceAzureSubscriptionV0().CoreConfigSchema().ImpliedType(),
 			Upgrade: resourceAzureSubscriptionStateUpgradeV0,
@@ -689,10 +689,6 @@ func resourceAzureSubscription() *schema.Resource {
 			Type:    resourceAzureSubscriptionV1().CoreConfigSchema().ImpliedType(),
 			Upgrade: resourceAzureSubscriptionStateUpgradeV1,
 			Version: 1,
-		}, {
-			Type:    resourceAzureSubscriptionV2().CoreConfigSchema().ImpliedType(),
-			Upgrade: resourceAzureSubscriptionStateUpgradeV2,
-			Version: 2,
 		}},
 	}
 }
