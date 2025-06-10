@@ -57,6 +57,17 @@ pipeline {
 
         // Enable logging from the terraform cli binary used by acceptance tests
         TF_ACC_LOG_PATH='terraform_cli.log'
+
+        // Recent versions of Go added support for post-quantum cryptography algorithms
+        // x25519Kyber768Draft00 (Go 1.23) and X25519MLKEM768 (Go 1.24, where Kyber
+        // was removed). Both of them are enabled by default, but that causes
+        // TLS timeout issues against some systems like Palo Alto
+        // that can't handle the increased size of ClientHello-messages.
+        // With these enabled the ClientHello message spans two TCP frames instead
+        // of just one with them disabled.
+        //
+        // We use GODEBUG to disable both here to cover for both Go 1.23 and Go 1.24.
+        GODEBUG = "tlskyber=0,tlsmlkem=0"
     }
     stages {
         stage('Lint') {
