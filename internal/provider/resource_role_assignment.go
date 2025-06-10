@@ -65,7 +65,7 @@ func resourceRoleAssignment() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ExactlyOneOf: []string{keyRoleIDs},
-				Description:  "Role ID (UUID).",
+				Description:  "Role ID (UUID). **Deprecated:** use `role_ids` instead.",
 				Deprecated:   "use `role_ids` instead.",
 				ValidateFunc: validation.IsUUID,
 			},
@@ -93,7 +93,8 @@ func resourceRoleAssignment() *schema.Resource {
 				Optional:     true,
 				ForceNew:     true,
 				ExactlyOneOf: []string{keySSOGroupID, keyUserID},
-				Description:  "User email address. Changing this forces a new resource to be created.",
+				Description: "User email address. Changing this forces a new resource to be created. **Deprecated:** " +
+					"use `user_id` with the `polaris_user` data source instead.",
 				Deprecated:   "use `user_id` with the `polaris_user` data source instead.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},

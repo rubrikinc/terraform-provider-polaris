@@ -66,10 +66,10 @@ resource "polaris_role_assignment" "compliance_auditor" {
 
 ### Optional
 
-- `role_id` (String, Deprecated) Role ID (UUID).
+- `role_id` (String, Deprecated) Role ID (UUID). **Deprecated:** use `role_ids` instead.
 - `role_ids` (Set of String) Role IDs (UUID).
 - `sso_group_id` (String) SSO group ID. Changing this forces a new resource to be created.
-- `user_email` (String, Deprecated) User email address. Changing this forces a new resource to be created.
+- `user_email` (String, Deprecated) User email address. Changing this forces a new resource to be created. **Deprecated:** use `user_id` with the `polaris_user` data source instead.
 - `user_id` (String) User ID. Changing this forces a new resource to be created.
 
 ### Read-Only
