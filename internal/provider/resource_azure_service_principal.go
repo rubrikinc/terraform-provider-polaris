@@ -42,11 +42,16 @@ There are 3 ways to create a ´polaris_azure_service principal´ resource:
   2. Using the ´credentials´ field which is the path to a custom service principal 
      file. A description of the custom format can be found
      [here](https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials).
-  3. Using the ' sdk_auth´ field which is the path to an Azure service principal
+  3. Using the ´sdk_auth´ field which is the path to an Azure service principal
      created with the Azure SDK using the ´--sdk-auth´ parameter.
 
+Prefer to use option 1, as the ´app_name´ and the ´app_secret´ can be updated
+without replacing the service principal.
+
 ~> **Note:** Removing the last subscription from an RSC tenant will automatically
-   remove the tenant, which also removes the service principal.
+   remove the tenant, which also removes the service principal. If this happens,
+   the service principal can be replaced using
+   ´terraform apply -replace=<address-of-service-principal>´.
 
 ~> **Note:** Destroying the ´polaris_azure_service_principal´ resource only updates
    the local state, it does not remove the service principal from RSC. However,
@@ -81,7 +86,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
-				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
+				ExactlyOneOf: []string{keyCredentials, keySDKAuth},
 				RequiredWith: []string{keyAppName, keyAppSecret, keyTenantID},
 				Description: "Azure app registration application ID. Also known as the client ID. Changing this " +
 					"forces a new resource to be created.",
@@ -90,7 +95,6 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			keyAppName: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ForceNew:     true,
 				RequiredWith: []string{keyAppID, keyAppSecret, keyTenantID},
 				Description:  "Azure app registration display name. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
@@ -98,7 +102,6 @@ func resourceAzureServicePrincipal() *schema.Resource {
 			keyAppSecret: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ForceNew:     true,
 				Sensitive:    true,
 				RequiredWith: []string{keyAppID, keyAppName, keyTenantID},
 				Description:  "Azure app registration client secret. Changing this forces a new resource to be created.",
@@ -108,7 +111,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
-				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
+				ExactlyOneOf: []string{keyAppID, keySDKAuth},
 				Description: "Path to a custom service principal file. Changing this forces a new resource to be " +
 					"created.",
 				ValidateFunc: isExistingFile,
@@ -117,7 +120,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
-				ExactlyOneOf: []string{keyAppID, keyCredentials, keySDKAuth},
+				ExactlyOneOf: []string{keyAppID, keyCredentials},
 				Description: "Path to an Azure service principal created with the Azure SDK using the `--sdk-auth` " +
 					"parameter. Changing this forces a new resource to be created.",
 				ValidateFunc: isExistingFile,
@@ -223,6 +226,22 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 	client, err := m.(*client).polaris()
 	if err != nil {
 		return diag.FromErr(err)
+	}
+
+	if d.HasChanges(keyAppName, keyAppSecret) {
+		id, err := uuid.Parse(d.Id())
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		tenantID, err := uuid.Parse(d.Get(keyTenantID).(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		principal := azure.ServicePrincipal(id, d.Get(keyAppName).(string), d.Get(keyAppSecret).(string), tenantID, d.Get(keyTenantDomain).(string))
+		if _, err := azure.Wrap(client).SetServicePrincipal(ctx, principal); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if d.HasChanges(keyPermissions, keyPermissionsHash) {

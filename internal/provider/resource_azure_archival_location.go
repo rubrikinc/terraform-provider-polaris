@@ -34,6 +34,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 const resourceAzureArchivalLocationDescription = `
@@ -363,9 +364,9 @@ func fromAzureCustomerManagedKeys(customerKeys []gqlarchival.AzureCustomerKey) *
 // toAzureStorageAccountTags converts from the storage account tags field type
 // to the Azure tags type.
 func toAzureStorageAccountTags(tags map[string]any) gqlarchival.AzureTags {
-	tagList := make([]azure.Tag, 0, len(tags))
+	tagList := make([]core.Tag, 0, len(tags))
 	for key, value := range tags {
-		tagList = append(tagList, azure.Tag{Key: key, Value: value.(string)})
+		tagList = append(tagList, core.Tag{Key: key, Value: value.(string)})
 	}
 
 	return gqlarchival.AzureTags{TagList: tagList}
@@ -373,7 +374,7 @@ func toAzureStorageAccountTags(tags map[string]any) gqlarchival.AzureTags {
 
 // fromAzureStorageAccountTags converts to the storage account tags field type
 // from the Azure tags type.
-func fromAzureStorageAccountTags(storageAccountTags []azure.Tag) map[string]any {
+func fromAzureStorageAccountTags(storageAccountTags []core.Tag) map[string]any {
 	tags := make(map[string]any, len(storageAccountTags))
 	for _, tag := range storageAccountTags {
 		tags[tag.Key] = tag.Value

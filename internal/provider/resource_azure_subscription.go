@@ -554,6 +554,40 @@ func resourceAzureSubscription() *schema.Resource {
 							Description: "Azure regions to enable the SQL DB Protection feature in. Should be " +
 								"specified in the standard Azure style, e.g. `eastus`.",
 						},
+						keyResourceGroupName: {
+							Type:     schema.TypeString,
+							Optional: true,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyResourceGroupRegion,
+							},
+							Description: "Name of the Azure resource group where RSC places all resources created by " +
+								"the feature. RSC assumes the resource group already exists. Changing this forces the " +
+								"RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyResourceGroupRegion: {
+							Type:     schema.TypeString,
+							Optional: true,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyResourceGroupName,
+							},
+							Description: "Region of the Azure resource group. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
+						},
+						keyResourceGroupTags: {
+							Type: schema.TypeMap,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional: true,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyResourceGroupName,
+								keySQLDBProtection + ".0." + keyResourceGroupRegion,
+							},
+							Description: "Tags to add to the Azure resource group. Changing this forces the RSC feature " +
+								"to be re-onboarded.",
+						},
 						keyStatus: {
 							Type:        schema.TypeString,
 							Computed:    true,
@@ -756,7 +790,8 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m any) d
 func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] azureUpdateSubscription")
 
-	client, err := m.(*client).polaris()
+	client := m.(*client)
+	polarisClient, err := client.polaris()
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -807,6 +842,18 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			oldBlock := oldBlock.([]any)[0].(map[string]any)
 			newBlock := newBlock.([]any)[0].(map[string]any)
 
+			// Try to upgrade the Azure SQL DB Protection feature to use a
+			// resource group.
+			if feature.feature.Equal(core.FeatureAzureSQLDBProtection) {
+				ok, err := upgradeSQLDBFeatureToUseResourceGroup(ctx, client, accountID, newBlock)
+				if err != nil {
+					return diag.FromErr(err)
+				}
+				if ok {
+					continue
+				}
+			}
+
 			// Changes in resource group or managed identity requires the
 			// feature to be re-onboarded, any other changes to the feature will
 			// be updated when the feature is re-onboarded.
@@ -849,7 +896,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 
 		switch update.op {
 		case opAddFeature:
-			id, err := addAzureFeature(ctx, d, client, feature, update.block)
+			id, err := addAzureFeature(ctx, d, polarisClient, feature, update.block)
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -861,7 +908,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			if update.op == opRemoveFeature {
 				deleteSnapshots = d.Get(keyDeleteSnapshotsOnDestroy).(bool)
 			}
-			if err := azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), feature, deleteSnapshots); err != nil {
+			if err := azure.Wrap(polarisClient).RemoveSubscription(ctx, azure.CloudAccountID(accountID), feature, deleteSnapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		case opUpdateSubscription:
@@ -872,11 +919,11 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			for _, region := range update.block[keyRegions].(*schema.Set).List() {
 				opts = append(opts, azure.Region(region.(string)))
 			}
-			if err := azure.Wrap(client).UpdateSubscription(ctx, azure.CloudAccountID(accountID), feature, opts...); err != nil {
+			if err := azure.Wrap(polarisClient).UpdateSubscription(ctx, azure.CloudAccountID(accountID), feature, opts...); err != nil {
 				return diag.FromErr(err)
 			}
 		case opUpdatePermissions:
-			if err := azure.Wrap(client).PermissionsUpdated(ctx, azure.CloudAccountID(accountID), []core.Feature{feature}); err != nil {
+			if err := azure.Wrap(polarisClient).PermissionsUpdated(ctx, azure.CloudAccountID(accountID), []core.Feature{feature}); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -884,7 +931,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 
 	if d.HasChange(keySubscriptionName) {
 		opts := []azure.OptionFunc{azure.Name(d.Get(keySubscriptionName).(string))}
-		if err = azure.Wrap(client).UpdateSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureAll, opts...); err != nil {
+		if err = azure.Wrap(polarisClient).UpdateSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureAll, opts...); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1293,4 +1340,81 @@ func diffAzureUserAssignedManagedIdentity(oldBlock, newBlock map[string]any) boo
 	}
 
 	return false
+}
+
+// azureFeatureResourceGroup returns the resource group from the feature block.
+func azureFeatureResourceGroup(block map[string]any) (*gqlazure.ResourceGroup, bool) {
+	var name string
+	if v, ok := block[keyResourceGroupName]; ok {
+		name = v.(string)
+	}
+
+	var region gqlazure.Region
+	if v, ok := block[keyResourceGroupRegion]; ok {
+		region = gqlazure.RegionFromName(v.(string))
+	}
+
+	tagList := make([]core.Tag, 0)
+	if v, ok := block[keyResourceGroupTags]; ok {
+		for k, v := range v.(map[string]any) {
+			tagList = append(tagList, core.Tag{Key: k, Value: v.(string)})
+		}
+	}
+
+	if name == "" || region == gqlazure.RegionUnknown {
+		return nil, false
+	}
+
+	return &gqlazure.ResourceGroup{
+		Name:    name,
+		Region:  region.ToCloudAccountRegionEnum(),
+		TagList: gqlazure.TagList{Tags: tagList},
+	}, true
+}
+
+// upgradeSQLDBFeatureToUseResourceGroup upgrades the Azure SQL DB Protection
+// feature to use a resource group.
+func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, cloudAccountID uuid.UUID, block map[string]any) (bool, error) {
+	polarisClient, err := client.polaris()
+	if err != nil {
+		return false, err
+	}
+
+	// Check if the SQL DB Copy Backup feature flag is enabled for the account.
+	// We only need to upgrade accounts which has the feature flag enabled.
+	if !client.flags["CNP_AZURE_SQL_DB_COPY_BACKUP"] {
+		log.Print("[DEBUG] skipping Azure SQL DB Protection feature upgrade: feature flag CNP_AZURE_SQL_DB_COPY_BACKUP is not enabled")
+		return false, nil
+	}
+
+	// Read the subscription and check if the Azure SQL DB Protection feature
+	// already has a resource group set. If the Azure SQL DB feature hasn't been
+	// onboarded or already has a resource group set, we don't need to upgrade.
+	account, err := azure.Wrap(polarisClient).Subscription(ctx, azure.CloudAccountID(cloudAccountID), core.FeatureAll)
+	if err != nil {
+		return false, err
+	}
+	feature, ok := account.Feature(core.FeatureAzureSQLDBProtection)
+	if !ok {
+		return false, nil
+	}
+	if feature.ResourceGroup.Name != "" || feature.ResourceGroup.Region != "" {
+		log.Print("[DEBUG] skipping Azure SQL DB Protection feature upgrade: feature already upgraded")
+		return false, nil
+	}
+
+	// Fetch the resource group from the Azure SQL DB block in the Terraform
+	// configuration. If the resource group is not set, we cannot upgrade.
+	rg, ok := azureFeatureResourceGroup(block)
+	if !ok {
+		return false, nil
+	}
+
+	// Upgrade the Azure SQL DB feature to use a resource group.
+	log.Printf("[INFO] upgrading Azure SQL DB Protection feature to use resource group %q", rg.Name)
+	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, cloudAccountID, feature.Feature, rg); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

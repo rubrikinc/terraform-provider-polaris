@@ -1,3 +1,23 @@
+// Copyright 2024 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 package provider
 
 import (
@@ -22,13 +42,13 @@ func resourceCDMBootstrapCCESAWS() *schema.Resource {
 		DeleteContext: resourceCDMBootstrapCCESAWSDelete,
 
 		Schema: map[string]*schema.Schema{
-			"admin_email": {
+			keyAdminEmail: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "The Rubrik cluster sends messages for the admin account to this email address.",
 				ValidateFunc: validateEmailAddress,
 			},
-			"admin_password": {
+			keyAdminPassword: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Sensitive:    true,
@@ -47,14 +67,15 @@ func resourceCDMBootstrapCCESAWS() *schema.Resource {
 				Description:  "Unique name to assign to the Rubrik cluster.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"cluster_nodes": {
+			keyClusterNodes: {
 				Type:     schema.TypeMap,
-				Required: true,
+				Optional: true,
 				Elem: &schema.Schema{
 					Type:         schema.TypeString,
 					ValidateFunc: validation.IsIPAddress,
 				},
-				Description: "The node name and IP formatted as a map.",
+				ExactlyOneOf: []string{keyNodeConfig},
+				Description:  "The node name and IP formatted as a map.",
 			},
 			"dns_name_servers": {
 				Type:     schema.TypeList,
@@ -76,6 +97,13 @@ func resourceCDMBootstrapCCESAWS() *schema.Resource {
 				MinItems:    1,
 				Description: "The search domain that the DNS Service will use to resolve hostnames that are not fully qualified.",
 			},
+			keyEnableEncryption: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "When bootstrapping a Cloud Cluster this value must be `false`. Only kept for backwards compatibility. ",
+				Deprecated:  "Not used. Only kept for backwards compatibility.",
+			},
 			"enable_immutability": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -93,6 +121,16 @@ func resourceCDMBootstrapCCESAWS() *schema.Resource {
 				Required:     true,
 				Description:  "Subnet mask assigned to the management network.",
 				ValidateFunc: validation.IsIPAddress,
+			},
+			keyNodeConfig: {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type:         schema.TypeString,
+					ValidateFunc: validation.IsIPAddress,
+				},
+				Description: "The node name and IP formatted as a map.",
+				Deprecated:  "Use `cluster_nodes` instead. Only kept for backwards compatibility.",
 			},
 			"ntp_server1_name": {
 				Type:         schema.TypeString,
@@ -146,12 +184,11 @@ func resourceCDMBootstrapCCESAWS() *schema.Resource {
 				Description:  "Symmetric key type for NTP server #2.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"timeout": {
+			keyTimeout: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				Default:      "4m",
 				Description:  "The time to wait to establish a connection the Rubrik cluster before returning an error (defaults to `4m`).",
-				ValidateFunc: validateDuration,
+				ValidateFunc: validateBackwardsCompatibleTimeout,
 			},
 			"wait_for_completion": {
 				Type:        schema.TypeBool,
@@ -172,17 +209,9 @@ func resourceCDMBootstrapCCESAWS() *schema.Resource {
 func resourceCDMBootstrapCCESAWSCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAWSCreate")
 
-	client, err := m.(*client).cdm()
+	timeout, err := toBackwardsCompatibleTimeout(d)
 	if err != nil {
 		return diag.FromErr(err)
-	}
-
-	var timeout time.Duration
-	if t, ok := d.GetOk("timeout"); ok {
-		timeout, err = time.ParseDuration(t.(string))
-		if err != nil {
-			return diag.FromErr(err)
-		}
 	}
 
 	config := toClusterConfig(d)
@@ -193,13 +222,15 @@ func resourceCDMBootstrapCCESAWSCreate(ctx context.Context, d *schema.ResourceDa
 	if len(config.ClusterNodes) == 0 {
 		return diag.Errorf("At least one cluster node is required")
 	}
+
 	nodeIP := config.ClusterNodes[0].ManagementIP
-	requestID, err := client.BootstrapCluster(ctx, nodeIP, config, timeout)
+	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
+	requestID, err := client.BootstrapCluster(ctx, config, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	if d.Get("wait_for_completion").(bool) {
-		if err := client.WaitForBootstrap(ctx, nodeIP, requestID, timeout); err != nil {
+		if err := client.WaitForBootstrap(ctx, requestID, timeout, bootstrapWaitTime); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -211,25 +242,19 @@ func resourceCDMBootstrapCCESAWSCreate(ctx context.Context, d *schema.ResourceDa
 func resourceCDMBootstrapCCESAWSRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAWSRead")
 
-	client, err := m.(*client).cdm()
+	timeout, err := toBackwardsCompatibleTimeout(d)
 	if err != nil {
 		return diag.FromErr(err)
-	}
-
-	var timeout time.Duration
-	if t, ok := d.GetOk("timeout"); ok {
-		timeout, err = time.ParseDuration(t.(string))
-		if err != nil {
-			return diag.FromErr(err)
-		}
 	}
 
 	config := toClusterConfig(d)
 	if len(config.ClusterNodes) == 0 {
 		return diag.Errorf("At least one cluster node is required")
 	}
+
 	nodeIP := config.ClusterNodes[0].ManagementIP
-	isBootstrapped, err := client.IsBootstrapped(ctx, nodeIP, timeout)
+	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
+	isBootstrapped, err := client.IsBootstrapped(ctx, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -247,8 +272,10 @@ func resourceCDMBootstrapCCESAWSUpdate(ctx context.Context, d *schema.ResourceDa
 	return resourceCDMBootstrapCCESAWSRead(ctx, d, m)
 }
 
-// Once a Cluster has been bootstrapped it can not be deleted.
+// Once a Cluster has been bootstrapped it cannot be un-bootstrapped, delete
+// simply removes the resource from the local state.
 func resourceCDMBootstrapCCESAWSDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAWSDelete")
+	d.SetId("")
 	return nil
 }

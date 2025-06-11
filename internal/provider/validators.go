@@ -6,25 +6,11 @@ import (
 	"io/fs"
 	"net/mail"
 	"os"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
-
-// validateDuration verifies that i contains a valid duration.
-func validateDuration(i interface{}, k string) ([]string, []error) {
-	v, ok := i.(string)
-	if !ok {
-		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
-	}
-	if _, err := time.ParseDuration(v); err != nil {
-		return nil, []error{fmt.Errorf("%q is not a valid duration", v)}
-	}
-
-	return nil, nil
-}
 
 // validateEmailAddress verifies that i contains a valid email address.
 func validateEmailAddress(i interface{}, k string) ([]string, []error) {

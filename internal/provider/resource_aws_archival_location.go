@@ -34,6 +34,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 const (
@@ -282,9 +283,9 @@ func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 // toAWSBucketTags converts from the bucket tags argument to an archival AWS
 // tags. If the bucket tags argument is empty, nil is returned.
 func toAWSBucketTags(tags map[string]any) *gqlarchival.AWSTags {
-	tagList := make([]aws.Tag, 0, len(tags))
+	tagList := make([]core.Tag, 0, len(tags))
 	for key, value := range tags {
-		tagList = append(tagList, aws.Tag{Key: key, Value: value.(string)})
+		tagList = append(tagList, core.Tag{Key: key, Value: value.(string)})
 	}
 	if len(tagList) > 0 {
 		return &gqlarchival.AWSTags{TagList: tagList}
@@ -295,7 +296,7 @@ func toAWSBucketTags(tags map[string]any) *gqlarchival.AWSTags {
 
 // fromAWSBucketTags converts to the bucket tags argument from a slice of AWS
 // tags.
-func fromAWSBucketTags(tags []aws.Tag) map[string]any {
+func fromAWSBucketTags(tags []core.Tag) map[string]any {
 	bucketTags := make(map[string]any, len(tags))
 	for _, tag := range tags {
 		bucketTags[tag.Key] = tag.Value
