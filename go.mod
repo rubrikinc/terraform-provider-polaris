@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/terraform-plugin-docs v0.16.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
-	github.com/rubrikinc/rubrik-polaris-sdk-for-go v1.1.0-beta.7
+	github.com/rubrikinc/rubrik-polaris-sdk-for-go v1.1.0-beta.7.0.20250611114232-f4cb6426d944
 )
 
 require (
@@ -112,5 +112,3 @@ require (
 	google.golang.org/grpc v1.63.2 // indirect
 	google.golang.org/protobuf v1.34.0 // indirect
 )
-
-replace github.com/rubrikinc/rubrik-polaris-sdk-for-go => ../rubrik-polaris-sdk-for-go
