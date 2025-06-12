@@ -111,10 +111,11 @@ func resourceAwsPrivateContainerRegistry() *schema.Resource {
 				Description: "RSC cloud account ID (UUID).",
 			},
 			keyAccountID: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "RSC cloud account ID (UUID). Changing this forces a new resource to be created.",
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+				Description: "RSC cloud account ID (UUID) of the AWS account hosting the Exocompute. Changing this " +
+					"forces a new resource to be created.",
 				ValidateFunc: validation.IsUUID,
 			},
 			keyNativeID: {

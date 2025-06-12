@@ -29,8 +29,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/cdm"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -77,25 +77,30 @@ func Provider() *schema.Provider {
 			keyPolarisAWSCNPAccount:                      resourceAwsCnpAccount(),
 			keyPolarisAWSCNPAccountAttachments:           resourceAwsCnpAccountAttachments(),
 			keyPolarisAWSCNPAccountTrustPolicy:           resourceAwsCnpAccountTrustPolicy(),
+			keyPolarisAWSCustomTags:                      resourceAwsCustomTags(),
 			keyPolarisAWSExocompute:                      resourceAwsExocompute(),
 			keyPolarisAWSExocomputeClusterAttachment:     resourceAwsExocomputeClusterAttachment(),
 			keyPolarisAWSPrivateContainerRegistry:        resourceAwsPrivateContainerRegistry(),
 			keyPolarisAzureArchivalLocation:              resourceAzureArchivalLocation(),
+			keyPolarisAzureCustomTags:                    resourceAzureCustomTags(),
 			keyPolarisAzureExocompute:                    resourceAzureExocompute(),
 			keyPolarisAzureExocomputeClusterAttachment:   resourceAzureExocomputeClusterAttachment(),
 			keyPolarisAzurePrivateContainerRegistry:      resourceAzurePrivateContainerRegistry(),
 			keyPolarisAzureServicePrincipal:              resourceAzureServicePrincipal(),
 			keyPolarisAzureSubscription:                  resourceAzureSubscription(),
-			"polaris_cdm_bootstrap":                      resourceCDMBootstrap(),
-			"polaris_cdm_bootstrap_cces_aws":             resourceCDMBootstrapCCESAWS(),
-			"polaris_cdm_bootstrap_cces_azure":           resourceCDMBootstrapCCESAzure(),
+			keyPolarisCDMBootstrap:                       resourceCDMBootstrap(),
+			keyPolarisCDMBootstrapCCESAWS:                resourceCDMBootstrapCCESAWS(),
+			keyPolarisCDMBootstrapCCESAzure:              resourceCDMBootstrapCCESAzure(),
+			keyPolarisCDMRegistration:                    resourceCDMRegistration(),
 			keyPolarisCustomRole:                         resourceCustomRole(),
 			keyPolarisDataCenterAWSAccount:               resourceDataCenterAWSAccount(),
 			keyPolarisDataCenterAzureSubscription:        resourceDataCenterAzureSubscription(),
 			keyPolarisDataCenterArchivalLocationAmazonS3: resourceDataCenterArchivalLocationAmazonS3(),
-			"polaris_gcp_project":                        resourceGcpProject(),
-			"polaris_gcp_service_account":                resourceGcpServiceAccount(),
+			keyPolarisGCPProject:                         resourceGcpProject(),
+			keyPolarisGCPServiceAccount:                  resourceGcpServiceAccount(),
 			keyPolarisRoleAssignment:                     resourceRoleAssignment(),
+			keyPolarisSLADomainAssignment:                resourceSLADomainAssignment(),
+			keyPolarisTagRule:                            resourceTagRule(),
 			keyPolarisUser:                               resourceUser(),
 		},
 
@@ -112,9 +117,13 @@ func Provider() *schema.Provider {
 			keyPolarisDataCenterAzureSubscription: dataSourceDataCenterAzureSubscription(),
 			keyPolarisDeployment:                  dataSourceDeployment(),
 			keyPolarisFeatures:                    dataSourceFeatures(),
-			"polaris_gcp_permissions":             dataSourceGcpPermissions(),
+			keyPolarisGCPPermissions:              dataSourceGcpPermissions(),
 			keyPolarisRole:                        dataSourceRole(),
 			keyPolarisRoleTemplate:                dataSourceRoleTemplate(),
+			keyPolarisSLADomain:                   dataSourceSLADomain(),
+			keyPolarisSSOGroup:                    dataSourceSSOGroup(),
+			keyPolarisTagRule:                     dataSourceTagRule(),
+			keyPolarisUser:                        dataSourceUser(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
@@ -129,7 +138,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 		Secret: d.Get("token_cache_secret").(string),
 	}
 
-	client, err := newClient(d.Get("credentials").(string), cacheParams)
+	client, err := newClient(ctx, d.Get("credentials").(string), cacheParams)
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}
@@ -138,12 +147,13 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 }
 
 type client struct {
-	cdmClient     *cdm.BootstrapClient
+	logger        log.Logger
 	polarisClient *polaris.Client
 	polarisErr    error
+	flags         map[string]bool
 }
 
-func newClient(credentials string, cacheParams polaris.CacheParams) (*client, error) {
+func newClient(ctx context.Context, credentials string, cacheParams polaris.CacheParams) (*client, error) {
 	logger := log.NewStandardLogger()
 	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
 		return nil, err
@@ -156,28 +166,30 @@ func newClient(credentials string, cacheParams polaris.CacheParams) (*client, er
 
 	var polarisClient *polaris.Client
 	var accountErr error
+	flags := make(map[string]bool)
 	if err == nil {
 		polarisClient, err = polaris.NewClientWithLoggerAndCacheParams(account, cacheParams, logger)
 		if err != nil {
 			return nil, err
+		}
+
+		featureFlags, err := core.Wrap(polarisClient.GQL).FeatureFlags(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, flag := range featureFlags {
+			flags[flag.Name] = flag.Enabled
 		}
 	} else {
 		accountErr = err
 	}
 
 	return &client{
-		cdmClient:     cdm.NewBootstrapClientWithLogger(true, logger),
+		logger:        logger,
 		polarisClient: polarisClient,
 		polarisErr:    accountErr,
+		flags:         flags,
 	}, nil
-}
-
-func (c *client) cdm() (*cdm.BootstrapClient, error) {
-	if c.cdmClient == nil {
-		return nil, errors.New("CDM functionality has not been configured")
-	}
-
-	return c.cdmClient, nil
 }
 
 func (c *client) polaris() (*polaris.Client, error) {

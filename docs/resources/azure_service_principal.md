@@ -12,10 +12,14 @@ description: |-
     2. Using the credentials field which is the path to a custom service principal
        file. A description of the custom format can be found
        here https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials.
-    3. Using the ' sdk_authfield which is the path to an Azure service principal
-       created with the Azure SDK using the--sdk-auth` parameter.
+    3. Using the sdk_auth field which is the path to an Azure service principal
+       created with the Azure SDK using the --sdk-auth parameter.
+  Prefer to use option 1, as the app_name and the app_secret can be updated
+  without replacing the service principal.
   ~> Note: Removing the last subscription from an RSC tenant will automatically
-     remove the tenant, which also removes the service principal.
+     remove the tenant, which also removes the service principal. If this happens,
+     the service principal can be replaced using
+     terraform apply -replace=<address-of-service-principal>.
   ~> Note: Destroying the polaris_azure_service_principal resource only updates
      the local state, it does not remove the service principal from RSC. However,
      creating another polaris_azure_service_principal resource for the same Azure
@@ -37,11 +41,16 @@ There are 3 ways to create a `polaris_azure_service principal` resource:
   2. Using the `credentials` field which is the path to a custom service principal 
      file. A description of the custom format can be found
      [here](https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials).
-  3. Using the ' sdk_auth` field which is the path to an Azure service principal
+  3. Using the `sdk_auth` field which is the path to an Azure service principal
      created with the Azure SDK using the `--sdk-auth` parameter.
 
+Prefer to use option 1, as the `app_name` and the `app_secret` can be updated
+without replacing the service principal.
+
 ~> **Note:** Removing the last subscription from an RSC tenant will automatically
-   remove the tenant, which also removes the service principal.
+   remove the tenant, which also removes the service principal. If this happens,
+   the service principal can be replaced using
+   `terraform apply -replace=<address-of-service-principal>`.
 
 ~> **Note:** Destroying the `polaris_azure_service_principal` resource only updates
    the local state, it does not remove the service principal from RSC. However,

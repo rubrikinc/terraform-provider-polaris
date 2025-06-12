@@ -4,6 +4,53 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.0
+* Add `resource_group_name`, `resource_group_region` and `resource_group_tags` fields to the
+  `polaris_azure_subscription` resource. These fields can only be used if the `CNP_AZURE_SQL_DB_COPY_BACKUP` feature
+  flag has been enabled for the RSC account.
+* Fix a bug in the `polaris_aws_account` data source where the cloud account ID was not properly converted to a string
+  causing the data source to error out.
+* Require user email addresses of the `polaris_user` resources to be all lower case. RSC automatically converts all
+  letters to lower case before storing the email addresses.
+* Add support for AWS custom tags. [[docs](../resources/aws_custom_tags)]
+* Add support for Azure custom tags. [[docs](../resources/azure_custom_tags)]
+* The behavior of the `sdk_auth` field of the `polaris_azure_service_principal` resource has changed. The Azure app name
+  is no longer looked up using the Azure AD Graph API. Instead, the app name is generated in a consistent way using the
+  Azure app and tenant IDs. This change is made because of the deprecation of the Azure AD Graph API by Microsoft.
+* Deprecate the `role_id` field in the `polaris_role_assignment` resource. Use the `role_ids` field instead.
+* Deprecate the `user_email` field in the `polaris_role_assignment` resource. Use the `user_id` field with the
+  `polaris_user` data source instead.
+* Add `sso_group_id` field to the `polaris_role_assignment` resource. The `sso_group_id` field can be used to assign RSC
+  roles to an SSO group.
+* The `id` field of the `polaris_role_assignment` resource has changed from being the hash of the user email address and
+  the role ID to being the user ID or SSO group ID.
+* The `id` field of the `polaris_user` resource has changed from being the email address to being the user ID. Note,
+  this is a breaking change if a Terraform configuration expects the `id` field be an email address.
+* Add `polaris_sso_group` data source. The `polaris_sso_group` data source is used to look up SSO groups in RSC.
+  [[docs](../data-sources/sso_group)]
+* Add `polaris_user` data source. The `polaris_user` data source is used to look up users in RSC.
+  [[docs](../data-sources/user)]
+* Add `polaris_tag_rule` data source and resource. The `polaris_tag_rule` resource is used to create and manage RSC tag
+  rules. [[docs](../data-sources/tag_rule)]  [[docs](../resources/tag_rule)]
+* Add `polaris_sla_domain_assignment` resource. The `polaris_sla_domain_assignment` resource is used to assign an SLA
+  domain to a workload. [[docs](../resources/sla_domain_assignment)]
+* Add support for updating the `app_name` and `app_secret` fields of the `polaris_azure_service_principal` resource
+  without recreating the resource.
+* Add `feature` field to the `polaris_aws_account` data source.
+* Add support for looking up an AWS account in RSC using the `polaris_aws_account` data source by the RSC cloud account
+  ID.
+* Improve CDM resource backwards compatibility. Align the CDM resource state of the RSC provider with the state of the
+  older Rubrik (CDM) provider. This simplifies the state migration of Terraform modules switching to the RSC provider.
+* Only add AWS subnets with names to the set of subnets. When using AWS Bring Your Own Kubernetes (BYOK) no subnets are
+  specified. In this case RSC will return an empty string in the API response.
+* Replace `APPROVED` with `ACCEPTED` in the Private Container Registry (PCR) documentation.
+* The `polaris_cdm_bootstrap`, `polaris_cdm_bootstrap_cces_aws` and `polaris_cdm_bootstrap_cces_azure` resources now
+  captures any status information returned in response to a bootstrap request failing.
+* Fix a bug in the `polaris_azure_exocompute` resource where an AWS GraphQL endpoint was incorrectly called when mapping
+  an Azure cloud account.
+* Add support for registering clusters with RSC using the `polaris_cdm_registration` resource.
+  [[docs](../resources/cdm_registration)]
+
 ## v1.0.0
 * Fix a bug in the `polaris_aws_exocompute` resource. The `subnets` field was erroneously populated with subnets even
   when the Exocompute configuration did not contain any subnets.
