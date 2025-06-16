@@ -95,7 +95,7 @@ func TestAccPolarisUser_basic(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: adminUser,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestCheckResourceAttr("polaris_user.admin", "id", rscConfig.NewUserEmail),
+				checkResourceAttrIsUUID("polaris_user.admin", "id"),
 				resource.TestCheckResourceAttr("polaris_user.admin", "email", rscConfig.NewUserEmail),
 				resource.TestCheckResourceAttr("polaris_user.admin", "is_account_owner", "false"),
 				resource.TestCheckResourceAttr("polaris_user.admin", "status", "ACTIVE"),
@@ -105,7 +105,7 @@ func TestAccPolarisUser_basic(t *testing.T) {
 		}, {
 			Config: adminUserWithViewCluster,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestCheckResourceAttr("polaris_user.admin", "id", rscConfig.NewUserEmail),
+				checkResourceAttrIsUUID("polaris_user.admin", "id"),
 				resource.TestCheckResourceAttr("polaris_user.admin", "email", rscConfig.NewUserEmail),
 				resource.TestCheckResourceAttr("polaris_user.admin", "is_account_owner", "false"),
 				resource.TestCheckResourceAttr("polaris_user.admin", "status", "ACTIVE"),
