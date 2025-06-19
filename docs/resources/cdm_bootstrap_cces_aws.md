@@ -3,10 +3,30 @@ page_title: "polaris_cdm_bootstrap_cces_aws Resource - terraform-provider-polari
 subcategory: ""
 description: |-
   
+The `polaris_cdm_bootstrap_cces_aws` resource bootstraps a Rubrik AWS cloud
+cluster.
+
+~> **Note:** The Terraform provider can only bootstrap clusters, it cannot
+   decommission clusters or read the state of a cluster. Destroying the resource
+   only removes it from the local state.
+
+~> **Note:** Updating the `cluster_nodes` field is possible, but nodes added
+   still need to be manually added to the cluster.
+
 ---
 
 # polaris_cdm_bootstrap_cces_aws (Resource)
 
+
+The `polaris_cdm_bootstrap_cces_aws` resource bootstraps a Rubrik AWS cloud
+cluster.
+
+~> **Note:** The Terraform provider can only bootstrap clusters, it cannot
+   decommission clusters or read the state of a cluster. Destroying the resource
+   only removes it from the local state.
+
+~> **Note:** Updating the `cluster_nodes` field is possible, but nodes added
+   still need to be manually added to the cluster.
 
 
 
@@ -42,7 +62,6 @@ resource "polaris_cdm_bootstrap_cces_aws" "default" {
 - `admin_password` (String, Sensitive) Password for the admin account.
 - `bucket_name` (String) AWS S3 bucket where CCES will store its data.
 - `cluster_name` (String) Unique name to assign to the Rubrik cluster.
-- `cluster_nodes` (Map of String) The node name and IP formatted as a map.
 - `dns_name_servers` (List of String) IPv4 addresses of DNS servers.
 - `dns_search_domain` (List of String) The search domain that the DNS Service will use to resolve hostnames that are not fully qualified.
 - `management_gateway` (String) IP address assigned to the management network gateway
@@ -52,7 +71,11 @@ resource "polaris_cdm_bootstrap_cces_aws" "default" {
 
 ### Optional
 
+- `cluster_node_ip` (String) IP address of the cluster node to connect to. If not specified, a random node from the `cluster_nodes` map will be used.
+- `cluster_nodes` (Map of String) The node name and IP formatted as a map.
+- `enable_encryption` (Boolean, Deprecated) When bootstrapping a Cloud Cluster this value must be `false`. **Deprecated:** not used. Only kept for backwards compatibility.
 - `enable_immutability` (Boolean) Flag to determine if versioning will be used on the S3 object storage to enable immutability.
+- `node_config` (Map of String, Deprecated) The node name and IP address formatted as a map. **Deprecated:** use `cluster_nodes` instead. Only kept for backwards compatibility.
 - `ntp_server1_key` (String) Symmetric key material for NTP server #1.
 - `ntp_server1_key_id` (Number) Key id number for NTP server #1 (typically this is 0).
 - `ntp_server1_key_type` (String) Symmetric key type for NTP server #1.

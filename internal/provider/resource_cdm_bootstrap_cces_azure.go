@@ -31,6 +31,18 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/cdm"
 )
 
+const resourceCDMBootstrapCCESAzureDescription = `
+The ´polaris_cdm_bootstrap_cces_azure´ resource bootstraps a Rubrik Azure cloud
+cluster.
+
+~> **Note:** The Terraform provider can only bootstrap clusters, it cannot
+   decommission clusters or read the state of a cluster. Destroying the resource
+   only removes it from the local state.
+
+~> **Note:** Updating the ´cluster_nodes´ field is possible, but nodes added
+   still need to be manually added to the cluster.
+`
+
 // This resource uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
@@ -41,6 +53,7 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 		UpdateContext: resourceCDMBootstrapCCESAzureUpdate,
 		DeleteContext: resourceCDMBootstrapCCESAzureDelete,
 
+		Description: description(resourceCDMBootstrapCCESAzureDescription),
 		Schema: map[string]*schema.Schema{
 			keyAdminEmail: {
 				Type:         schema.TypeString,
@@ -55,7 +68,14 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				Description:  "Password for the admin account.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"cluster_name": {
+			keyClusterNodeIPAddress: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "IP address of the cluster node to connect to. If not specified, a random node from " +
+					"the `cluster_nodes` map will be used.",
+				ValidateFunc: validation.IsIPAddress,
+			},
+			keyClusterName: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "Unique name to assign to the Rubrik cluster.",
@@ -71,19 +91,19 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				ExactlyOneOf: []string{keyNodeConfig},
 				Description:  "The node name and IP formatted as a map.",
 			},
-			"connection_string": {
+			keyConnectionString: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "The connection string for the Azure storage account where CCES will store its data.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"container_name": {
+			keyContainerName: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "The name of the container in the Azure storage account where CCES will store its data.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"dns_name_servers": {
+			keyDNSNameServers: {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Schema{
@@ -93,7 +113,7 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				MinItems:    1,
 				Description: "IPv4 addresses of DNS servers.",
 			},
-			"dns_search_domain": {
+			keyDNSSearchDomain: {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Schema{
@@ -104,25 +124,26 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				Description: "The search domain that the DNS Service will use to resolve hostnames that are not fully qualified.",
 			},
 			keyEnableEncryption: {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
-				Description: "When bootstrapping a Cloud Cluster this value must be `false`. Only kept for backwards compatibility. ",
-				Deprecated:  "Not used. Only kept for backwards compatibility.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				Description: "When bootstrapping a Cloud Cluster this value must be `false`. **Deprecated:** not " +
+					"used. Only kept for backwards compatibility.",
+				Deprecated: "Not used. Only kept for backwards compatibility.",
 			},
-			"enable_immutability": {
+			keyEnableImmutability: {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 				Description: "Flag to determine if versioning will be used on the Azure Blob storage to enable immutability.",
 			},
-			"management_gateway": {
+			keyManagementGateway: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "IP address assigned to the management network gateway",
 				ValidateFunc: validation.IsIPAddress,
 			},
-			"management_subnet_mask": {
+			keyManagementSubnetMask: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "Subnet mask assigned to the management network.",
@@ -135,55 +156,56 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 					Type:         schema.TypeString,
 					ValidateFunc: validation.IsIPAddress,
 				},
-				Description: "The node name and IP formatted as a map.",
-				Deprecated:  "Use `cluster_nodes` instead. Only kept for backwards compatibility.",
+				Description: "The node name and IP address formatted as a map. **Deprecated:** use `cluster_nodes` " +
+					"instead. Only kept for backwards compatibility.",
+				Deprecated: "Use `cluster_nodes` instead. Only kept for backwards compatibility.",
 			},
-			"ntp_server1_name": {
+			keyNTPServer1Name: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "IP address for NTP server #1.",
 				ValidateFunc: validation.IsIPAddress,
 			},
-			"ntp_server1_key": {
+			keyNTPServer1Key: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server1_key_id", "ntp_server1_key_type"},
 				Description:  "Symmetric key material for NTP server #1.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"ntp_server1_key_id": {
+			keyNTPServer1KeyID: {
 				Type:         schema.TypeInt,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server1_key", "ntp_server1_key_type"},
 				Description:  "Key id number for NTP server #1 (typically this is 0).",
 			},
-			"ntp_server1_key_type": {
+			keyNTPServer1KeyType: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server1_key", "ntp_server1_key_id"},
 				Description:  "Symmetric key type for NTP server #1.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"ntp_server2_name": {
+			keyNTPServer2Name: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "IP address for NTP server #2.",
 				ValidateFunc: validation.IsIPAddress,
 			},
-			"ntp_server2_key": {
+			keyNTPServer2Key: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server2_key_id", "ntp_server2_key_type"},
 				Description:  "Symmetric key material for NTP server #2.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"ntp_server2_key_id": {
+			keyNTPServer2KeyID: {
 				Type:         schema.TypeInt,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server2_key", "ntp_server2_key_type"},
 				Description:  "Key id number for NTP server #2 (typically this is 1).",
 			},
-			"ntp_server2_key_type": {
+			keyNTPServer2KeyType: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server2_key", "ntp_server2_key_id"},
@@ -196,7 +218,7 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				Description:  "The time to wait to establish a connection the Rubrik cluster before returning an error (defaults to `4m`).",
 				ValidateFunc: validateBackwardsCompatibleTimeout,
 			},
-			"wait_for_completion": {
+			keyWaitForCompletion: {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     true,
@@ -212,7 +234,7 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 	}
 }
 
-func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAzureCreate")
 
 	timeout, err := toBackwardsCompatibleTimeout(d)
@@ -222,31 +244,34 @@ func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.Resource
 
 	config := toClusterConfig(d)
 	config.StorageConfig = cdm.AzureStorageConfig{
-		ConnectionString:   d.Get("connection_string").(string),
-		ContainerName:      d.Get("container_name").(string),
-		EnableImmutability: d.Get("enable_immutability").(bool),
+		ConnectionString:   d.Get(keyConnectionString).(string),
+		ContainerName:      d.Get(keyContainerName).(string),
+		EnableImmutability: d.Get(keyEnableImmutability).(bool),
 	}
 	if len(config.ClusterNodes) == 0 {
 		return diag.Errorf("At least one cluster node is required")
 	}
 
 	nodeIP := config.ClusterNodes[0].ManagementIP
+	if d.Get(keyClusterNodeIPAddress).(string) != "" {
+		nodeIP = d.Get(keyClusterNodeIPAddress).(string)
+	}
 	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
 	requestID, err := client.BootstrapCluster(ctx, config, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if d.Get("wait_for_completion").(bool) {
+	if d.Get(keyWaitForCompletion).(bool) {
 		if err := client.WaitForBootstrap(ctx, requestID, timeout, bootstrapWaitTime); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	d.SetId(d.Get("cluster_name").(string))
+	d.SetId(d.Get(keyClusterName).(string))
 	return resourceCDMBootstrapCCESAzureRead(ctx, d, m)
 }
 
-func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAzureRead")
 
 	timeout, err := toBackwardsCompatibleTimeout(d)
@@ -260,6 +285,9 @@ func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceDa
 	}
 
 	nodeIP := config.ClusterNodes[0].ManagementIP
+	if d.Get(keyClusterNodeIPAddress).(string) != "" {
+		nodeIP = d.Get(keyClusterNodeIPAddress).(string)
+	}
 	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
 	isBootstrapped, err := client.IsBootstrapped(ctx, timeout, bootstrapWaitTime)
 	if err != nil {
@@ -274,14 +302,14 @@ func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceDa
 
 // Once a Cluster has been bootstrapped it can not be updated through the
 // bootstrap resource
-func resourceCDMBootstrapCCESAzureUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceCDMBootstrapCCESAzureUpdate(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAzureUpdate")
 	return resourceCDMBootstrapCCESAzureRead(ctx, d, m)
 }
 
 // Once a Cluster has been bootstrapped it cannot be un-bootstrapped, delete
 // simply removes the resource from the local state.
-func resourceCDMBootstrapCCESAzureDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceCDMBootstrapCCESAzureDelete(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCCESAzureDelete")
 	d.SetId("")
 	return nil

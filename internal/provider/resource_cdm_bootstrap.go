@@ -37,6 +37,17 @@ const (
 	bootstrapWaitTime = 30 * time.Second
 )
 
+const resourceCDMBootstrapDescription = `
+The ´polaris_cdm_bootstrap´ resource bootstraps a Rubrik cluster.
+
+~> **Note:** The Terraform provider can only bootstrap clusters, it cannot
+   decommission clusters or read the state of a cluster. Destroying the resource
+   only removes it from the local state.
+
+~> **Note:** Updating the ´cluster_nodes´ field is possible, but nodes added
+   still need to be manually added to the cluster.
+`
+
 // This resource uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
@@ -47,6 +58,7 @@ func resourceCDMBootstrap() *schema.Resource {
 		UpdateContext: resourceCDMBootstrapUpdate,
 		DeleteContext: resourceCDMBootstrapDelete,
 
+		Description: description(resourceCDMBootstrapDescription),
 		Schema: map[string]*schema.Schema{
 			keyAdminEmail: {
 				Type:         schema.TypeString,
@@ -61,11 +73,18 @@ func resourceCDMBootstrap() *schema.Resource {
 				Description:  "Password for the admin account.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"cluster_name": {
+			keyClusterName: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "Unique name to assign to the Rubrik cluster.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyClusterNodeIPAddress: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "IP address of the cluster node to connect to. If not specified, a random node from " +
+					"the `cluster_nodes` map will be used.",
+				ValidateFunc: validation.IsIPAddress,
 			},
 			keyClusterNodes: {
 				Type:     schema.TypeMap,
@@ -77,7 +96,7 @@ func resourceCDMBootstrap() *schema.Resource {
 				ExactlyOneOf: []string{keyNodeConfig},
 				Description:  "The node name and IP formatted as a map.",
 			},
-			"dns_name_servers": {
+			keyDNSNameServers: {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Schema{
@@ -87,7 +106,7 @@ func resourceCDMBootstrap() *schema.Resource {
 				MinItems:    1,
 				Description: "IPv4 addresses of DNS servers.",
 			},
-			"dns_search_domain": {
+			keyDNSSearchDomain: {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Schema{
@@ -103,13 +122,13 @@ func resourceCDMBootstrap() *schema.Resource {
 				Default:     true,
 				Description: "Enable software data encryption at rest.",
 			},
-			"management_gateway": {
+			keyManagementGateway: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "IP address assigned to the management network gateway",
 				ValidateFunc: validation.IsIPAddress,
 			},
-			"management_subnet_mask": {
+			keyManagementSubnetMask: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "Subnet mask assigned to the management network.",
@@ -122,55 +141,56 @@ func resourceCDMBootstrap() *schema.Resource {
 					Type:         schema.TypeString,
 					ValidateFunc: validation.IsIPAddress,
 				},
-				Description: "The node name and IP formatted as a map.",
-				Deprecated:  "Use `cluster_nodes` instead. Only kept for backwards compatibility.",
+				Description: "The node name and IP address formatted as a map. **Deprecated:** use `cluster_nodes` " +
+					"instead. Only kept for backwards compatibility.",
+				Deprecated: "Use `cluster_nodes` instead. Only kept for backwards compatibility.",
 			},
-			"ntp_server1_name": {
+			keyNTPServer1Name: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "IP address for NTP server #1.",
 				ValidateFunc: validation.IsIPAddress,
 			},
-			"ntp_server1_key": {
+			keyNTPServer1Key: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server1_key_id", "ntp_server1_key_type"},
 				Description:  "Symmetric key material for NTP server #1.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"ntp_server1_key_id": {
+			keyNTPServer1KeyID: {
 				Type:         schema.TypeInt,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server1_key", "ntp_server1_key_type"},
 				Description:  "Key id number for NTP server #1 (typically this is 0).",
 			},
-			"ntp_server1_key_type": {
+			keyNTPServer1KeyType: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server1_key", "ntp_server1_key_id"},
 				Description:  "Symmetric key type for NTP server #1.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"ntp_server2_name": {
+			keyNTPServer2Name: {
 				Type:         schema.TypeString,
 				Required:     true,
 				Description:  "IP address for NTP server #2.",
 				ValidateFunc: validation.IsIPAddress,
 			},
-			"ntp_server2_key": {
+			keyNTPServer2Key: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server2_key_id", "ntp_server2_key_type"},
 				Description:  "Symmetric key material for NTP server #2.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			"ntp_server2_key_id": {
+			keyNTPServer2KeyID: {
 				Type:         schema.TypeInt,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server2_key", "ntp_server2_key_type"},
 				Description:  "Key id number for NTP server #2 (typically this is 1).",
 			},
-			"ntp_server2_key_type": {
+			keyNTPServer2KeyType: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"ntp_server2_key", "ntp_server2_key_id"},
@@ -183,7 +203,7 @@ func resourceCDMBootstrap() *schema.Resource {
 				Description:  "The time to wait to establish a connection the Rubrik cluster before returning an error (defaults to `4m`).",
 				ValidateFunc: validateBackwardsCompatibleTimeout,
 			},
-			"wait_for_completion": {
+			keyWaitForCompletion: {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     true,
@@ -199,7 +219,7 @@ func resourceCDMBootstrap() *schema.Resource {
 	}
 }
 
-func resourceCDMBootstrapCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceCDMBootstrapCreate(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapCreate")
 
 	timeout, err := toBackwardsCompatibleTimeout(d)
@@ -209,29 +229,32 @@ func resourceCDMBootstrapCreate(ctx context.Context, d *schema.ResourceData, m i
 
 	config := toClusterConfig(d)
 	config.StorageConfig = cdm.CDMStorageConfig{
-		EnableEncryption: d.Get("enable_encryption").(bool),
+		EnableEncryption: d.Get(keyEnableEncryption).(bool),
 	}
 	if len(config.ClusterNodes) == 0 {
 		return diag.Errorf("At least one cluster node is required")
 	}
 
 	nodeIP := config.ClusterNodes[0].ManagementIP
+	if d.Get(keyClusterNodeIPAddress).(string) != "" {
+		nodeIP = d.Get(keyClusterNodeIPAddress).(string)
+	}
 	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
 	requestID, err := client.BootstrapCluster(ctx, config, timeout, bootstrapWaitTime)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if d.Get("wait_for_completion").(bool) {
+	if d.Get(keyWaitForCompletion).(bool) {
 		if err := client.WaitForBootstrap(ctx, requestID, timeout, bootstrapWaitTime); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	d.SetId(d.Get("cluster_name").(string))
+	d.SetId(d.Get(keyClusterName).(string))
 	return resourceCDMBootstrapRead(ctx, d, m)
 }
 
-func resourceCDMBootstrapRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceCDMBootstrapRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapRead")
 
 	timeout, err := toBackwardsCompatibleTimeout(d)
@@ -245,6 +268,9 @@ func resourceCDMBootstrapRead(ctx context.Context, d *schema.ResourceData, m int
 	}
 
 	nodeIP := config.ClusterNodes[0].ManagementIP
+	if d.Get(keyClusterNodeIPAddress).(string) != "" {
+		nodeIP = d.Get(keyClusterNodeIPAddress).(string)
+	}
 	client := cdm.WrapBootstrap(cdm.NewClientWithLogger(nodeIP, true, m.(*client).logger))
 	isBootstrapped, err := client.IsBootstrapped(ctx, timeout, bootstrapWaitTime)
 	if err != nil {
@@ -259,14 +285,14 @@ func resourceCDMBootstrapRead(ctx context.Context, d *schema.ResourceData, m int
 
 // Once a Cluster has been bootstrapped it can not be updated through the
 // bootstrap resource
-func resourceCDMBootstrapUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceCDMBootstrapUpdate(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapUpdate")
 	return resourceCDMBootstrapRead(ctx, d, m)
 }
 
 // Once a Cluster has been bootstrapped it cannot be un-bootstrapped, delete
 // simply removes the resource from the local state.
-func resourceCDMBootstrapDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceCDMBootstrapDelete(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] resourceCDMBootstrapDelete")
 	d.SetId("")
 	return nil
@@ -274,13 +300,13 @@ func resourceCDMBootstrapDelete(ctx context.Context, d *schema.ResourceData, m i
 
 func toClusterConfig(d *schema.ResourceData) cdm.ClusterConfig {
 	var clusterNodes []cdm.NodeConfig
-	for name, ip := range d.Get(keyClusterNodes).(map[string]interface{}) {
+	for name, ip := range d.Get(keyClusterNodes).(map[string]any) {
 		clusterNodes = append(clusterNodes, cdm.NodeConfig{
 			Name:         name,
 			ManagementIP: ip.(string),
 		})
 	}
-	for name, ip := range d.Get(keyNodeConfig).(map[string]interface{}) {
+	for name, ip := range d.Get(keyNodeConfig).(map[string]any) {
 		clusterNodes = append(clusterNodes, cdm.NodeConfig{
 			Name:         name,
 			ManagementIP: ip.(string),
@@ -288,20 +314,20 @@ func toClusterConfig(d *schema.ResourceData) cdm.ClusterConfig {
 	}
 
 	var dnsServers []string
-	for _, nameServer := range d.Get("dns_name_servers").([]interface{}) {
+	for _, nameServer := range d.Get(keyDNSNameServers).([]any) {
 		dnsServers = append(dnsServers, nameServer.(string))
 	}
 
 	var dnsSearchDomains []string
-	for _, searchDomain := range d.Get("dns_search_domain").([]interface{}) {
+	for _, searchDomain := range d.Get(keyDNSSearchDomain).([]any) {
 		dnsSearchDomains = append(dnsSearchDomains, searchDomain.(string))
 	}
 
 	return cdm.ClusterConfig{
 		ClusterName:          d.Get(keyClusterName).(string),
 		ClusterNodes:         clusterNodes,
-		ManagementGateway:    d.Get("management_gateway").(string),
-		ManagementSubnetMask: d.Get("management_subnet_mask").(string),
+		ManagementGateway:    d.Get(keyManagementGateway).(string),
+		ManagementSubnetMask: d.Get(keyManagementSubnetMask).(string),
 		AdminEmail:           d.Get(keyAdminEmail).(string),
 		AdminPassword:        d.Get(keyAdminPassword).(string),
 		DNSServers:           dnsServers,
