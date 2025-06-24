@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.1
+* Add optional `cluster_node_ip_address` field to CDM resources. The field can be used to specify the IP address of the
+  cluster node to connect to. [[docs](../resources/cdm_bootstrap.md)] [[docs](../resources/cdm_bootstrap_cces_aws.md)]
+  [[docs](../resources/cdm_bootstrap_cces_azure.md)]
+
 ## v1.1.0
 * Add `resource_group_name`, `resource_group_region` and `resource_group_tags` fields to the
   `polaris_azure_subscription` resource. These fields can only be used if the `CNP_AZURE_SQL_DB_COPY_BACKUP` feature
@@ -65,7 +70,7 @@ page_title: "Changelog"
   used with the `id` field of the `polaris_aws_cnp_permissions` data source to trigger an update of the resource
   whenever the permissions changes. This update will move the RSC cloud account from the missing permissions state.
 * Add support for Azure Bring Your Own Kubernetes Exocompute, also known as BYOK and customer managed Exocompute.
-  [[docs](../resources/azure_exocompute_cluster_attachment)], [[docs](../resources/azure_private_container_registry)]
+  [[docs](../resources/azure_exocompute_cluster_attachment)] [[docs](../resources/azure_private_container_registry)]
 * Add support for the Cloud Native Blob Protection feature to the `polaris_azure_subscription` resource.
   [[docs](../resources/azure_subscription#nested-schema-for-cloud_native_blob_protection)]
 * Fix a regression in the cloud native archival location resources. An extra level of structure in the RSC response
