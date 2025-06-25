@@ -43,6 +43,9 @@ using either the ID or the email address.
 -> **Note:** The ´status´ field will always be ´UNKNOWN´ for SSO users.
 `
 
+// This data source uses a template for its documentation due to a bug in the TF
+// docs generator. Remember to update the template if the documentation for any
+// fields are changed.
 func dataSourceUser() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: userRead,

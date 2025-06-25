@@ -1,35 +1,19 @@
 ---
-page_title: "polaris_sso_group Data Source - terraform-provider-polaris"
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
 subcategory: ""
 description: |-
-  
-The `polaris_sso_group` data source is used to access information about an SSO
-group in RSC. An SSO group is looked up using either the ID or the name.
-
+  {{.Description}}
 ---
 
-# polaris_sso_group (Data Source)
+# {{.Name}} ({{.Type}})
 
+{{.Description}}
 
-The `polaris_sso_group` data source is used to access information about an SSO
-group in RSC. An SSO group is looked up using either the ID or the name.
-
-
-
+{{if .HasExample}}
 ## Example Usage
 
-```terraform
-# Look up SSO group by name.
-data "polaris_sso_group" "admins" {
-  name = "Administrators"
-}
-
-# Look up SSO group by ID.
-data "polaris_sso_group" "admins" {
-  sso_group_id = "<id>"
-}
-```
-
+{{tffile .ExampleFile}}
+{{end}}
 
 ## Schema
 

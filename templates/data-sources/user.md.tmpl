@@ -1,0 +1,39 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+  {{.Description}}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{.Description}}
+
+{{if .HasExample}}
+## Example Usage
+
+{{tffile .ExampleFile}}
+{{end}}
+
+## Schema
+
+### Optional
+
+- `domain` (String) The domain in which to look for a user when an email address is specified. Possible values are `LOCAL` and `SSO`.
+- `email` (String) User email address.
+- `user_id` (String) User ID.
+
+### Read-Only
+
+- `id` (String) User ID.
+- `is_account_owner` (Boolean) True if the user is the account owner.
+- `roles` (Set of Object) Roles assigned to the user. (see [below for nested schema](#nestedatt--roles))
+- `status` (String) User status.
+
+<a id="nestedatt--roles"></a>
+### Nested Schema for `roles`
+
+Read-Only:
+
+- `id` (String) Role ID (UUID).
+- `name` (String) Role name.
