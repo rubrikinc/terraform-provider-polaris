@@ -4,6 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.2
+* Update documentation for the `polaris_aws_cnp_account` and `polaris_azure_subscription` resources.
+* Update documentation for the `polaris_aws_cnp_artifacts`, `polaris_aws_cnp_permissions`, and
+  `polaris_azure_permissions` data sources.
+* Add missing documentation to the `polaris_sso_group` and `polaris_user` data sources.
+
 ## v1.1.1
 * Add optional `cluster_node_ip_address` field to CDM resources. The field can be used to specify the IP address of the
   cluster node to connect to. [[docs](../resources/cdm_bootstrap.md)] [[docs](../resources/cdm_bootstrap_cces_aws.md)]
