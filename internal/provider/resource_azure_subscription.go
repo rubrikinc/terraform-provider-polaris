@@ -40,44 +40,88 @@ import (
 )
 
 const resourceAzureSubscriptionDescription = `
-The ´polaris_azure_subscription´ resource adds an Azure subscription to RSC. When
-the first subscription for an Azure tenant is added, a corresponding tenant is
-created in RSC. The RSC tenant is automatically destroyed when it's last subscription
-is removed.
+The ´polaris_azure_subscription´ resource adds an Azure subscription to RSC.
+When the first subscription for an Azure tenant is added, a corresponding tenant
+is created in RSC. The RSC tenant is automatically destroyed when it's last
+subscription is removed.
 
-Any combination of different RSC features can be enabled for a subscription:
-  1. ´cloud_native_archival´ - Provides archival of data from data center workloads
-     for disaster recovery and long-term retention.
-  2. ´cloud_native_archival_encryption´ - Allows cloud archival locations to be
-     encrypted with customer managed keys.
-  3. ´cloud_native_blob_protection´ - Provides protection for Azure Blob Storage
-     through the rules and policies of SLA Domains.
-  4. ´cloud_native_protection´ - Provides protection for Azure virtual machines and
-     managed disks through the rules and policies of SLA Domains.
-  5. ´exocompute´ - Provides snapshot indexing, file recovery, storage tiering, and
-     application-consistent protection of Azure objects.
-  6. ´sql_db_protection´ - Provides centralized database backup management and
-     recovery in an Azure SQL Database deployment.
-  7. ´sql_mi_protection´ - Provides centralized database backup management and
-     recovery for an Azure SQL Managed Instance deployment.
+Each feature's ´permissions´ field can be used with the
+´polaris_azure_permissions´ data source to inform RSC about permission updates
+when the Terraform configuration is applied.
 
-Each feature's ´permissions´ field can be used with the ´polaris_azure_permissions´
-data source to inform RSC about permission updates when the Terraform configuration
-is applied.
+## Permission Groups
+Following is a list of features and their applicable permission groups. These
+are used when specifying the feature set.
 
-~> **Note:** Even though the ´resource_group_name´ and the ´resource_group_region´
-   fields are marked as optional you should always specify them. They are marked as
-   optional to simplify the migration of existing Terraform configurations. If
-   omitted, RSC will generate a unique resource group name but it will not create
-   the actual resource group. Until the resource group is created, the RSC feature 
-   depending on the resource group will not function as expected.
+´AZURE_SQL_DB_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RECOVERY´ - Represents the set of permissions required for all recovery
+    operations.
+  * ´BACKUP_V2´ - Represents the set of permissions required for immutable
+    backup V2 operations.
+
+´AZURE_SQL_MI_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RECOVERY´ - Represents the set of permissions required for all recovery
+    operations.
+  * ´BACKUP_V2´ - Represents the set of permissions required for immutable
+    backup V2 operations.
+
+´CLOUD_NATIVE_ARCHIVAL´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´ENCRYPTION´ - Represents the set of permissions required for encryption
+    operation.
+  * ´SQL_ARCHIVAL´ - Represents the permissions required to enable Azure AD
+    authorization to store Azure SQL and MI snapshots in an archival location.
+
+´CLOUD_NATIVE_ARCHIVAL_ENCRYPTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´ENCRYPTION´ - Represents the set of permissions required for encryption
+    operation.
+
+´CLOUD_NATIVE_BLOB_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RECOVERY´ - Represents the set of permissions required for all recovery
+    operations.
+
+´CLOUD_NATIVE_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export
+    and restore operations.
+  * ´FILE_LEVEL_RECOVERY´ - Represents the set of permissions required for
+    file-level recovery operations.
+  * ´SNAPSHOT_PRIVATE_ACCESS´ - Represents the set of permissions required for
+    private access to disk snapshots.
+
+´EXOCOMPUTE´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´PRIVATE_ENDPOINTS´ - Represents the set of permissions required for usage
+    of private endpoints.
+  * ´CUSTOMER_MANAGED_BASIC´ - Represents the permissions required to enable
+    customer-managed Exocompute feature.
+
+~> **Note:** Even though the ´resource_group_name´ and the
+   ´resource_group_region´ fields are marked as optional you should always
+   specify them. They are marked as optional to simplify the migration of
+   existing Terraform configurations. If omitted, RSC will generate a unique
+   resource group name but it will not create the actual resource group. Until
+   the resource group is created, the RSC feature depending on the resource
+   group will not function as expected.
 
 ~> **Note:** As mentioned in the documentation for each feature below, changing
-   certain fields causes features to be re-onboarded. Take care when the subscription
-   only has a single feature, as it could cause the tenant to be removed from RSC.
+   certain fields causes features to be re-onboarded. Take care when the
+   subscription only has a single feature, as it could cause the tenant to be
+   removed from RSC.
 
--> **Note:** As of now, ´sql_db_protection´ and ´sql_mi_protection´ does not support
-   specifying an Azure resource group.
+-> **Note:** As of now, ´sql_mi_protection´ does not support specifying an Azure
+   resource group.
 `
 
 func resourceAzureSubscription() *schema.Resource {
@@ -178,7 +222,8 @@ func resourceAzureSubscription() *schema.Resource {
 					keySQLDBProtection,
 					keySQLMIProtection,
 				},
-				Description: "Enable the RSC Cloud Native Archival feature for the Azure subscription.",
+				Description: "Enable the RSC Cloud Native Archival feature for the Azure subscription. Provides " +
+					"archival of data from workloads for disaster recovery and long-term retention.",
 			},
 			keyCloudNativeArchivalEncryption: {
 				Type: schema.TypeList,
@@ -286,7 +331,8 @@ func resourceAzureSubscription() *schema.Resource {
 				RequiredWith: []string{
 					keyCloudNativeArchival,
 				},
-				Description: "Enable the RSC Cloud Native Archival Encryption feature for the Azure subscription.",
+				Description: "Enable the RSC Cloud Native Archival Encryption feature for the Azure subscription. " +
+					"Allows cloud archival locations to be encrypted with customer managed keys.",
 			},
 			keyCloudNativeBlobProtection: {
 				Type: schema.TypeList,
@@ -338,7 +384,8 @@ func resourceAzureSubscription() *schema.Resource {
 					keySQLDBProtection,
 					keySQLMIProtection,
 				},
-				Description: "Enable the RSC Cloud Native Protection feature for Azure Blob Storage.",
+				Description: "Enable the RSC Cloud Native Protection feature for Azure Blob Storage. Provides " +
+					"protection for Azure Blob Storage through the rules and policies of SLA Domains.",
 			},
 			keyCloudNativeProtection: {
 				Type: schema.TypeList,
@@ -426,7 +473,9 @@ func resourceAzureSubscription() *schema.Resource {
 					keySQLDBProtection,
 					keySQLMIProtection,
 				},
-				Description: "Enable the RSC Cloud Native Protection feature for the Azure subscription.",
+				Description: "Enable the RSC Cloud Native Protection feature for the Azure subscription. Provides " +
+					"protection for Azure virtual machines and managed disks through the rules and policies of SLA " +
+					"Domains.",
 			},
 			keyDeleteSnapshotsOnDestroy: {
 				Type:        schema.TypeBool,
@@ -518,7 +567,8 @@ func resourceAzureSubscription() *schema.Resource {
 					keySQLDBProtection,
 					keySQLMIProtection,
 				},
-				Description: "Enable the RSC Exocompute feature for the Azure subscription.",
+				Description: "Enable the RSC Exocompute feature for the Azure subscription. Provides snapshot " +
+					"indexing, file recovery, storage tiering, and application-consistent protection of Azure objects.",
 			},
 			keySQLDBProtection: {
 				Type: schema.TypeList,
@@ -604,7 +654,8 @@ func resourceAzureSubscription() *schema.Resource {
 					keyExocompute,
 					keySQLMIProtection,
 				},
-				Description: "Enable the RSC SQL DB Protection feature for the Azure subscription.",
+				Description: "Enable the RSC SQL DB Protection feature for the Azure subscription. Provides " +
+					"centralized database backup management and recovery in an Azure SQL Database deployment.",
 			},
 			keySQLMIProtection: {
 				Type: schema.TypeList,
@@ -656,7 +707,8 @@ func resourceAzureSubscription() *schema.Resource {
 					keyExocompute,
 					keySQLDBProtection,
 				},
-				Description: "Enable the RSC SQL MI Protection feature for the Azure subscription.",
+				Description: "Enable the RSC SQL MI Protection feature for the Azure subscription. Provides " +
+					"centralized database backup management and recovery for an Azure SQL Managed Instance deployment.",
 			},
 			keySubscriptionID: {
 				Type:         schema.TypeString,

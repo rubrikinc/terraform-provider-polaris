@@ -34,40 +34,37 @@ import (
 )
 
 const dataSourceAWSArtifactsDescription = `
-The ´polaris_aws_archival_location´ data source is used to access information about
-instance profiles and roles required by RSC for a specified feature set.
+The ´polaris_aws_archival_location´ data source is used to access information
+about instance profiles and roles required by RSC for a specified feature set.
 
 ## Permission Groups
-Following is a list of features and their applicable permission groups. These are used
-when specifying the feature set.
+Following is a list of features and their applicable permission groups. These
+are used when specifying the feature set.
 
-### CLOUD_NATIVE_ARCHIVAL
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+´CLOUD_NATIVE_ARCHIVAL´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
 
-### CLOUD_NATIVE_PROTECTION
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
-  * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export and
-    restore operations.
-  * ´FILE_LEVEL_RECOVERY´ - Represents the set of permissions required for file-level
-    recovery operations.
-  * ´SNAPSHOT_PRIVATE_ACCESS´ - Represents the set of permissions required for private
-    access to disk snapshots.
+´CLOUD_NATIVE_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
 
-### CLOUD_NATIVE_S3_PROTECTION
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+´CLOUD_NATIVE_S3_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
 
-### EXOCOMPUTE
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
-  * ´PRIVATE_ENDPOINTS´ - Represents the set of permissions required for usage of private
-    endpoints.
-  * ´RSC_MANAGED_CLUSTER´ - Represents the set of permissions required for the Rubrik-
-    managed Exocompute cluster.
+´EXOCOMPUTE´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RSC_MANAGED_CLUSTER´ - Represents the set of permissions required for the
+    Rubrik-managed Exocompute cluster.
 
-### RDS_PROTECTION
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the feature.
+´RDS_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
 
--> **Note:** When permission groups are specified, the ´BASIC´ permission group must
-   always be included.
+-> **Note:** When permission groups are specified, the ´BASIC´ permission group
+   must always be included.
 `
 
 func dataSourceAwsArtifacts() *schema.Resource {
@@ -95,7 +92,7 @@ func dataSourceAwsArtifacts() *schema.Resource {
 				Elem:        featureResource(),
 				MinItems:    1,
 				Required:    true,
-				Description: "RSC feature with optional permission groups.",
+				Description: "RSC feature with permission groups.",
 			},
 			keyInstanceProfileKeys: {
 				Type:        schema.TypeSet,

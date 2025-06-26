@@ -3,73 +3,72 @@
 page_title: "polaris_aws_cnp_account Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_aws_cnp_account resource adds an AWS account to RSC using the non-CFT
-  (Cloud Formation Template) workflow. The polaris_aws_account resource can be used to
-  add an AWS account to RSC using the CFT workflow.
+  The polaris_aws_cnp_account resource adds an AWS account to RSC using the
+  non-CFT (Cloud Formation Template) workflow. The polaris_aws_account resource
+  can be used to add an AWS account to RSC using the CFT workflow.
   Permission Groups
-  Following is a list of features and their applicable permission groups. These are used
-  when specifying the feature set.
-  CLOUDNATIVEARCHIVAL
-  BASIC - Represents the basic set of permissions required to onboard the feature.
-  CLOUDNATIVEPROTECTION
-  BASIC - Represents the basic set of permissions required to onboard the feature.EXPORT_AND_RESTORE - Represents the set of permissions required for export and
-  restore operations.FILE_LEVEL_RECOVERY - Represents the set of permissions required for file-level
-  recovery operations.SNAPSHOT_PRIVATE_ACCESS - Represents the set of permissions required for private
-  access to disk snapshots.
-  CLOUDNATIVES3_PROTECTION
-  BASIC - Represents the basic set of permissions required to onboard the feature.
+  Following is a list of features and their applicable permission groups. These
+  are used when specifying the feature set.
+  CLOUD_NATIVE_ARCHIVAL
+    * BASIC - Represents the basic set of permissions required to onboard the
+      feature.
+  CLOUD_NATIVE_PROTECTION
+    * BASIC - Represents the basic set of permissions required to onboard the
+      feature.
+  CLOUD_NATIVE_S3_PROTECTION
+    * BASIC - Represents the basic set of permissions required to onboard the
+      feature.
   EXOCOMPUTE
-  BASIC - Represents the basic set of permissions required to onboard the feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage of
-  private endpoints.RSC_MANAGED_CLUSTER - Represents the set of permissions required for the Rubrik-
-  managed Exocompute cluster.
+    * BASIC - Represents the basic set of permissions required to onboard the
+      feature.
+    * RSC_MANAGED_CLUSTER - Represents the set of permissions required for the
+      Rubrik-managed Exocompute cluster.
   RDS_PROTECTION
-  BASIC - Represents the basic set of permissions required to onboard the feature.
-  -> Note: When permission groups are specified, the BASIC permission group must
-     always be included.
+    * BASIC - Represents the basic set of permissions required to onboard the
+      feature.
+  -> Note: When permission groups are specified, the BASIC permission group
+     must always be included.
 ---
 
 # polaris_aws_cnp_account (Resource)
 
-The `polaris_aws_cnp_account` resource adds an AWS account to RSC using the non-CFT
-(Cloud Formation Template) workflow. The `polaris_aws_account` resource can be used to
-add an AWS account to RSC using the CFT workflow.
+The `polaris_aws_cnp_account` resource adds an AWS account to RSC using the
+non-CFT (Cloud Formation Template) workflow. The `polaris_aws_account` resource
+can be used to add an AWS account to RSC using the CFT workflow.
 
 ## Permission Groups
-Following is a list of features and their applicable permission groups. These are used
-when specifying the feature set.
+Following is a list of features and their applicable permission groups. These
+are used when specifying the feature set.
 
-### CLOUD_NATIVE_ARCHIVAL
-  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
+`CLOUD_NATIVE_ARCHIVAL`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
 
-### CLOUD_NATIVE_PROTECTION
-  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
-  * `EXPORT_AND_RESTORE` - Represents the set of permissions required for export and
-    restore operations.
-  * `FILE_LEVEL_RECOVERY` - Represents the set of permissions required for file-level
-    recovery operations.
-  * `SNAPSHOT_PRIVATE_ACCESS` - Represents the set of permissions required for private
-    access to disk snapshots.
+`CLOUD_NATIVE_PROTECTION`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
 
-### CLOUD_NATIVE_S3_PROTECTION
-  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
+`CLOUD_NATIVE_S3_PROTECTION`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
 
-### EXOCOMPUTE
-  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
-  * `PRIVATE_ENDPOINTS` - Represents the set of permissions required for usage of
-    private endpoints.
-  * `RSC_MANAGED_CLUSTER` - Represents the set of permissions required for the Rubrik-
-    managed Exocompute cluster.
+`EXOCOMPUTE`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+  * `RSC_MANAGED_CLUSTER` - Represents the set of permissions required for the
+    Rubrik-managed Exocompute cluster.
 
-### RDS_PROTECTION
-  * `BASIC` - Represents the basic set of permissions required to onboard the feature.
+`RDS_PROTECTION`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
 
--> **Note:** When permission groups are specified, the `BASIC` permission group must
-   always be included.
+-> **Note:** When permission groups are specified, the `BASIC` permission group
+   must always be included.
 
 ## Example Usage
 
 ```terraform
-# Hardcoded values. Permission groups defaults to BASIC.
+# Using hardcoded values.
 resource "polaris_aws_cnp_account" "account" {
   name      = "My Account"
   native_id = "123456789123"
@@ -80,15 +79,17 @@ resource "polaris_aws_cnp_account" "account" {
   ]
 
   feature {
-    name = "CLOUD_NATIVE_ARCHIVAL"
+    name = "CLOUD_NATIVE_PROTECTION"
+    permission_groups = [
+      "BASIC",
+    ]
   }
 
   feature {
-    name = "CLOUD_NATIVE_PROTECTION"
-
+    name = "EXOCOMPUTE"
     permission_groups = [
       "BASIC",
-      "EXPORT_AND_RESTORE",
+      "RSC_MANAGED_CLUSTER",
     ]
   }
 }
@@ -96,17 +97,37 @@ resource "polaris_aws_cnp_account" "account" {
 # Using variables for the account values and the features. The dynamic
 # feature block could also be expanded from the polaris_aws_cnp_artifacts
 # data source.
+variable "name" {
+  type        = string
+  description = "AWS account name."
+}
+
+variable "native_id" {
+  type        = string
+  description = "AWS account ID."
+}
+
+variable "regions" {
+  type        = set(string)
+  description = "AWS regions to protect."
+}
+
+variable "features" {
+  type = map(object({
+    permission_groups = set(string)
+  }))
+  description = "RSC features with permission groups."
+}
+
 resource "polaris_aws_cnp_account" "account" {
-  cloud       = var.cloud
-  external_id = var.external_id
-  name        = var.name
-  native_id   = var.native_id
-  regions     = var.regions
+  name      = var.name
+  native_id = var.native_id
+  regions   = var.regions
 
   dynamic "feature" {
     for_each = var.features
     content {
-      name              = feature.value["name"]
+      name              = feature.key
       permission_groups = feature.value["permission_groups"]
     }
   }
@@ -118,7 +139,7 @@ resource "polaris_aws_cnp_account" "account" {
 
 ### Required
 
-- `feature` (Block Set, Min: 1) RSC feature with optional permission groups. (see [below for nested schema](#nestedblock--feature))
+- `feature` (Block Set, Min: 1) RSC feature with permission groups. (see [below for nested schema](#nestedblock--feature))
 - `native_id` (String) AWS account ID. Changing this forces a new resource to be created.
 - `regions` (Set of String) Regions.
 
@@ -139,4 +160,4 @@ resource "polaris_aws_cnp_account" "account" {
 Required:
 
 - `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
-- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
+- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
