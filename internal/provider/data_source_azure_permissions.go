@@ -35,37 +35,85 @@ import (
 
 const dataSourceAzurePermissionsDescription = `
 The ´polaris_azure_permissions´ data source is used to access information about
-the permissions required by RSC for a specified RSC feature. The features currently
-supported for Azure subscriptions are:
-  * ´AZURE_SQL_DB_PROTECTION´
-  * ´AZURE_SQL_MI_PROTECTION´
-  * ´CLOUD_NATIVE_ARCHIVAL´
-  * ´CLOUD_NATIVE_ARCHIVAL_ENCRYPTION´
-  * ´CLOUD_NATIVE_BLOB_PROTECTION´
-  * ´CLOUD_NATIVE_PROTECTION´
-  * ´EXOCOMPUTE´
+the permissions required by RSC for a specified RSC feature. 
 
-See the [subscription](../resources/azure_subscription) resource for more information
-on enabling features for an Azure subscription added to RSC.
+The ´polaris_azure_permissions´ data source can be used with the ´permissions´
+field of the ´polaris_azure_subscription´ resource and the
+´azurerm_role_definition´ resource to automatically update the permissions of
+roles and notify RSC about the updated permissions.
 
-The ´polaris_azure_permissions´ data source can be used with the ´azurerm_role_definition´
-and the ´permissions´ fields of the ´polaris_azure_subscription´ resources to
-automatically update the permissions of roles and notify RSC about the updated
-permissions.
+## Permission Groups
+Following is a list of features and their applicable permission groups. These
+are used when specifying the feature set.
 
--> **Note:** To better fit the RSC Azure permission model where each RSC feature have
-   two Azure roles, the ´features´ field has been deprecated and replaced with the
-   ´feature´ field.
+´AZURE_SQL_DB_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RECOVERY´ - Represents the set of permissions required for all recovery
+    operations.
+  * ´BACKUP_V2´ - Represents the set of permissions required for immutable
+    backup V2 operations.
 
--> **Note:** Due to the RSC Azure permission model having been refined into subscription
-   level permissions and resource group level permissions, the ´actions´, ´data_actions´,
-   ´not_actions´ and ´not_data_actions´ fields have been deprecated and replaced with the
-   corresponding subscription and resource group fields.
+´AZURE_SQL_MI_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RECOVERY´ - Represents the set of permissions required for all recovery
+    operations.
+  * ´BACKUP_V2´ - Represents the set of permissions required for immutable
+    backup V2 operations.
 
--> **Note:** Due to backward compatibility, the ´features´ field allow the feature names
-   to be given in 3 different styles: ´EXAMPLE_FEATURE_NAME´, ´example-feature-name´ or
-   ´example_feature_name´. The recommended style is ´EXAMPLE_FEATURE_NAME´ as it is what
-   the RSC API itself uses.
+´CLOUD_NATIVE_ARCHIVAL´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´ENCRYPTION´ - Represents the set of permissions required for encryption
+    operation.
+  * ´SQL_ARCHIVAL´ - Represents the permissions required to enable Azure AD
+    authorization to store Azure SQL and MI snapshots in an archival location.
+
+´CLOUD_NATIVE_ARCHIVAL_ENCRYPTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´ENCRYPTION´ - Represents the set of permissions required for encryption
+    operation.
+
+´CLOUD_NATIVE_BLOB_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RECOVERY´ - Represents the set of permissions required for all recovery
+    operations.
+
+´CLOUD_NATIVE_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export
+    and restore operations.
+  * ´FILE_LEVEL_RECOVERY´ - Represents the set of permissions required for
+    file-level recovery operations.
+  * ´SNAPSHOT_PRIVATE_ACCESS´ - Represents the set of permissions required for
+    private access to disk snapshots.
+
+´EXOCOMPUTE´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´PRIVATE_ENDPOINTS´ - Represents the set of permissions required for usage
+    of private endpoints.
+  * ´CUSTOMER_MANAGED_BASIC´ - Represents the permissions required to enable
+    customer-managed Exocompute feature.
+
+-> **Note:** To better fit the RSC Azure permission model where each RSC feature
+   have two Azure roles, the ´features´ field has been deprecated and replaced
+   with the ´feature´ field.
+
+-> **Note:** Due to the RSC Azure permission model having been refined into
+   subscription level permissions and resource group level permissions, the
+   ´actions´, ´data_actions´, ´not_actions´ and ´not_data_actions´ fields have
+   been deprecated and replaced with the corresponding subscription and resource
+   group fields.
+
+-> **Note:** Due to backward compatibility, the ´features´ field allow the
+   feature names to be given in 3 different styles: ´EXAMPLE_FEATURE_NAME´,
+   ´example-feature-name´ or ´example_feature_name´. The recommended style is
+   ´EXAMPLE_FEATURE_NAME´ as it is what the RSC API itself uses.
 `
 
 func dataSourceAzurePermissions() *schema.Resource {
@@ -164,17 +212,19 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "CLOUD_CLUSTER_ES",
-						"SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC",
-						"ENCRYPTION", "SQL_ARCHIVAL", "RECOVERY", "BACKUP_V2",
+						"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS",
+						"PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC", "ENCRYPTION", "SQL_ARCHIVAL", "RECOVERY",
+						"BACKUP_V2",
+						// The following permission group is no longer listed in the RSC UI when onboarding
+						// an Azure subscription. It was accepted in the past so we still silently allow it.
+						"CLOUD_CLUSTER_ES",
 					}, false),
 				},
 				Optional:      true,
 				ConflictsWith: []string{keyFeatures},
 				Description: "Permission groups for the RSC feature. Possible values are `BASIC`, " +
-					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `CLOUD_CLUSTER_ES`, `SNAPSHOT_PRIVATE_ACCESS`, " +
-					"`PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY` and " +
-					"`BACKUP_V2`.",
+					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINTS`, " +
+					"`CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY` and `BACKUP_V2`.",
 			},
 			keyResourceGroupActions: {
 				Type: schema.TypeList,

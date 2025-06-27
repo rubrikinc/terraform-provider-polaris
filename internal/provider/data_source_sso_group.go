@@ -36,6 +36,9 @@ The ´polaris_sso_group´ data source is used to access information about an SSO
 group in RSC. An SSO group is looked up using either the ID or the name.
 `
 
+// This data source uses a template for its documentation due to a bug in the TF
+// docs generator. Remember to update the template if the documentation for any
+// fields are changed.
 func dataSourceSSOGroup() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: ssoGroupRead,
