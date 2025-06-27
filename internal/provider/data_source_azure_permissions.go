@@ -216,7 +216,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 						"PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC", "ENCRYPTION", "SQL_ARCHIVAL", "RECOVERY",
 						"BACKUP_V2",
 						// The following permission group is no longer listed in the RSC UI when onboarding
-						// an Azure subscription. It has accepted in the past so we still silently allow it.
+						// an Azure subscription. It was accepted in the past so we still silently allow it.
 						"CLOUD_CLUSTER_ES",
 					}, false),
 				},
