@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.2.0
+* Add support for importing existing resources into Terraform. All resources that support the import workflow has a
+  section in the documentation showing how to import the resource.
+
 ## v1.1.6
 * Fix a bug in the `polaris_azure_subscription` resource where the wrong mutation was used to update the subscription
   when the subscription was updated to use permission groups and a resource group at the same time.
