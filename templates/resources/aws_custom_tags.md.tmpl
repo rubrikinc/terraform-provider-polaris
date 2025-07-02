@@ -1,0 +1,49 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+  {{.Description}}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{.Description}}
+
+{{if .HasExample}}
+## Example Usage
+
+{{tffile .ExampleFile}}
+{{end}}
+
+## Schema
+
+### Required
+
+- `custom_tags` (Map of String) Custom tags to add to cloud resources.
+
+### Optional
+
+- `override_resource_tags` (Boolean) Should custom tags overwrite existing tags with the same keys. Default value is `true`.
+
+### Read-Only
+
+- `id` (String) SHA-256 hash of the string "AWS".
+
+## Import
+
+To import the resource, you need to provide a dummy ID to the import command. This is because the resource manages an
+RSC account-level configuration that don't have a unique identifier.
+
+Import is supported using the following syntax:
+
+{{if .HasImportIDConfig}}
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+{{tffile .ImportIDConfigFile}}
+{{end}}
+
+{{if .HasImport}}
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{tffile .ImportFile}}
+{{end}}

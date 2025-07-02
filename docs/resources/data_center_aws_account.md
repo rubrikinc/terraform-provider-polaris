@@ -25,8 +25,8 @@ RSC. A data center account can only be used with data center archival.
 ## Example Usage
 
 ```terraform
-resource "polaris_data_center_aws_account" "archival" {
-  name        = "archival-account"
+resource "polaris_data_center_aws_account" "account" {
+  name        = "dc-archival-account"
   description = "AWS account used for data center archival"
   access_key  = "AKIAIOSFODNN7EXAMPLE"
   secret_key  = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
@@ -49,3 +49,22 @@ resource "polaris_data_center_aws_account" "archival" {
 ### Read-Only
 
 - `id` (String) RSC data center cloud account ID (UUID).
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_data_center_aws_account.account
+  id = "06bc7db1-93b0-4b43-ad54-c0189f4dd93d"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_data_center_aws_account.account 06bc7db1-93b0-4b43-ad54-c0189f4dd93d
+```

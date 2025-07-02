@@ -76,7 +76,7 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				Description:  "RSC cloud account ID. Changing this forces a new resource to be created.",
+				Description:  "RSC cloud account ID (UUID). Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyConnectionStatus: {
@@ -153,6 +153,9 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				ValidateFunc: validation.StringInSlice([]string{"COOL", "HOT"}, false),
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -220,6 +223,9 @@ func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 
 	targetTemplate := targetMapping.TargetTemplate
 	cloudNativeCompanion := targetTemplate.CloudNativeCompanion
+	if err := d.Set(keyCloudAccountID, targetMapping.TargetTemplate.CloudAccount.ID.String()); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {
 		return diag.FromErr(err)
 	}

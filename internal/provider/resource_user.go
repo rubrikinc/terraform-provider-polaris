@@ -85,6 +85,9 @@ func resourceUser() *schema.Resource {
 				Description: "User status.",
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 		SchemaVersion: 1,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceUserV0().CoreConfigSchema().ImpliedType(),

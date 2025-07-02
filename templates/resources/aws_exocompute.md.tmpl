@@ -1,0 +1,54 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+  {{.Description}}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{.Description}}
+
+{{if .HasExample}}
+## Example Usage
+
+{{tffile .ExampleFile}}
+{{end}}
+
+## Schema
+
+### Required
+
+- `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
+
+### Optional
+
+- `cluster_security_group_id` (String) AWS security group ID for the cluster. Changing this forces a new resource to be created.
+- `host_account_id` (String) Exocompute host cloud account ID. Changing this forces a new resource to be created.
+- `node_security_group_id` (String) AWS security group ID for the nodes. Changing this forces a new resource to be created.
+- `region` (String) AWS region to run the Exocompute instance in. Changing this forces a new resource to be created.
+- `subnets` (Set of String) AWS subnet IDs for the cluster subnets. Changing this forces a new resource to be created.
+- `vpc_id` (String) AWS VPC ID for the cluster network. Changing this forces a new resource to be created.
+
+### Read-Only
+
+- `id` (String) Exocompute configuration ID (UUID).
+- `polaris_managed` (Boolean) If true the security groups are managed by RSC.
+
+## Import
+
+To import an application exocompute configuration prepend `app-` to the ID of the configuration.
+
+Import is supported using the following syntax:
+
+{{if .HasImportIDConfig}}
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+{{tffile .ImportIDConfigFile}}
+{{end}}
+
+{{if .HasImport}}
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{tffile .ImportFile}}
+{{end}}

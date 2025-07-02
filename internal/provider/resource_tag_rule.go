@@ -48,6 +48,8 @@ This rule-based approach allows resource protection across multiple projects and
 regions. A tag can be used to assign an SLA Domain to all resources belonging to
 a specific application or department. When cloud resources are tagged
 appropriately, they derive protection automatically when they are instantiated.
+
+-> **Note:** Tag key and tag value are case sensitive.
 `
 
 func resourceTagRule() *schema.Resource {
@@ -114,6 +116,9 @@ func resourceTagRule() *schema.Resource {
 				Description: "The RSC cloud account IDs (UUID) to which the tag rule should be applied. If empty, " +
 					"the tag rule will be applied to all RSC cloud accounts.",
 			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }

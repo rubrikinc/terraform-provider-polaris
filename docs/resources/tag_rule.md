@@ -9,6 +9,7 @@ description: |-
   regions. A tag can be used to assign an SLA Domain to all resources belonging to
   a specific application or department. When cloud resources are tagged
   appropriately, they derive protection automatically when they are instantiated.
+  -> Note: Tag key and tag value are case sensitive.
 ---
 
 # polaris_tag_rule (Resource)
@@ -20,6 +21,8 @@ This rule-based approach allows resource protection across multiple projects and
 regions. A tag can be used to assign an SLA Domain to all resources belonging to
 a specific application or department. When cloud resources are tagged
 appropriately, they derive protection automatically when they are instantiated.
+
+-> **Note:** Tag key and tag value are case sensitive.
 
 ## Example Usage
 
@@ -34,9 +37,9 @@ resource "polaris_tag_rule" "rule" {
 }
 
 # Match all Azure VMs which has a tag called my-key with the value my-value in
-# the my-azure-subscription RSC cloud account.
+# the azure-subscription RSC cloud account.
 data "polaris_azure_subscription" "subscription" {
-  name = "my-azure-subscription"
+  name = "azure-subscription"
 }
 
 resource "polaris_tag_rule" "rule" {
@@ -69,3 +72,22 @@ resource "polaris_tag_rule" "rule" {
 ### Read-Only
 
 - `id` (String) Tag rule ID (UUID).
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_tag_rule.rule
+  id = "d46deac3-cc74-4460-9fe6-7c00551a4aa2"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_tag_rule.rule d46deac3-cc74-4460-9fe6-7c00551a4aa2
+```

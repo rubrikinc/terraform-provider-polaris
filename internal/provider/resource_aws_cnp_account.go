@@ -23,6 +23,8 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
+	"regexp"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -31,13 +33,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 const resourceAWSCNPAccount = `
-The ´polaris_aws_cnp_account´ resource adds an AWS account to RSC using the
-non-CFT (Cloud Formation Template) workflow. The ´polaris_aws_account´ resource
-can be used to add an AWS account to RSC using the CFT workflow.
+The ´polaris_aws_cnp_account´ resource adds an AWS account to RSC using the IAM
+roles / non-CFT (Cloud Formation Template) workflow. The ´polaris_aws_account´
+resource can be used to add an AWS account to RSC using the CFT workflow.
 
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
@@ -73,6 +76,8 @@ are used when specifying the feature set.
    is always required except for the ´SERVERS_AND_APPS´ feature.
 `
 
+// This resource uses a template for its documentation, remember to update the
+// template if the documentation for any field changes.
 func resourceAwsCnpAccount() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateCnpAccount,
@@ -138,11 +143,31 @@ func resourceAwsCnpAccount() *schema.Resource {
 				Required:    true,
 				Description: "Regions.",
 			},
+			keyTrustPolicies: {
+				Type:     schema.TypeSet,
+				Elem:     trustPolicyResource(),
+				Computed: true,
+				Description: "AWS IAM trust policies required by RSC. The ´policy´ field should be used with the " +
+					"´assume_role_policy´ of the ´aws_iam_role´ resource.",
+			},
+		},
+		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+			tflog.Trace(ctx, "awsCustomizeDiffCnpAccount")
+
+			if diff.HasChange(keyFeature) {
+				if err := diff.SetNewComputed(keyTrustPolicies); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: awsImportCnpAccount,
 		},
 	}
 }
 
-func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsCreateCnpAccount")
 
 	client, err := m.(*client).polaris()
@@ -150,19 +175,17 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
 	cloud := d.Get(keyCloud).(string)
+	externalID := d.Get(keyExternalID).(string)
 	var features []core.Feature
 	for _, block := range d.Get(keyFeature).(*schema.Set).List() {
-		block := block.(map[string]interface{})
+		block := block.(map[string]any)
 		feature := core.Feature{Name: block[keyName].(string)}
 		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
-
 		features = append(features, feature)
 	}
-
 	name := d.Get(keyName).(string)
 	nativeID := d.Get(keyNativeID).(string)
 	var regions []string
@@ -170,20 +193,21 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		regions = append(regions, region.(string))
 	}
 
-	// Request account be added.
 	id, err := aws.Wrap(client).AddAccount(ctx, aws.AccountWithName(cloud, nativeID, name), features, aws.Regions(regions...))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Set attributes.
-	d.SetId(id.String())
+	if _, err := aws.Wrap(client).TrustPolicies(ctx, gqlaws.Cloud(cloud), id, features, externalID); err != nil {
+		return diag.FromErr(err)
+	}
 
+	d.SetId(id.String())
 	awsReadCnpAccount(ctx, d, m)
 	return nil
 }
 
-func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsReadCnpAccount")
 
 	client, err := m.(*client).polaris()
@@ -191,13 +215,11 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Request cloud account.
 	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
@@ -207,22 +229,31 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 		return diag.FromErr(err)
 	}
 
-	// Set attributes.
-	if err := d.Set("cloud", account.Cloud); err != nil {
+	externalID := d.Get(keyExternalID).(string)
+	features := make([]core.Feature, 0, len(account.Features))
+	for _, feature := range account.Features {
+		features = append(features, feature.Feature)
+	}
+	policies, err := aws.Wrap(client).TrustPolicies(ctx, gqlaws.Cloud(account.Cloud), id, features, externalID)
+	if err != nil {
 		return diag.FromErr(err)
 	}
-	features := &schema.Set{F: schema.HashResource(featureResource())}
+
+	if err := d.Set(keyCloud, account.Cloud); err != nil {
+		return diag.FromErr(err)
+	}
+	featureSet := &schema.Set{F: schema.HashResource(featureResource())}
 	for _, feature := range account.Features {
 		groups := &schema.Set{F: schema.HashString}
 		for _, group := range feature.Feature.PermissionGroups {
 			groups.Add(string(group))
 		}
-		features.Add(map[string]any{
+		featureSet.Add(map[string]any{
 			keyName:             feature.Feature.Name,
 			keyPermissionGroups: groups,
 		})
 	}
-	if err := d.Set(keyFeature, features); err != nil {
+	if err := d.Set(keyFeature, featureSet); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyName, account.Name); err != nil {
@@ -240,11 +271,21 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 	if err := d.Set(keyRegions, regions); err != nil {
 		return diag.FromErr(err)
 	}
+	policySet := &schema.Set{F: schema.HashResource(trustPolicyResource())}
+	for roleKey, policy := range policies {
+		policySet.Add(map[string]any{
+			keyRoleKey: roleKey,
+			keyPolicy:  policy,
+		})
+	}
+	if err := d.Set(keyTrustPolicies, policySet); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }
 
-func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsUpdateCnpAccount")
 
 	client, err := m.(*client).polaris()
@@ -252,21 +293,20 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
 	cloud := d.Get(keyCloud).(string)
 	deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
 	var features []core.Feature
 	for _, block := range d.Get(keyFeature).(*schema.Set).List() {
-		block := block.(map[string]interface{})
+		block := block.(map[string]any)
 		feature := core.Feature{Name: block[keyName].(string)}
 		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
-
 		features = append(features, feature)
 	}
 	name := d.Get(keyName).(string)
@@ -274,16 +314,6 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 	var regions []string
 	for _, region := range d.Get(keyRegions).(*schema.Set).List() {
 		regions = append(regions, region.(string))
-	}
-
-	// Check that the cloud account exists.
-	_, err = aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
-	if errors.Is(err, graphql.ErrNotFound) {
-		d.SetId("")
-		return nil
-	}
-	if err != nil {
-		return diag.FromErr(err)
 	}
 
 	if d.HasChange(keyName) {
@@ -297,7 +327,7 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 
 		var oldFeatures []core.Feature
 		for _, block := range oldAttr.(*schema.Set).List() {
-			block := block.(map[string]interface{})
+			block := block.(map[string]any)
 			feature := core.Feature{Name: block[keyName].(string)}
 			for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
@@ -307,7 +337,7 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 
 		var newFeatures []core.Feature
 		for _, block := range newAttr.(*schema.Set).List() {
-			block := block.(map[string]interface{})
+			block := block.(map[string]any)
 			feature := core.Feature{Name: block[keyName].(string)}
 			for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
@@ -345,10 +375,11 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 	}
 
+	awsReadCnpAccount(ctx, d, m)
 	return nil
 }
 
-func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsDeleteCnpAccount")
 
 	client, err := m.(*client).polaris()
@@ -356,36 +387,61 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
-	id, err := uuid.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	cloud := d.Get(keyCloud).(string)
 	deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
-
-	// Request the cloud account.
-	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
-	if errors.Is(err, graphql.ErrNotFound) {
-		d.SetId("")
-		return nil
+	var features []core.Feature
+	for _, feature := range d.Get(keyFeature).(*schema.Set).List() {
+		feature := feature.(map[string]any)
+		features = append(features, core.Feature{Name: feature[keyName].(string)})
 	}
-	if err != nil {
+	name := d.Get(keyName).(string)
+	nativeID := d.Get(keyNativeID).(string)
+
+	if err := aws.Wrap(client).RemoveAccount(ctx, aws.AccountWithName(cloud, nativeID, name), features, deleteSnapshots); err != nil {
 		return diag.FromErr(err)
 	}
 
-	features := make([]core.Feature, 0, len(account.Features))
-	for _, feature := range account.Features {
-		features = append(features, feature.Feature)
-	}
-
-	// Request account removal.
-	if err := aws.Wrap(client).RemoveAccount(ctx, aws.AccountWithName(account.Cloud, account.NativeID, account.Name), features, deleteSnapshots); err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Reset ID.
 	d.SetId("")
 	return nil
+}
+
+func awsImportCnpAccount(ctx context.Context, d *schema.ResourceData, m any) ([]*schema.ResourceData, error) {
+	tflog.Trace(ctx, "awsImportCnpAccount")
+
+	accountID, externalID, err := splitAccountID(d.Id())
+	if err != nil {
+		return nil, err
+	}
+
+	if externalID != "" {
+		if err := d.Set(keyExternalID, externalID); err != nil {
+			return nil, err
+		}
+	}
+
+	d.SetId(accountID.String())
+	return []*schema.ResourceData{d}, nil
+}
+
+// The external ID at the end is optional.
+var reSplitAccountID = regexp.MustCompile("^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:-(.+))*$")
+
+func splitAccountID(id string) (uuid.UUID, string, error) {
+	match := reSplitAccountID.FindStringSubmatch(id)
+	if len(match) != 2 && len(match) != 3 {
+		return uuid.Nil, "", fmt.Errorf("invalid resource id: %s", id)
+	}
+
+	accountID, err := uuid.Parse(match[1])
+	if err != nil {
+		return uuid.Nil, "", err
+	}
+	var externalID string
+	if len(match) == 3 {
+		externalID = match[2]
+	}
+
+	return accountID, externalID, nil
 }
 
 func featureResource() *schema.Resource {
@@ -450,4 +506,22 @@ func diffFeatures(oldFeatures []core.Feature, newFeatures []core.Feature) ([]cor
 	}
 
 	return removeFeatures, updateFeatures
+}
+
+func trustPolicyResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			keyRoleKey: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "RSC artifact key for the AWS role. Possible values are `CROSSACCOUNT`, " +
+					"`EXOCOMPUTE_EKS_MASTERNODE` and `EXOCOMPUTE_EKS_WORKERNODE`.",
+			},
+			keyPolicy: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "AWS IAM trust policy.",
+			},
+		},
+	}
 }

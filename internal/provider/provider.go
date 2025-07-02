@@ -134,9 +134,9 @@ func Provider() *schema.Provider {
 // providerConfigure configures the RSC provider.
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 	cacheParams := polaris.CacheParams{
-		Enable: d.Get("token_cache").(bool),
-		Dir:    d.Get("token_cache_dir").(string),
-		Secret: d.Get("token_cache_secret").(string),
+		Enable: d.Get(keyTokenCache).(bool),
+		Dir:    d.Get(keyTokenCacheDir).(string),
+		Secret: d.Get(keyTokenCacheSecret).(string),
 	}
 
 	client, err := newClient(ctx, d.Get("credentials").(string), cacheParams)

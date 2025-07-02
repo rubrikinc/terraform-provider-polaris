@@ -51,6 +51,11 @@ func dataSourceAwsArchivalLocation() *schema.Resource {
 				Description:  "Cloud native archival location ID (UUID).",
 				ValidateFunc: validation.IsUUID,
 			},
+			keyAccountID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "RSC cloud account ID (UUID).",
+			},
 			keyArchivalLocationID: {
 				Type:         schema.TypeString,
 				Optional:     true,
@@ -148,6 +153,9 @@ func awsArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetTemplate.BucketPrefix, "rubrik-")); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyAccountID, targetTemplate.CloudAccount.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {

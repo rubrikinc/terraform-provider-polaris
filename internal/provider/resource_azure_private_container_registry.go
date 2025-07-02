@@ -118,6 +118,9 @@ func resourceAzurePrivateContainerRegistry() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -164,6 +167,9 @@ func azureReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceDa
 		return diag.FromErr(err)
 	}
 
+	if err := d.Set(keyCloudAccountID, id.String()); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyAppID, pcrInfo.PCRDetails.ImagePullDetails.CustomerAppId); err != nil {
 		return diag.FromErr(err)
 	}

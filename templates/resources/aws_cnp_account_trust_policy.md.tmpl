@@ -1,0 +1,66 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+  {{.Description}}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{.Description}}
+
+{{if .HasExample}}
+## Example Usage
+
+{{tffile .ExampleFile}}
+{{end}}
+
+## Schema
+
+### Required
+
+- `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
+- `role_key` (String) RSC artifact key for the AWS role. Possible values are `CROSSACCOUNT`, `EXOCOMPUTE_EKS_MASTERNODE` and `EXOCOMPUTE_EKS_WORKERNODE`. Changing this forces a new resource to be created.
+
+### Optional
+
+- `external_id` (String) Trust policy external ID. If not specified, RSC will generate an external ID. Note, once the external ID has been set it cannot be changed. Changing this forces a new resource to be created.
+- `features` (Set of String, Deprecated) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`. **Deprecated:** no longer used by the provider, any value set is ignored.
+
+### Read-Only
+
+- `id` (String) RSC cloud account ID (UUID) with the role key as a prefix.
+- `policy` (String) AWS IAM trust policy.
+
+## Import
+
+When importing a trust policy both the `role_key` and the `account_id` must be specified as part of the import ID. E.g:
+```text
+CROSSACCOUNT-f503742e-0a15-4a53-8579-54c2f978e49d
+```
+
+If an `external_id` was specified when the account was onboarded, it must also be specified as part of the import ID.
+This is done by appending the external ID to the account ID. E.g, to import an account onboarded with `external_id` set
+to `ExternalID`:
+```text
+CROSSACCOUNT-f503742e-0a15-4a53-8579-54c2f978e49d-ExternalID
+```
+
+If the wrong external ID is specified, the import will fail with an error similar to:
+```text
+Error: failed to get trust policies: Already a value is registered as an external id.
+```
+
+Import is supported using the following syntax:
+
+{{if .HasImportIDConfig}}
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+{{tffile .ImportIDConfigFile}}
+{{end}}
+
+{{if .HasImport}}
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{tffile .ImportFile}}
+{{end}}

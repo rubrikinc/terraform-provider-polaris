@@ -1,0 +1,1 @@
+% terraform import polaris_aws_cnp_account_trust_policy.trust_policy CROSSACCOUNT-acfd7b71-6259-45bc-b0c6-f067918c5cc7

@@ -54,6 +54,10 @@ cloud account.
    diff.
 `
 
+const awsCustomTagsID = "32fd72a0e0746043a1cce59f2e840490df6b9ea49e9bbcade136da5e8173d6c0"
+
+// This resource uses a template for its documentation, remember to update the
+// template if the documentation for any field changes.
 func resourceAwsCustomTags() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateCustomTags,
@@ -83,6 +87,9 @@ func resourceAwsCustomTags() *schema.Resource {
 				Description: "Should custom tags overwrite existing tags with the same keys. Default value is `true`.",
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: awsImportCustomTags,
+		},
 	}
 }
 
@@ -107,7 +114,7 @@ func awsCreateCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	d.SetId("32fd72a0e0746043a1cce59f2e840490df6b9ea49e9bbcade136da5e8173d6c0")
+	d.SetId(awsCustomTagsID)
 	return nil
 }
 
@@ -146,22 +153,34 @@ func awsUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 		return diag.FromErr(err)
 	}
 
-	// Merge customer tags in RSC with custom tags defined in the resource data.
-	// Values of custom tags defined in the resource data takes precedence.
-	cts := d.Get(keyCustomTags).(map[string]any)
-	set := make(map[string]string, len(customerTags.Tags)+len(cts))
+	// Create a set holding the keys of the tags being removed.
+	oldTags, newTags := d.GetChange(keyCustomTags)
+	removeSet := make(map[string]struct{}, len(oldTags.(map[string]any)))
+	for k := range oldTags.(map[string]any) {
+		removeSet[k] = struct{}{}
+	}
+	for k := range newTags.(map[string]any) {
+		delete(removeSet, k)
+	}
+
+	// Merge customer tags in RSC with custom tags defined in the resource data,
+	// ignoring the tags being removed. Values of custom tags defined in the
+	// resource data takes precedence.
+	mergeSet := make(map[string]string, len(customerTags.Tags)+len(newTags.(map[string]any)))
 	for _, tag := range customerTags.Tags {
-		set[tag.Key] = tag.Value
+		if _, ok := removeSet[tag.Key]; !ok {
+			mergeSet[tag.Key] = tag.Value
+		}
 	}
-	for k, v := range cts {
-		set[k] = v.(string)
+	for k, v := range newTags.(map[string]any) {
+		mergeSet[k] = v.(string)
 	}
-	customerTags.Tags = make([]core.Tag, 0, len(set))
-	for k, v := range set {
+
+	customerTags.Tags = make([]core.Tag, 0, len(mergeSet))
+	for k, v := range mergeSet {
 		customerTags.Tags = append(customerTags.Tags, core.Tag{Key: k, Value: v})
 	}
 	customerTags.OverrideResourceTags = d.Get(keyOverrideResourceTags).(bool)
-
 	if err := tags.Wrap(client).ReplaceCustomerTags(ctx, customerTags); err != nil {
 		return diag.FromErr(err)
 	}
@@ -184,6 +203,42 @@ func awsDeleteCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 
 	if err := tags.Wrap(client).RemoveCustomerTags(ctx, core.CloudVendorAWS, customTagKeys); err != nil {
 		return diag.FromErr(err)
+	}
+
+	return nil
+}
+
+// Note, the custom tags resource is designed to only manage custom tags owned
+// by the resource. An import on the other hand will take ownership of all
+// custom tags for a cloud vendor.
+func awsImportCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+	tflog.Trace(ctx, "awsImportCustomTags")
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return nil, err
+	}
+
+	customerTags, err := tags.Wrap(client).CustomerTags(ctx, core.CloudVendorAWS)
+	if err != nil {
+		return nil, err
+	}
+	if err := importCustomTags(d, customerTags.Tags); err != nil {
+		return nil, err
+	}
+
+	d.SetId(awsCustomTagsID)
+	return []*schema.ResourceData{d}, nil
+}
+
+// importCustomTags imports the custom tags into the resource data.
+func importCustomTags(d *schema.ResourceData, customTags []core.Tag) error {
+	cts := make(map[string]any, len(customTags))
+	for _, tag := range customTags {
+		cts[tag.Key] = tag.Value
+	}
+	if err := d.Set(keyCustomTags, cts); err != nil {
+		return err
 	}
 
 	return nil
