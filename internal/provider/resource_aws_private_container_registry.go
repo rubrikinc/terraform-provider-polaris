@@ -132,6 +132,9 @@ func resourceAwsPrivateContainerRegistry() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -175,6 +178,9 @@ func awsReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceData
 		return diag.FromErr(err)
 	}
 
+	if err := d.Set(keyAccountID, id.String()); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyNativeID, pcrInfo.PCRDetails.ImagePullDetails.NativeID); err != nil {
 		return diag.FromErr(err)
 	}

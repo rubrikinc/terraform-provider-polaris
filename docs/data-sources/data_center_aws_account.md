@@ -7,9 +7,9 @@ description: |-
   about an AWS data center account added to RSC. A data center account is looked
   up using the name.
   -> Note: Data center accounts and cloud native accounts are different and
-     cannot be used interchangeably.
+  cannot be used interchangeably.
   -> Note: The name is the name of the data center account as it appears in
-     RSC.
+  RSC.
 ---
 
 # polaris_data_center_aws_account (Data Source)

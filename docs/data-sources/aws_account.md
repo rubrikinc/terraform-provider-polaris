@@ -7,7 +7,7 @@ description: |-
   account added to RSC. An AWS account is looked up using either the AWS account
   ID, the RSC cloud account ID or the name.
   -> Note: The account name is the name of the AWS account as it appears in
-     RSC.
+  RSC.
 ---
 
 # polaris_aws_account (Data Source)

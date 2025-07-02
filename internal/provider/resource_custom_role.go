@@ -108,6 +108,9 @@ func resourceCustomRole() *schema.Resource {
 				Description: "Role permission.",
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 

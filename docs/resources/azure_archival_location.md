@@ -8,16 +8,15 @@ description: |-
   onboarded with the cloud_native_archival feature.
   When creating an archival location, the region where the snapshots are stored needs
   to be specified:
-    * SOURCE_REGION - Store snapshots in the same region to minimize data transfer
-      charges. This is the default behaviour when the storage_account_region field is
-      not specified.
-    * SPECIFIC_REGION - Storing snapshots in another region can increase total data
-      transfer charges. The storage_account_region field specifies the region.
+  SOURCE_REGION - Store snapshots in the same region to minimize data transfer
+  charges. This is the default behaviour when the storage_account_region field is
+  not specified.SPECIFIC_REGION - Storing snapshots in another region can increase total data
+  transfer charges. The storage_account_region field specifies the region.
   Custom storage encryption is enabled by specifying one or more customer_managed_key
   blocks. Each customer_managed_key block specifies the encryption details to use for
   a region. For other regions, data will be encrypted using platform managed keys.
   -> Note: The Azure storage account is not created until the first protected object
-     is archived to the location.
+  is archived to the location.
 ---
 
 # polaris_azure_archival_location (Resource)
@@ -109,3 +108,22 @@ Required:
 - `name` (String) Key name.
 - `region` (String) The region in which the key will be used. Regions without customer managed keys will use platform managed keys.
 - `vault_name` (String) Key vault name.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_azure_archival_location.archival_location
+  id = "a3386457-f775-452e-818d-d8fbae1e90bb"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_azure_archival_location.archival_location a3386457-f775-452e-818d-d8fbae1e90bb
+```

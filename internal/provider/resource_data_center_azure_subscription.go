@@ -84,6 +84,9 @@ func resourceDataCenterAzureSubscription() *schema.Resource {
 				Description: "Azure tenant ID (UUID).",
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 

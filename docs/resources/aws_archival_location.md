@@ -8,12 +8,11 @@ description: |-
   onboarded with the CLOUD_NATIVE_ARCHIVAL feature.
   When creating an archival location, the region where the snapshots are stored needs
   to be specified:
-    * SOURCE_REGION - Store snapshots in the same region to minimize data transfer
-      charges. This is the default behaviour when the region field is not specified.
-    * SPECIFIC_REGION - Storing snapshots in another region can increase total data
-      transfer charges. The region field specifies the region.
+  SOURCE_REGION - Store snapshots in the same region to minimize data transfer
+  charges. This is the default behaviour when the region field is not specified.SPECIFIC_REGION - Storing snapshots in another region can increase total data
+  transfer charges. The region field specifies the region.
   -> Note: The AWS bucket holding the archived data is not created until the first
-     protected object is archived.
+  protected object is archived.
 ---
 
 # polaris_aws_archival_location (Resource)
@@ -76,3 +75,22 @@ resource "polaris_aws_archival_location" "archival_location" {
 - `connection_status` (String) Connection status of the cloud native archival location.
 - `id` (String) Cloud native archival location ID (UUID).
 - `location_template` (String) Location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_aws_archival_location.archival_location
+  id = "14151484-ca3e-48a5-a25b-2476d7cc4571"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_aws_archival_location.archival_location 14151484-ca3e-48a5-a25b-2476d7cc4571
+```

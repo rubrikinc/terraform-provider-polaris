@@ -59,7 +59,7 @@ func resourceRoleAssignment() *schema.Resource {
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "User ID.",
+				Description: "User or SSO group ID.",
 			},
 			keyRoleID: {
 				Type:         schema.TypeString,

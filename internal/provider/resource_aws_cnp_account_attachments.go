@@ -90,6 +90,9 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 				Description: "Roles to attach to the cloud account.",
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 

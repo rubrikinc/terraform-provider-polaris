@@ -7,12 +7,12 @@ description: |-
   registry (PCR) feature for the RSC customer account. This disables the standard
   Rubrik container registry.
   ~> Note: Even though the polaris_aws_private_container_registry resource ID
-     is an RSC cloud account ID, there can only be a single PCR per RSC customer
-     account.
+  is an RSC cloud account ID, there can only be a single PCR per RSC customer
+  account.
   Exocompute Image Bundles
   The following GraphQL query can be used to retrieve information about the image
   bundles used by RSC for exocompute:
-  graphql
+  
   query ExotaskImageBundle($input: GetExotaskImageBundleInput) {
     exotaskImageBundle(input: $input) {
       bundleImages {
@@ -29,7 +29,7 @@ description: |-
   The repoUrl field holds the URL to the RSC container registry from where the RSC
   images can be pulled.
   The input is an object with the following structure:
-  json
+  
   {
     "input": {
       "eksVersion": "1.29"
@@ -41,13 +41,13 @@ description: |-
   RSC.
   The following GraphQL mutation can be used to set the approved bundle version for
   the RSC customer account:
-  graphql
+  
   mutation SetBundleApprovalStatus($input: SetBundleApprovalStatusInput!) {
     setBundleApprovalStatus(input: $input)
   }
   
   The input is an object with the following structure:
-  json
+  
   {
     "input": {
       "approvalStatus": "ACCEPTED",
@@ -131,8 +131,12 @@ of the customer's EKS cluster.
 ## Example Usage
 
 ```terraform
+data "polaris_aws_account" "account" {
+  name = "account"
+}
+
 resource "polaris_aws_private_container_registry" "registry" {
-  account_id = polaris_aws_account.account.id
+  account_id = data.polaris_aws_account.account.id
   native_id  = "123456789012"
   url        = "234567890121.dkr.ecr.us-east-2.amazonaws.com"
 }
@@ -150,3 +154,22 @@ resource "polaris_aws_private_container_registry" "registry" {
 ### Read-Only
 
 - `id` (String) RSC cloud account ID (UUID).
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_aws_private_container_registry.registry
+  id = "1571ec5d-1738-439e-9f49-1830fbecd1b2"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_aws_private_container_registry.registry 1571ec5d-1738-439e-9f49-1830fbecd1b2
+```

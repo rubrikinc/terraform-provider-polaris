@@ -6,8 +6,8 @@ description: |-
   The polaris_cdm_registration resource registers a Rubrik cluster with the
   Rubrik Security Cloud (RSC).
   ~> Note: The Terraform provider can only register clusters, it cannot
-     un-register clusters or read the state of a cluster registration. Destroying
-     the resource only removes it from the local state.
+  un-register clusters or read the state of a cluster registration. Destroying
+  the resource only removes it from the local state.
 ---
 
 # polaris_cdm_registration (Resource)

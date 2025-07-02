@@ -10,24 +10,23 @@ description: |-
   Following is a list of features and their applicable permission groups. These
   are used when specifying the feature set.
   CLOUD_NATIVE_ARCHIVAL
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   CLOUD_NATIVE_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   CLOUD_NATIVE_S3_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   EXOCOMPUTE
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * RSC_MANAGED_CLUSTER - Represents the set of permissions required for the
-      Rubrik-managed Exocompute cluster.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.RSC_MANAGED_CLUSTER - Represents the set of permissions required for the
+  Rubrik-managed Exocompute cluster.
   RDS_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   -> Note: When permission groups are specified, the BASIC permission group
-     must always be included.
+  must always be included.
 ---
 
 # polaris_aws_cnp_account (Resource)
@@ -161,3 +160,22 @@ Required:
 
 - `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
 - `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_aws_cnp_account.account
+  id = "3553bc74-7061-40e3-bac5-d2639e58bb7e"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_aws_cnp_account.account 3553bc74-7061-40e3-bac5-d2639e58bb7e
+```

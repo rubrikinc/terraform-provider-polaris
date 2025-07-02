@@ -140,6 +140,9 @@ func resourceAwsArchivalLocation() *schema.Resource {
 				}, false),
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
