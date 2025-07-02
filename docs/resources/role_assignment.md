@@ -74,4 +74,4 @@ resource "polaris_role_assignment" "compliance_auditor" {
 
 ### Read-Only
 
-- `id` (String) User ID.
+- `id` (String) User or SSO group ID.

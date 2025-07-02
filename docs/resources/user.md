@@ -13,15 +13,15 @@ The `polaris_user` resource is used to create and manage local users in RSC.
 ## Example Usage
 
 ```terraform
-data "polaris_role" "compliance_auditor" {
+data "polaris_role" "auditor" {
   name = "Compliance Auditor Role"
 }
 
 resource "polaris_user" "auditor" {
-  email = "auditor@example.com"
+  email = "auditor@example.org"
 
   role_ids = [
-    data.polaris_role.compliance_auditor.id
+    data.polaris_role.auditor.id
   ]
 }
 ```
@@ -40,3 +40,22 @@ resource "polaris_user" "auditor" {
 - `id` (String) User ID (UUID).
 - `is_account_owner` (Boolean) True if the user is the account owner.
 - `status` (String) User status.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_user.auditor
+  id = "8ca31d8b-8de8-4381-8f8d-1e977a280c69"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_user.auditor 8ca31d8b-8de8-4381-8f8d-1e977a280c69
+```

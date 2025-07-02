@@ -153,6 +153,9 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				ValidateFunc: validation.StringInSlice([]string{"COOL", "HOT"}, false),
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 

@@ -108,3 +108,22 @@ Required:
 - `name` (String) Key name.
 - `region` (String) The region in which the key will be used. Regions without customer managed keys will use platform managed keys.
 - `vault_name` (String) Key vault name.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_azure_archival_location.archival_location
+  id = "a3386457-f775-452e-818d-d8fbae1e90bb"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_azure_archival_location.archival_location a3386457-f775-452e-818d-d8fbae1e90bb
+```

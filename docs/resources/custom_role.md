@@ -15,8 +15,8 @@ RSC.
 ## Example Usage
 
 ```terraform
-# Manual role.
-resource "polaris_custom_role" "compliance_auditor" {
+# Manually defined role.
+resource "polaris_custom_role" "auditor" {
   name        = "Compliance Auditor Role"
   description = "Compliance Auditor"
 
@@ -42,16 +42,16 @@ resource "polaris_custom_role" "compliance_auditor" {
 }
 
 # From role template.
-data "polaris_role_template" "compliance_auditor" {
+data "polaris_role_template" "auditor" {
   name = "Compliance Auditor"
 }
 
-resource "polaris_custom_role" "compliance_auditor" {
+resource "polaris_custom_role" "auditor" {
   name        = "Compliance Auditor Role"
-  description = "Based on the ${data.polaris_role_template.compliance_auditor.name} template"
+  description = "Based on the ${data.polaris_role_template.auditor.name} template"
 
   dynamic "permission" {
-    for_each = data.polaris_role_template.compliance_auditor.permission
+    for_each = data.polaris_role_template.auditor.permission
     content {
       operation = permission.value["operation"]
 
@@ -98,3 +98,22 @@ Required:
 
 - `object_ids` (Set of String) Object/workload identifiers.
 - `snappable_type` (String) Snappable/workload type.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_custom_role.auditor
+  id = "7ee5c706-9326-45f2-984e-28941696211e"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_custom_role.auditor 7ee5c706-9326-45f2-984e-28941696211e
+```

@@ -135,6 +135,9 @@ func resourceAwsCnpAccount() *schema.Resource {
 				Description: "Regions.",
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 

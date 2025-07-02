@@ -1,11 +1,11 @@
-data "polaris_role" "compliance_auditor" {
+data "polaris_role" "auditor" {
   name = "Compliance Auditor Role"
 }
 
 resource "polaris_user" "auditor" {
-  email = "auditor@example.com"
+  email = "auditor@example.org"
 
   role_ids = [
-    data.polaris_role.compliance_auditor.id
+    data.polaris_role.auditor.id
   ]
 }

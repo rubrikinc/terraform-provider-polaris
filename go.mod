@@ -2,6 +2,8 @@ module github.com/rubrikinc/terraform-provider-polaris
 
 go 1.23.7
 
+toolchain go1.24.4
+
 require (
 	github.com/aws/aws-sdk-go-v2 v1.3.0
 	github.com/google/uuid v1.6.0
@@ -107,7 +109,7 @@ require (
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/oauth2 v0.27.0 // indirect
+	golang.org/x/oauth2 v0.17.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
