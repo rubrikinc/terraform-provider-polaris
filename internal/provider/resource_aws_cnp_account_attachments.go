@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -94,7 +94,7 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 }
 
 func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsCreateCnpAccountAttachments")
+	tflog.Trace(ctx, "awsCreateCnpAccountAttachments")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -132,7 +132,7 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 }
 
 func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsReadCnpAccountAttachments")
+	tflog.Trace(ctx, "awsReadCnpAccountAttachments")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -193,7 +193,7 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 }
 
 func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsUpdateCnpAccountAttachments")
+	tflog.Trace(ctx, "awsUpdateCnpAccountAttachments")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -238,7 +238,7 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 }
 
 func awsDeleteCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsDeleteCnpAccountAttachments")
+	tflog.Trace(ctx, "awsDeleteCnpAccountAttachments")
 
 	// Reset ID.
 	d.SetId("")

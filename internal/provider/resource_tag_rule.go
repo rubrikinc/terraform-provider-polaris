@@ -24,9 +24,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -119,7 +119,7 @@ func resourceTagRule() *schema.Resource {
 }
 
 func createTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] createTagRule")
+	tflog.Trace(ctx, "createTagRule")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -160,7 +160,7 @@ func createTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 }
 
 func readTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] readTagRule")
+	tflog.Trace(ctx, "readTagRule")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -217,7 +217,7 @@ func readTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 }
 
 func updateTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] updateTagRule")
+	tflog.Trace(ctx, "updateTagRule")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -256,7 +256,7 @@ func updateTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 }
 
 func deleteTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] deleteTagRule")
+	tflog.Trace(ctx, "deleteTagRule")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

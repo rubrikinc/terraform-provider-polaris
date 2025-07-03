@@ -23,8 +23,8 @@ package provider
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
@@ -72,7 +72,7 @@ func resourceUserV0() *schema.Resource {
 // resourceUserStateUpgradeV0 changes the resource ID to be the user ID and not
 // the user email address.
 func resourceUserStateUpgradeV0(ctx context.Context, state map[string]any, m any) (map[string]any, error) {
-	log.Print("[TRACE] resourceUserStateUpgradeV0")
+	tflog.Trace(ctx, "resourceUserStateUpgradeV0")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

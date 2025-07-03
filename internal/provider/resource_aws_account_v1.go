@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
@@ -91,7 +91,7 @@ func resourceAwsAccountV1() *schema.Resource {
 // resourceAwsAccountStateUpgradeV1 introduces a cloud native protection
 // feature block and adds status to both feature blocks.
 func resourceAwsAccountStateUpgradeV1(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAwsAccountStateUpgradeV1")
+	tflog.Trace(ctx, "resourceAwsAccountStateUpgradeV1")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

@@ -23,10 +23,10 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -85,7 +85,7 @@ func resourceSLADomainAssignment() *schema.Resource {
 }
 
 func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] createSLADomainAssignment")
+	tflog.Trace(ctx, "createSLADomainAssignment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -124,7 +124,7 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 }
 
 func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] readSLADomainAssignment")
+	tflog.Trace(ctx, "readSLADomainAssignment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -177,7 +177,7 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 }
 
 func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] updateSLADomainAssignment")
+	tflog.Trace(ctx, "updateSLADomainAssignment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -239,7 +239,7 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 }
 
 func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] deleteSLADomainAssignment")
+	tflog.Trace(ctx, "deleteSLADomainAssignment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -279,7 +279,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 }
 
 func waitForAssignment(ctx context.Context, client *polaris.Client, domainID uuid.UUID, objectIDs []uuid.UUID) error {
-	log.Print("[DEBUG] waiting for SLA domain assignment")
+	tflog.Debug(ctx, "waiting for SLA domain assignment")
 
 	for {
 		idSet := make(map[uuid.UUID]struct{}, len(objectIDs))
@@ -298,7 +298,9 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, domainID uui
 			return nil
 		}
 
-		log.Printf("[DEBUG] waiting for SLA domain assignment of %d objects", len(idSet))
+		tflog.Debug(ctx, "waiting for SLA domain assignment", map[string]any{
+			"remaining_objects": len(idSet),
+		})
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -308,7 +310,7 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, domainID uui
 }
 
 func waitForUnassignment(ctx context.Context, client *polaris.Client, domainID uuid.UUID, objectIDs []uuid.UUID) error {
-	log.Print("[DEBUG] waiting for SLA domain unassignment")
+	tflog.Debug(ctx, "waiting for SLA domain unassignment")
 
 	for {
 		idSet := make(map[uuid.UUID]struct{}, len(objectIDs))
@@ -328,7 +330,9 @@ func waitForUnassignment(ctx context.Context, client *polaris.Client, domainID u
 			return nil
 		}
 
-		log.Printf("[DEBUG] waiting for SLA domain unassignment of %d objects", n)
+		tflog.Debug(ctx, "waiting for SLA domain unassignment", map[string]any{
+			"remaining_objects": n,
+		})
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

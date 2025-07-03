@@ -22,9 +22,9 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -87,7 +87,7 @@ func resourceAzureExocomputeClusterAttachment() *schema.Resource {
 }
 
 func azureCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureCreateAwsExocomputeClusterAttachment")
+	tflog.Trace(ctx, "azureCreateAwsExocomputeClusterAttachment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -113,7 +113,7 @@ func azureCreateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Re
 }
 
 func azureReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureReadAwsExocomputeClusterAttachment")
+	tflog.Trace(ctx, "azureReadAwsExocomputeClusterAttachment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -128,7 +128,7 @@ func azureReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 
 	info, err := exocompute.Wrap(client).AzureClusterConnection(ctx, clusterName, configID)
 	if err != nil {
-		log.Printf("[INFO] failed to read cluster attachment: %s", err)
+		tflog.Warn(ctx, "failed to read cluster attachment", map[string]any{"err": err.Error()})
 		return nil
 	}
 	if err := d.Set(keyManifest, info.Manifest); err != nil {
@@ -139,7 +139,7 @@ func azureReadAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Reso
 }
 
 func azureUpdateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureUpdateAwsExocomputeClusterAttachment")
+	tflog.Trace(ctx, "azureUpdateAwsExocomputeClusterAttachment")
 
 	if d.HasChange(keyTokenRefresh) {
 		return awsCreateAwsExocomputeClusterAttachment(ctx, d, m)
@@ -149,7 +149,7 @@ func azureUpdateAwsExocomputeClusterAttachment(ctx context.Context, d *schema.Re
 }
 
 func azureDeleteAwsExocomputeClusterAttachment(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureDeleteAwsExocomputeClusterAttachment")
+	tflog.Trace(ctx, "azureDeleteAwsExocomputeClusterAttachment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

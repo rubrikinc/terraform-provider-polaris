@@ -22,10 +22,10 @@ package provider
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -114,7 +114,7 @@ func dataSourceAwsArchivalLocation() *schema.Resource {
 }
 
 func awsArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] awsArchivalLocationRead")
+	tflog.Trace(ctx, "awsArchivalLocationRead")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

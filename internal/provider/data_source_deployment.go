@@ -24,8 +24,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"log"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -65,7 +65,7 @@ func dataSourceDeployment() *schema.Resource {
 }
 
 func deploymentRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] deploymentRead")
+	tflog.Trace(ctx, "deploymentRead")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

@@ -24,8 +24,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"log"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
@@ -61,7 +61,7 @@ func resourceRoleAssignmentV0() *schema.Resource {
 // resourceRoleAssignmentStateUpgradeV0 changes the resource ID to be the user
 // ID and not the hash of the user email address and role ID.
 func resourceRoleAssignmentStateUpgradeV0(ctx context.Context, state map[string]any, m any) (map[string]any, error) {
-	log.Print("[TRACE] resourceRoleAssignmentStateUpgradeV0")
+	tflog.Trace(ctx, "resourceRoleAssignmentStateUpgradeV0")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

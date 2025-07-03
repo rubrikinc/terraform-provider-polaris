@@ -154,16 +154,11 @@ type client struct {
 }
 
 func newClient(ctx context.Context, credentials string, cacheParams polaris.CacheParams) (*client, error) {
-	logger := log.NewStandardLogger()
-	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
-		return nil, err
-	}
-
+	logger := newAPILogger(ctx)
 	account, err := polaris.FindAccount(credentials, true)
 	if err != nil && !errors.Is(err, polaris.ErrAccountNotFound) {
 		return nil, err
 	}
-
 	var polarisClient *polaris.Client
 	var accountErr error
 	flags := make(map[string]bool)

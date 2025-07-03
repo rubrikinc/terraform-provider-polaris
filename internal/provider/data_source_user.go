@@ -22,8 +22,8 @@ package provider
 
 import (
 	"context"
-	"log"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -100,7 +100,7 @@ func dataSourceUser() *schema.Resource {
 }
 
 func userRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] userRead")
+	tflog.Trace(ctx, "userRead")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

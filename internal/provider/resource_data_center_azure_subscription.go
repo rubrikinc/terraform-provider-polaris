@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -88,7 +88,7 @@ func resourceDataCenterAzureSubscription() *schema.Resource {
 }
 
 func dataCenterAzureCreateSubscription(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterAzureCreateSubscription")
+	tflog.Trace(ctx, "dataCenterAzureCreateSubscription")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -110,7 +110,7 @@ func dataCenterAzureCreateSubscription(ctx context.Context, d *schema.ResourceDa
 }
 
 func dataCenterAzureReadSubscription(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterAzureReadSubscription")
+	tflog.Trace(ctx, "dataCenterAzureReadSubscription")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -147,7 +147,7 @@ func dataCenterAzureReadSubscription(ctx context.Context, d *schema.ResourceData
 }
 
 func dataCenterAzureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterAzureUpdateSubscription")
+	tflog.Trace(ctx, "dataCenterAzureUpdateSubscription")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -172,7 +172,7 @@ func dataCenterAzureUpdateSubscription(ctx context.Context, d *schema.ResourceDa
 }
 
 func dataCenterAzureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterAzureDeleteSubscription")
+	tflog.Trace(ctx, "dataCenterAzureDeleteSubscription")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
