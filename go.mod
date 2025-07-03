@@ -2,8 +2,6 @@ module github.com/rubrikinc/terraform-provider-polaris
 
 go 1.23.7
 
-toolchain go1.24.4
-
 require (
 	github.com/aws/aws-sdk-go-v2 v1.3.0
 	github.com/google/uuid v1.6.0
