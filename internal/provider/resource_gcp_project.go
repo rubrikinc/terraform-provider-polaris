@@ -23,11 +23,11 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -140,7 +140,7 @@ func resourceGcpProject() *schema.Resource {
 // gcpCreateProject run the Create operation for the GCP project resource. This
 // adds the GCP project to the Polaris platform.
 func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpCreateProject")
+	tflog.Trace(ctx, "gcpCreateProject")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -203,7 +203,7 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 // gcpReadProject run the Read operation for the GCP project resource. This
 // reads the state of the GCP project in Polaris.
 func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpReadProject")
+	tflog.Trace(ctx, "gcpReadProject")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -247,7 +247,7 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 // gcpUpdateProject run the Update operation for the GCP project resource. This
 // only updates the local delete_snapshots_on_destroy parameter.
 func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpUpdateProject")
+	tflog.Trace(ctx, "gcpUpdateProject")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -273,7 +273,7 @@ func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 // gcpDeleteProject run the Delete operation for the GCP project resource. This
 // removes the GCP project from Polaris.
 func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpDeleteProject")
+	tflog.Trace(ctx, "gcpDeleteProject")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

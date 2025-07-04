@@ -22,9 +22,9 @@ package provider
 
 import (
 	"context"
-	"log"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -235,7 +235,7 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 }
 
 func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] resourceCDMBootstrapCCESAzureCreate")
+	tflog.Trace(ctx, "resourceCDMBootstrapCCESAzureCreate")
 
 	timeout, err := toBackwardsCompatibleTimeout(d)
 	if err != nil {
@@ -272,7 +272,7 @@ func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.Resource
 }
 
 func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] resourceCDMBootstrapCCESAzureRead")
+	tflog.Trace(ctx, "resourceCDMBootstrapCCESAzureRead")
 
 	timeout, err := toBackwardsCompatibleTimeout(d)
 	if err != nil {
@@ -303,14 +303,14 @@ func resourceCDMBootstrapCCESAzureRead(ctx context.Context, d *schema.ResourceDa
 // Once a Cluster has been bootstrapped it can not be updated through the
 // bootstrap resource
 func resourceCDMBootstrapCCESAzureUpdate(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] resourceCDMBootstrapCCESAzureUpdate")
+	tflog.Trace(ctx, "resourceCDMBootstrapCCESAzureUpdate")
 	return resourceCDMBootstrapCCESAzureRead(ctx, d, m)
 }
 
 // Once a Cluster has been bootstrapped it cannot be un-bootstrapped, delete
 // simply removes the resource from the local state.
 func resourceCDMBootstrapCCESAzureDelete(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] resourceCDMBootstrapCCESAzureDelete")
+	tflog.Trace(ctx, "resourceCDMBootstrapCCESAzureDelete")
 	d.SetId("")
 	return nil
 }

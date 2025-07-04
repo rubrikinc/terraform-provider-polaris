@@ -22,9 +22,9 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -172,7 +172,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 // principal resource. This adds the Azure service principal to the RSC
 // platform.
 func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureCreateServicePrincipal")
+	tflog.Trace(ctx, "azureCreateServicePrincipal")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -213,7 +213,7 @@ func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 // principal resource. This reads the state of the Azure service principal in
 // RSC.
 func azureReadServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureReadServicePrincipal")
+	tflog.Trace(ctx, "azureReadServicePrincipal")
 
 	return nil
 }
@@ -221,7 +221,7 @@ func azureReadServicePrincipal(ctx context.Context, d *schema.ResourceData, m in
 // azureUpdateServiceAccount run the Update operation for the Azure service
 // principal resource. This updates the Azure service principal in RSC.
 func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureUpdateServicePrincipal")
+	tflog.Trace(ctx, "azureUpdateServicePrincipal")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -259,7 +259,7 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 // principal resource. This only removes the local state of the GCP service
 // account since the service account cannot be removed using the RSC API.
 func azureDeleteServicePrincipal(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureDeleteServicePrincipal")
+	tflog.Trace(ctx, "azureDeleteServicePrincipal")
 
 	d.SetId("")
 	return nil

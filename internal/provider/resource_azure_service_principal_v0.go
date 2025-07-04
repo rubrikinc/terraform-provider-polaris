@@ -24,9 +24,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"os"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
@@ -92,7 +92,7 @@ func resourceAzureServicePrincipalV0() *schema.Resource {
 // resourceAzureServicePrincipalStateUpgradeV0 makes the tenant domain
 // parameter required.
 func resourceAzureServicePrincipalStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] azureServicePrincipalStateUpgradeV0")
+	tflog.Trace(ctx, "azureServicePrincipalStateUpgradeV0")
 
 	// Tenant domain is only missing when the principal has been given as a
 	// credential file.

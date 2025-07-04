@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
@@ -79,7 +79,7 @@ func resourceAzureSubscriptionV1() *schema.Resource {
 // resourceAzureSubscriptionStateUpgradeV1 introduces a cloud native protection
 // feature block.
 func resourceAzureSubscriptionStateUpgradeV1(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] azureSubscriptionStateUpgradeV1")
+	tflog.Trace(ctx, "azureSubscriptionStateUpgradeV1")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

@@ -23,10 +23,10 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -144,7 +144,7 @@ func resourceAzureExocompute() *schema.Resource {
 }
 
 func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureCreateExocompute")
+	tflog.Trace(ctx, "azureCreateExocompute")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -193,7 +193,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 }
 
 func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureReadExocompute")
+	tflog.Trace(ctx, "azureReadExocompute")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -248,7 +248,7 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureDeleteExocompute")
+	tflog.Trace(ctx, "azureDeleteExocompute")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

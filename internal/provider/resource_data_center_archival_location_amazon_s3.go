@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -336,7 +336,7 @@ func resourceDataCenterArchivalLocationAmazonS3() *schema.Resource {
 }
 
 func dataCenterCreateArchivalLocationAmazonS3(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterCreateArchivalLocationAmazonS3")
+	tflog.Trace(ctx, "dataCenterCreateArchivalLocationAmazonS3")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -386,7 +386,7 @@ func dataCenterCreateArchivalLocationAmazonS3(ctx context.Context, d *schema.Res
 }
 
 func dataCenterReadArchivalLocationAmazonS3(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterReadArchivalLocationAmazonS3")
+	tflog.Trace(ctx, "dataCenterReadArchivalLocationAmazonS3")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -455,7 +455,7 @@ func dataCenterReadArchivalLocationAmazonS3(ctx context.Context, d *schema.Resou
 }
 
 func dataCenterUpdateArchivalLocationAmazonS3(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterUpdateArchivalLocationAmazonS3")
+	tflog.Trace(ctx, "dataCenterUpdateArchivalLocationAmazonS3")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -497,7 +497,7 @@ func dataCenterUpdateArchivalLocationAmazonS3(ctx context.Context, d *schema.Res
 }
 
 func dataCenterDeleteArchivalLocationAmazonS3(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterDeleteArchivalLocationAmazonS3")
+	tflog.Trace(ctx, "dataCenterDeleteArchivalLocationAmazonS3")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

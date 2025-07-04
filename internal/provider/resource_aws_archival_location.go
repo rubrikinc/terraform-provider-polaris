@@ -23,10 +23,10 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -144,7 +144,7 @@ func resourceAwsArchivalLocation() *schema.Resource {
 }
 
 func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsCreateArchivalLocation")
+	tflog.Trace(ctx, "awsCreateArchivalLocation")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -176,7 +176,7 @@ func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 }
 
 func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsReadArchivalLocation")
+	tflog.Trace(ctx, "awsReadArchivalLocation")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -229,7 +229,7 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 }
 
 func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsUpdateArchivalLocation")
+	tflog.Trace(ctx, "awsUpdateArchivalLocation")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -260,7 +260,7 @@ func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 }
 
 func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsDeleteArchivalLocation")
+	tflog.Trace(ctx, "awsDeleteArchivalLocation")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

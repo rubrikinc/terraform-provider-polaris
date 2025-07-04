@@ -22,10 +22,10 @@ package provider
 
 import (
 	"context"
-	"log"
 	"path/filepath"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -70,7 +70,7 @@ func resourceGcpServiceAccount() *schema.Resource {
 // gcpCreateServiceAccount run the Create operation for the GCP service account
 // resource. This adds the GCP service account to the Polaris platform.
 func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpCreateServiceAccount")
+	tflog.Trace(ctx, "gcpCreateServiceAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -99,7 +99,7 @@ func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 // gcpReadServiceAccount run the Read operation for the GCP service account
 // resource. This reads the state of the GCP service account in Polaris.
 func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpReadServiceAccount")
+	tflog.Trace(ctx, "gcpReadServiceAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -118,7 +118,7 @@ func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m interf
 // gcpUpdateServiceAccount run the Update operation for the GCP service account
 // resource. This updates the service account in Polaris.
 func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpUpdateServiceAccount")
+	tflog.Trace(ctx, "gcpUpdateServiceAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -144,7 +144,7 @@ func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m inte
 // resource. This only removes the local state of the GCP service account since
 // the service account cannot be removed using the Polaris API.
 func gcpDeleteServiceAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] gcpDeleteServiceAccount")
+	tflog.Trace(ctx, "gcpDeleteServiceAccount")
 
 	d.SetId("")
 	return nil

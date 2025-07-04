@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -117,7 +117,7 @@ func resourceRoleAssignment() *schema.Resource {
 }
 
 func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] createRoleAssignment")
+	tflog.Trace(ctx, "createRoleAssignment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -174,7 +174,7 @@ func createRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 }
 
 func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] readRoleAssignment")
+	tflog.Trace(ctx, "readRoleAssignment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -241,7 +241,7 @@ func readRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag
 }
 
 func updateRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] updateRoleAssignment")
+	tflog.Trace(ctx, "updateRoleAssignment")
 
 	if !d.HasChanges(keyRoleID, keyRoleIDs) {
 		return nil
@@ -315,7 +315,7 @@ func updateRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 }
 
 func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] deleteRoleAssignment")
+	tflog.Trace(ctx, "deleteRoleAssignment")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
