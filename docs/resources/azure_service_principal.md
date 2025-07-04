@@ -7,26 +7,24 @@ description: |-
   RSC. A service principal must be added for each Azure tenant before subscriptions
   for the tenants can be added to RSC.
   There are 3 ways to create a polaris_azure_service principal resource:
-    1. Using the app_id, app_name, app_secret, tenant_id and tenant_domain
-       fields.
-    2. Using the credentials field which is the path to a custom service principal
-       file. A description of the custom format can be found
-       here https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials.
-    3. Using the sdk_auth field which is the path to an Azure service principal
-       created with the Azure SDK using the --sdk-auth parameter.
+  Using the app_id, app_name, app_secret, tenant_id and tenant_domain
+  fields.Using the credentials field which is the path to a custom service principal
+  file. A description of the custom format can be found
+  here https://github.com/rubrikinc/rubrik-polaris-sdk-for-go?tab=readme-ov-file#azure-credentials.Using the sdk_auth field which is the path to an Azure service principal
+  created with the Azure SDK using the --sdk-auth parameter.
   Prefer to use option 1, as the app_name and the app_secret can be updated
   without replacing the service principal.
   ~> Note: Removing the last subscription from an RSC tenant will automatically
-     remove the tenant, which also removes the service principal. If this happens,
-     the service principal can be replaced using
-     terraform apply -replace=<address-of-service-principal>.
+  remove the tenant, which also removes the service principal. If this happens,
+  the service principal can be replaced using
+  terraform apply -replace=<address-of-service-principal>.
   ~> Note: Destroying the polaris_azure_service_principal resource only updates
-     the local state, it does not remove the service principal from RSC. However,
-     creating another polaris_azure_service_principal resource for the same Azure
-     tenant will overwrite the old service principal in RSC.
+  the local state, it does not remove the service principal from RSC. However,
+  creating another polaris_azure_service_principal resource for the same Azure
+  tenant will overwrite the old service principal in RSC.
   -> Note: There is no way to verify if a service principal has been added to RSC
-     using the UI. RSC tenants don't show up in the UI until the first subscription is
-     added.
+  using the UI. RSC tenants don't show up in the UI until the first subscription is
+  added.
 ---
 
 # polaris_azure_service_principal (Resource)

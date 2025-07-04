@@ -7,17 +7,15 @@ description: |-
   permissions to perform certain operations on the account, a Cloud Formation stack
   is created from a template provided by RSC.
   There are two ways to specify the AWS account to onboard:
-   1. Using the profile field. The AWS profile is used to create the Cloud
-      Formation stack and lookup the AWS account ID.
-   2. Using the assume_rolefield with, or without, the profile field. If the
-      profile field is omitted, the default profile is used. The profile is used
-      to assume the role. The assumed role is then used and create the Cloud
-      Formation stack and lookup the account ID.
+  Using the profile field. The AWS profile is used to create the Cloud
+  Formation stack and lookup the AWS account ID.Using the assume_rolefield with, or without, the profile field. If the
+  profile field is omitted, the default profile is used. The profile is used
+  to assume the role. The assumed role is then used and create the Cloud
+  Formation stack and lookup the account ID.
   Any combination of different RSC features can be enabled for an account:
-    1. cloud_native_protection - Provides protection for AWS EC2 instances and
-       EBS volumes through the rules and policies of SLA Domains.
-    2. exocompute - Provides snapshot indexing, file recovery and application
-       protection of AWS objects.
+  cloud_native_protection - Provides protection for AWS EC2 instances and
+  EBS volumes through the rules and policies of SLA Domains.exocompute - Provides snapshot indexing, file recovery and application
+  protection of AWS objects.
 ---
 
 # polaris_aws_account (Resource)
@@ -43,8 +41,8 @@ Any combination of different RSC features can be enabled for an account:
 ## Example Usage
 
 ```terraform
-# Enable Cloud Native Protection
-resource "polaris_aws_account" "default" {
+# Enable Cloud Native Protection in the us-east-2 region.
+resource "polaris_aws_account" "account" {
   profile = "default"
 
   cloud_native_protection {
@@ -58,8 +56,10 @@ resource "polaris_aws_account" "default" {
   }
 }
 
-# Enable Cloud Native Protection and Exocompute.
-resource "polaris_aws_account" "default" {
+# Enable Cloud Native Protection in teh us-east-2 and us-west-2 regions
+# and Exocompute in the us-west-2 region. The Exocompute cluster will be
+# managed by RSC.
+resource "polaris_aws_account" "account" {
   profile = "default"
 
   cloud_native_protection {
@@ -83,11 +83,6 @@ resource "polaris_aws_account" "default" {
       "us-west-2",
     ]
   }
-}
-
-# The Couldformation stack ARN is available after creation
-output "stack_arn" {
-  value = polaris_aws_account.default.exocompute[0].stack_arn
 }
 ```
 
@@ -120,7 +115,7 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and `SNAPSHOT_PRIVATE_ACCESS`.
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature. Possible values are `BASIC`.
 
 Read-Only:
 
@@ -137,9 +132,28 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`.
+- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC` and `RSC_MANAGED_CLUSTER`.
 
 Read-Only:
 
 - `stack_arn` (String) Cloudformation stack ARN.
 - `status` (String) Status of the Exocompute feature.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_aws_account.account
+  id = "d0e44ae7-73cb-4434-861b-369f3c060cb5"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_aws_account.account d0e44ae7-73cb-4434-861b-369f3c060cb5
+```

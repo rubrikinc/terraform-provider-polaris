@@ -7,7 +7,7 @@ description: |-
   by RSC. The policy field of aws_cnp_account_trust_policy resource should be used
   with the assume_role_policy of the aws_iam_role resource.
   -> Note: The features field takes only the feature names and not the permission
-     groups associated with the features.
+  groups associated with the features.
 ---
 
 # polaris_aws_cnp_account_trust_policy (Resource)
@@ -85,3 +85,22 @@ resource "polaris_aws_cnp_account_trust_policy" "trust_policy" {
 
 - `id` (String) RSC cloud account ID (UUID).
 - `policy` (String) AWS IAM trust policy.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_aws_cnp_account_trust_policy.trust_policy
+  id = "acfd7b71-6259-45bc-b0c6-f067918c5cc7"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_aws_cnp_account_trust_policy.trust_policy acfd7b71-6259-45bc-b0c6-f067918c5cc7
+```

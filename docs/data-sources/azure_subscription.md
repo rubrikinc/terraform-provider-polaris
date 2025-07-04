@@ -9,7 +9,7 @@ description: |-
   subscription name, the tenant domain can be used to specify in which tenant to look
   for the name.
   -> Note: The subscription name is the name of the Azure subscription as it appears
-     in RSC.
+  in RSC.
 ---
 
 # polaris_azure_subscription (Data Source)

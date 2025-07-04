@@ -14,12 +14,12 @@ description: |-
 
 ```terraform
 # With service account key file
-resource "polaris_gcp_project" "default" {
+resource "polaris_gcp_project" "project" {
   credentials = "${path.module}/my-project-3f88757a02a4.json"
 }
 
 # Without service account key file
-resource "polaris_gcp_project" "default" {
+resource "polaris_gcp_project" "project" {
   project        = "my-project"
   project_number = 123456789012
 }
@@ -52,3 +52,22 @@ resource "polaris_gcp_project" "default" {
 Read-Only:
 
 - `status` (String) Status of the Cloud Native Protection feature.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_gcp_project.project
+  id = "2689a6f0-41a5-4d7a-ba7f-ee591bb43e4a"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_gcp_project.project 2689a6f0-41a5-4d7a-ba7f-ee591bb43e4a
+```
