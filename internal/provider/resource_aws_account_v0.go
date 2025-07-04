@@ -23,11 +23,11 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -74,7 +74,7 @@ func resourceAwsAccountV0() *schema.Resource {
 // resourceAwsAccountStateUpgradeV0 simplifies the resource id to consist of
 // only the Polaris cloud account id.
 func resourceAwsAccountStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceAwsAccountStateUpgradeV0")
+	tflog.Trace(ctx, "resourceAwsAccountStateUpgradeV0")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

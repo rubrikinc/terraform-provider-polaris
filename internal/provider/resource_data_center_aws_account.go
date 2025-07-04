@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -90,7 +90,7 @@ func resourceDataCenterAWSAccount() *schema.Resource {
 }
 
 func dataCenterAWSCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterAWSCreateAccount")
+	tflog.Trace(ctx, "dataCenterAWSCreateAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -113,7 +113,7 @@ func dataCenterAWSCreateAccount(ctx context.Context, d *schema.ResourceData, m i
 }
 
 func dataCenterAWSReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterAWSReadAccount")
+	tflog.Trace(ctx, "dataCenterAWSReadAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -147,7 +147,7 @@ func dataCenterAWSReadAccount(ctx context.Context, d *schema.ResourceData, m int
 }
 
 func dataCenterAWSUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterAWSUpdateAccount")
+	tflog.Trace(ctx, "dataCenterAWSUpdateAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -173,7 +173,7 @@ func dataCenterAWSUpdateAccount(ctx context.Context, d *schema.ResourceData, m i
 }
 
 func dataCenterAWSDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] dataCenterAWSDeleteAccount")
+	tflog.Trace(ctx, "dataCenterAWSDeleteAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

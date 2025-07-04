@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -206,7 +206,7 @@ func resourceAwsAccount() *schema.Resource {
 }
 
 func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsCreateAccount")
+	tflog.Trace(ctx, "awsCreateAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -286,7 +286,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 }
 
 func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsReadAccount")
+	tflog.Trace(ctx, "awsReadAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -387,7 +387,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 }
 
 func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsUpdateAccount")
+	tflog.Trace(ctx, "awsUpdateAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -525,7 +525,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 }
 
 func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsDeleteAccount")
+	tflog.Trace(ctx, "awsDeleteAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

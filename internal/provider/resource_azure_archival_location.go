@@ -23,10 +23,10 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 	"regexp"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -157,7 +157,7 @@ func resourceAzureArchivalLocation() *schema.Resource {
 }
 
 func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureCreateArchivalLocation")
+	tflog.Trace(ctx, "azureCreateArchivalLocation")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -195,7 +195,7 @@ func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 }
 
 func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureReadArchivalLocation")
+	tflog.Trace(ctx, "azureReadArchivalLocation")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -255,7 +255,7 @@ func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 }
 
 func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureUpdateArchivalLocation")
+	tflog.Trace(ctx, "azureUpdateArchivalLocation")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -283,7 +283,7 @@ func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 }
 
 func azureDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureDeleteArchivalLocation")
+	tflog.Trace(ctx, "azureDeleteArchivalLocation")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

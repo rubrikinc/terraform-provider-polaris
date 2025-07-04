@@ -22,9 +22,9 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -136,7 +136,7 @@ func resourceAwsPrivateContainerRegistry() *schema.Resource {
 }
 
 func awsCreatePrivateContainerRegistry(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsCreatePrivateContainerRegistry")
+	tflog.Trace(ctx, "awsCreatePrivateContainerRegistry")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -159,7 +159,7 @@ func awsCreatePrivateContainerRegistry(ctx context.Context, d *schema.ResourceDa
 }
 
 func awsReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsReadPrivateContainerRegistry")
+	tflog.Trace(ctx, "awsReadPrivateContainerRegistry")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -186,7 +186,7 @@ func awsReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceData
 }
 
 func awsUpdatePrivateContainerRegistry(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsUpdatePrivateContainerRegistry")
+	tflog.Trace(ctx, "awsUpdatePrivateContainerRegistry")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -207,7 +207,7 @@ func awsUpdatePrivateContainerRegistry(ctx context.Context, d *schema.ResourceDa
 }
 
 func awsDeletePrivateContainerRegistry(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsDeletePrivateContainerRegistry")
+	tflog.Trace(ctx, "awsDeletePrivateContainerRegistry")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

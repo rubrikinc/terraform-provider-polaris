@@ -31,6 +31,29 @@ The following environmental variables can be used to override the default behavi
 * *RUBRIK_POLARIS_TOKEN_CACHE_SECRET* — Overrides the secret used as input when generating an encryption key for the
   authentication token.
 
+### Terraform Logging Support
+The provider supports Terraform's native logging system (tflog) for improved debugging and troubleshooting. This provides structured logging with better integration into Terraform's logging infrastructure.
+
+#### Terraform Logging Environment Variables
+* *TF_LOG_PROVIDER_POLARIS* — Controls the log level for the Terraform provider itself. Valid log levels are: *TRACE*, *DEBUG*, *INFO*, *WARN*, *ERROR*, and *OFF*. This variable follows Terraform's standard logging conventions.
+* *TF_LOG_PROVIDER_POLARIS_API* — Controls the log level specifically for API calls made by the provider to the Polaris service. This allows you to separately control the verbosity of API-related logging.
+
+#### Usage Examples
+```bash
+# Enable DEBUG logging for the provider, including API calls
+export TF_LOG_PROVIDER_POLARIS=DEBUG
+
+# Enable TRACE logging for API calls only
+export TF_LOG_PROVIDER_POLARIS_API=TRACE
+
+# Enable both provider and API logging at different levels
+export TF_LOG_PROVIDER_POLARIS=INFO
+export TF_LOG_PROVIDER_POLARIS_API=DEBUG
+
+# Direct provider logs to a specific file
+export TF_LOG_PROVIDER_PATH=./polaris-provider.log
+```
+
 ### Provider Credentials
 The provider supports both local user accounts and service accounts. For documentation on how to create either using
 Polaris see the [Rubrik Support Portal](http://support.rubrik.com).

@@ -23,10 +23,10 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
@@ -91,7 +91,7 @@ func resourceGcpProjectV0() *schema.Resource {
 // resourceGcpProjectStateUpgradeV0 simplifies the resource id to consist of
 // only the Polaris cloud account id.
 func resourceGcpProjectStateUpgradeV0(ctx context.Context, state map[string]interface{}, m interface{}) (map[string]interface{}, error) {
-	log.Print("[TRACE] resourceGcpProjectStateUpgradeV0")
+	tflog.Trace(ctx, "resourceGcpProjectStateUpgradeV0")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

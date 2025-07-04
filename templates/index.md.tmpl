@@ -110,6 +110,29 @@ account behavior:
 * `RUBRIK_POLARIS_ACCOUNT_PASSWORD` - Overrides the password of the local user account.
 * `RUBRIK_POLARIS_ACCOUNT_URL` - Overrides the RSC API URL.
 
+### Terraform Logging Support
+The provider supports Terraform's native logging system (tflog) for improved debugging and troubleshooting. This provides structured logging with better integration into Terraform's logging infrastructure.
+
+#### Terraform Logging Environment Variables
+* `TF_LOG_PROVIDER_POLARIS` - Controls the log level for the Terraform provider itself. Valid log levels are: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, and `OFF`. This variable follows Terraform's standard logging conventions.
+* `TF_LOG_PROVIDER_POLARIS_API` - Controls the log level specifically for API calls made by the provider to the Polaris service. This allows you to separately control the verbosity of API-related logging.
+
+#### Usage Examples
+```bash
+# Enable DEBUG logging for the provider, including API calls
+export TF_LOG_PROVIDER_POLARIS=DEBUG
+
+# Enable TRACE logging for API calls only
+export TF_LOG_PROVIDER_POLARIS_API=TRACE
+
+# Enable both provider and API logging at different levels
+export TF_LOG_PROVIDER_POLARIS=INFO
+export TF_LOG_PROVIDER_POLARIS_API=DEBUG
+
+# Direct provider logs to a specific file
+export TF_LOG_PROVIDER_PATH=./polaris-provider.log
+```
+
 ## Example Usage
 
 {{tffile "examples/provider/provider.tf"}}

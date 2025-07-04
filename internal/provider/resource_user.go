@@ -23,10 +23,10 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 	"regexp"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -95,7 +95,7 @@ func resourceUser() *schema.Resource {
 }
 
 func createUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] createUser")
+	tflog.Trace(ctx, "createUser")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -124,7 +124,7 @@ func createUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 }
 
 func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] readUser")
+	tflog.Trace(ctx, "readUser")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -165,7 +165,7 @@ func readUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnosti
 }
 
 func updateUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] updateUser")
+	tflog.Trace(ctx, "updateUser")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -190,7 +190,7 @@ func updateUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 }
 
 func deleteUser(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] deleteUser")
+	tflog.Trace(ctx, "deleteUser")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

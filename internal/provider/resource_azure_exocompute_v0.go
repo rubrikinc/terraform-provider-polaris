@@ -22,8 +22,8 @@ package provider
 
 import (
 	"context"
-	"log"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
@@ -67,7 +67,7 @@ func resourceAzureExocomputeV0() *schema.Resource {
 // resourceAzureExocomputeStateUpgradeV0 removes the polaris_managed parameter.
 // Exocompute on Azure only supports RSC managed configurations.
 func resourceAzureExocomputeStateUpgradeV0(ctx context.Context, state map[string]any, m any) (map[string]any, error) {
-	log.Print("[TRACE] azureExocomputeStateUpgradeV0")
+	tflog.Trace(ctx, "azureExocomputeStateUpgradeV0")
 
 	delete(state, "polaris_managed")
 

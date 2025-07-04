@@ -22,9 +22,9 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -129,7 +129,7 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 }
 
 func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] azureArchivalLocationRead")
+	tflog.Trace(ctx, "azureArchivalLocationRead")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

@@ -57,6 +57,8 @@ pipeline {
 
         // Enable logging from the terraform cli binary used by acceptance tests
         TF_ACC_LOG_PATH='terraform_cli.log'
+        // Enable verbose Go SDK logging
+        RUBRIK_POLARIS_LOGLEVEL='trace'
 
         // Recent versions of Go added support for post-quantum cryptography algorithms
         // x25519Kyber768Draft00 (Go 1.23) and X25519MLKEM768 (Go 1.24, where Kyber

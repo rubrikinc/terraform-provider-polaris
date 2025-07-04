@@ -24,11 +24,11 @@ import (
 	"cmp"
 	"context"
 	"errors"
-	"log"
 	"maps"
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -748,7 +748,7 @@ func resourceAzureSubscription() *schema.Resource {
 // azureCreateSubscription run the Create operation for the Azure subscription
 // resource. This adds the Azure subscription to the RSC platform.
 func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] azureCreateSubscription")
+	tflog.Trace(ctx, "azureCreateSubscription")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -792,7 +792,7 @@ func azureCreateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 // azureReadSubscription run the Read operation for the Azure subscription
 // resource. This reads the remote state of the Azure subscription in RSC.
 func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] azureReadSubscription")
+	tflog.Trace(ctx, "azureReadSubscription")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -840,7 +840,7 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m any) d
 // azureUpdateSubscription run the Update operation for the Azure subscription
 // resource. This updates the Azure subscription in RSC.
 func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] azureUpdateSubscription")
+	tflog.Trace(ctx, "azureUpdateSubscription")
 
 	client := m.(*client)
 	polarisClient, err := client.polaris()
@@ -995,7 +995,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 // azureDeleteSubscription run the Delete operation for the Azure subscription
 // resource. This removes the Azure subscription from RSC.
 func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] azureDeleteSubscription")
+	tflog.Trace(ctx, "azureDeleteSubscription")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -1435,7 +1435,7 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 	// Check if the SQL DB Copy Backup feature flag is enabled for the account.
 	// We only need to upgrade accounts which has the feature flag enabled.
 	if !client.flags["CNP_AZURE_SQL_DB_COPY_BACKUP"] {
-		log.Print("[DEBUG] skipping Azure SQL DB Protection feature upgrade: feature flag CNP_AZURE_SQL_DB_COPY_BACKUP is not enabled")
+		tflog.Debug(ctx, "skipping Azure SQL DB Protection feature upgrade: feature flag CNP_AZURE_SQL_DB_COPY_BACKUP is not enabled")
 		return false, nil
 	}
 
@@ -1451,7 +1451,7 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 		return false, nil
 	}
 	if feature.ResourceGroup.Name != "" || feature.ResourceGroup.Region != "" {
-		log.Print("[DEBUG] skipping Azure SQL DB Protection feature upgrade: feature already upgraded")
+		tflog.Debug(ctx, "skipping Azure SQL DB Protection feature upgrade: feature already upgraded")
 		return false, nil
 	}
 
@@ -1463,7 +1463,9 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 	}
 
 	// Upgrade the Azure SQL DB feature to use a resource group.
-	log.Printf("[INFO] upgrading Azure SQL DB Protection feature to use resource group %q", rg.Name)
+	tflog.Info(ctx, "upgrading Azure SQL DB Protection feature to use resource group", map[string]any{
+		"resource_group": rg.Name,
+	})
 	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, cloudAccountID, feature.Feature, rg); err != nil {
 		return false, err
 	}

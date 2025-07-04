@@ -22,8 +22,8 @@ package provider
 
 import (
 	"context"
-	"log"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -87,7 +87,7 @@ func resourceAwsCustomTags() *schema.Resource {
 }
 
 func awsCreateCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsCreateCustomTags")
+	tflog.Trace(ctx, "awsCreateCustomTags")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -112,7 +112,7 @@ func awsCreateCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func awsReadCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsReadCustomTags")
+	tflog.Trace(ctx, "awsReadCustomTags")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -134,7 +134,7 @@ func awsReadCustomTags(ctx context.Context, d *schema.ResourceData, m interface{
 }
 
 func awsUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsUpdateCustomTags")
+	tflog.Trace(ctx, "awsUpdateCustomTags")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -170,7 +170,7 @@ func awsUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func awsDeleteCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsDeleteCustomTags")
+	tflog.Trace(ctx, "awsDeleteCustomTags")
 
 	client, err := m.(*client).polaris()
 	if err != nil {

@@ -23,9 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -139,7 +139,7 @@ func resourceAwsCnpAccount() *schema.Resource {
 }
 
 func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsCreateCnpAccount")
+	tflog.Trace(ctx, "awsCreateCnpAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -180,7 +180,7 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsReadCnpAccount")
+	tflog.Trace(ctx, "awsReadCnpAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -241,7 +241,7 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{
 }
 
 func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsUpdateCnpAccount")
+	tflog.Trace(ctx, "awsUpdateCnpAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -345,7 +345,7 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	log.Print("[TRACE] awsDeleteCnpAccount")
+	tflog.Trace(ctx, "awsDeleteCnpAccount")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
