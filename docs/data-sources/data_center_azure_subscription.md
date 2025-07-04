@@ -7,9 +7,9 @@ description: |-
   information about an Azure data center subscription added to RSC. A data center
   subscription is looked up using the name.
   -> Note: Data center subscriptions and cloud native subscriptions are
-     different and cannot be used interchangeably.
+  different and cannot be used interchangeably.
   -> Note: The name is the name of the data center subscription as it appears
-     in RSC.
+  in RSC.
 ---
 
 # polaris_data_center_azure_subscription (Data Source)

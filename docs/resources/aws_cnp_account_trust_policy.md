@@ -7,7 +7,7 @@ description: |-
   by RSC. The policy field of aws_cnp_account_trust_policy resource should be used
   with the assume_role_policy of the aws_iam_role resource.
   -> Note: The features field takes only the feature names and not the permission
-     groups associated with the features.
+  groups associated with the features.
 ---
 
 # polaris_aws_cnp_account_trust_policy (Resource)

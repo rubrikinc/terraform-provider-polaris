@@ -17,7 +17,7 @@ RSC.
 ```terraform
 # Manual role.
 resource "polaris_custom_role" "compliance_auditor" {
-  name = "Compliance Auditor Role"
+  name        = "Compliance Auditor Role"
   description = "Compliance Auditor"
 
   permission {

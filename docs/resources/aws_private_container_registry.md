@@ -7,12 +7,12 @@ description: |-
   registry (PCR) feature for the RSC customer account. This disables the standard
   Rubrik container registry.
   ~> Note: Even though the polaris_aws_private_container_registry resource ID
-     is an RSC cloud account ID, there can only be a single PCR per RSC customer
-     account.
+  is an RSC cloud account ID, there can only be a single PCR per RSC customer
+  account.
   Exocompute Image Bundles
   The following GraphQL query can be used to retrieve information about the image
   bundles used by RSC for exocompute:
-  graphql
+  
   query ExotaskImageBundle($input: GetExotaskImageBundleInput) {
     exotaskImageBundle(input: $input) {
       bundleImages {
@@ -29,7 +29,7 @@ description: |-
   The repoUrl field holds the URL to the RSC container registry from where the RSC
   images can be pulled.
   The input is an object with the following structure:
-  json
+  
   {
     "input": {
       "eksVersion": "1.29"
@@ -41,13 +41,13 @@ description: |-
   RSC.
   The following GraphQL mutation can be used to set the approved bundle version for
   the RSC customer account:
-  graphql
+  
   mutation SetBundleApprovalStatus($input: SetBundleApprovalStatusInput!) {
     setBundleApprovalStatus(input: $input)
   }
   
   The input is an object with the following structure:
-  json
+  
   {
     "input": {
       "approvalStatus": "ACCEPTED",

@@ -6,10 +6,10 @@ description: |-
   The polaris_data_center_archival_location_amazon_s3 resource create a data
   center archival location with the Amazon S3 storage type.
   ~> Before configuring the immutability settings, see
-     KB article https://support.rubrik.com/s/article/000005468 or the Rubrik
-     User Guide documentation to determine the proper immutability lock period.
+  KB article https://support.rubrik.com/s/article/000005468 or the Rubrik
+  User Guide documentation to determine the proper immutability lock period.
   -> More information about AWS Immutable Storage and time-based retention locks
-     can be found in the Amazon AWS documentation.
+  can be found in the Amazon AWS documentation.
 ---
 
 # polaris_data_center_archival_location_amazon_s3 (Resource)

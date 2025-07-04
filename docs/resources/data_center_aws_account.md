@@ -6,9 +6,9 @@ description: |-
   The polaris_data_center_aws_account resource adds a data center AWS account to
   RSC. A data center account can only be used with data center archival.
   ~> Note: Due to technical issue in RSC, names of removed data center AWS
-     accounts cannot be reused.
+  accounts cannot be reused.
   -> Note: Data center accounts and cloud native accounts are different and
-     cannot be used interchangeably.
+  cannot be used interchangeably.
 ---
 
 # polaris_data_center_aws_account (Resource)

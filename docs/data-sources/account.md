@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   The polaris_account data source is used to access information about the RSC account.
   -> Note: The fqdn and name fields are read from the local RSC credentials and
-     not from RSC.
+  not from RSC.
 ---
 
 # polaris_account (Data Source)

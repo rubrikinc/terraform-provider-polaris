@@ -8,16 +8,15 @@ description: |-
   onboarded with the cloud_native_archival feature.
   When creating an archival location, the region where the snapshots are stored needs
   to be specified:
-    * SOURCE_REGION - Store snapshots in the same region to minimize data transfer
-      charges. This is the default behaviour when the storage_account_region field is
-      not specified.
-    * SPECIFIC_REGION - Storing snapshots in another region can increase total data
-      transfer charges. The storage_account_region field specifies the region.
+  SOURCE_REGION - Store snapshots in the same region to minimize data transfer
+  charges. This is the default behaviour when the storage_account_region field is
+  not specified.SPECIFIC_REGION - Storing snapshots in another region can increase total data
+  transfer charges. The storage_account_region field specifies the region.
   Custom storage encryption is enabled by specifying one or more customer_managed_key
   blocks. Each customer_managed_key block specifies the encryption details to use for
   a region. For other regions, data will be encrypted using platform managed keys.
   -> Note: The Azure storage account is not created until the first protected object
-     is archived to the location.
+  is archived to the location.
 ---
 
 # polaris_azure_archival_location (Resource)
