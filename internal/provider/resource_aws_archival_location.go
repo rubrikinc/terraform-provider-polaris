@@ -206,6 +206,9 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetTemplate.BucketPrefix, implicitPrefix)); err != nil {
 		return diag.FromErr(err)
 	}
+	if err := d.Set(keyAccountID, targetTemplate.CloudAccount.ID.String()); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {
 		return diag.FromErr(err)
 	}
