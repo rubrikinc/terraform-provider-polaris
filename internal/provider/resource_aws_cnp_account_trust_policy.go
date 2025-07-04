@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -37,19 +38,27 @@ import (
 )
 
 const resourceAWSCNPAccountTrustPolicyDescription = `
-The ´aws_cnp_account_trust_policy´ resource gets the AWS IAM trust policies required
-by RSC. The ´policy´ field of ´aws_cnp_account_trust_policy´ resource should be used
-with the ´assume_role_policy´ of the ´aws_iam_role´ resource.
+The ´aws_cnp_account_trust_policy´ resource gets the AWS IAM trust policies
+required by RSC. The ´policy´ field of ´aws_cnp_account_trust_policy´ resource
+should be used with the ´assume_role_policy´ of the ´aws_iam_role´ resource.
 
--> **Note:** The ´features´ field takes only the feature names and not the permission
-   groups associated with the features.
+~> **Node:** Once ´external_id´ has been set it cannot be changed. Unless the
+   cloud account is removed and onboarded again.
+
+-> **Note:** The ´features´ field takes only the feature names and not the
+   permission groups associated with the features.
 `
+
+var trustPolicyRoleKeys = []string{
+	"CROSSACCOUNT",
+	"EXOCOMPUTE_EKS_MASTERNODE",
+	"EXOCOMPUTE_EKS_WORKERNODE",
+}
 
 func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateCnpAccountTrustPolicy,
 		ReadContext:   awsReadCnpAccountTrustPolicy,
-		UpdateContext: awsUpdateCnpAccountTrustPolicy,
 		DeleteContext: awsDeleteCnpAccountTrustPolicy,
 
 		Description: description(resourceAWSCNPAccountTrustPolicyDescription),
@@ -57,7 +66,7 @@ func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "RSC cloud account ID (UUID).",
+				Description: "RSC cloud account ID (UUID) with the role key as a prefix.",
 			},
 			keyAccountID: {
 				Type:         schema.TypeString,
@@ -67,10 +76,10 @@ func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 				ValidateFunc: validation.IsUUID,
 			},
 			keyExternalID: {
-				Type:        schema.TypeString,
-				Optional:    true,
-				ForceNew:    true,
-				Description: "External ID. Changing this forces a new resource to be created.",
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "Trust policy external ID. If not specified, RSC will generate an external ID. " +
+					"Note, once the external ID has been set it cannot be changed.",
 			},
 			keyFeatures: {
 				Type: schema.TypeSet,
@@ -82,11 +91,12 @@ func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 					}, false),
 				},
 				MinItems: 1,
-				Required: true,
-				ForceNew: true,
+				Optional: true,
+				Computed: true,
 				Description: "RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
-					"`CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`. Changing this forces a new " +
-					"resource to be created.",
+					"`CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`. **Deprecated:** no longer used " +
+					"by the provider, any value set is ignored.",
+				Deprecated: "no longer used by the provider, any value set is ignored.",
 			},
 			keyPolicy: {
 				Type:        schema.TypeString,
@@ -94,19 +104,28 @@ func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 				Description: "AWS IAM trust policy.",
 			},
 			keyRoleKey: {
-				Type:         schema.TypeString,
-				Required:     true,
-				Description:  "RSC artifact key for the AWS role.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+				Description: "RSC artifact key for the AWS role. Possible values are `CROSSACCOUNT`, " +
+					"`EXOCOMPUTE_EKS_MASTERNODE` and `EXOCOMPUTE_EKS_WORKERNODE`.",
+				ValidateFunc: validation.StringInSlice(trustPolicyRoleKeys, false),
 			},
 		},
 		Importer: &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
+			StateContext: awsImportCnpAccountTrustPolicy,
 		},
+
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceAwsCnpAccountTrustPolicyV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAwsCnpAccountTrustPolicyStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
-func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsCreateCnpAccountTrustPolicy")
 
 	client, err := m.(*client).polaris()
@@ -114,32 +133,28 @@ func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
-	accountID := d.Get(keyAccountID).(string)
+	accountID, err := uuid.Parse(d.Get(keyAccountID).(string))
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	externalID := d.Get(keyExternalID).(string)
 	roleKey := d.Get(keyRoleKey).(string)
-	var features []core.Feature
-	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
-	}
 
-	// Request the trust policy matching the role key.
-	policy, err := trustPolicy(ctx, client, accountID, features, roleKey, externalID)
+	policy, err := trustPolicy(ctx, client, accountID, roleKey, externalID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Set attributes.
 	if err := d.Set(keyPolicy, policy); err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(accountID)
 
+	d.SetId(joinTrustPolicyID(accountID, roleKey))
 	awsReadCnpAccountTrustPolicy(ctx, d, m)
 	return nil
 }
 
-func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsReadCnpAccountTrustPolicy")
 
 	client, err := m.(*client).polaris()
@@ -147,15 +162,12 @@ func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
-	// Get attributes.
-	id, err := uuid.Parse(d.Id())
+	accountID, roleKey, err := splitTrustPolicyID(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	roleKey := d.Get(keyRoleKey).(string)
 
-	// Request the cloud account.
-	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	policy, err := trustPolicy(ctx, client, accountID, roleKey, "")
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -164,59 +176,27 @@ func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
-	// Request the trust policy.
-	features := make([]core.Feature, 0, len(account.Features))
+	if err := d.Set(keyAccountID, accountID); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyPolicy, policy); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyRoleKey, roleKey); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// This can be removed when the features field of the resource is removed.
+	account, err := aws.Wrap(client).AccountByID(ctx, core.FeatureAll, accountID)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	features := &schema.Set{F: schema.HashString}
 	for _, feature := range account.Features {
-		features = append(features, feature.Feature)
+		features.Add(feature.Feature.Name)
 	}
-	policy, err := trustPolicy(ctx, client, id.String(), features, roleKey, "")
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Set attributes.
-	featuresAttr := &schema.Set{F: schema.HashString}
-	for _, feature := range features {
-		featuresAttr.Add(feature.Name)
-	}
-	if err := d.Set(keyFeatures, featuresAttr); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keyPolicy, policy); err != nil {
-		return diag.FromErr(err)
-	}
-
-	return nil
-}
-
-func awsUpdateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	tflog.Trace(ctx, "awsUpdateCnpAccountTrustPolicy")
-
-	client, err := m.(*client).polaris()
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Get attributes.
-	roleKey := d.Get(keyRoleKey).(string)
-	var features []core.Feature
-	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
-	}
-
-	// Request the trust policy matching the role key. Note that the external ID
-	// cannot be updated.
-	policy, err := trustPolicy(ctx, client, d.Id(), features, roleKey, "")
-	if errors.Is(err, graphql.ErrNotFound) {
-		d.SetId("")
-		return nil
-	}
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Set attributes.
-	if err := d.Set(keyPolicy, policy); err != nil {
+	if err := d.Set(keyFeatures, features); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -229,24 +209,54 @@ func awsUpdateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 func awsDeleteCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	tflog.Trace(ctx, "awsDeleteCnpAccountTrustPolicy")
 
-	// Reset ID.
 	d.SetId("")
-
 	return nil
 }
 
-// trustPolicy returns the external ID and the trust policy for the specified
-// role key.
-func trustPolicy(ctx context.Context, client *polaris.Client, accountID string, features []core.Feature, roleKey, externalID string) (string, error) {
-	id, err := uuid.Parse(accountID)
+func awsImportCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m any) ([]*schema.ResourceData, error) {
+	log.Print("[TRACE] awsCreateCnpAccountTrustPolicy")
+
+	id, roleKey, err := splitTrustPolicyID(strings.ToLower(d.Id()))
 	if err != nil {
-		return "", err
-	}
-	trustPolicies, err := aws.Wrap(client).TrustPolicies(ctx, aws.CloudAccountID(id), features, externalID)
-	if err != nil {
-		return "", err
+		return nil, err
 	}
 
+	d.SetId(id.String())
+	if err := d.Set(keyRoleKey, roleKey); err != nil {
+		return nil, err
+	}
+
+	return []*schema.ResourceData{d}, nil
+}
+
+func joinTrustPolicyID(accountID uuid.UUID, roleKey string) string {
+	return fmt.Sprintf("%s-%s", strings.ToLower(roleKey), accountID)
+}
+
+func splitTrustPolicyID(id string) (uuid.UUID, string, error) {
+	id = strings.ToLower(id)
+
+	for _, roleKey := range trustPolicyRoleKeys {
+		lcRoleKey := strings.ToLower(roleKey)
+		if strings.HasPrefix(id, lcRoleKey) {
+			id, err := uuid.Parse(strings.TrimPrefix(id, lcRoleKey))
+			if err != nil {
+				return uuid.Nil, "", err
+			}
+
+			return id, roleKey, nil
+		}
+	}
+
+	return uuid.Nil, "", fmt.Errorf("invalid resource id: %s", id)
+}
+
+// trustPolicy returns the trust policy for the specified role key.
+func trustPolicy(ctx context.Context, client *polaris.Client, accountID uuid.UUID, roleKey, externalID string) (string, error) {
+	trustPolicies, err := aws.Wrap(client).TrustPolicies(ctx, accountID, externalID)
+	if err != nil {
+		return "", err
+	}
 	for key, policy := range trustPolicies {
 		if key == roleKey {
 			return policy, nil
