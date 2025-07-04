@@ -8,12 +8,11 @@ description: |-
   onboarded with the CLOUD_NATIVE_ARCHIVAL feature.
   When creating an archival location, the region where the snapshots are stored needs
   to be specified:
-    * SOURCE_REGION - Store snapshots in the same region to minimize data transfer
-      charges. This is the default behaviour when the region field is not specified.
-    * SPECIFIC_REGION - Storing snapshots in another region can increase total data
-      transfer charges. The region field specifies the region.
+  SOURCE_REGION - Store snapshots in the same region to minimize data transfer
+  charges. This is the default behaviour when the region field is not specified.SPECIFIC_REGION - Storing snapshots in another region can increase total data
+  transfer charges. The region field specifies the region.
   -> Note: The AWS bucket holding the archived data is not created until the first
-     protected object is archived.
+  protected object is archived.
 ---
 
 # polaris_aws_archival_location (Resource)

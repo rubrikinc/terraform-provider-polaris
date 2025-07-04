@@ -9,24 +9,23 @@ description: |-
   Following is a list of features and their applicable permission groups. These
   are used when specifying the feature set.
   CLOUD_NATIVE_ARCHIVAL
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   CLOUD_NATIVE_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   CLOUD_NATIVE_S3_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   EXOCOMPUTE
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * RSC_MANAGED_CLUSTER - Represents the set of permissions required for the
-      Rubrik-managed Exocompute cluster.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.RSC_MANAGED_CLUSTER - Represents the set of permissions required for the
+  Rubrik-managed Exocompute cluster.
   RDS_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   -> Note: When permission groups are specified, the BASIC permission group
-     must always be included.
+  must always be included.
 ---
 
 # polaris_aws_cnp_artifacts (Data Source)

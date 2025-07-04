@@ -6,27 +6,25 @@ description: |-
   The polaris_azure_exocompute resource creates an RSC Exocompute configuration for
   Azure workloads.
   There are 2 types of Exocompute configurations:
-   1. Host - When a host configuration is created, RSC will automatically deploy the
-      necessary resources in the specified Azure region to run the Exocompute service.
-      A host configuration can be used by both the host cloud account and application
-      cloud accounts mapped to the host account.
-   2. Application - An application configuration is created by mapping the application
-      cloud account to a host cloud account. The application cloud account will leverage
-      the Exocompute resources deployed for the host configuration.
+  Host - When a host configuration is created, RSC will automatically deploy the
+  necessary resources in the specified Azure region to run the Exocompute service.
+  A host configuration can be used by both the host cloud account and application
+  cloud accounts mapped to the host account.Application - An application configuration is created by mapping the application
+  cloud account to a host cloud account. The application cloud account will leverage
+  the Exocompute resources deployed for the host configuration.
   Item 1 above requires that the Azure subscription has been onboarded with the
   exocompute feature.
   Since there are 2 types of Exocompute configurations, there are 2 ways to create a
   polaris_azure_exocompute resource:
-   1. Using the cloud_account_id, region, subnet and pod_overlay_network_cidr
-      fields. This creates a host configuration.
-   2. Using the cloud_account_id and host_cloud_account_id fields. This creates an
-      application configuration.
+  Using the cloud_account_id, region, subnet and pod_overlay_network_cidr
+  fields. This creates a host configuration.Using the cloud_account_id and host_cloud_account_id fields. This creates an
+  application configuration.
   ~> Note: A host configuration can be created without specifying the
-     pod_overlay_network_cidr field, this is discouraged and should only be done for
-     backwards compatibility reasons.
+  pod_overlay_network_cidr field, this is discouraged and should only be done for
+  backwards compatibility reasons.
   -> Note: Customer-managed Exocompute is sometimes referred to as Bring Your Own
-     Kubernetes (BYOK). Using both host and application Exocompute configurations is
-     sometimes referred to as shared Exocompute.
+  Kubernetes (BYOK). Using both host and application Exocompute configurations is
+  sometimes referred to as shared Exocompute.
 ---
 
 # polaris_azure_exocompute (Resource)

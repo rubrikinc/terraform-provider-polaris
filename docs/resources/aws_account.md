@@ -7,17 +7,15 @@ description: |-
   permissions to perform certain operations on the account, a Cloud Formation stack
   is created from a template provided by RSC.
   There are two ways to specify the AWS account to onboard:
-   1. Using the profile field. The AWS profile is used to create the Cloud
-      Formation stack and lookup the AWS account ID.
-   2. Using the assume_rolefield with, or without, the profile field. If the
-      profile field is omitted, the default profile is used. The profile is used
-      to assume the role. The assumed role is then used and create the Cloud
-      Formation stack and lookup the account ID.
+  Using the profile field. The AWS profile is used to create the Cloud
+  Formation stack and lookup the AWS account ID.Using the assume_rolefield with, or without, the profile field. If the
+  profile field is omitted, the default profile is used. The profile is used
+  to assume the role. The assumed role is then used and create the Cloud
+  Formation stack and lookup the account ID.
   Any combination of different RSC features can be enabled for an account:
-    1. cloud_native_protection - Provides protection for AWS EC2 instances and
-       EBS volumes through the rules and policies of SLA Domains.
-    2. exocompute - Provides snapshot indexing, file recovery and application
-       protection of AWS objects.
+  cloud_native_protection - Provides protection for AWS EC2 instances and
+  EBS volumes through the rules and policies of SLA Domains.exocompute - Provides snapshot indexing, file recovery and application
+  protection of AWS objects.
 ---
 
 # polaris_aws_account (Resource)

@@ -14,65 +14,52 @@ description: |-
   Following is a list of features and their applicable permission groups. These
   are used when specifying the feature set.
   AZURE_SQL_DB_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * RECOVERY - Represents the set of permissions required for all recovery
-      operations.
-    * BACKUP_V2 - Represents the set of permissions required for immutable
-      backup V2 operations.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.RECOVERY - Represents the set of permissions required for all recovery
+  operations.BACKUP_V2 - Represents the set of permissions required for immutable
+  backup V2 operations.
   AZURE_SQL_MI_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * RECOVERY - Represents the set of permissions required for all recovery
-      operations.
-    * BACKUP_V2 - Represents the set of permissions required for immutable
-      backup V2 operations.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.RECOVERY - Represents the set of permissions required for all recovery
+  operations.BACKUP_V2 - Represents the set of permissions required for immutable
+  backup V2 operations.
   CLOUD_NATIVE_ARCHIVAL
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * ENCRYPTION - Represents the set of permissions required for encryption
-      operation.
-    * SQL_ARCHIVAL - Represents the permissions required to enable Azure AD
-      authorization to store Azure SQL and MI snapshots in an archival location.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.ENCRYPTION - Represents the set of permissions required for encryption
+  operation.SQL_ARCHIVAL - Represents the permissions required to enable Azure AD
+  authorization to store Azure SQL and MI snapshots in an archival location.
   CLOUD_NATIVE_ARCHIVAL_ENCRYPTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * ENCRYPTION - Represents the set of permissions required for encryption
-      operation.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.ENCRYPTION - Represents the set of permissions required for encryption
+  operation.
   CLOUD_NATIVE_BLOB_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * RECOVERY - Represents the set of permissions required for all recovery
-      operations.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.RECOVERY - Represents the set of permissions required for all recovery
+  operations.
   CLOUD_NATIVE_PROTECTION
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * EXPORT_AND_RESTORE - Represents the set of permissions required for export
-      and restore operations.
-    * FILE_LEVEL_RECOVERY - Represents the set of permissions required for
-      file-level recovery operations.
-    * SNAPSHOT_PRIVATE_ACCESS - Represents the set of permissions required for
-      private access to disk snapshots.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.EXPORT_AND_RESTORE - Represents the set of permissions required for export
+  and restore operations.FILE_LEVEL_RECOVERY - Represents the set of permissions required for
+  file-level recovery operations.SNAPSHOT_PRIVATE_ACCESS - Represents the set of permissions required for
+  private access to disk snapshots.
   EXOCOMPUTE
-    * BASIC - Represents the basic set of permissions required to onboard the
-      feature.
-    * PRIVATE_ENDPOINTS - Represents the set of permissions required for usage
-      of private endpoints.
-    * CUSTOMER_MANAGED_BASIC - Represents the permissions required to enable
-      customer-managed Exocompute feature.
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage
+  of private endpoints.CUSTOMER_MANAGED_BASIC - Represents the permissions required to enable
+  customer-managed Exocompute feature.
   ~> Note: Even though the resource_group_name and the
-     resource_group_region fields are marked as optional you should always
-     specify them. They are marked as optional to simplify the migration of
-     existing Terraform configurations. If omitted, RSC will generate a unique
-     resource group name but it will not create the actual resource group. Until
-     the resource group is created, the RSC feature depending on the resource
-     group will not function as expected.
+  resource_group_region fields are marked as optional you should always
+  specify them. They are marked as optional to simplify the migration of
+  existing Terraform configurations. If omitted, RSC will generate a unique
+  resource group name but it will not create the actual resource group. Until
+  the resource group is created, the RSC feature depending on the resource
+  group will not function as expected.
   ~> Note: As mentioned in the documentation for each feature below, changing
-     certain fields causes features to be re-onboarded. Take care when the
-     subscription only has a single feature, as it could cause the tenant to be
-     removed from RSC.
+  certain fields causes features to be re-onboarded. Take care when the
+  subscription only has a single feature, as it could cause the tenant to be
+  removed from RSC.
   -> Note: As of now, sql_mi_protection does not support specifying an Azure
-     resource group.
+  resource group.
 ---
 
 # polaris_azure_subscription (Resource)

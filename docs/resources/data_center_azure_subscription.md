@@ -7,9 +7,9 @@ description: |-
   subscription to RSC. A data center subscription can only be used with data
   center archival.
   ~> Note: Due to technical issue in RSC, names of removed data center Azure
-     subscriptions cannot be reused.
+  subscriptions cannot be reused.
   -> Note: Data center subscriptions and cloud native subscriptions are
-     different and cannot be used interchangeably.
+  different and cannot be used interchangeably.
 ---
 
 # polaris_data_center_azure_subscription (Resource)

@@ -8,18 +8,18 @@ description: |-
   These custom tags will be used on all existing and future AWS accounts in your
   cloud account.
   -> Note: The newly updated custom tags will be applied to all existing and
-     new resources, while the previously applied tags will remain unchanged.
+  new resources, while the previously applied tags will remain unchanged.
   ~> Warning: When using multiple polaris_aws_custom_tags resources in the
-     same RSC account, there is a risk of a race condition when the resources are
-     destroyed. This can result in custom tags remaining in RSC even after all
-     polaris_aws_custom_tags resources have been destroyed. The race condition
-     can be avoided by either managing all custom tags using a single
-     polaris_aws_custom_tags resource or by using the depends_on field to
-     ensure that the resources are destroyed in a serial fashion.
+  same RSC account, there is a risk of a race condition when the resources are
+  destroyed. This can result in custom tags remaining in RSC even after all
+  polaris_aws_custom_tags resources have been destroyed. The race condition
+  can be avoided by either managing all custom tags using a single
+  polaris_aws_custom_tags resource or by using the depends_on field to
+  ensure that the resources are destroyed in a serial fashion.
   ~> Warning: The override_resource_tags field refers to a single global
-     value in RSC. So multiple polaris_aws_custom_tags resources with different
-     values for the override_resource_tags field will result in a perpetual
-     diff.
+  value in RSC. So multiple polaris_aws_custom_tags resources with different
+  values for the override_resource_tags field will result in a perpetual
+  diff.
 ---
 
 # polaris_aws_custom_tags (Resource)

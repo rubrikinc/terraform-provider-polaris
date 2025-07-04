@@ -6,7 +6,7 @@ description: |-
   The polaris_feature data source is used to access information about features enabled
   for an RSC account.
   !> WARNING: This resource is deprecated and will be removed in a future version.
-     Use the features field of the polaris_account data source instead.
+  Use the features field of the polaris_account data source instead.
 ---
 
 # polaris_features (Data Source)
