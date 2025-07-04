@@ -25,7 +25,7 @@ import (
 	"github.com/rubrikinc/terraform-provider-polaris/internal/provider"
 )
 
-//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name terraform-provider-polaris
 func main() {
 	plugin.Serve(&plugin.ServeOpts{
 		ProviderFunc: provider.Provider,
