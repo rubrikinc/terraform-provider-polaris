@@ -61,8 +61,8 @@ resource "polaris_cdm_bootstrap" "default" {
 - `dns_search_domain` (List of String) The search domain that the DNS Service will use to resolve hostnames that are not fully qualified.
 - `management_gateway` (String) IP address assigned to the management network gateway
 - `management_subnet_mask` (String) Subnet mask assigned to the management network.
-- `ntp_server1_name` (String) IP address for NTP server #1.
-- `ntp_server2_name` (String) IP address for NTP server #2.
+- `ntp_server1_name` (String) Name or IP address for NTP server #1.
+- `ntp_server2_name` (String) Name or IP address for NTP server #2.
 
 ### Optional
 
