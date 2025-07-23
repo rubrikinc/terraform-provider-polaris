@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.3
+* CCES NTP servers can now be specified using a FQDN. Previously they were required to be IP addresses, now both IP
+  addresses and FQDN are allowed.
+
 ## v1.1.2
 * Update documentation for the `polaris_aws_cnp_account` and `polaris_azure_subscription` resources.
 * Update documentation for the `polaris_aws_cnp_artifacts`, `polaris_aws_cnp_permissions`, and

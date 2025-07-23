@@ -163,8 +163,8 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 			keyNTPServer1Name: {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "IP address for NTP server #1.",
-				ValidateFunc: validation.IsIPAddress,
+				Description:  "Name or IP address for NTP server #1.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyNTPServer1Key: {
 				Type:         schema.TypeString,
@@ -189,8 +189,8 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 			keyNTPServer2Name: {
 				Type:         schema.TypeString,
 				Required:     true,
-				Description:  "IP address for NTP server #2.",
-				ValidateFunc: validation.IsIPAddress,
+				Description:  "Name or IP address for NTP server #2.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyNTPServer2Key: {
 				Type:         schema.TypeString,
