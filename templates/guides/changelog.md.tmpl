@@ -4,6 +4,9 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.4
+* Fix a bug where AWS Gov accounts would be erroneously onboarded as standard AWS accounts.
+
 ## v1.1.3
 * CCES NTP servers can now be specified using a FQDN. Previously they were required to be IP addresses, now both IP
   addresses and FQDN are allowed.
