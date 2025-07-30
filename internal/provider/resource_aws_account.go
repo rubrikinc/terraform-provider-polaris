@@ -115,7 +115,7 @@ func resourceAwsAccount() *schema.Resource {
 					},
 				},
 				MaxItems:    1,
-				Required:    true,
+				Optional:    true,
 				Description: "Enable the Cloud Native Protection feature for the AWS account.",
 			},
 			keyDeleteSnapshotsOnDestroy: {
