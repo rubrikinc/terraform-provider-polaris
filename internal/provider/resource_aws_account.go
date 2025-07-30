@@ -190,8 +190,111 @@ func resourceAwsAccount() *schema.Resource {
 				Description:  "AWS named profile.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
+			keyDSPM: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringIsNotWhiteSpace,
+							},
+							MinItems:    1,
+							Required:    true,
+							Description: "Regions to enable the DSPM feature in.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the DSPM feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the DSPM feature for the account.",
+			},
+			keyDataScanning: {
+				Type:         schema.TypeList,
+				RequiredWith: []string{keyDataScanning}, // Verify this before PR
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringIsNotWhiteSpace,
+							},
+							MinItems:    1,
+							Required:    true,
+							Description: "Regions to enable the Data Scanning feature in.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Data Scanning feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Data Scanning feature for the account.",
+			},
+			keyOutpost: {
+				Type:         schema.TypeList,
+				RequiredWith: []string{keyDSPM, keyDataScanning},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyOutpostAccountID: {
+							Type:         schema.TypeString,
+							Required:     true,
+							Description:  "AWS account ID of the outpost account.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyOutpostAccountProfile: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "AWS named profile for the outpost account.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringIsNotWhiteSpace,
+							},
+							MinItems:    1,
+							Required:    true,
+							Description: "Regions to enable the Outpost feature in.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Outpost feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Outpost feature for the account.",
+			},
 		},
-
 		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceAwsAccountV0().CoreConfigSchema().ImpliedType(),
@@ -274,6 +377,82 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 		exoOpts = append(exoOpts, opts...)
 		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, exoOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	outpostBlock, ok := d.GetOk(keyOutpost)
+	if ok {
+		block := outpostBlock.([]any)[0].(map[string]interface{})
+
+		feature := core.FeatureOutpost
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
+		var outpostOpts []aws.OptionFunc
+		for _, region := range block[keyRegions].(*schema.Set).List() {
+			outpostOpts = append(outpostOpts, aws.Region(region.(string)))
+		}
+		outpostOpts = append(outpostOpts, aws.OutpostAccount(block[keyOutpostAccountID].(string)))
+		outpostAccountProfile, ok := block[keyOutpostAccountProfile].(string)
+		if ok {
+			outpostOpts = append(outpostOpts, aws.OutpostAccountWithProfile(block[keyOutpostAccountID].(string), outpostAccountProfile))
+		}
+
+		outpostOpts = append(outpostOpts, opts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, outpostOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	dspmBlock, ok := d.GetOk(keyDSPM)
+	if ok {
+		block := dspmBlock.([]interface{})[0].(map[string]interface{})
+
+		features := []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}
+		permGroups := block[keyPermissionGroups].(*schema.Set).List()
+
+		for i := range features {
+			for _, group := range permGroups {
+				features[i] = features[i].WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+		}
+
+		var dspmOpts []aws.OptionFunc
+		for _, region := range block[keyRegions].(*schema.Set).List() {
+			dspmOpts = append(dspmOpts, aws.Region(region.(string)))
+		}
+
+		dspmOpts = append(dspmOpts, opts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, features, dspmOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	dataScanningBlock, ok := d.GetOk(keyDataScanning)
+	if ok {
+		block := dataScanningBlock.([]interface{})[0].(map[string]interface{})
+
+		features := []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}
+		permGroups := block[keyPermissionGroups].(*schema.Set).List()
+
+		for i := range features {
+			for _, group := range permGroups {
+				features[i] = features[i].WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+		}
+
+		var dataScanningOpts []aws.OptionFunc
+		for _, region := range block[keyRegions].(*schema.Set).List() {
+			dataScanningOpts = append(dataScanningOpts, aws.Region(region.(string)))
+		}
+
+		dataScanningOpts = append(dataScanningOpts, opts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, features, dataScanningOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -379,6 +558,20 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		}
 
 		if err := d.Set(keyPermissions, "update-required"); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// check for any outpost account in the RSC Account
+	statusFilters := []core.Status{core.StatusConnected, core.StatusMissingPermissions}
+	accounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "", statusFilters)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	if len(accounts) > 0 {
+		// mirror cnp block for parent fields
+		if err := d.Set(keyOutpostAccountID, accounts[0].NativeID); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -518,6 +711,18 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				return diag.FromErr(err)
 			}
 		}
+	}
+
+	if d.HasChange(keyOutpost) {
+
+	}
+
+	if d.HasChange(keyDSPM) {
+
+	}
+
+	if d.HasChange(keyDataScanning) {
+
 	}
 
 	awsReadAccount(ctx, d, m)

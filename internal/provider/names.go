@@ -242,4 +242,9 @@ const (
 	keyVersion                                      = "version"
 	keyVPCID                                        = "vpc_id"
 	keyWaitForCompletion                            = "wait_for_completion"
+	keyOutpostAccountID                             = "outpost_account_id"
+	keyOutpostAccountProfile                        = "outpost_account_profile"
+	keyDSPM                                         = "dspm"
+	keyDataScanning                                 = "data_scanning"
+	keyOutpost                                      = "outpost"
 )
