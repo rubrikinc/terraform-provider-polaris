@@ -83,6 +83,90 @@ resource "polaris_aws_account" "default" {
   }
 }
 
+# Enable Cloud Native Protection and DSPM with Outpost.
+resource "polaris_aws_account" "default" {
+  profile = "default"
+
+  cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2",
+      "us-west-2",
+    ]
+  }
+
+  dspm {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2",
+      "us-west-2",
+    ]
+  }
+
+  outpost {
+    outpost_account_id      = "123456789123"
+    outpost_account_profile = "outpost"
+
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2",
+      "us-west-2",
+    ]
+  }
+}
+
+# Enable Cloud Native Protection and Data Scanning with Outpost.
+resource "polaris_aws_account" "default" {
+  profile = "default"
+
+  cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2",
+      "us-west-2",
+    ]
+  }
+
+  data_scanning {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2",
+      "us-west-2",
+    ]
+  }
+
+  outpost {
+    outpost_account_id      = "123456789123"
+    outpost_account_profile = "outpost"
+
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2",
+      "us-west-2",
+    ]
+  }
+}
+
+
+
 # The Couldformation stack ARN is available after creation
 output "stack_arn" {
   value = polaris_aws_account.default.exocompute[0].stack_arn
@@ -99,9 +183,12 @@ output "stack_arn" {
 ### Optional
 
 - `assume_role` (String) Role ARN of role to assume.
+- `data_scanning` (Block List, Max: 1) Enable the Data Scanning feature for the account. (see [below for nested schema](#nestedblock--data_scanning))
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed.
+- `dspm` (Block List, Max: 1) Enable the DSPM feature for the account. (see [below for nested schema](#nestedblock--dspm))
 - `exocompute` (Block List, Max: 1) Enable the Exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
 - `name` (String) Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.
+- `outpost` (Block List, Max: 1) Enable the Outpost feature for the account. (see [below for nested schema](#nestedblock--outpost))
 - `permissions` (String) When set to 'update' feature permissions can be updated by applying the configuration.
 - `profile` (String) AWS named profile.
 
@@ -126,6 +213,34 @@ Read-Only:
 - `status` (String) Status of the Cloud Native Protection feature.
 
 
+<a id="nestedblock--data_scanning"></a>
+### Nested Schema for `data_scanning`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the Data Scanning feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions to enable the Data Scanning feature in.
+
+Read-Only:
+
+- `stack_arn` (String) Cloudformation stack ARN.
+- `status` (String) Status of the Data Scanning feature.
+
+
+<a id="nestedblock--dspm"></a>
+### Nested Schema for `dspm`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the DSPM feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions to enable the DSPM feature in.
+
+Read-Only:
+
+- `stack_arn` (String) Cloudformation stack ARN.
+- `status` (String) Status of the DSPM feature.
+
+
 <a id="nestedblock--exocompute"></a>
 ### Nested Schema for `exocompute`
 
@@ -141,3 +256,22 @@ Read-Only:
 
 - `stack_arn` (String) Cloudformation stack ARN.
 - `status` (String) Status of the Exocompute feature.
+
+
+<a id="nestedblock--outpost"></a>
+### Nested Schema for `outpost`
+
+Required:
+
+- `outpost_account_id` (String) AWS account ID of the outpost account.
+- `permission_groups` (Set of String) Permission groups to assign to the Data Scanning feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions to enable the Outpost feature in.
+
+Optional:
+
+- `outpost_account_profile` (String) AWS named profile for the outpost account.
+
+Read-Only:
+
+- `stack_arn` (String) Cloudformation stack ARN.
+- `status` (String) Status of the Outpost feature.
