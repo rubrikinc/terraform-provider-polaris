@@ -834,7 +834,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
-// handleOrderedFeatureUpdates handles Outpost, DSPM, and Data Scanning features with proper ordering.
+// handleDspmFeatures handles Outpost, DSPM, and Data Scanning features with proper ordering.
 // When adding features: Outpost first, then DSPM and Data Scanning
 // When removing features: DSPM and Data Scanning first, then Outpost last (due to mapped account dependencies)
 func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, client *polaris.Client, account aws.AccountFunc, id uuid.UUID) diag.Diagnostics {
