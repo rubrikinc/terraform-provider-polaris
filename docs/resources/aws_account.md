@@ -116,11 +116,6 @@ resource "polaris_aws_account" "default" {
     permission_groups = [
       "BASIC",
     ]
-
-    regions = [
-      "us-east-2",
-      "us-west-2",
-    ]
   }
 }
 
@@ -156,11 +151,6 @@ resource "polaris_aws_account" "default" {
 
     permission_groups = [
       "BASIC",
-    ]
-
-    regions = [
-      "us-east-2",
-      "us-west-2",
     ]
   }
 }
@@ -265,7 +255,6 @@ Required:
 
 - `outpost_account_id` (String) AWS account ID of the outpost account.
 - `permission_groups` (Set of String) Permission groups to assign to the Data Scanning feature. Possible values are `BASIC`.
-- `regions` (Set of String) Regions to enable the Outpost feature in.
 
 Optional:
 
