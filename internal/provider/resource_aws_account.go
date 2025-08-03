@@ -312,7 +312,7 @@ func resourceAwsAccount() *schema.Resource {
 								}, false),
 							},
 							Required: true,
-							Description: "Permission groups to assign to the Data Scanning feature. " +
+							Description: "Permission groups to assign to the Outpost feature. " +
 								"Possible values are `BASIC`.",
 						},
 					},
