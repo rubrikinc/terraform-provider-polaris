@@ -178,7 +178,7 @@ output "stack_arn" {
 - `dspm` (Block List, Max: 1) Enable the DSPM feature for the account. (see [below for nested schema](#nestedblock--dspm))
 - `exocompute` (Block List, Max: 1) Enable the Exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
 - `name` (String) Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.
-- `outpost` (Block List, Max: 1) Enable the Outpost feature for the account. (see [below for nested schema](#nestedblock--outpost))
+- `outpost` (Block List, Max: 1) Enable the Outpost feature for the account (Required for DSPM and Data Scanning features). (see [below for nested schema](#nestedblock--outpost))
 - `permissions` (String) When set to 'update' feature permissions can be updated by applying the configuration.
 - `profile` (String) AWS named profile.
 
@@ -254,7 +254,7 @@ Read-Only:
 Required:
 
 - `outpost_account_id` (String) AWS account ID of the outpost account.
-- `permission_groups` (Set of String) Permission groups to assign to the Data Scanning feature. Possible values are `BASIC`.
+- `permission_groups` (Set of String) Permission groups to assign to the Outpost feature. Possible values are `BASIC`.
 
 Optional:
 

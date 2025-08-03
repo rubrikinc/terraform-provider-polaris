@@ -225,14 +225,14 @@ func resourceAwsAccount() *schema.Resource {
 								}, false),
 							},
 							Required: true,
-							Description: "Permission groups to assign to the Outpost feature. " +
+							Description: "Permission groups to assign to the DSPM feature. " +
 								"Possible values are `BASIC`.",
 						},
 					},
 				},
 				MaxItems:    1,
 				Optional:    true,
-				Description: "Enable the Outpost feature for the account (Required for DSPM and Data Scanning Features).",
+				Description: "Enable the DSPM feature for the account.",
 			},
 			keyDataScanning: {
 				Type:         schema.TypeList,
@@ -319,7 +319,7 @@ func resourceAwsAccount() *schema.Resource {
 				},
 				MaxItems:    1,
 				Optional:    true,
-				Description: "Enable the Outpost feature for the account.",
+				Description: "Enable the Outpost feature for the account (Required for DSPM and Data Scanning features).",
 			},
 		},
 		SchemaVersion: 2,
