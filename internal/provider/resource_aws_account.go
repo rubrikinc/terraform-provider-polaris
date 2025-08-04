@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -190,8 +191,137 @@ func resourceAwsAccount() *schema.Resource {
 				Description:  "AWS named profile.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
+			keyDSPM: {
+				Type:         schema.TypeList,
+				RequiredWith: []string{keyOutpost},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringIsNotWhiteSpace,
+							},
+							MinItems:    1,
+							Required:    true,
+							Description: "Regions to enable the DSPM feature in.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the DSPM feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
+						},
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC",
+								}, false),
+							},
+							Required: true,
+							Description: "Permission groups to assign to the DSPM feature. " +
+								"Possible values are `BASIC`.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the DSPM feature for the account.",
+			},
+			keyDataScanning: {
+				Type:         schema.TypeList,
+				RequiredWith: []string{keyOutpost},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringIsNotWhiteSpace,
+							},
+							MinItems:    1,
+							Required:    true,
+							Description: "Regions to enable the Data Scanning feature in.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Data Scanning feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
+						},
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC",
+								}, false),
+							},
+							Required: true,
+							Description: "Permission groups to assign to the Data Scanning feature. " +
+								"Possible values are `BASIC`.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Data Scanning feature for the account.",
+			},
+			keyOutpost: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyOutpostAccountID: {
+							Type:         schema.TypeString,
+							Required:     true,
+							Description:  "AWS account ID of the outpost account.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyOutpostAccountProfile: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "AWS named profile for the outpost account.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Outpost feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
+						},
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC",
+								}, false),
+							},
+							Required: true,
+							Description: "Permission groups to assign to the Outpost feature. " +
+								"Possible values are `BASIC`.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Outpost feature for the account (Required for DSPM and Data Scanning features).",
+			},
 		},
-
 		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceAwsAccountV0().CoreConfigSchema().ImpliedType(),
@@ -274,6 +404,76 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 		exoOpts = append(exoOpts, opts...)
 		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, exoOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	outpostBlock, ok := d.GetOk(keyOutpost)
+	if ok {
+		block := outpostBlock.([]any)[0].(map[string]interface{})
+
+		feature := core.FeatureOutpost
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
+		var outpostOpts []aws.OptionFunc
+		outpostAccountID := block[keyOutpostAccountID].(string)
+		if outpostProfile := block[keyOutpostAccountProfile].(string); outpostProfile != "" {
+			outpostOpts = append(outpostOpts, aws.OutpostAccountWithProfile(outpostAccountID, outpostProfile))
+		} else {
+			outpostOpts = append(outpostOpts, aws.OutpostAccount(outpostAccountID))
+		}
+
+		outpostOpts = append(outpostOpts, opts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, outpostOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	dspmBlock, ok := d.GetOk(keyDSPM)
+	if ok {
+		block := dspmBlock.([]interface{})[0].(map[string]interface{})
+
+		features := []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+			for i := range features {
+				features[i] = features[i].WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+		}
+
+		var dspmOpts []aws.OptionFunc
+		for _, region := range block[keyRegions].(*schema.Set).List() {
+			dspmOpts = append(dspmOpts, aws.Region(region.(string)))
+		}
+
+		dspmOpts = append(dspmOpts, opts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, features, dspmOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	dataScanningBlock, ok := d.GetOk(keyDataScanning)
+	if ok {
+		block := dataScanningBlock.([]interface{})[0].(map[string]interface{})
+
+		features := []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+			for i := range features {
+				features[i] = features[i].WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+		}
+
+		var dataScanningOpts []aws.OptionFunc
+		for _, region := range block[keyRegions].(*schema.Set).List() {
+			dataScanningOpts = append(dataScanningOpts, aws.Region(region.(string)))
+		}
+
+		dataScanningOpts = append(dataScanningOpts, opts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, features, dataScanningOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -364,6 +564,111 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		}
 	} else {
 		if err := d.Set(keyExocompute, nil); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Handle DSPM features
+	dspmDataFeature, hasDSPMData := account.Feature(core.FeatureDSPMData)
+	_, hasDSPMMetadata := account.Feature(core.FeatureDSPMMetadata)
+	if hasDSPMData && hasDSPMMetadata {
+		regions := schema.Set{F: schema.HashString}
+		for _, region := range dspmDataFeature.Regions {
+			regions.Add(region)
+		}
+
+		groups := schema.Set{F: schema.HashString}
+		for _, group := range dspmDataFeature.Feature.PermissionGroups {
+			groups.Add(string(group))
+		}
+
+		status := core.FormatStatus(dspmDataFeature.Status)
+
+		err := d.Set(keyDSPM, []interface{}{
+			map[string]interface{}{
+				keyPermissionGroups: &groups,
+				keyRegions:          &regions,
+				keyStatus:           &status,
+				keyStackARN:         &dspmDataFeature.StackArn,
+			},
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set(keyDSPM, nil); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Handle Data Scanning features (Laminar)
+	laminarCrossAccountFeature, hasLaminarCrossAccount := account.Feature(core.FeatureLaminarCrossAccount)
+	_, hasLaminarInternal := account.Feature(core.FeatureLaminarInternal)
+	if hasLaminarCrossAccount && hasLaminarInternal {
+
+		regions := schema.Set{F: schema.HashString}
+		for _, region := range laminarCrossAccountFeature.Regions {
+			regions.Add(region)
+		}
+
+		groups := schema.Set{F: schema.HashString}
+		for _, group := range laminarCrossAccountFeature.Feature.PermissionGroups {
+			groups.Add(string(group))
+		}
+
+		status := core.FormatStatus(laminarCrossAccountFeature.Status)
+
+		err := d.Set(keyDataScanning, []interface{}{
+			map[string]interface{}{
+				keyPermissionGroups: &groups,
+				keyRegions:          &regions,
+				keyStatus:           &status,
+				keyStackARN:         &laminarCrossAccountFeature.StackArn,
+			},
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set(keyDataScanning, nil); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	outpostFeature, hasOutpost := account.Feature(core.FeatureOutpost)
+	if hasOutpost {
+		groups := schema.Set{F: schema.HashString}
+		for _, group := range outpostFeature.Feature.PermissionGroups {
+			groups.Add(string(group))
+		}
+
+		status := core.FormatStatus(outpostFeature.Status)
+
+		// Get outpost account details
+		statusFilters := []core.Status{core.StatusConnected, core.StatusMissingPermissions}
+		outpostAccounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "", statusFilters)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		outpostData := map[string]interface{}{
+			keyPermissionGroups:      &groups,
+			keyStatus:                &status,
+			keyStackARN:              &outpostFeature.StackArn,
+			keyOutpostAccountProfile: d.Get(keyOutpostAccountProfile),
+		}
+
+		// Add outpost account ID if available
+		if len(outpostAccounts) > 0 {
+			outpostData[keyOutpostAccountID] = outpostAccounts[0].NativeID
+		}
+
+		err = d.Set(keyOutpost, []interface{}{outpostData})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set(keyOutpost, nil); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -461,39 +766,9 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		oldExoList := oldExoBlock.([]interface{})
 		newExoList := newExoBlock.([]interface{})
 
-		// Determine whether we are adding, removing or updating the Exocompute
-		// feature.
-		switch {
-		case len(oldExoList) == 0:
-			feature := core.FeatureExocompute
-			for _, group := range newExoList[0].(map[string]interface{})[keyPermissionGroups].(*schema.Set).List() {
-				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
-			}
-
-			var opts []aws.OptionFunc
-			for _, region := range newExoList[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
-				opts = append(opts, aws.Region(region.(string)))
-			}
-
-			_, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-		case len(newExoList) == 0:
-			err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureExocompute}, false)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-		default:
-			var opts []aws.OptionFunc
-			for _, region := range newExoList[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
-				opts = append(opts, aws.Region(region.(string)))
-			}
-
-			err = aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureExocompute, opts...)
-			if err != nil {
-				return diag.FromErr(err)
-			}
+		err := updateToNewBlock(ctx, d, m, client, id, oldExoList, newExoList, account, core.FeatureExocompute)
+		if err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
@@ -520,7 +795,183 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 	}
 
+	// Handle Outpost, DSPM, and Data Scanning features with proper ordering
+	if err := handleDspmFeatures(ctx, d, m, client, account, id); err != nil {
+		return diag.FromErr(err)
+	}
+
 	awsReadAccount(ctx, d, m)
+	return nil
+}
+
+// handleDspmFeatures handles Outpost, DSPM, and Data Scanning features with proper ordering.
+// When adding features: Outpost first, then DSPM and Data Scanning
+// When removing features: DSPM and Data Scanning first, then Outpost last (due to mapped account dependencies)
+func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, account aws.AccountFunc, id uuid.UUID) error {
+	// Check which features have changes
+	hasOutpostChange := d.HasChange(keyOutpost)
+	hasDSPMChange := d.HasChange(keyDSPM)
+	hasDataScanningChange := d.HasChange(keyDataScanning)
+
+	if !hasOutpostChange && !hasDSPMChange && !hasDataScanningChange {
+		return nil
+	}
+
+	_, outpostExists := d.GetOk(keyOutpost)
+	_, dspmExists := d.GetOk(keyDSPM)
+	_, dataScanningExists := d.GetOk(keyDataScanning)
+
+	isAddingFeatures := (hasOutpostChange && outpostExists) ||
+		(hasDSPMChange && dspmExists) ||
+		(hasDataScanningChange && dataScanningExists)
+
+	isRemovingFeatures := (hasOutpostChange && !outpostExists) ||
+		(hasDSPMChange && !dspmExists) ||
+		(hasDataScanningChange && !dataScanningExists)
+
+	if isAddingFeatures {
+		// When adding: Outpost first, then DSPM and Data Scanning
+		if hasOutpostChange && outpostExists {
+			if err := handleOutpostUpdate(ctx, d, client, account); err != nil {
+				return err
+			}
+		}
+		if hasDSPMChange && dspmExists {
+			if err := handleDSPMUpdate(ctx, d, m, client, id, account); err != nil {
+				return err
+			}
+		}
+		if hasDataScanningChange && dataScanningExists {
+			if err := handleDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
+				return err
+			}
+		}
+	}
+
+	if isRemovingFeatures {
+		// When removing: DSPM and Data Scanning first, then Outpost last
+		if hasDSPMChange && !dspmExists {
+			if err := handleDSPMUpdate(ctx, d, m, client, id, account); err != nil {
+				return err
+			}
+		}
+		if hasDataScanningChange && !dataScanningExists {
+			if err := handleDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
+				return err
+			}
+		}
+		if hasOutpostChange && !outpostExists {
+			if err := handleOutpostUpdate(ctx, d, client, account); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func handleOutpostUpdate(ctx context.Context, d *schema.ResourceData, client *polaris.Client, account aws.AccountFunc) error {
+	outpostBlock, ok := d.GetOk(keyOutpost)
+	if ok {
+		block := outpostBlock.([]interface{})[0].(map[string]interface{})
+		feature := core.FeatureOutpost
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
+		var opts []aws.OptionFunc
+		if block[keyOutpostAccountProfile] != nil {
+			opts = append(opts, aws.OutpostAccountWithProfile(block[keyOutpostAccountID].(string), block[keyOutpostAccountProfile].(string)))
+		} else {
+			opts = append(opts, aws.OutpostAccount(block[keyOutpostAccountID].(string)))
+		}
+		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
+		if err != nil {
+			return err
+		}
+	} else {
+		accounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "", []core.Status{core.StatusConnected, core.StatusMissingPermissions})
+		if err != nil {
+			return err
+		}
+
+		for _, account := range accounts {
+			for _, feature := range account.Features {
+				if len(feature.MappedAccounts) > 0 {
+					return errors.New("outpost feature is still enabled for other accounts")
+				}
+			}
+		}
+		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureOutpost}, false)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func handleDSPMUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
+	features := []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}
+	oldDspmBlock, newDspmBlock := d.GetChange(keyDSPM)
+	oldDspmList := oldDspmBlock.([]interface{})
+	newDspmList := newDspmBlock.([]interface{})
+
+	for _, feature := range features {
+		if err := updateToNewBlock(ctx, d, m, client, id, oldDspmList, newDspmList, account, feature); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func handleDataScanningUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
+	features := []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}
+	oldDataScanningBlock, newDataScanningBlock := d.GetChange(keyDataScanning)
+	oldDataScanningList := oldDataScanningBlock.([]interface{})
+	newDataScanningList := newDataScanningBlock.([]interface{})
+
+	for _, feature := range features {
+		if err := updateToNewBlock(ctx, d, m, client, id, oldDataScanningList, newDataScanningList, account, feature); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func updateToNewBlock(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, oldBlock, newBlock []interface{}, account aws.AccountFunc, feature core.Feature) error {
+	switch {
+	case len(oldBlock) == 0:
+		for _, group := range newBlock[0].(map[string]interface{})[keyPermissionGroups].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+
+		var opts []aws.OptionFunc
+		for _, region := range newBlock[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
+			opts = append(opts, aws.Region(region.(string)))
+		}
+
+		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
+		if err != nil {
+			return err
+		}
+	case len(newBlock) == 0:
+		err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{feature}, false)
+		if err != nil {
+			return err
+		}
+	default:
+		var opts []aws.OptionFunc
+		for _, region := range newBlock[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
+			opts = append(opts, aws.Region(region.(string)))
+		}
+
+		err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), feature, opts...)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -579,6 +1030,40 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	if _, ok := d.GetOk(keyCloudNativeProtection); ok {
 		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, deleteSnapshots)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if _, ok := d.GetOk(keyDSPM); ok {
+		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}, deleteSnapshots)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if _, ok := d.GetOk(keyDataScanning); ok {
+		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}, deleteSnapshots)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Outpost should always delete last due to its dependancy on mapped accounts
+	if _, ok := d.GetOk(keyOutpost); ok {
+		accounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "", []core.Status{core.StatusConnected, core.StatusMissingPermissions})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, account := range accounts {
+			for _, feature := range account.Features {
+				if len(feature.MappedAccounts) > 0 {
+					return diag.Errorf("outpost feature is still enabled for other accounts")
+				}
+			}
+		}
+		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureOutpost}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
