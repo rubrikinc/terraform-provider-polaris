@@ -766,39 +766,9 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		oldExoList := oldExoBlock.([]interface{})
 		newExoList := newExoBlock.([]interface{})
 
-		// Determine whether we are adding, removing or updating the Exocompute
-		// feature.
-		switch {
-		case len(oldExoList) == 0:
-			feature := core.FeatureExocompute
-			for _, group := range newExoList[0].(map[string]interface{})[keyPermissionGroups].(*schema.Set).List() {
-				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
-			}
-
-			var opts []aws.OptionFunc
-			for _, region := range newExoList[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
-				opts = append(opts, aws.Region(region.(string)))
-			}
-
-			_, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-		case len(newExoList) == 0:
-			err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureExocompute}, false)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-		default:
-			var opts []aws.OptionFunc
-			for _, region := range newExoList[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
-				opts = append(opts, aws.Region(region.(string)))
-			}
-
-			err = aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureExocompute, opts...)
-			if err != nil {
-				return diag.FromErr(err)
-			}
+		err := updateToNewBlock(ctx, d, m, client, id, oldExoList, newExoList, account, core.FeatureExocompute)
+		if err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
@@ -826,8 +796,8 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Handle Outpost, DSPM, and Data Scanning features with proper ordering
-	if err := handleDspmFeatures(ctx, d, client, account, id); err != nil {
-		return err
+	if err := handleDspmFeatures(ctx, d, m, client, account, id); err != nil {
+		return diag.FromErr(err)
 	}
 
 	awsReadAccount(ctx, d, m)
@@ -837,7 +807,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 // handleDspmFeatures handles Outpost, DSPM, and Data Scanning features with proper ordering.
 // When adding features: Outpost first, then DSPM and Data Scanning
 // When removing features: DSPM and Data Scanning first, then Outpost last (due to mapped account dependencies)
-func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, client *polaris.Client, account aws.AccountFunc, id uuid.UUID) diag.Diagnostics {
+func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, account aws.AccountFunc, id uuid.UUID) error {
 	// Check which features have changes
 	hasOutpostChange := d.HasChange(keyOutpost)
 	hasDSPMChange := d.HasChange(keyDSPM)
@@ -867,12 +837,12 @@ func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, client *pol
 			}
 		}
 		if hasDSPMChange && dspmExists {
-			if err := handleDSPMUpdate(ctx, d, client, account); err != nil {
+			if err := handleDSPMUpdate(ctx, d, m, client, id, account); err != nil {
 				return err
 			}
 		}
 		if hasDataScanningChange && dataScanningExists {
-			if err := handleDataScanningUpdate(ctx, d, client, account); err != nil {
+			if err := handleDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
 				return err
 			}
 		}
@@ -881,12 +851,12 @@ func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, client *pol
 	if isRemovingFeatures {
 		// When removing: DSPM and Data Scanning first, then Outpost last
 		if hasDSPMChange && !dspmExists {
-			if err := handleDSPMUpdate(ctx, d, client, account); err != nil {
+			if err := handleDSPMUpdate(ctx, d, m, client, id, account); err != nil {
 				return err
 			}
 		}
 		if hasDataScanningChange && !dataScanningExists {
-			if err := handleDataScanningUpdate(ctx, d, client, account); err != nil {
+			if err := handleDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
 				return err
 			}
 		}
@@ -900,7 +870,7 @@ func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, client *pol
 	return nil
 }
 
-func handleOutpostUpdate(ctx context.Context, d *schema.ResourceData, client *polaris.Client, account aws.AccountFunc) diag.Diagnostics {
+func handleOutpostUpdate(ctx context.Context, d *schema.ResourceData, client *polaris.Client, account aws.AccountFunc) error {
 	outpostBlock, ok := d.GetOk(keyOutpost)
 	if ok {
 		block := outpostBlock.([]interface{})[0].(map[string]interface{})
@@ -917,82 +887,87 @@ func handleOutpostUpdate(ctx context.Context, d *schema.ResourceData, client *po
 		}
 		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
 		if err != nil {
-			return diag.FromErr(err)
+			return err
 		}
 	} else {
 		accounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "", []core.Status{core.StatusConnected, core.StatusMissingPermissions})
 		if err != nil {
-			return diag.FromErr(err)
+			return err
 		}
 
 		for _, account := range accounts {
 			for _, feature := range account.Features {
 				if len(feature.MappedAccounts) > 0 {
-					return diag.Errorf("outpost feature is still enabled for other accounts")
+					return errors.New("outpost feature is still enabled for other accounts")
 				}
 			}
 		}
 		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureOutpost}, false)
 		if err != nil {
-			return diag.FromErr(err)
+			return err
 		}
 	}
 	return nil
 }
 
-func handleDSPMUpdate(ctx context.Context, d *schema.ResourceData, client *polaris.Client, account aws.AccountFunc) diag.Diagnostics {
-	dspmBlock, ok := d.GetOk(keyDSPM)
+func handleDSPMUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
 	features := []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}
-	if ok {
-		block := dspmBlock.([]interface{})[0].(map[string]interface{})
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			for idx, feature := range features {
-				features[idx] = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
-			}
-		}
+	oldDspmBlock, newDspmBlock := d.GetChange(keyDSPM)
+	oldDspmList := oldDspmBlock.([]interface{})
+	newDspmList := newDspmBlock.([]interface{})
 
-		var opts []aws.OptionFunc
-		for _, region := range block[keyRegions].(*schema.Set).List() {
-			opts = append(opts, aws.Region(region.(string)))
-		}
-
-		_, err := aws.Wrap(client).AddAccount(ctx, account, features, opts...)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	} else {
-		err := aws.Wrap(client).RemoveAccount(ctx, account, features, false)
-		if err != nil {
-			return diag.FromErr(err)
+	for _, feature := range features {
+		if err := updateToNewBlock(ctx, d, m, client, id, oldDspmList, newDspmList, account, feature); err != nil {
+			return err
 		}
 	}
+
 	return nil
 }
 
-func handleDataScanningUpdate(ctx context.Context, d *schema.ResourceData, client *polaris.Client, account aws.AccountFunc) diag.Diagnostics {
-	dataScanningBlock, ok := d.GetOk(keyDataScanning)
+func handleDataScanningUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
 	features := []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}
-	if ok {
-		block := dataScanningBlock.([]interface{})[0].(map[string]interface{})
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			for idx, feature := range features {
-				features[idx] = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
-			}
+	oldDataScanningBlock, newDataScanningBlock := d.GetChange(keyDataScanning)
+	oldDataScanningList := oldDataScanningBlock.([]interface{})
+	newDataScanningList := newDataScanningBlock.([]interface{})
+
+	if err := updateToNewBlock(ctx, d, m, client, id, oldDataScanningList, newDataScanningList, account, features[0]); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func updateToNewBlock(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, oldBlock, newBlock []interface{}, account aws.AccountFunc, feature core.Feature) error {
+	switch {
+	case len(oldBlock) == 0:
+		for _, group := range newBlock[0].(map[string]interface{})[keyPermissionGroups].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
 		}
 
 		var opts []aws.OptionFunc
-		for _, region := range block[keyRegions].(*schema.Set).List() {
+		for _, region := range newBlock[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
 			opts = append(opts, aws.Region(region.(string)))
 		}
 
-		_, err := aws.Wrap(client).AddAccount(ctx, account, features, opts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
 		if err != nil {
-			return diag.FromErr(err)
+			return err
 		}
-	} else {
-		err := aws.Wrap(client).RemoveAccount(ctx, account, features, false)
+	case len(newBlock) == 0:
+		err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{feature}, false)
 		if err != nil {
-			return diag.FromErr(err)
+			return err
+		}
+	default:
+		var opts []aws.OptionFunc
+		for _, region := range newBlock[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
+			opts = append(opts, aws.Region(region.(string)))
+		}
+
+		err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), feature, opts...)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
