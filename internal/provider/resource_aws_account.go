@@ -931,8 +931,10 @@ func handleDataScanningUpdate(ctx context.Context, d *schema.ResourceData, m int
 	oldDataScanningList := oldDataScanningBlock.([]interface{})
 	newDataScanningList := newDataScanningBlock.([]interface{})
 
-	if err := updateToNewBlock(ctx, d, m, client, id, oldDataScanningList, newDataScanningList, account, features[0]); err != nil {
-		return err
+	for _, feature := range features {
+		if err := updateToNewBlock(ctx, d, m, client, id, oldDataScanningList, newDataScanningList, account, feature); err != nil {
+			return err
+		}
 	}
 
 	return nil
