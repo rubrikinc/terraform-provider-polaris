@@ -4,6 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.6
+* Add support for Data Scanning Cyber Assisted Recovery feature to the `polaris_aws_account` resource.
+
+## v1.1.5
+* Add support for creating DSPM, Data Scanning and Outpost features under `polaris_aws_account`.
+
 ## v1.1.4
 * Fix a bug where AWS Gov accounts would be erroneously onboarded as standard AWS accounts.
 
