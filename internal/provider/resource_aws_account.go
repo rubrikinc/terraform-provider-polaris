@@ -282,6 +282,49 @@ func resourceAwsAccount() *schema.Resource {
 				Optional:    true,
 				Description: "Enable the Data Scanning feature for the account.",
 			},
+			keyCyberRecoveryDataScanning: {
+				Type:         schema.TypeList,
+				RequiredWith: []string{keyOutpost},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringIsNotWhiteSpace,
+							},
+							MinItems:    1,
+							Required:    true,
+							Description: "Regions to enable the Cyber Recovery Data Scanning feature in.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cyber Recovery Data Scanning feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Cloudformation stack ARN.",
+						},
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC",
+								}, false),
+							},
+							Required: true,
+							Description: "Permission groups to assign to the Cyber Recovery Data Scanning feature. " +
+								"Possible values are `BASIC`.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Cyber Recovery Data Scanning feature for the account.",
+			},
 			keyOutpost: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -488,6 +531,27 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 	}
 
+	cyberRecoveryDataScanningBlock, ok := d.GetOk(keyCyberRecoveryDataScanning)
+	if ok {
+		block := cyberRecoveryDataScanningBlock.([]interface{})[0].(map[string]interface{})
+		features := []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+			for i := range features {
+				features[i] = features[i].WithPermissionGroups(core.PermissionGroup(group.(string)))
+			}
+		}
+		var cyberRecoveryDataScanningOpts []aws.OptionFunc
+		for _, region := range block[keyRegions].(*schema.Set).List() {
+			cyberRecoveryDataScanningOpts = append(cyberRecoveryDataScanningOpts, aws.Region(region.(string)))
+		}
+
+		cyberRecoveryDataScanningOpts = append(cyberRecoveryDataScanningOpts, opts...)
+		_, err := aws.Wrap(client).AddAccount(ctx, account, features, cyberRecoveryDataScanningOpts...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	d.SetId(id.String())
 
 	awsReadAccount(ctx, d, m)
@@ -640,6 +704,40 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		}
 	} else {
 		if err := d.Set(keyDataScanning, nil); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Handle Cyber Recovery Data Scanning
+	cyberRecoveryDataScanningFeature, hasCyberRecoveryDataScanning := account.Feature(core.FeatureCyberRecoveryDataClassificationData)
+	_, hasCyberRecoveryDataScanningMetadata := account.Feature(core.FeatureCyberRecoveryDataClassificationMetadata)
+
+	if hasCyberRecoveryDataScanning && hasCyberRecoveryDataScanningMetadata {
+		regions := schema.Set{F: schema.HashString}
+		for _, region := range cyberRecoveryDataScanningFeature.Regions {
+			regions.Add(region)
+		}
+
+		groups := schema.Set{F: schema.HashString}
+		for _, group := range cyberRecoveryDataScanningFeature.Feature.PermissionGroups {
+			groups.Add(string(group))
+		}
+
+		status := core.FormatStatus(cyberRecoveryDataScanningFeature.Status)
+
+		err := d.Set(keyCyberRecoveryDataScanning, []interface{}{
+			map[string]interface{}{
+				keyPermissionGroups: &groups,
+				keyRegions:          &regions,
+				keyStatus:           &status,
+				keyStackARN:         &cyberRecoveryDataScanningFeature.StackArn,
+			},
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		if err := d.Set(keyCyberRecoveryDataScanning, nil); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -821,22 +919,26 @@ func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, m interface
 	hasOutpostChange := d.HasChange(keyOutpost)
 	hasDSPMChange := d.HasChange(keyDSPM)
 	hasDataScanningChange := d.HasChange(keyDataScanning)
+	hasCyberRecoveryDataScanningChange := d.HasChange(keyCyberRecoveryDataScanning)
 
-	if !hasOutpostChange && !hasDSPMChange && !hasDataScanningChange {
+	if !hasOutpostChange && !hasDSPMChange && !hasDataScanningChange && !hasCyberRecoveryDataScanningChange {
 		return nil
 	}
 
 	_, outpostExists := d.GetOk(keyOutpost)
 	_, dspmExists := d.GetOk(keyDSPM)
 	_, dataScanningExists := d.GetOk(keyDataScanning)
+	_, cyberRecoveryDataScanningExists := d.GetOk(keyCyberRecoveryDataScanning)
 
 	isAddingFeatures := (hasOutpostChange && outpostExists) ||
 		(hasDSPMChange && dspmExists) ||
-		(hasDataScanningChange && dataScanningExists)
+		(hasDataScanningChange && dataScanningExists) ||
+		(hasCyberRecoveryDataScanningChange && cyberRecoveryDataScanningExists)
 
 	isRemovingFeatures := (hasOutpostChange && !outpostExists) ||
 		(hasDSPMChange && !dspmExists) ||
-		(hasDataScanningChange && !dataScanningExists)
+		(hasDataScanningChange && !dataScanningExists) ||
+		(hasCyberRecoveryDataScanningChange && !cyberRecoveryDataScanningExists)
 
 	if isAddingFeatures {
 		// When adding: Outpost first, then DSPM and Data Scanning
@@ -855,6 +957,11 @@ func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, m interface
 				return err
 			}
 		}
+		if hasCyberRecoveryDataScanningChange && cyberRecoveryDataScanningExists {
+			if err := handleCyberRecoveryDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
+				return err
+			}
+		}
 	}
 
 	if isRemovingFeatures {
@@ -869,10 +976,29 @@ func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, m interface
 				return err
 			}
 		}
+		if hasCyberRecoveryDataScanningChange && !cyberRecoveryDataScanningExists {
+			if err := handleCyberRecoveryDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
+				return err
+			}
+		}
 		if hasOutpostChange && !outpostExists {
 			if err := handleOutpostUpdate(ctx, d, client, account); err != nil {
 				return err
 			}
+		}
+	}
+
+	return nil
+}
+
+func handleCyberRecoveryDataScanningUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
+	features := []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}
+	oldCyberRecoveryDataScanningBlock, newCyberRecoveryDataScanningBlock := d.GetChange(keyCyberRecoveryDataScanning)
+	oldCyberRecoveryDataScanningList := oldCyberRecoveryDataScanningBlock.([]interface{})
+	newCyberRecoveryDataScanningList := newCyberRecoveryDataScanningBlock.([]interface{})
+	for _, feature := range features {
+		if err := updateToNewBlock(ctx, d, m, client, id, oldCyberRecoveryDataScanningList, newCyberRecoveryDataScanningList, account, feature); err != nil {
+			return err
 		}
 	}
 
@@ -1053,6 +1179,12 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	if _, ok := d.GetOk(keyDataScanning); ok {
 		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}, deleteSnapshots)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+	if _, ok := d.GetOk(keyCyberRecoveryDataScanning); ok {
+		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
