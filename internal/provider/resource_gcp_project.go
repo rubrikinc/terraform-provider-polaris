@@ -47,8 +47,8 @@ func stringIsInteger(m interface{}, p cty.Path) diag.Diagnostics {
 	return nil
 }
 
-// resourceGcpProject defines the schema for the GCP project resource. Note
-// that the update function only changes the local state.
+// This resource uses a template for its documentation, remember to update the
+// template if the documentation for any field changes.
 func resourceGcpProject() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: gcpCreateProject,

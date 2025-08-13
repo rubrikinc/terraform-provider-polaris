@@ -103,6 +103,10 @@ func resourceAwsCnpAccountTrustPolicyStateUpgradeV0(ctx context.Context, state m
 	}
 
 	// Migrate the resource id to include the role key.
-	state[keyID] = joinTrustPolicyID(accountID, state[keyRoleKey].(string))
+	trustPolicyID, err := joinTrustPolicyID(state[keyRoleKey].(string), accountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trust policy ID: %s", err)
+	}
+	state[keyID] = trustPolicyID
 	return state, nil
 }

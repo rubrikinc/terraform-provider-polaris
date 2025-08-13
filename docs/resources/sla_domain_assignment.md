@@ -73,3 +73,22 @@ resource "polaris_sla_domain_assignment" "bronze" {
 ### Read-Only
 
 - `id` (String) SLA domain ID (UUID).
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_sla_domain_assignment.bronze
+  id = "0e55e625-b78d-4e83-87f3-90313a980211"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_sla_assignment.bronze 0e55e625-b78d-4e83-87f3-90313a980211
+```

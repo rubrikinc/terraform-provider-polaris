@@ -330,7 +330,7 @@ func resourceAwsAccount() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
-		
+
 		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceAwsAccountV0().CoreConfigSchema().ImpliedType(),

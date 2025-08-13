@@ -74,6 +74,8 @@ a ´polaris_aws_exocompute´ resource:
    configurations is sometimes referred to as shared Exocompute.
 `
 
+// This resource uses a template for its documentation, remember to update the
+// template if the documentation for any field changes.
 func resourceAwsExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateExocompute,
@@ -250,6 +252,9 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 
+		if err := d.Set(keyAccountID, appID.String()); err != nil {
+			return diag.FromErr(err)
+		}
 		if err := d.Set(keyHostAccountID, hostID.String()); err != nil {
 			return diag.FromErr(err)
 		}
@@ -267,6 +272,9 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 			return diag.FromErr(err)
 		}
 
+		if err := d.Set(keyAccountID, exoConfig.CloudAccountID.String()); err != nil {
+			return diag.FromErr(err)
+		}
 		if err := d.Set(keyRegion, exoConfig.Region.Name()); err != nil {
 			return diag.FromErr(err)
 		}

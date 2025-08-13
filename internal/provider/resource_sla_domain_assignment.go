@@ -81,6 +81,9 @@ func resourceSLADomainAssignment() *schema.Resource {
 				ValidateFunc: validation.IsUUID,
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: importSLADomainAssignment,
+		},
 	}
 }
 
@@ -276,6 +279,42 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 
 	d.SetId("")
 	return nil
+}
+
+// Note, the SLA domain assignment resource is designed to only manage SLA
+// domain assignments owned by the resource. An import on the other hand will
+// take ownership of all SLA domain assignments for a domain.
+func importSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+	tflog.Trace(ctx, "importSLADomainAssignment")
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return nil, err
+	}
+
+	domainID, err := uuid.Parse(d.Id())
+	if err != nil {
+		return nil, err
+	}
+
+	// Return a human-readable error message if the SLA domain doesn't exist.
+	if _, err := sla.Wrap(client).DomainByID(ctx, domainID); err != nil {
+		return nil, err
+	}
+
+	objects, err := sla.Wrap(client).DomainObjects(ctx, domainID, "")
+	if err != nil {
+		return nil, err
+	}
+	objectIDs := &schema.Set{F: schema.HashString}
+	for _, object := range objects {
+		objectIDs.Add(object.ID.String())
+	}
+	if err := d.Set(keyObjectIDs, &objectIDs); err != nil {
+		return nil, err
+	}
+
+	return []*schema.ResourceData{d}, nil
 }
 
 func waitForAssignment(ctx context.Context, client *polaris.Client, domainID uuid.UUID, objectIDs []uuid.UUID) error {
