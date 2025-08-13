@@ -328,7 +328,7 @@ func resourceAwsAccount() *schema.Resource {
 							Type:         schema.TypeString,
 							Required:     true,
 							Description:  "AWS account ID of the outpost account.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
+							ValidateFunc: validateAwsAccountID,
 						},
 						keyOutpostAccountProfile: {
 							Type:         schema.TypeString,

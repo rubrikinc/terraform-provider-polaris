@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/mail"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/hashicorp/go-cty/cty"
@@ -20,6 +21,22 @@ func validateEmailAddress(i interface{}, k string) ([]string, []error) {
 	}
 	if _, err := mail.ParseAddress(v); err != nil {
 		return nil, []error{fmt.Errorf("%q is not a valid email address", v)}
+	}
+
+	return nil, nil
+}
+
+// validateAwsAccountID verifies the account number is numeric, 12 digits.
+func validateAwsAccountID(i interface{}, k string) ([]string, []error) {
+	v, ok := i.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+	}
+	if len(v) != 12 {
+		return nil, []error{fmt.Errorf("%q is not a valid account number", v)}
+	}
+	if _, err := strconv.ParseUint(v, 10, 64); err != nil {
+		return nil, []error{fmt.Errorf("%q is not a valid account number", v)}
 	}
 
 	return nil, nil
