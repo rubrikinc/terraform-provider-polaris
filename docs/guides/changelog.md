@@ -4,6 +4,14 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.6
+* Fix a bug in the `polaris_azure_subscription` resource where the wrong mutation was used to update the subscription
+  when the subscription was updated to use permission groups and a resource group at the same time.
+
+## v1.1.5
+* Add support for creating DSPM, Data Scanning and Outpost features under `polaris_aws_account`.
+  [[docs](../resources/aws_account)]
+
 ## v1.1.4
 * Fix a bug where AWS Gov accounts would be erroneously onboarded as standard AWS accounts.
 
