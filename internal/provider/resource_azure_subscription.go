@@ -1394,6 +1394,20 @@ func diffAzureUserAssignedManagedIdentity(oldBlock, newBlock map[string]any) boo
 	return false
 }
 
+func azureFeaturePermissionGroups(block map[string]any) ([]core.PermissionGroup, bool) {
+	v, ok := block[keyPermissionGroups]
+	if !ok {
+		return nil, false
+	}
+
+	var permGroups []core.PermissionGroup
+	for _, pg := range v.(*schema.Set).List() {
+		permGroups = append(permGroups, core.PermissionGroup(pg.(string)))
+	}
+
+	return permGroups, true
+}
+
 // azureFeatureResourceGroup returns the resource group from the feature block.
 func azureFeatureResourceGroup(block map[string]any) (*gqlazure.ResourceGroup, bool) {
 	var name string
@@ -1446,13 +1460,17 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 	if err != nil {
 		return false, err
 	}
-	feature, ok := account.Feature(core.FeatureAzureSQLDBProtection)
+	accountFeature, ok := account.Feature(core.FeatureAzureSQLDBProtection)
 	if !ok {
 		return false, nil
 	}
-	if feature.ResourceGroup.Name != "" || feature.ResourceGroup.Region != "" {
+	if accountFeature.ResourceGroup.Name != "" || accountFeature.ResourceGroup.Region != "" {
 		tflog.Debug(ctx, "skipping Azure SQL DB Protection feature upgrade: feature already upgraded")
 		return false, nil
+	}
+	feature := accountFeature.Feature
+	if pgs, ok := azureFeaturePermissionGroups(block); ok {
+		feature = feature.WithPermissionGroups(pgs...)
 	}
 
 	// Fetch the resource group from the Azure SQL DB block in the Terraform
@@ -1464,9 +1482,10 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 
 	// Upgrade the Azure SQL DB feature to use a resource group.
 	tflog.Info(ctx, "upgrading Azure SQL DB Protection feature to use resource group", map[string]any{
-		"resource_group": rg.Name,
+		"permission_groups": feature.PermissionGroups,
+		"resource_group":    rg.Name,
 	})
-	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, cloudAccountID, feature.Feature, rg); err != nil {
+	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, cloudAccountID, feature, rg); err != nil {
 		return false, err
 	}
 
