@@ -140,6 +140,9 @@ func resourceAwsArchivalLocation() *schema.Resource {
 				}, false),
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -201,6 +204,9 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 
 	targetTemplate := targetMapping.TargetTemplate
 	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetTemplate.BucketPrefix, implicitPrefix)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyAccountID, targetTemplate.CloudAccount.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {

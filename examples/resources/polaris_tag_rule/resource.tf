@@ -8,9 +8,9 @@ resource "polaris_tag_rule" "rule" {
 }
 
 # Match all Azure VMs which has a tag called my-key with the value my-value in
-# the my-azure-subscription RSC cloud account.
+# the azure-subscription RSC cloud account.
 data "polaris_azure_subscription" "subscription" {
-  name = "my-azure-subscription"
+  name = "azure-subscription"
 }
 
 resource "polaris_tag_rule" "rule" {

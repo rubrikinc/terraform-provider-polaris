@@ -1,5 +1,5 @@
-# Manual role.
-resource "polaris_custom_role" "compliance_auditor" {
+# Manually defined role.
+resource "polaris_custom_role" "auditor" {
   name        = "Compliance Auditor Role"
   description = "Compliance Auditor"
 
@@ -25,16 +25,16 @@ resource "polaris_custom_role" "compliance_auditor" {
 }
 
 # From role template.
-data "polaris_role_template" "compliance_auditor" {
+data "polaris_role_template" "auditor" {
   name = "Compliance Auditor"
 }
 
-resource "polaris_custom_role" "compliance_auditor" {
+resource "polaris_custom_role" "auditor" {
   name        = "Compliance Auditor Role"
-  description = "Based on the ${data.polaris_role_template.compliance_auditor.name} template"
+  description = "Based on the ${data.polaris_role_template.auditor.name} template"
 
   dynamic "permission" {
-    for_each = data.polaris_role_template.compliance_auditor.permission
+    for_each = data.polaris_role_template.auditor.permission
     content {
       operation = permission.value["operation"]
 

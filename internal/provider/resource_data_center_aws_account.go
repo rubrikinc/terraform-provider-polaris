@@ -86,6 +86,9 @@ func resourceDataCenterAWSAccount() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 

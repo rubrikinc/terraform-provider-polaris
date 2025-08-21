@@ -83,3 +83,22 @@ Required:
 
 - `key` (String) RSC artifact key for the AWS instance profile.
 - `name` (String) AWS instance profile name.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_aws_cnp_account_attachments.attachments
+  id = "51ecb385-e4a5-410d-8604-50170378b7a0"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_aws_cnp_account_attachments.attachments 51ecb385-e4a5-410d-8604-50170378b7a0
+```

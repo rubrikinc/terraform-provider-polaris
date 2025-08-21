@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -59,7 +60,7 @@ func resourceRoleAssignment() *schema.Resource {
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "User ID.",
+				Description: "User or SSO group ID.",
 			},
 			keyRoleID: {
 				Type:         schema.TypeString,
@@ -107,6 +108,10 @@ func resourceRoleAssignment() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: importRoleAssignment,
+		},
+
 		SchemaVersion: 1,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceRoleAssignmentV0().CoreConfigSchema().ImpliedType(),
@@ -390,6 +395,50 @@ func deleteRoleAssignment(ctx context.Context, d *schema.ResourceData, m any) di
 	return nil
 }
 
+// Note, the role assignment resource is designed to only manage role
+// assignments owned by the resource. An import on the other hand will take
+// ownership of all role assignments for a user or group.
+func importRoleAssignment(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+	tflog.Trace(ctx, "importRoleAssignment")
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return nil, err
+	}
+
+	// Using user ID.
+	user, err := access.Wrap(client).UserByID(ctx, d.Id())
+	if err == nil {
+		if err := d.Set(keyUserID, user.ID); err != nil {
+			return nil, err
+		}
+		if err := importRoleIDs(d, user.Roles); err != nil {
+			return nil, err
+		}
+		return []*schema.ResourceData{d}, nil
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		return nil, err
+	}
+
+	// Using group ID.
+	group, err := access.Wrap(client).SSOGroupByID(ctx, d.Id())
+	if err == nil {
+		if err := d.Set(keySSOGroupID, group.ID); err != nil {
+			return nil, err
+		}
+		if err := importRoleIDs(d, group.Roles); err != nil {
+			return nil, err
+		}
+		return []*schema.ResourceData{d}, nil
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("user or SSO group %q not found", d.Id())
+}
+
 // diffRoleIDs returns the role IDs to add and remove given the changes to the
 // resource data.
 func diffRoleIDs(d *schema.ResourceData) ([]uuid.UUID, []uuid.UUID, error) {
@@ -432,6 +481,19 @@ func diffRoleIDs(d *schema.ResourceData) ([]uuid.UUID, []uuid.UUID, error) {
 	}
 
 	return addRoleIDs, removeRoleIDs, nil
+}
+
+// importRoleIDs imports the role IDs into the resource data.
+func importRoleIDs(d *schema.ResourceData, roles []gqlaccess.RoleRef) error {
+	roleIDs := &schema.Set{F: schema.HashString}
+	for _, role := range roles {
+		roleIDs.Add(role.ID.String())
+	}
+	if err := d.Set(keyRoleIDs, roleIDs); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // setRoleIDs sets the role IDs in the resource data.

@@ -74,4 +74,23 @@ resource "polaris_role_assignment" "compliance_auditor" {
 
 ### Read-Only
 
-- `id` (String) User ID.
+- `id` (String) User or SSO group ID.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_role_assignment.compliance_auditor
+  id = "639c5292-ba22-470b-9377-94a798ab7b06"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_role_assignment.compliance_auditor 639c5292-ba22-470b-9377-94a798ab7b06
+```

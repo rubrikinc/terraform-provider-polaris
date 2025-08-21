@@ -90,6 +90,9 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 				Description: "Roles to attach to the cloud account.",
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -164,6 +167,9 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
+	if err := d.Set(keyAccountID, account.ID.String()); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyFeatures, features); err != nil {
 		return diag.FromErr(err)
 	}

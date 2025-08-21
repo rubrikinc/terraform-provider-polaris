@@ -85,13 +85,15 @@ func resourceAwsAccount() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS",
+									"BASIC",
+									// The following permission groups cannot be used when onboarding an AWS account.
+									// They have been accepted in the past so we still silently allow them.
+									"EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS",
 								}, false),
 							},
 							Optional: true,
 							Description: "Permission groups to assign to the Cloud Native Protection feature. " +
-								"Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and " +
-								"`SNAPSHOT_PRIVATE_ACCESS`.",
+								"Possible values are `BASIC`.",
 						},
 						keyRegions: {
 							Type: schema.TypeSet,
@@ -134,12 +136,15 @@ func resourceAwsAccount() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC", "PRIVATE_ENDPOINT", "RSC_MANAGED_CLUSTER",
+									"BASIC", "RSC_MANAGED_CLUSTER",
+									// The following permission groups cannot be used when onboarding an AWS account.
+									// They have been accepted in the past so we still silently allow them.
+									"PRIVATE_ENDPOINT",
 								}, false),
 							},
 							Optional: true,
 							Description: "Permission groups to assign to the Exocompute feature. Possible values " +
-								"are `BASIC`, `PRIVATE_ENDPOINT` and `RSC_MANAGED_CLUSTER`.",
+								"are `BASIC` and `RSC_MANAGED_CLUSTER`.",
 						},
 						keyRegions: {
 							Type: schema.TypeSet,
@@ -322,6 +327,10 @@ func resourceAwsAccount() *schema.Resource {
 				Description: "Enable the Outpost feature for the account (Required for DSPM and Data Scanning features).",
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
+
 		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceAwsAccountV0().CoreConfigSchema().ImpliedType(),
