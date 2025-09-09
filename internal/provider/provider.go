@@ -151,7 +151,6 @@ type client struct {
 	logger        log.Logger
 	polarisClient *polaris.Client
 	polarisErr    error
-	flags         map[string]bool
 }
 
 func newClient(ctx context.Context, credentials string, cacheParams polaris.CacheParams) (*client, error) {
@@ -162,19 +161,10 @@ func newClient(ctx context.Context, credentials string, cacheParams polaris.Cach
 	}
 	var polarisClient *polaris.Client
 	var accountErr error
-	flags := make(map[string]bool)
 	if err == nil {
 		polarisClient, err = polaris.NewClientWithLoggerAndCacheParams(account, cacheParams, logger)
 		if err != nil {
 			return nil, err
-		}
-
-		featureFlags, err := core.Wrap(polarisClient.GQL).FeatureFlags(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, flag := range featureFlags {
-			flags[flag.Name] = flag.Enabled
 		}
 	} else {
 		accountErr = err
@@ -184,8 +174,12 @@ func newClient(ctx context.Context, credentials string, cacheParams polaris.Cach
 		logger:        logger,
 		polarisClient: polarisClient,
 		polarisErr:    accountErr,
-		flags:         flags,
 	}, nil
+}
+
+func (c *client) flag(ctx context.Context, name string) bool {
+	ff, err := core.Wrap(c.polarisClient.GQL).FeatureFlag(ctx, name)
+	return err != nil && ff.Enabled
 }
 
 func (c *client) polaris() (*polaris.Client, error) {
