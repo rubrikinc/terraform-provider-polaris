@@ -305,7 +305,7 @@ func groupCloudAccounts(ctx context.Context, client *polaris.Client, cloudAccoun
 func lookupCloudAccountID(ctx context.Context, client *polaris.Client, cloudAccountID uuid.UUID) (core.CloudVendor, error) {
 	_, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(cloudAccountID), core.FeatureAll)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return core.CloudVendorUnspecified, err
+		return core.CloudVendorUnknown, err
 	}
 	if err == nil {
 		return core.CloudVendorAWS, nil
@@ -313,7 +313,7 @@ func lookupCloudAccountID(ctx context.Context, client *polaris.Client, cloudAcco
 
 	_, err = azure.Wrap(client).Subscription(ctx, azure.CloudAccountID(cloudAccountID), core.FeatureAll)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return core.CloudVendorUnspecified, err
+		return core.CloudVendorUnknown, err
 	}
 	if err == nil {
 		return core.CloudVendorAzure, nil
@@ -321,11 +321,11 @@ func lookupCloudAccountID(ctx context.Context, client *polaris.Client, cloudAcco
 
 	_, err = gcp.Wrap(client).Project(ctx, gcp.CloudAccountID(cloudAccountID), core.FeatureAll)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return core.CloudVendorUnspecified, err
+		return core.CloudVendorUnknown, err
 	}
 	if err == nil {
 		return core.CloudVendorGCP, nil
 	}
 
-	return core.CloudVendorUnspecified, fmt.Errorf("cloud account %q %w", cloudAccountID, graphql.ErrNotFound)
+	return core.CloudVendorUnknown, fmt.Errorf("cloud account %q %w", cloudAccountID, graphql.ErrNotFound)
 }

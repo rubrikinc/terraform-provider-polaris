@@ -74,6 +74,7 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			keyPolarisAWSAccount:                         resourceAwsAccount(),
 			keyPolarisAWSArchivalLocation:                resourceAwsArchivalLocation(),
+			keyPolarisAWSCloudCluster:                    resourceAwsCloudCluster(),
 			keyPolarisAWSCNPAccount:                      resourceAwsCnpAccount(),
 			keyPolarisAWSCNPAccountAttachments:           resourceAwsCnpAccountAttachments(),
 			keyPolarisAWSCNPAccountTrustPolicy:           resourceAwsCnpAccountTrustPolicy(),

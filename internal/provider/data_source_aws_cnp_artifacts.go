@@ -63,6 +63,10 @@ are used when specifying the feature set.
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
 
+´SERVERS_AND_APPS´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
    must always be included.
 `

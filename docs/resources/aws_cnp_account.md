@@ -25,6 +25,9 @@ description: |-
   RDS_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the
   feature.
+  SERVER_AND_APPS
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   -> Note: When permission groups are specified, the BASIC permission group
   must always be included.
 ---
@@ -58,6 +61,10 @@ are used when specifying the feature set.
     Rubrik-managed Exocompute cluster.
 
 `RDS_PROTECTION`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+
+`SERVER_AND_APPS`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
@@ -158,5 +165,5 @@ resource "polaris_aws_cnp_account" "account" {
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVER_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
 - `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
