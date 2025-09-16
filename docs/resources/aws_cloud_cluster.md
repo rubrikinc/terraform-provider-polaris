@@ -39,33 +39,33 @@ number of nodes, instance types, and network configuration.
 ```terraform
 # Create an AWS cloud cluster in RSC
 resource "polaris_aws_cloud_cluster" "example" {
-  cloud_account_id = "12345678-1234-1234-1234-123456789012"
-  region           = "us-west-2"
+  cloud_account_id     = "12345678-1234-1234-1234-123456789012"
+  region               = "us-west-2"
+  is_es_type           = true
+  use_placement_groups = true
 
   cluster_config {
-    cluster_name         = "my-cloud-cluster"
-    user_email           = "admin@example.com"
-    admin_password       = "SecurePassword123!"
-    dns_name_servers     = ["8.8.8.8", "8.8.4.4"]
-    dns_search_domain    = ["example.com"]
-    ntp_servers          = ["pool.ntp.org"]
-    num_nodes            = 3
-    bucket_name          = "my-cluster-bucket"
-    enable_immutability  = true
-    should_create_bucket = true
-    enable_object_lock   = true
+    cluster_name            = "my-cloud-cluster"
+    user_email              = "admin@example.com"
+    admin_password          = "RubrikGoForward!"
+    dns_name_servers        = ["8.8.8.8", "8.8.4.4"]
+    dns_search_domain       = ["example.com"]
+    ntp_servers             = ["pool.ntp.org"]
+    num_nodes               = 3
+    bucket_name             = "my-s3-bucket"
+    enable_immutability     = true
+    should_create_bucket    = true
+    enable_object_lock      = true
+    keep_cluster_on_failure = false
 
     vm_config {
       instance_type         = "M6I_2XLARGE"
       instance_profile_name = "RubrikCloudClusterInstanceProfile"
       vpc                   = "vpc-12345678"
       subnet                = "subnet-12345678"
-      security_groups       = ["sg-12345678", "sg-87654321"]
+      security_groups       = ["sg-12345678", "sg-45678901"]
     }
   }
-
-  is_es_type           = true
-  use_placement_groups = true
 }
 ```
 
@@ -82,6 +82,7 @@ resource "polaris_aws_cloud_cluster" "example" {
 ### Optional
 
 - `is_es_type` (Boolean) Whether this is an ES type cluster. Changing this forces a new resource to be created.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - `use_placement_groups` (Boolean) Whether to use placement groups for the cluster. Changing this forces a new resource to be created.
 
 ### Read-Only
@@ -96,17 +97,18 @@ Required:
 - `admin_password` (String, Sensitive) Password for the cluster admin user. Changing this value will have no effect on the cluster.
 - `bucket_name` (String) Name of the S3 bucket to use for the cluster. Changing this forces a new resource to be created.
 - `cluster_name` (String) Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.
+- `dns_name_servers` (List of String) DNS name servers for the cluster. Changing this forces a new resource to be created.
+- `enable_immutability` (Boolean) Whether to enable immutability for the S3 bucket. Changing this forces a new resource to be created.
+- `enable_object_lock` (Boolean) Whether to enable object lock for the S3 bucket. Changing this forces a new resource to be created.
+- `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure. Changing this forces a new resource to be created.
+- `ntp_servers` (List of String) NTP servers for the cluster. Changing this forces a new resource to be created.
 - `num_nodes` (Number) Number of nodes in the cluster. Changing this forces a new resource to be created.
+- `should_create_bucket` (Boolean) Whether to create the S3 bucket if it does not exist. Changing this forces a new resource to be created.
 - `user_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
 
 Optional:
 
-- `dns_name_servers` (List of String) DNS name servers for the cluster. Changing this forces a new resource to be created.
 - `dns_search_domain` (List of String) DNS search domains for the cluster. Changing this forces a new resource to be created.
-- `enable_immutability` (Boolean) Whether to enable immutability for the S3 bucket. Changing this forces a new resource to be created.
-- `enable_object_lock` (Boolean) Whether to enable object lock for the S3 bucket. Changing this forces a new resource to be created.
-- `ntp_servers` (List of String) NTP servers for the cluster. Changing this forces a new resource to be created.
-- `should_create_bucket` (Boolean) Whether to create the S3 bucket if it does not exist. Changing this forces a new resource to be created.
 
 
 <a id="nestedblock--vm_config"></a>
@@ -122,9 +124,20 @@ Required:
 
 Optional:
 
+- `cdm_version` (String) CDM version to use. If not specified, the latest version will be used.
+- `use_latest_cdm_version` (Boolean) Whether to use the latest CDM version. Changing this forces a new resource to be created.
 - `vm_type` (String) VM type for the cluster. Changing this forces a new resource to be created.
 
 Read-Only:
 
 - `cdm_product` (String) CDM product to use. If not specified, the latest version will be used.
-- `cdm_version` (String) CDM version to use. If not specified, the latest version will be used.
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String)
+- `default` (String)
+- `read` (String)

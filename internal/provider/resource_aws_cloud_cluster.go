@@ -133,7 +133,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
-							Optional:    true,
+							Required:    true,
 							ForceNew:    true,
 							Description: "DNS name servers for the cluster. Changing this forces a new resource to be created.",
 						},
@@ -151,7 +151,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
-							Optional:    true,
+							Required:    true,
 							ForceNew:    true,
 							Description: "NTP servers for the cluster. Changing this forces a new resource to be created.",
 						},
@@ -164,30 +164,26 @@ func resourceAwsCloudCluster() *schema.Resource {
 						},
 						keyEnableImmutability: {
 							Type:        schema.TypeBool,
-							Optional:    true,
+							Required:    true,
 							ForceNew:    true,
-							Default:     false,
 							Description: "Whether to enable immutability for the S3 bucket. Changing this forces a new resource to be created.",
 						},
 						keyShouldCreateBucket: {
 							Type:        schema.TypeBool,
-							Optional:    true,
+							Required:    true,
 							ForceNew:    true,
-							Default:     false,
 							Description: "Whether to create the S3 bucket if it does not exist. Changing this forces a new resource to be created.",
 						},
 						keyEnableObjectLock: {
 							Type:        schema.TypeBool,
-							Optional:    true,
+							Required:    true,
 							ForceNew:    true,
-							Default:     false,
 							Description: "Whether to enable object lock for the S3 bucket. Changing this forces a new resource to be created.",
 						},
 						keyKeepClusterOnFailure: {
 							Type:        schema.TypeBool,
-							Optional:    true,
+							Required:    true,
 							ForceNew:    true,
-							Default:     false,
 							Description: "Whether to keep the cluster on failure. Changing this forces a new resource to be created.",
 						},
 					},
@@ -395,8 +391,14 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	d.SetId(cloudcluster.ID.String())
-	d.Set(keyCdmProduct, cloudcluster.CdmProduct)
-	d.Set(keyInstanceType, cloudcluster.InstanceType)
+
+	vmConfigList = d.Get(keyVmConfig).([]any)
+	if len(vmConfigList) > 0 {
+		vmConfigMap := vmConfigList[0].(map[string]any)
+		vmConfigMap[keyCdmProduct] = cloudcluster.CdmProduct
+		d.Set(keyVmConfig, []any{vmConfigMap})
+	}
+	d.Set(keyCloudAccountID, cloudcluster.CloudAccountID)
 
 	return awsReadCloudCluster(ctx, d, m)
 }
@@ -436,17 +438,23 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	}
 
 	cloudCluster := cloudClusters[0]
-	//check we have the correct cloud cluster
+	// validate the cloud cluster ID
 	if cloudCluster.ID != id {
 		return diag.Errorf("Cloud cluster ID mismatch. Expected %q, got %q", id, cloudCluster.ID)
 	}
 
-	d.Set(keyClusterName, cloudCluster.Name)
-	d.Set(keyCloudAccountID, cloudCluster.CloudInfo.NativeCloudAccountID)
-	d.Set(keyRegion, cloudCluster.CloudInfo.Region)
-	d.Set(keyCdmVersion, cloudCluster.Version)
-	d.Set(keyBucketName, cloudCluster.CloudInfo.StorageConfig.LocationName)
-	d.Set(keyEnableImmutability, cloudCluster.CloudInfo.StorageConfig.IsImmutable)
+	// Get and update cluster_config block
+	clusterConfigList := d.Get(keyClusterConfig).([]any)
+	clusterConfigMap := clusterConfigList[0].(map[string]any)
+	clusterConfigMap[keyClusterName] = cloudCluster.Name
+
+	// Check if the CDM version changed
+	vmConfigList := d.Get(keyVmConfig).([]any)
+	vmConfigMap := vmConfigList[0].(map[string]any)
+	vmConfigMap[keyCdmVersion] = cloudCluster.Version
+
+	d.Set(keyClusterConfig, []any{clusterConfigMap})
+	d.Set(keyVmConfig, []any{vmConfigMap})
 
 	return nil
 }
