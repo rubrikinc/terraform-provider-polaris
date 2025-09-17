@@ -298,22 +298,22 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	clusterConfigMap := d.Get(keyClusterConfig).([]any)[0].(map[string]any)
 
 	dnsNameServers := make([]string, 0)
-	if dnsNameServersList, ok := clusterConfigMap[keyDNSNameServers].([]any); ok {
-		for _, dns := range dnsNameServersList {
+	if dnsNameServersSet, ok := clusterConfigMap[keyDNSNameServers].(*schema.Set); ok {
+		for _, dns := range dnsNameServersSet.List() {
 			dnsNameServers = append(dnsNameServers, dns.(string))
 		}
 	}
 
 	dnsSearchDomains := make([]string, 0)
-	if dnsSearchDomainsList, ok := clusterConfigMap[keyDNSSearchDomain].([]any); ok {
-		for _, domain := range dnsSearchDomainsList {
+	if dnsSearchDomainsSet, ok := clusterConfigMap[keyDNSSearchDomain].(*schema.Set); ok {
+		for _, domain := range dnsSearchDomainsSet.List() {
 			dnsSearchDomains = append(dnsSearchDomains, domain.(string))
 		}
 	}
 
 	ntpServers := make([]string, 0)
-	if ntpServersList, ok := clusterConfigMap[keyNTPServers].([]any); ok {
-		for _, ntp := range ntpServersList {
+	if ntpServersSet, ok := clusterConfigMap[keyNTPServers].(*schema.Set); ok {
+		for _, ntp := range ntpServersSet.List() {
 			ntpServers = append(ntpServers, ntp.(string))
 		}
 	}
