@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.7
+* Add support for adding AWS Cloud Cluster with Elastic Storage. [[docs](../resources/aws_cloud_cluster)]
+* Add support for installing AWS feature SERVER_AND_APPS under `polaris_aws_account`. [[docs](../resources/aws_account)]
+
 ## v1.1.6
 * Fix a bug in the `polaris_azure_subscription` resource where the wrong mutation was used to update the subscription
   when the subscription was updated to use permission groups and a resource group at the same time.
