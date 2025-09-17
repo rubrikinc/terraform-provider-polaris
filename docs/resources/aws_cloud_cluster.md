@@ -37,16 +37,15 @@ number of nodes, instance types, and network configuration.
 ## Example Usage
 
 ```terraform
-# Create an AWS cloud cluster in RSC
+# Create an AWS cloud cluster using RSC
 resource "polaris_aws_cloud_cluster" "example" {
   cloud_account_id     = "12345678-1234-1234-1234-123456789012"
   region               = "us-west-2"
-  is_es_type           = true
   use_placement_groups = true
 
   cluster_config {
     cluster_name            = "my-cloud-cluster"
-    user_email              = "admin@example.com"
+    admin_email             = "admin@example.com"
     admin_password          = "RubrikGoForward!"
     dns_name_servers        = ["8.8.8.8", "8.8.4.4"]
     dns_search_domain       = ["example.com"]
@@ -54,16 +53,15 @@ resource "polaris_aws_cloud_cluster" "example" {
     num_nodes               = 3
     bucket_name             = "my-s3-bucket"
     enable_immutability     = true
-    should_create_bucket    = true
-    enable_object_lock      = true
     keep_cluster_on_failure = false
 
     vm_config {
+      cdm_version           = "9.4.0-p2-30507"
       instance_type         = "M6I_2XLARGE"
       instance_profile_name = "RubrikCloudClusterInstanceProfile"
-      vpc                   = "vpc-12345678"
-      subnet                = "subnet-12345678"
-      security_groups       = ["sg-12345678", "sg-45678901"]
+      vpc_id                = "vpc-12345678"
+      subnet_id             = "subnet-12345678"
+      security_group_ids    = ["sg-12345678", "sg-45678901"]
     }
   }
 }
@@ -81,7 +79,6 @@ resource "polaris_aws_cloud_cluster" "example" {
 
 ### Optional
 
-- `is_es_type` (Boolean) Whether this is an ES type cluster. Changing this forces a new resource to be created.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - `use_placement_groups` (Boolean) Whether to use placement groups for the cluster. Changing this forces a new resource to be created.
 
@@ -94,17 +91,15 @@ resource "polaris_aws_cloud_cluster" "example" {
 
 Required:
 
+- `admin_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
 - `admin_password` (String, Sensitive) Password for the cluster admin user. Changing this value will have no effect on the cluster.
 - `bucket_name` (String) Name of the S3 bucket to use for the cluster. Changing this forces a new resource to be created.
 - `cluster_name` (String) Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.
 - `dns_name_servers` (List of String) DNS name servers for the cluster. Changing this forces a new resource to be created.
 - `enable_immutability` (Boolean) Whether to enable immutability for the S3 bucket. Changing this forces a new resource to be created.
-- `enable_object_lock` (Boolean) Whether to enable object lock for the S3 bucket. Changing this forces a new resource to be created.
 - `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure. Changing this forces a new resource to be created.
 - `ntp_servers` (List of String) NTP servers for the cluster. Changing this forces a new resource to be created.
 - `num_nodes` (Number) Number of nodes in the cluster. Changing this forces a new resource to be created.
-- `should_create_bucket` (Boolean) Whether to create the S3 bucket if it does not exist. Changing this forces a new resource to be created.
-- `user_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
 
 Optional:
 
@@ -116,21 +111,20 @@ Optional:
 
 Required:
 
+- `cdm_version` (String) CDM version to use. Changing this forces a new resource to be created.
 - `instance_profile_name` (String) AWS instance profile name for the cluster nodes. Changing this forces a new resource to be created.
-- `instance_type` (String) AWS instance type for the cluster nodes. Changing this forces a new resource to be created.
-- `security_groups` (Set of String) AWS security group IDs for the cluster nodes. Changing this forces a new resource to be created.
-- `subnet` (String) AWS subnet ID where the cluster nodes will be deployed. Changing this forces a new resource to be created.
-- `vpc` (String) AWS VPC ID where the cluster will be deployed. Changing this forces a new resource to be created.
+- `instance_type` (String) AWS instance type for the cluster nodes. Changing this forces a new resource to be created. Supported values are `M5_4XLARGE`, `M6I_2XLARGE`, `M6I_4XLARGE`, `M6I_8XLARGE`, `R6I_4XLARGE`, `M6A_2XLARGE`, `M6A_4XLARGE`, `M6A_8XLARGE` and `R6A_4XLARGE`.
+- `security_group_ids` (Set of String) AWS security group IDs for the cluster nodes. Changing this forces a new resource to be created.
+- `subnet_id` (String) AWS subnet ID where the cluster nodes will be deployed. Changing this forces a new resource to be created.
+- `vpc_id` (String) AWS VPC ID where the cluster will be deployed. Changing this forces a new resource to be created.
 
 Optional:
 
-- `cdm_version` (String) CDM version to use. If not specified, the latest version will be used.
-- `use_latest_cdm_version` (Boolean) Whether to use the latest CDM version. Changing this forces a new resource to be created.
-- `vm_type` (String) VM type for the cluster. Changing this forces a new resource to be created.
+- `vm_type` (String) VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`.
 
 Read-Only:
 
-- `cdm_product` (String) CDM product to use. If not specified, the latest version will be used.
+- `cdm_product` (String) CDM Product Code. This is a read-only field and computed based on the CDM version.
 
 
 <a id="nestedblock--timeouts"></a>

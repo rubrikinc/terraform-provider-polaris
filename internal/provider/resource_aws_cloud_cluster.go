@@ -29,9 +29,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cloudcluster"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
+	gqlcloudcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 )
@@ -80,13 +80,6 @@ func resourceAwsCloudCluster() *schema.Resource {
 				Description:  "AWS region to deploy the cluster in. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringInSlice(gqlaws.AllRegionNames(), false),
 			},
-			keyIsEsType: {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				ForceNew:    true,
-				Default:     false,
-				Description: "Whether this is an ES type cluster. Changing this forces a new resource to be created.",
-			},
 			keyUsePlacementGroups: {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -109,7 +102,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Description:  "Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keyUserEmail: {
+						keyAdminEmail: {
 							Type:         schema.TypeString,
 							Required:     true,
 							Description:  "Email address for the cluster admin user. Changing this value will have no effect on the cluster.",
@@ -147,7 +140,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							ForceNew:    true,
 							Description: "DNS search domains for the cluster. Changing this forces a new resource to be created.",
 						},
-						keyNtpServers: {
+						keyNTPServers: {
 							Type: schema.TypeList,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
@@ -169,18 +162,6 @@ func resourceAwsCloudCluster() *schema.Resource {
 							ForceNew:    true,
 							Description: "Whether to enable immutability for the S3 bucket. Changing this forces a new resource to be created.",
 						},
-						keyShouldCreateBucket: {
-							Type:        schema.TypeBool,
-							Required:    true,
-							ForceNew:    true,
-							Description: "Whether to create the S3 bucket if it does not exist. Changing this forces a new resource to be created.",
-						},
-						keyEnableObjectLock: {
-							Type:        schema.TypeBool,
-							Required:    true,
-							ForceNew:    true,
-							Description: "Whether to enable object lock for the S3 bucket. Changing this forces a new resource to be created.",
-						},
 						keyKeepClusterOnFailure: {
 							Type:        schema.TypeBool,
 							Required:    true,
@@ -190,7 +171,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 					},
 				},
 			},
-			keyVmConfig: {
+			keyVMConfig: {
 				Type:        schema.TypeList,
 				Required:    true,
 				ForceNew:    true,
@@ -198,40 +179,33 @@ func resourceAwsCloudCluster() *schema.Resource {
 				Description: "VM configuration for the cluster nodes. Changing this forces a new resource to be created.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						keyCdmVersion: {
+						keyCDMVersion: {
 							Type:         schema.TypeString,
-							Optional:     true,
+							Required:     true,
 							ForceNew:     true,
-							Description:  "CDM version to use. If not specified, the latest version will be used.",
+							Description:  "CDM version to use. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keyCdmProduct: {
+						keyCDMProduct: {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: "CDM product to use. If not specified, the latest version will be used.",
-						},
-						keyUseLatestCdmVersion: {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							ForceNew:    true,
-							Default:     false,
-							Description: "Whether to use the latest CDM version. Changing this forces a new resource to be created.",
+							Description: "CDM Product Code. This is a read-only field and computed based on the CDM version.",
 						},
 						keyInstanceType: {
 							Type:        schema.TypeString,
 							Required:    true,
 							ForceNew:    true,
-							Description: "AWS instance type for the cluster nodes. Changing this forces a new resource to be created.",
+							Description: "AWS instance type for the cluster nodes. Changing this forces a new resource to be created. Supported values are `M5_4XLARGE`, `M6I_2XLARGE`, `M6I_4XLARGE`, `M6I_8XLARGE`, `R6I_4XLARGE`, `M6A_2XLARGE`, `M6A_4XLARGE`, `M6A_8XLARGE` and `R6A_4XLARGE`.",
 							ValidateFunc: validation.StringInSlice([]string{
-								string(cloudcluster.AwsInstanceTypeM5_4XLarge),
-								string(cloudcluster.AwsInstanceTypeM6I_2XLarge),
-								string(cloudcluster.AwsInstanceTypeM6I_4XLarge),
-								string(cloudcluster.AwsInstanceTypeM6I_8XLarge),
-								string(cloudcluster.AwsInstanceTypeR6I_4XLarge),
-								string(cloudcluster.AwsInstanceTypeM6A_2XLarge),
-								string(cloudcluster.AwsInstanceTypeM6A_4XLarge),
-								string(cloudcluster.AwsInstanceTypeM6A_8XLarge),
-								string(cloudcluster.AwsInstanceTypeR6A_4XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeM5_4XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeM6I_2XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeM6I_4XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeM6I_8XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeR6I_4XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeM6A_2XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeM6A_4XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeM6A_8XLarge),
+								string(gqlcloudcluster.AwsInstanceTypeR6A_4XLarge),
 							}, false),
 						},
 						keyInstanceProfileName: {
@@ -241,21 +215,21 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Description:  "AWS instance profile name for the cluster nodes. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keyVpc: {
+						keyVPCID: {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
 							Description:  "AWS VPC ID where the cluster will be deployed. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keySubnet: {
+						keySubnetID: {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
 							Description:  "AWS subnet ID where the cluster nodes will be deployed. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keySecurityGroups: {
+						keySecurityGroupIDs: {
 							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
@@ -264,16 +238,16 @@ func resourceAwsCloudCluster() *schema.Resource {
 							ForceNew:    true,
 							Description: "AWS security group IDs for the cluster nodes. Changing this forces a new resource to be created.",
 						},
-						keyVmType: {
+						keyVMType: {
 							Type:        schema.TypeString,
 							Optional:    true,
 							ForceNew:    true,
 							Default:     "DENSE",
-							Description: "VM type for the cluster. Changing this forces a new resource to be created.",
+							Description: "VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`.",
 							ValidateFunc: validation.StringInSlice([]string{
-								string(cloudcluster.CCVmConfigStandard),
-								string(cloudcluster.CCVmConfigDense),
-								string(cloudcluster.CCVmConfigExtraDense),
+								string(gqlcloudcluster.CCVmConfigStandard),
+								string(gqlcloudcluster.CCVmConfigDense),
+								string(gqlcloudcluster.CCVmConfigExtraDense),
 							}, false),
 						},
 					},
@@ -301,22 +275,22 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		return diag.FromErr(err)
 	}
 
-	vmConfigList := d.Get(keyVmConfig).([]any)
+	vmConfigList := d.Get(keyVMConfig).([]any)
 	if len(vmConfigList) == 0 {
-		return diag.Errorf("%s is required", keyVmConfig)
+		return diag.Errorf("%s is required", keyVMConfig)
 	}
 	vmConfigMap := vmConfigList[0].(map[string]any)
 
-	securityGroupsSet := vmConfigMap[keySecurityGroups].(*schema.Set)
+	securityGroupsSet := vmConfigMap[keySecurityGroupIDs].(*schema.Set)
 	securityGroups := make([]string, 0, securityGroupsSet.Len())
 	for _, sg := range securityGroupsSet.List() {
 		securityGroups = append(securityGroups, sg.(string))
 	}
 
 	instanceTypeStr := vmConfigMap[keyInstanceType].(string)
-	instanceType := cloudcluster.AwsCCInstanceType(instanceTypeStr)
-	vmTypeStr := vmConfigMap[keyVmType].(string)
-	vmType := cloudcluster.VmConfigType(vmTypeStr)
+	instanceType := gqlcloudcluster.AwsCCInstanceType(instanceTypeStr)
+	vmTypeStr := vmConfigMap[keyVMType].(string)
+	vmType := gqlcloudcluster.VmConfigType(vmTypeStr)
 
 	clusterConfigMap := d.Get(keyClusterConfig).([]any)[0].(map[string]any)
 
@@ -335,36 +309,36 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	ntpServers := make([]string, 0)
-	if ntpServersList, ok := clusterConfigMap[keyNtpServers].([]any); ok {
+	if ntpServersList, ok := clusterConfigMap[keyNTPServers].([]any); ok {
 		for _, ntp := range ntpServersList {
 			ntpServers = append(ntpServers, ntp.(string))
 		}
 	}
 
-	validations := []cloudcluster.ClusterCreateValidations{
-		cloudcluster.AllChecks,
+	validations := []gqlcloudcluster.ClusterCreateValidations{
+		gqlcloudcluster.AllChecks,
 	}
 
-	vmConfig := cloudcluster.AwsVmConfig{
-		CdmVersion:          vmConfigMap[keyCdmVersion].(string),
+	vmConfig := gqlcloudcluster.AwsVmConfig{
+		CdmVersion:          vmConfigMap[keyCDMVersion].(string),
 		InstanceProfileName: vmConfigMap[keyInstanceProfileName].(string),
 		InstanceType:        instanceType,
 		SecurityGroups:      securityGroups,
-		Subnet:              vmConfigMap[keySubnet].(string),
+		Subnet:              vmConfigMap[keySubnetID].(string),
 		VmType:              vmType,
-		Vpc:                 vmConfigMap[keyVpc].(string),
+		Vpc:                 vmConfigMap[keyVPCID].(string),
 	}
 
-	awsEsConfig := cloudcluster.AwsEsConfigInput{
+	awsEsConfig := gqlcloudcluster.AwsEsConfigInput{
 		BucketName:         clusterConfigMap[keyBucketName].(string),
 		EnableImmutability: clusterConfigMap[keyEnableImmutability].(bool),
-		ShouldCreateBucket: clusterConfigMap[keyShouldCreateBucket].(bool),
-		EnableObjectLock:   clusterConfigMap[keyEnableObjectLock].(bool),
+		ShouldCreateBucket: false,
+		EnableObjectLock:   clusterConfigMap[keyEnableImmutability].(bool),
 	}
 
-	clusterConfig := cloudcluster.AwsClusterConfig{
+	clusterConfig := gqlcloudcluster.AwsClusterConfig{
 		ClusterName:      clusterConfigMap[keyClusterName].(string),
-		UserEmail:        clusterConfigMap[keyUserEmail].(string),
+		UserEmail:        clusterConfigMap[keyAdminEmail].(string),
 		AdminPassword:    secret.String(clusterConfigMap[keyAdminPassword].(string)),
 		DnsNameServers:   dnsNameServers,
 		DnsSearchDomains: dnsSearchDomains,
@@ -373,10 +347,10 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		AwsEsConfig:      awsEsConfig,
 	}
 
-	input := cloudcluster.CreateAwsClusterInput{
+	input := gqlcloudcluster.CreateAwsClusterInput{
 		CloudAccountID:       cloudAccountID,
 		ClusterConfig:        clusterConfig,
-		IsEsType:             d.Get(keyIsEsType).(bool),
+		IsEsType:             true,
 		KeepClusterOnFailure: clusterConfigMap[keyKeepClusterOnFailure].(bool),
 		Region:               d.Get(keyRegion).(string),
 		UsePlacementGroups:   d.Get(keyUsePlacementGroups).(bool),
@@ -384,20 +358,18 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		VmConfig:             vmConfig,
 	}
 
-	useLatestCdmVersion := vmConfig.CdmVersion == "" || d.Get(keyUseLatestCdmVersion).(bool)
-
-	cloudcluster, err := aws.Wrap(client).CreateCloudCluster(ctx, input, useLatestCdmVersion)
+	cloudcluster, err := cloudcluster.Wrap(client).CreateCloudCluster(ctx, input, false)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	d.SetId(cloudcluster.ID.String())
 
-	vmConfigList = d.Get(keyVmConfig).([]any)
+	vmConfigList = d.Get(keyVMConfig).([]any)
 	if len(vmConfigList) > 0 {
 		vmConfigMap := vmConfigList[0].(map[string]any)
-		vmConfigMap[keyCdmProduct] = cloudcluster.CdmProduct
-		d.Set(keyVmConfig, []any{vmConfigMap})
+		vmConfigMap[keyCDMProduct] = cloudcluster.CdmProduct
+		d.Set(keyVMConfig, []any{vmConfigMap})
 	}
 	d.Set(keyCloudAccountID, cloudcluster.CloudAccountID)
 
@@ -423,12 +395,12 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 		return diag.FromErr(err)
 	}
 
-	clusterFilter := cloudcluster.ClusterFilter{
+	clusterFilter := gqlcloudcluster.ClusterFilter{
 		ID: []string{id.String()},
 	}
 
 	// Use AllCloudClusters and filter for cluster
-	cloudClusters, err := cloudcluster.Wrap(client).AllCloudClusters(ctx, 1, "", clusterFilter, cloudcluster.SortByClusterName, core.SortOrderDesc)
+	cloudClusters, err := gqlcloudcluster.Wrap(client).AllCloudClusters(ctx, 1, "", clusterFilter, gqlcloudcluster.SortByClusterName, core.SortOrderDesc)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -450,12 +422,12 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	clusterConfigMap[keyClusterName] = cloudCluster.Name
 
 	// Check if the CDM version changed
-	vmConfigList := d.Get(keyVmConfig).([]any)
+	vmConfigList := d.Get(keyVMConfig).([]any)
 	vmConfigMap := vmConfigList[0].(map[string]any)
-	vmConfigMap[keyCdmVersion] = cloudCluster.Version
+	vmConfigMap[keyCDMVersion] = cloudCluster.Version
 
 	d.Set(keyClusterConfig, []any{clusterConfigMap})
-	d.Set(keyVmConfig, []any{vmConfigMap})
+	d.Set(keyVMConfig, []any{vmConfigMap})
 
 	return nil
 }

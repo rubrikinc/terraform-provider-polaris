@@ -68,7 +68,7 @@ are used when specifying the feature set.
     feature.
 
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
-   must always be included.
+   is always required except for the ´SERVERS_AND_APPS´ feature.
 `
 
 func dataSourceAwsPermissions() *schema.Resource {

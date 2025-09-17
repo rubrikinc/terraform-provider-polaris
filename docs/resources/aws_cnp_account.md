@@ -29,7 +29,7 @@ description: |-
   CLOUD_CLUSTER_ES - Represents the basic set of permissions required to onboard the
   feature.
   -> Note: When permission groups are specified, the BASIC permission group
-  must always be included.
+  is always required except for the SERVERS_AND_APPS feature.
 ---
 
 # polaris_aws_cnp_account (Resource)
@@ -69,7 +69,7 @@ are used when specifying the feature set.
     feature.
 
 -> **Note:** When permission groups are specified, the `BASIC` permission group
-   must always be included.
+   is always required except for the `SERVERS_AND_APPS` feature.
 
 ## Example Usage
 
