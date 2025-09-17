@@ -3,7 +3,7 @@
 page_title: "polaris_aws_cloud_cluster Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_aws_cloud_cluster resource creates an AWS cloud cluster in RSC.
+  The polaris_aws_cloud_cluster resource creates an AWS cloud cluster using RSC.
   This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage
   in AWS using the specified configuration. The cluster will be deployed with the specified
   number of nodes, instance types, and network configuration.
@@ -18,7 +18,7 @@ description: |-
 
 # polaris_aws_cloud_cluster (Resource)
 
-The `polaris_aws_cloud_cluster` resource creates an AWS cloud cluster in RSC.
+The `polaris_aws_cloud_cluster` resource creates an AWS cloud cluster using RSC.
 
 This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage 
 in AWS using the specified configuration. The cluster will be deployed with the specified
@@ -48,7 +48,7 @@ resource "polaris_aws_cloud_cluster" "example" {
     admin_email             = "admin@example.com"
     admin_password          = "RubrikGoForward!"
     dns_name_servers        = ["8.8.8.8", "8.8.4.4"]
-    dns_search_domain       = ["example.com"]
+    dns_search_domains      = ["example.com"]
     ntp_servers             = ["pool.ntp.org"]
     num_nodes               = 3
     bucket_name             = "my-s3-bucket"
@@ -103,7 +103,7 @@ Required:
 
 Optional:
 
-- `dns_search_domain` (Set of String) DNS search domains for the cluster. Changing this forces a new resource to be created.
+- `dns_search_domains` (Set of String) DNS search domains for the cluster. Changing this forces a new resource to be created.
 
 
 <a id="nestedblock--vm_config"></a>

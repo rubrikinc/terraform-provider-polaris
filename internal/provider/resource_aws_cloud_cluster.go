@@ -132,7 +132,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							MinItems:    1,
 							Description: "DNS name servers for the cluster. Changing this forces a new resource to be created.",
 						},
-						keyDNSSearchDomain: {
+						keyDNSSearchDomains: {
 							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
@@ -305,7 +305,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	dnsSearchDomains := make([]string, 0)
-	if dnsSearchDomainsSet, ok := clusterConfigMap[keyDNSSearchDomain].(*schema.Set); ok {
+	if dnsSearchDomainsSet, ok := clusterConfigMap[keyDNSSearchDomains].(*schema.Set); ok {
 		for _, domain := range dnsSearchDomainsSet.List() {
 			dnsSearchDomains = append(dnsSearchDomains, domain.(string))
 		}

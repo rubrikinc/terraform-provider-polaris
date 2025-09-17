@@ -70,6 +70,7 @@ const (
 	keyDescription                                  = "description"
 	keyDNSNameServers                               = "dns_name_servers"
 	keyDNSSearchDomain                              = "dns_search_domain"
+	keyDNSSearchDomains                             = "dns_search_domains"
 	keyDomain                                       = "domain"
 	keyDomainName                                   = "domain_name"
 	keyDSPM                                         = "dspm"

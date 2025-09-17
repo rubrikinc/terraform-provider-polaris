@@ -9,7 +9,7 @@ resource "polaris_aws_cloud_cluster" "example" {
     admin_email             = "admin@example.com"
     admin_password          = "RubrikGoForward!"
     dns_name_servers        = ["8.8.8.8", "8.8.4.4"]
-    dns_search_domain       = ["example.com"]
+    dns_search_domains      = ["example.com"]
     ntp_servers             = ["pool.ntp.org"]
     num_nodes               = 3
     bucket_name             = "my-s3-bucket"
