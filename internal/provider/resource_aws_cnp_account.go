@@ -65,8 +65,12 @@ are used when specifying the feature set.
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
 
+´SERVERS_AND_APPS´
+  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
-   must always be included.
+   is always required except for the ´SERVERS_AND_APPS´ feature.
 `
 
 func resourceAwsCnpAccount() *schema.Resource {
@@ -391,10 +395,10 @@ func featureResource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.",
+					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION", "EXOCOMPUTE",
-					"RDS_PROTECTION",
+					"RDS_PROTECTION", "SERVERS_AND_APPS",
 				}, false),
 			},
 			keyPermissionGroups: {
@@ -402,7 +406,7 @@ func featureResource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"BASIC", "RSC_MANAGED_CLUSTER",
+						"BASIC", "RSC_MANAGED_CLUSTER", "CLOUD_CLUSTER_ES",
 						// The following permission groups cannot be used when onboarding an AWS account.
 						// They have been accepted in the past so we still silently allow them.
 						"EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT",

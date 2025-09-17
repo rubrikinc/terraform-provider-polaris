@@ -74,7 +74,7 @@ resource "polaris_aws_cnp_account_trust_policy" "trust_policy" {
 ### Required
 
 - `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
-- `features` (Set of String) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`. Changing this forces a new resource to be created.
+- `features` (Set of String) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`. Changing this forces a new resource to be created.
 - `role_key` (String) RSC artifact key for the AWS role.
 
 ### Optional

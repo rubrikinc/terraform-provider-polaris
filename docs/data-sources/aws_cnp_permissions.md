@@ -32,8 +32,12 @@ are used when specifying the feature set.
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
+`SERVERS_AND_APPS`
+  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
+    feature.
+
 -> **Note:** When permission groups are specified, the `BASIC` permission group
-   must always be included.
+   is always required except for the `SERVERS_AND_APPS` feature.
 
 ---
 
@@ -69,8 +73,12 @@ are used when specifying the feature set.
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
+`SERVERS_AND_APPS`
+  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
+    feature.
+
 -> **Note:** When permission groups are specified, the `BASIC` permission group
-   must always be included.
+   is always required except for the `SERVERS_AND_APPS` feature.
 
 
 
@@ -135,8 +143,8 @@ data "polaris_aws_cnp_permissions" "permissions" {
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
-- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, [] is interpreted as all applicable permission groups
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `CLOUD_CLUSTER_ES` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, [] is interpreted as all applicable permission groups
 
 <a id="nestedatt--customer_managed_policies"></a>
 ### Nested Schema for `customer_managed_policies`

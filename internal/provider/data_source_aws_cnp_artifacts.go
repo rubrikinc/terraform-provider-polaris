@@ -63,8 +63,12 @@ are used when specifying the feature set.
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
 
+´SERVERS_AND_APPS´
+  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
-   must always be included.
+   is always required except for the ´SERVERS_AND_APPS´ feature.
 `
 
 func dataSourceAwsArtifacts() *schema.Resource {

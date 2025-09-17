@@ -25,8 +25,11 @@ description: |-
   RDS_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the
   feature.
+  SERVERS_AND_APPS
+  CLOUD_CLUSTER_ES - Represents the basic set of permissions required to onboard the
+  feature.
   -> Note: When permission groups are specified, the BASIC permission group
-  must always be included.
+  is always required except for the SERVERS_AND_APPS feature.
 ---
 
 # polaris_aws_cnp_account (Resource)
@@ -61,8 +64,12 @@ are used when specifying the feature set.
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
+`SERVERS_AND_APPS`
+  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
+    feature.
+
 -> **Note:** When permission groups are specified, the `BASIC` permission group
-   must always be included.
+   is always required except for the `SERVERS_AND_APPS` feature.
 
 ## Example Usage
 
@@ -158,5 +165,5 @@ resource "polaris_aws_cnp_account" "account" {
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
 - `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
