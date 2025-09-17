@@ -37,15 +37,15 @@ import (
 )
 
 const resourceAWSCloudClusterDescription = `
-The ´polaris_aws_cloud_cluster´ resource creates an AWS cloud cluster in RSC.
+The ´polaris_aws_cloud_cluster´ resource creates an AWS cloud cluster using RSC.
 
-This resource creates a Rubrik Cloud Data Management (CDM) cluster in AWS using
-the specified configuration. The cluster will be deployed with the specified
+This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage 
+in AWS using the specified configuration. The cluster will be deployed with the specified
 number of nodes, instance types, and network configuration.
 
 ~> **Note:** This resource creates actual AWS infrastructure. Destroying the
    resource will attempt to clean up the created resources, but manual cleanup
-   may be required in some cases.
+   may be required.
 
 ~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
@@ -92,7 +92,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 				Required:    true,
 				ForceNew:    true,
 				MaxItems:    1,
-				Description: "VM configuration for the cluster nodes. Changing this forces a new resource to be created.",
+				Description: "Configuration for the cloud cluster. Changing this forces a new resource to be created.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						keyClusterName: {
@@ -123,30 +123,33 @@ func resourceAwsCloudCluster() *schema.Resource {
 							ValidateFunc: validateNumNodes,
 						},
 						keyDNSNameServers: {
-							Type: schema.TypeList,
+							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
 							Required:    true,
 							ForceNew:    true,
+							MinItems:    1,
 							Description: "DNS name servers for the cluster. Changing this forces a new resource to be created.",
 						},
 						keyDNSSearchDomain: {
-							Type: schema.TypeList,
+							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
 							Optional:    true,
 							ForceNew:    true,
+							MinItems:    1,
 							Description: "DNS search domains for the cluster. Changing this forces a new resource to be created.",
 						},
 						keyNTPServers: {
-							Type: schema.TypeList,
+							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
 							Required:    true,
 							ForceNew:    true,
+							MinItems:    1,
 							Description: "NTP servers for the cluster. Changing this forces a new resource to be created.",
 						},
 						keyBucketName: {
@@ -160,13 +163,13 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Type:        schema.TypeBool,
 							Required:    true,
 							ForceNew:    true,
-							Description: "Whether to enable immutability for the S3 bucket. Changing this forces a new resource to be created.",
+							Description: "Whether to enable immutability and object lock for the S3 bucket. Changing this forces a new resource to be created.",
 						},
 						keyKeepClusterOnFailure: {
 							Type:        schema.TypeBool,
 							Required:    true,
 							ForceNew:    true,
-							Description: "Whether to keep the cluster on failure. Changing this forces a new resource to be created.",
+							Description: "Whether to keep the cluster on failure (can be useful for troubleshooting). Changing this forces a new resource to be created.",
 						},
 					},
 				},
@@ -243,7 +246,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Optional:    true,
 							ForceNew:    true,
 							Default:     "DENSE",
-							Description: "VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`.",
+							Description: "VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`. `DENSE` is recommended for CCES.",
 							ValidateFunc: validation.StringInSlice([]string{
 								string(gqlcloudcluster.CCVmConfigStandard),
 								string(gqlcloudcluster.CCVmConfigDense),

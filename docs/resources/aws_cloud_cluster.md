@@ -4,12 +4,12 @@ page_title: "polaris_aws_cloud_cluster Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
   The polaris_aws_cloud_cluster resource creates an AWS cloud cluster in RSC.
-  This resource creates a Rubrik Cloud Data Management (CDM) cluster in AWS using
-  the specified configuration. The cluster will be deployed with the specified
+  This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage
+  in AWS using the specified configuration. The cluster will be deployed with the specified
   number of nodes, instance types, and network configuration.
   ~> Note: This resource creates actual AWS infrastructure. Destroying the
   resource will attempt to clean up the created resources, but manual cleanup
-  may be required in some cases.
+  may be required.
   ~> Note: The AWS account must be onboarded to RSC with the Server and Apps
   feature enabled before creating a cloud cluster.
   ~> Note: Cloud Cluster Removal is not supported via terraform yet. The cluster
@@ -20,13 +20,13 @@ description: |-
 
 The `polaris_aws_cloud_cluster` resource creates an AWS cloud cluster in RSC.
 
-This resource creates a Rubrik Cloud Data Management (CDM) cluster in AWS using
-the specified configuration. The cluster will be deployed with the specified
+This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage 
+in AWS using the specified configuration. The cluster will be deployed with the specified
 number of nodes, instance types, and network configuration.
 
 ~> **Note:** This resource creates actual AWS infrastructure. Destroying the
    resource will attempt to clean up the created resources, but manual cleanup
-   may be required in some cases.
+   may be required.
 
 ~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
@@ -73,7 +73,7 @@ resource "polaris_aws_cloud_cluster" "example" {
 ### Required
 
 - `cloud_account_id` (String) RSC cloud account ID (UUID).
-- `cluster_config` (Block List, Min: 1, Max: 1) VM configuration for the cluster nodes. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--cluster_config))
+- `cluster_config` (Block List, Min: 1, Max: 1) Configuration for the cloud cluster. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--cluster_config))
 - `region` (String) AWS region to deploy the cluster in. Changing this forces a new resource to be created.
 - `vm_config` (Block List, Min: 1, Max: 1) VM configuration for the cluster nodes. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--vm_config))
 
@@ -95,15 +95,15 @@ Required:
 - `admin_password` (String, Sensitive) Password for the cluster admin user. Changing this value will have no effect on the cluster.
 - `bucket_name` (String) Name of the S3 bucket to use for the cluster. Changing this forces a new resource to be created.
 - `cluster_name` (String) Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.
-- `dns_name_servers` (List of String) DNS name servers for the cluster. Changing this forces a new resource to be created.
-- `enable_immutability` (Boolean) Whether to enable immutability for the S3 bucket. Changing this forces a new resource to be created.
-- `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure. Changing this forces a new resource to be created.
-- `ntp_servers` (List of String) NTP servers for the cluster. Changing this forces a new resource to be created.
+- `dns_name_servers` (Set of String) DNS name servers for the cluster. Changing this forces a new resource to be created.
+- `enable_immutability` (Boolean) Whether to enable immutability and object lock for the S3 bucket. Changing this forces a new resource to be created.
+- `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure (can be useful for troubleshooting). Changing this forces a new resource to be created.
+- `ntp_servers` (Set of String) NTP servers for the cluster. Changing this forces a new resource to be created.
 - `num_nodes` (Number) Number of nodes in the cluster. Changing this forces a new resource to be created.
 
 Optional:
 
-- `dns_search_domain` (List of String) DNS search domains for the cluster. Changing this forces a new resource to be created.
+- `dns_search_domain` (Set of String) DNS search domains for the cluster. Changing this forces a new resource to be created.
 
 
 <a id="nestedblock--vm_config"></a>
@@ -120,7 +120,7 @@ Required:
 
 Optional:
 
-- `vm_type` (String) VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`.
+- `vm_type` (String) VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`. `DENSE` is recommended for CCES.
 
 Read-Only:
 
