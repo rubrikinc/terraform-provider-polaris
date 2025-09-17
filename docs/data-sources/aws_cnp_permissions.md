@@ -33,7 +33,7 @@ are used when specifying the feature set.
     feature.
 
 `SERVERS_AND_APPS`
-  * CLOUD_CLUSTER_ES - Represents the basic set of permissions required to onboard the
+  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
     feature.
 
 -> **Note:** When permission groups are specified, the `BASIC` permission group
@@ -74,7 +74,7 @@ are used when specifying the feature set.
     feature.
 
 `SERVERS_AND_APPS`
-  * CLOUD_CLUSTER_ES - Represents the basic set of permissions required to onboard the
+  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
     feature.
 
 -> **Note:** When permission groups are specified, the `BASIC` permission group
