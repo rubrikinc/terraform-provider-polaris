@@ -33,6 +33,7 @@ import (
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 )
 
 const resourceAWSCloudClusterDescription = `
@@ -222,15 +223,15 @@ func resourceAwsCloudCluster() *schema.Resource {
 							ForceNew:    true,
 							Description: "AWS instance type for the cluster nodes. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringInSlice([]string{
-								string(gqlaws.AwsInstanceTypeM5_4XLarge),
-								string(gqlaws.AwsInstanceTypeM6I_2XLarge),
-								string(gqlaws.AwsInstanceTypeM6I_4XLarge),
-								string(gqlaws.AwsInstanceTypeM6I_8XLarge),
-								string(gqlaws.AwsInstanceTypeR6I_4XLarge),
-								string(gqlaws.AwsInstanceTypeM6A_2XLarge),
-								string(gqlaws.AwsInstanceTypeM6A_4XLarge),
-								string(gqlaws.AwsInstanceTypeM6A_8XLarge),
-								string(gqlaws.AwsInstanceTypeR6A_4XLarge),
+								string(cloudcluster.AwsInstanceTypeM5_4XLarge),
+								string(cloudcluster.AwsInstanceTypeM6I_2XLarge),
+								string(cloudcluster.AwsInstanceTypeM6I_4XLarge),
+								string(cloudcluster.AwsInstanceTypeM6I_8XLarge),
+								string(cloudcluster.AwsInstanceTypeR6I_4XLarge),
+								string(cloudcluster.AwsInstanceTypeM6A_2XLarge),
+								string(cloudcluster.AwsInstanceTypeM6A_4XLarge),
+								string(cloudcluster.AwsInstanceTypeM6A_8XLarge),
+								string(cloudcluster.AwsInstanceTypeR6A_4XLarge),
 							}, false),
 						},
 						keyInstanceProfileName: {
@@ -313,7 +314,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	instanceTypeStr := vmConfigMap[keyInstanceType].(string)
-	instanceType := gqlaws.AwsCCInstanceType(instanceTypeStr)
+	instanceType := cloudcluster.AwsCCInstanceType(instanceTypeStr)
 	vmTypeStr := vmConfigMap[keyVmType].(string)
 	vmType := cloudcluster.VmConfigType(vmTypeStr)
 
@@ -344,7 +345,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		cloudcluster.AllChecks,
 	}
 
-	vmConfig := gqlaws.AwsVmConfig{
+	vmConfig := cloudcluster.AwsVmConfig{
 		CdmVersion:          vmConfigMap[keyCdmVersion].(string),
 		InstanceProfileName: vmConfigMap[keyInstanceProfileName].(string),
 		InstanceType:        instanceType,
@@ -361,10 +362,10 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		EnableObjectLock:   clusterConfigMap[keyEnableObjectLock].(bool),
 	}
 
-	clusterConfig := gqlaws.AwsClusterConfig{
+	clusterConfig := cloudcluster.AwsClusterConfig{
 		ClusterName:      clusterConfigMap[keyClusterName].(string),
 		UserEmail:        clusterConfigMap[keyUserEmail].(string),
-		AdminPassword:    clusterConfigMap[keyAdminPassword].(string),
+		AdminPassword:    secret.String(clusterConfigMap[keyAdminPassword].(string)),
 		DnsNameServers:   dnsNameServers,
 		DnsSearchDomains: dnsSearchDomains,
 		NtpServers:       ntpServers,
@@ -372,7 +373,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		AwsEsConfig:      awsEsConfig,
 	}
 
-	input := gqlaws.CreateAwsClusterInput{
+	input := cloudcluster.CreateAwsClusterInput{
 		CloudAccountID:       cloudAccountID,
 		ClusterConfig:        clusterConfig,
 		IsEsType:             d.Get(keyIsEsType).(bool),
@@ -422,7 +423,7 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 		return diag.FromErr(err)
 	}
 
-	clusterFilter := cloudcluster.ClusterFilterInput{
+	clusterFilter := cloudcluster.ClusterFilter{
 		ID: []string{id.String()},
 	}
 
@@ -457,13 +458,6 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	d.Set(keyVmConfig, []any{vmConfigMap})
 
 	return nil
-}
-
-func awsUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	tflog.Trace(ctx, "awsUpdateCloudCluster")
-
-	// Update is not supported for cloud clusters. This will be implemented in the future.
-	return diag.Errorf("Cloud cluster update is not supported. Please remove the resource and create a new one.")
 }
 
 func awsDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
