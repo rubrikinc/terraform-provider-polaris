@@ -1448,7 +1448,7 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 
 	// Check if the SQL DB Copy Backup feature flag is enabled for the account.
 	// We only need to upgrade accounts which has the feature flag enabled.
-	if !client.flags["CNP_AZURE_SQL_DB_COPY_BACKUP"] {
+	if !client.flag(ctx, "CNP_AZURE_SQL_DB_COPY_BACKUP") {
 		tflog.Debug(ctx, "skipping Azure SQL DB Protection feature upgrade: feature flag CNP_AZURE_SQL_DB_COPY_BACKUP is not enabled")
 		return false, nil
 	}
