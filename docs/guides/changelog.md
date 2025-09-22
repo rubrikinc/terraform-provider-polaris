@@ -4,6 +4,7 @@ page_title: "Changelog"
 
 # Changelog
 
+<<<<<<< HEAD
 ## v1.2.0
 * Add support for importing existing resources into Terraform. All resources that support the import workflow has a
   section in the documentation showing how to import the resource.
@@ -13,6 +14,17 @@ page_title: "Changelog"
 * Add support for adding AWS Cloud Cluster with Elastic Storage. [[docs](../resources/aws_cloud_cluster)]
 * Add support for onboarding the RSC feature `SERVERS_AND_APPS` using the `polaris_cnp_aws_account` resource.
   [[docs](../resources/aws_cnp_account)]
+=======
+## v1.1.8
+
+* Add support for onboarding AWS DynamoDB
+* Add Tag Rule support for AWS DynamoDB
+
+## v1.1.7
+
+* Add support for adding AWS Cloud Cluster with Elastic Storage. [[docs](../resources/aws_cloud_cluster.md)]
+* Add support for installing AWS feature SERVER_AND_APPS under `polaris_aws_account`. [[docs](../resources/aws_account.md)]
+>>>>>>> 497b03d (Fix Changelog)
 
 ## v1.1.6
 
