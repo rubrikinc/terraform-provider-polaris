@@ -8,39 +8,48 @@ page_title: "Changelog"
 * Add support for importing existing resources into Terraform. All resources that support the import workflow has a
   section in the documentation showing how to import the resource.
 * Add support for Data Scanning Cyber Assisted Recovery feature to the `polaris_aws_account` resource.
+* Add support for onboarding AWS DynamoDB
+* Add Tag Rule support for AWS DynamoDB
 
 ## v1.1.7
-* Add support for adding AWS Cloud Cluster with Elastic Storage. [[docs](../resources/aws_cloud_cluster)]
-* Add support for onboarding the RSC feature `SERVERS_AND_APPS` using the `polaris_cnp_aws_account` resource.
-  [[docs](../resources/aws_cnp_account)]
+
+* Add support for adding AWS Cloud Cluster with Elastic Storage. [[docs](../resources/aws_cloud_cluster.md)]
+* Add support for installing AWS feature SERVER_AND_APPS under `polaris_aws_account`. [[docs](../resources/aws_account.md)]
 
 ## v1.1.6
+
 * Fix a bug in the `polaris_azure_subscription` resource where the wrong mutation was used to update the subscription
   when the subscription was updated to use permission groups and a resource group at the same time.
 
 ## v1.1.5
+
 * Add support for creating DSPM, Data Scanning and Outpost features under `polaris_aws_account`.
-  [[docs](../resources/aws_account)]
+  [[docs](../resources/aws_account.md)]
 
 ## v1.1.4
+
 * Fix a bug where AWS Gov accounts would be erroneously onboarded as standard AWS accounts.
 
 ## v1.1.3
+
 * CCES NTP servers can now be specified using a FQDN. Previously they were required to be IP addresses, now both IP
   addresses and FQDN are allowed.
 
 ## v1.1.2
+
 * Update documentation for the `polaris_aws_cnp_account` and `polaris_azure_subscription` resources.
 * Update documentation for the `polaris_aws_cnp_artifacts`, `polaris_aws_cnp_permissions`, and
   `polaris_azure_permissions` data sources.
 * Add missing documentation to the `polaris_sso_group` and `polaris_user` data sources.
 
 ## v1.1.1
+
 * Add optional `cluster_node_ip_address` field to CDM resources. The field can be used to specify the IP address of the
   cluster node to connect to. [[docs](../resources/cdm_bootstrap.md)] [[docs](../resources/cdm_bootstrap_cces_aws.md)]
   [[docs](../resources/cdm_bootstrap_cces_azure.md)]
 
 ## v1.1.0
+
 * Add `resource_group_name`, `resource_group_region` and `resource_group_tags` fields to the
   `polaris_azure_subscription` resource. These fields can only be used if the `CNP_AZURE_SQL_DB_COPY_BACKUP` feature
   flag has been enabled for the RSC account.
@@ -48,8 +57,8 @@ page_title: "Changelog"
   causing the data source to error out.
 * Require user email addresses of the `polaris_user` resources to be all lower case. RSC automatically converts all
   letters to lower case before storing the email addresses.
-* Add support for AWS custom tags. [[docs](../resources/aws_custom_tags)]
-* Add support for Azure custom tags. [[docs](../resources/azure_custom_tags)]
+* Add support for AWS custom tags. [[docs](../resources/aws_custom_tags.md)]
+* Add support for Azure custom tags. [[docs](../resources/azure_custom_tags.md)]
 * The behavior of the `sdk_auth` field of the `polaris_azure_service_principal` resource has changed. The Azure app name
   is no longer looked up using the Azure AD Graph API. Instead, the app name is generated in a consistent way using the
   Azure app and tenant IDs. This change is made because of the deprecation of the Azure AD Graph API by Microsoft.
@@ -63,13 +72,13 @@ page_title: "Changelog"
 * The `id` field of the `polaris_user` resource has changed from being the email address to being the user ID. Note,
   this is a breaking change if a Terraform configuration expects the `id` field be an email address.
 * Add `polaris_sso_group` data source. The `polaris_sso_group` data source is used to look up SSO groups in RSC.
-  [[docs](../data-sources/sso_group)]
+  [[docs](../data-sources/sso_group.md)]
 * Add `polaris_user` data source. The `polaris_user` data source is used to look up users in RSC.
-  [[docs](../data-sources/user)]
+  [[docs](../data-sources/user.md)]
 * Add `polaris_tag_rule` data source and resource. The `polaris_tag_rule` resource is used to create and manage RSC tag
-  rules. [[docs](../data-sources/tag_rule)]  [[docs](../resources/tag_rule)]
+  rules. [[docs](../data-sources/tag_rule.md)]  [[docs](../resources/tag_rule.md)]
 * Add `polaris_sla_domain_assignment` resource. The `polaris_sla_domain_assignment` resource is used to assign an SLA
-  domain to a workload. [[docs](../resources/sla_domain_assignment)]
+  domain to a workload. [[docs](../resources/sla_domain_assignment.md)]
 * Add support for updating the `app_name` and `app_secret` fields of the `polaris_azure_service_principal` resource
   without recreating the resource.
 * Add `feature` field to the `polaris_aws_account` data source.
@@ -85,9 +94,10 @@ page_title: "Changelog"
 * Fix a bug in the `polaris_azure_exocompute` resource where an AWS GraphQL endpoint was incorrectly called when mapping
   an Azure cloud account.
 * Add support for registering clusters with RSC using the `polaris_cdm_registration` resource.
-  [[docs](../resources/cdm_registration)]
+  [[docs](../resources/cdm_registration.md)]
 
 ## v1.0.0
+
 * Fix a bug in the `polaris_aws_exocompute` resource. The `subnets` field was erroneously populated with subnets even
   when the Exocompute configuration did not contain any subnets.
 * Fix a regression in the `polaris_azure_archival_location` data source. An extra level of structure in the RSC response
@@ -101,20 +111,20 @@ page_title: "Changelog"
   used with the `id` field of the `polaris_aws_cnp_permissions` data source to trigger an update of the resource
   whenever the permissions changes. This update will move the RSC cloud account from the missing permissions state.
 * Add support for Azure Bring Your Own Kubernetes Exocompute, also known as BYOK and customer managed Exocompute.
-  [[docs](../resources/azure_exocompute_cluster_attachment)] [[docs](../resources/azure_private_container_registry)]
+  [[docs](../resources/azure_exocompute_cluster_attachment.md)] [[docs](../resources/azure_private_container_registry.md)]
 * Add support for the Cloud Native Blob Protection feature to the `polaris_azure_subscription` resource.
-  [[docs](../resources/azure_subscription#nested-schema-for-cloud_native_blob_protection)]
+  [[docs](../resources/azure_subscription.md#nested-schema-for-cloud_native_blob_protection)]
 * Fix a regression in the cloud native archival location resources. An extra level of structure in the RSC response
   caused resource refreshes to fail.
-* Add support for creating data center AWS accounts. [[docs](../resources/data_center_aws_account)]
-* Add support for creating data center Azure subscriptions. [[docs](../resources/data_center_azure_subscription)]
+* Add support for creating data center AWS accounts. [[docs](../resources/data_center_aws_account.md)]
+* Add support for creating data center Azure subscriptions. [[docs](../resources/data_center_azure_subscription.md)]
 * Add support for creating Amazon S3 data center archival locations.
-  [[docs](../resources/data_center_archival_location_amazon_s3)]
-* Add `polaris_data_center_aws_account` data source. [[docs](../data-sources/data_center_aws_account)]
-* Add `polaris_data_center_azure_subscription` data source. [[docs](../data-sources/data_center_azure_subscription)]
+  [[docs](../resources/data_center_archival_location_amazon_s3.md)]
+* Add `polaris_data_center_aws_account` data source. [[docs](../data-sources/data_center_aws_account.md)]
+* Add `polaris_data_center_azure_subscription` data source. [[docs](../data-sources/data_center_azure_subscription.md)]
 * Add the field `manifest` to the `polaris_aws_exocompute_cluster_attachment` resource. The `manifest` field contains
   a Kubernetes manifest that can be passed to the Kubernetes Terraform provider or `kubectl` to establish a connection
-  between the AWS EKS cluster and RSC. [[docs](../resources/aws_exocompute_cluster_attachment)]
+  between the AWS EKS cluster and RSC. [[docs](../resources/aws_exocompute_cluster_attachment.md)]
 * Deprecate the `setup_yaml` field in the `polaris_aws_exocompute_cluster_attachment` resource. Use the `manifest` field
   instead.
 * The authentication token cache can now be controlled by the `polaris` provider configuration.
@@ -122,23 +132,24 @@ page_title: "Changelog"
   the content of an RSC service account credentials file.
 
 ## v0.9.0
+
 * Update the `polaris_aws_archival_location` resource to support updates of the `bucket_tags` field without recreating
   the resources.
-* Add `polaris_aws_account` data source. [[docs](../data-sources/aws_account)]
-* Add `polaris_azure_subscription` data source. [[docs](../data-sources/azure_subscription)]
+* Add `polaris_aws_account` data source. [[docs](../data-sources/aws_account.md)]
+* Add `polaris_azure_subscription` data source. [[docs](../data-sources/azure_subscription.md)]
 * Deprecate the `archival_location_id` field in the `polaris_aws_archival_location` data source. Use the `id` field
   instead.
 * Deprecate the `archival_location_id` field in the `polaris_azure_archival_location` data source. Use the `id` field
   instead.
 * Add the field `setup_yaml` to the `polaris_aws_exocompute_cluster_attachment` resource. The `setup_yaml` field
   contains K8s specs that can be passed to `kubectl` to establish a connection between the AWS EKS cluster and RSC.
-  [[docs](../resources/aws_exocompute_cluster_attachment)]
+  [[docs](../resources/aws_exocompute_cluster_attachment.md)]
 * Fix a bug in the AWS feature removal code that causes removal of the `CLOUD_NATIVE_S3_PROTECTION` feature to fail.
 * Improve the code that waits for RSC features to be disabled. The code now checks both the status of the job and the
   status of the cloud account.
 * Improve the documentation for AWS data sources and resources.
 * Update guides.
-* Add `polaris_azure_archival_location` data source. [[docs](../data-sources/azure_archival_location)]
+* Add `polaris_azure_archival_location` data source. [[docs](../data-sources/azure_archival_location.md)]
 * Fix a bug in the `polaris_azure_archival_location` resource where the cloud account UUID would be passed to the RSC
   API instead of the Azure subscription UUID when creating an Azure archival location.
 * Fix a bug in the `polaris_aws_cnp_account` resource where destroying it would constantly result in an *objects not
@@ -148,20 +159,20 @@ page_title: "Changelog"
   the RSC UI would show the status as "Update permissions" even though the app registration would have all the required
   permissions.
 * Move changelog and upgrade guides to guides folder.
-* Add support for creating Azure cloud native archival locations. [[docs](../resources/azure_archival_location)]
+* Add support for creating Azure cloud native archival locations. [[docs](../resources/azure_archival_location.md)]
 * Fix a bug in the `polaris_aws_exocompute` resource where customer supplied security groups were not validated
   correctly.
 * Add support for shared Exocompute to the `polaris_azure_exocompute` resource.
-  [[docs](../resources/azure_exocompute#host_cloud_account_id)]
-* Add the `polaris_account` data source. [[docs](../data-sources/account)]
+  [[docs](../resources/azure_exocompute.md#host_cloud_account_id)]
+* Add the `polaris_account` data source. [[docs](../data-sources/account.md)]
 * Add support for the Cloud Native Archival feature to the `polaris_azure_subscription` resource.
-  [[docs](../resources/azure_subscription#nested-schema-for-cloud_native_archival)]
+  [[docs](../resources/azure_subscription.md#nested-schema-for-cloud_native_archival)]
 * Add support for the Cloud Native Archival Encryption feature to the `polaris_azure_subscription` resource.
-  [[docs](../resources/azure_subscription#nested-schema-for-cloud_native_archival_encryption)]
+  [[docs](../resources/azure_subscription.md#nested-schema-for-cloud_native_archival_encryption)]
 * Add support for the Azure SQL Database Protection feature to the `polaris_azure_subscription` resource.
-  [[docs](../resources/azure_subscription#nested-schema-for-sql_db_protection)]
+  [[docs](../resources/azure_subscription.md#nested-schema-for-sql_db_protection)]
 * Add support for the Azure SQL Managed Instance Protection feature to the `polaris_azure_subscription` resource.
-  [[docs](../resources/azure_subscription#nested-schema-for-sql_mi_protection)]
+  [[docs](../resources/azure_subscription.md#nested-schema-for-sql_mi_protection)]
 * Add support for specifying an Azure resource group when onboarding the Cloud Native Archival, Cloud Native Archival
   Encryption, Cloud Native Protection or Exocompute features using the `polaris_azure_subscription` resource.
-  [[docs](../resources/azure_subscription#optional)]
+  [[docs](../resources/azure_subscription.md#optional)]
