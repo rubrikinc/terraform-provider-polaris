@@ -14,6 +14,9 @@ description: |-
   CLOUD_NATIVE_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the
   feature.
+  CLOUD_NATIVE_DYNAMODB_PROTECTION
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   CLOUD_NATIVE_S3_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the
   feature.
@@ -45,6 +48,10 @@ are used when specifying the feature set.
     feature.
 
 `CLOUD_NATIVE_PROTECTION`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+
+`CLOUD_NATIVE_DYNAMODB_PROTECTION`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
@@ -135,5 +142,5 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
 - `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
