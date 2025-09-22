@@ -60,7 +60,7 @@ resource "polaris_tag_rule" "rule" {
 ### Required
 
 - `name` (String) Tag rule name.
-- `object_type` (String) Object type to which the tag rule will be applied. Possible values are `AWS_EBS_VOLUME`, `AWS_EC2_INSTANCE`, `AWS_RDS_INSTANCE`, `AWS_S3_BUCKET`, `AZURE_MANAGED_DISK`, `AZURE_SQL_DATABASE_DB`, `AZURE_SQL_DATABASE_SERVER`, `AZURE_SQL_MANAGED_INSTANCE_SERVER`, `AZURE_STORAGE_ACCOUNT` and `AZURE_VIRTUAL_MACHINE`. Changing this forces a new resource to be created.
+- `object_type` (String) Object type to which the tag rule will be applied. Possible values are `AWS_EBS_VOLUME`, `AWS_EC2_INSTANCE`, `AWS_RDS_INSTANCE`, `AWS_S3_BUCKET`, `AWS_DYNAMODB_TABLE`, `AZURE_MANAGED_DISK`, `AZURE_SQL_DATABASE_DB`, `AZURE_SQL_DATABASE_SERVER`, `AZURE_SQL_MANAGED_INSTANCE_SERVER`, `AZURE_STORAGE_ACCOUNT` and `AZURE_VIRTUAL_MACHINE`. Changing this forces a new resource to be created.
 - `tag_key` (String) Tag key to match. Changing this forces a new resource to be created.
 
 ### Optional
