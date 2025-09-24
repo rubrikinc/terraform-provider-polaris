@@ -10,7 +10,7 @@ Note that the provider requires Terraform version 0.15.x or newer.
 To use the official version of the provider built by Rubrik and published to the Terraform Registry, use the following
 snippet at the top of your Terraform configuration:
 
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {
@@ -73,7 +73,7 @@ To use a local user account with the provider first create a directory called `.
 directory create a file called `polaris-accounts.json`. This JSON file can hold one or more local user accounts as per
 this pattern:
 
-```hcl
+```json
 {
   "<my-account>": {
     "username": "<my-username>",
@@ -83,8 +83,8 @@ this pattern:
 }
 ```
 
-Where *my-account* is an arbitrary name used to refer to the account when configuring the provider in the Terraform
-configuration. *my-username* and *my-password* are the username and password of the local user account. *my-polaris-url*
+Where _my-account_ is an arbitrary name used to refer to the account when configuring the provider in the Terraform
+configuration. _my-username_ and _my-password_ are the username and password of the local user account. _my-polaris-url_
 is the URL of the Polaris API. The URL normally follows the pattern `https://{polaris-domain}.my.rubrik.com/api`. Which
 is the same URL as for accessing the Polaris UI but with `/api` added to the end.
 
@@ -103,7 +103,7 @@ account is `john.doe@example.org` and `password123` the content of the `polaris-
 
 Where `johndoe` will be used to refer to this account from our Terraform configuration:
 
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {
@@ -136,7 +136,7 @@ To use a service account with the provider first download the service account cr
 Polaris User Management UI page. Next, configure the provider to use the the downloaded credentials file in the
 Terraform configuration:
 
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {
@@ -213,7 +213,7 @@ After the above commands the directory structure under `~/.terraform.d` would be
 
 To use the local provider in a Terraform configuration use the following snippet at the top of the file:
 
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {

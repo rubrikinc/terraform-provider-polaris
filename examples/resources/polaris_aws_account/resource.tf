@@ -113,8 +113,6 @@ resource "polaris_aws_account" "default" {
   }
 }
 
-<<<<<<< HEAD
-=======
 # Enable Cloud Native Protection and Cyber Recovery Data Scanning with Outpost.
 resource "polaris_aws_account" "default" {
   profile = "default"
@@ -157,4 +155,3 @@ resource "polaris_aws_account" "default" {
 output "stack_arn" {
   value = polaris_aws_account.default.exocompute[0].stack_arn
 }
->>>>>>> 54e9d2d (Add Data Scanning Cyber Recovery)
