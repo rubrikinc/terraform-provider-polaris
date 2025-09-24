@@ -230,8 +230,14 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 			return diag.FromErr(err)
 		}
 
-		if err := d.Set(keyCloudAccountID, appID.String()); err != nil {
-			return diag.FromErr(err)
+		if _, ok := d.GetOk(keySubscriptionID); ok {
+			if err := d.Set(keySubscriptionID, appID.String()); err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			if err := d.Set(keyCloudAccountID, appID.String()); err != nil {
+				return diag.FromErr(err)
+			}
 		}
 		if err := d.Set(keyHostCloudAccountID, hostID.String()); err != nil {
 			return diag.FromErr(err)
@@ -250,9 +256,14 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		if err != nil {
 			return diag.FromErr(err)
 		}
-
-		if err := d.Set(keyCloudAccountID, exoConfig.CloudAccountID.String()); err != nil {
-			return diag.FromErr(err)
+		if _, ok := d.GetOk(keySubscriptionID); ok {
+			if err := d.Set(keySubscriptionID, exoConfig.CloudAccountID.String()); err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			if err := d.Set(keyCloudAccountID, exoConfig.CloudAccountID.String()); err != nil {
+				return diag.FromErr(err)
+			}
 		}
 		if err := d.Set(keyRegion, exoConfig.Region.Name()); err != nil {
 			return diag.FromErr(err)
