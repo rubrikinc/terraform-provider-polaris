@@ -1,5 +1,5 @@
-# Enable Cloud Native Protection
-resource "polaris_aws_account" "default" {
+# Enable Cloud Native Protection in the us-east-2 region.
+resource "polaris_aws_account" "account" {
   profile = "default"
 
   cloud_native_protection {
@@ -13,8 +13,10 @@ resource "polaris_aws_account" "default" {
   }
 }
 
-# Enable Cloud Native Protection and Exocompute.
-resource "polaris_aws_account" "default" {
+# Enable Cloud Native Protection in teh us-east-2 and us-west-2 regions
+# and Exocompute in the us-west-2 region. The Exocompute cluster will be
+# managed by RSC.
+resource "polaris_aws_account" "account" {
   profile = "default"
 
   cloud_native_protection {
@@ -39,7 +41,6 @@ resource "polaris_aws_account" "default" {
     ]
   }
 }
-
 # Enable Cloud Native Protection and DSPM with Outpost.
 resource "polaris_aws_account" "default" {
   profile = "default"
@@ -112,9 +113,3 @@ resource "polaris_aws_account" "default" {
   }
 }
 
-
-
-# The Couldformation stack ARN is available after creation
-output "stack_arn" {
-  value = polaris_aws_account.default.exocompute[0].stack_arn
-}

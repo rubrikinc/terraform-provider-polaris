@@ -731,6 +731,9 @@ func resourceAzureSubscription() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 
 		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{

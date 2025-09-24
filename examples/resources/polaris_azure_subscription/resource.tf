@@ -1,6 +1,3 @@
-# Enable the Cloud Native Protection and Exocompute RSC features in the EastUS2
-# region. Use the polaris_azure_permissions data source to detect changes in the
-# permissions required by RSC and inform RSC about permission updates.
 data "polaris_azure_permissions" "cloud_native_protection" {
   feature = "CLOUD_NATIVE_PROTECTION"
   permission_groups = [
@@ -18,7 +15,7 @@ data "polaris_azure_permissions" "exocompute" {
   ]
 }
 
-resource "polaris_azure_subscription" "default" {
+resource "polaris_azure_subscription" "subscription" {
   subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
   tenant_domain   = "my-domain.onmicrosoft.com"
 

@@ -27,8 +27,8 @@ center archival.
 ## Example Usage
 
 ```terraform
-resource "polaris_data_center_azure_subscription" "archival" {
-  name            = "archival-subscription"
+resource "polaris_data_center_azure_subscription" "subscription" {
+  name            = "dc-archival-subscription"
   description     = "Azure subscription used for data center archival"
   subscription_id = "19ce1d0f-8980-41f5-886f-d1dc985f553b"
 }
@@ -50,3 +50,22 @@ resource "polaris_data_center_azure_subscription" "archival" {
 
 - `id` (String) RSC data center cloud account ID (UUID).
 - `tenant_id` (String) Azure tenant ID (UUID).
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_data_center_azure_subscription.subscription
+  id = "dee181fd-175f-499c-8236-ac0b6dfe89c5"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_data_center_azure_subscription.subscription dee181fd-175f-499c-8236-ac0b6dfe89c5
+```

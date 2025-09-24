@@ -131,8 +131,12 @@ of the customer's EKS cluster.
 ## Example Usage
 
 ```terraform
+data "polaris_aws_account" "account" {
+  name = "account"
+}
+
 resource "polaris_aws_private_container_registry" "registry" {
-  account_id = polaris_aws_account.account.id
+  account_id = data.polaris_aws_account.account.id
   native_id  = "123456789012"
   url        = "234567890121.dkr.ecr.us-east-2.amazonaws.com"
 }
@@ -150,3 +154,22 @@ resource "polaris_aws_private_container_registry" "registry" {
 ### Read-Only
 
 - `id` (String) RSC cloud account ID (UUID).
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_aws_private_container_registry.registry
+  id = "1571ec5d-1738-439e-9f49-1830fbecd1b2"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_aws_private_container_registry.registry 1571ec5d-1738-439e-9f49-1830fbecd1b2
+```

@@ -62,6 +62,11 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 				ValidateFunc: validation.IsUUID,
 				Deprecated:   "Use `id` instead.",
 			},
+			keyCloudAccountID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "RSC cloud account ID (UUID).",
+			},
 			keyConnectionStatus: {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -161,6 +166,9 @@ func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m in
 	targetTemplate := targetMapping.TargetTemplate
 	cloudNativeCompanion := targetMapping.TargetTemplate.CloudNativeCompanion
 	if err := d.Set(keyArchivalLocationID, targetMapping.ID.String()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyCloudAccountID, targetMapping.TargetTemplate.CloudAccount.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {

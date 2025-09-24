@@ -36,37 +36,49 @@ import (
 )
 
 const resourceAzureExocomputeDescription = `
-The ´polaris_azure_exocompute´ resource creates an RSC Exocompute configuration for
-Azure workloads.
+The ´polaris_azure_exocompute´ resource creates an RSC Exocompute configuration
+for Azure workloads.
 
-There are 2 types of Exocompute configurations:
- 1. *Host* - When a host configuration is created, RSC will automatically deploy the
-    necessary resources in the specified Azure region to run the Exocompute service.
-    A host configuration can be used by both the host cloud account and application
-    cloud accounts mapped to the host account.
- 2. *Application* - An application configuration is created by mapping the application
-    cloud account to a host cloud account. The application cloud account will leverage
-    the Exocompute resources deployed for the host configuration.
+There are 3 types of Exocompute configurations:
+ 1. *RSC Managed Host* - When a host configuration is created, RSC will
+    automatically deploy the necessary resources in the specified Azure region
+    to run the Exocompute service. A host configuration can be used by both the
+    host cloud account and application cloud accounts mapped to the host
+    account.
+ 2. *Customer Managed Host* - When a customer managed host configuration is
+    created, RSC will not deploy any resources. Instead it will use the Azure
+    AKS cluster attached by the customer, using the
+    ´polaris_azure_exocompute_cluster_attachment´ resource, for all operations.
+ 3. *Application* - An application configuration is created by mapping the
+    application cloud account to a host cloud account. The application cloud
+    account will leverage the Exocompute resources deployed for the host
+    configuration.
 
-Item 1 above requires that the Azure subscription has been onboarded with the
-´exocompute´ feature.
+Item 1 and 2 above requires that the Azure subscription has been onboarded with
+the ´exocompute´ feature.
 
-Since there are 2 types of Exocompute configurations, there are 2 ways to create a
-´polaris_azure_exocompute´ resource:
- 1. Using the ´cloud_account_id´, ´region´, ´subnet´ and ´pod_overlay_network_cidr´
-    fields. This creates a host configuration.
- 2. Using the ´cloud_account_id´ and ´host_cloud_account_id´ fields. This creates an
+Since there are 3 types of Exocompute configurations, there are 3 ways to create
+a ´polaris_azure_exocompute´ resource:
+ 1. Using the ´cloud_account_id´, ´region´, ´subnet´ and
+   ´pod_overlay_network_cidr´ fields creates an RSC managed host configuration.
+ 2. Using the ´cloud_account_id´ and ´region´ fields creates a customer managed
+    host configuration. Note, the ´polaris_azure_exocompute_cluster_attachment´
+    resource must be used to attach an Azure AKS cluster to the Exocompute
+    configuration.
+ 3. Using the ´cloud_account_id´ and ´host_cloud_account_id´ fields creates an
     application configuration.
 
 ~> **Note:** A host configuration can be created without specifying the
-   ´pod_overlay_network_cidr´ field, this is discouraged and should only be done for
-   backwards compatibility reasons.
+   ´pod_overlay_network_cidr´ field, this is discouraged and should only be done
+   for backwards compatibility reasons.
 
--> **Note:** Customer-managed Exocompute is sometimes referred to as Bring Your Own
-   Kubernetes (BYOK). Using both host and application Exocompute configurations is
-   sometimes referred to as shared Exocompute.
+-> **Note:** Customer managed Exocompute is sometimes referred to as Bring Your
+   Own Kubernetes (BYOK). Using both host and application Exocompute
+   configurations is sometimes referred to as shared Exocompute.
 `
 
+// This resource uses a template for its documentation, remember to update the
+// template if the documentation for any field changes.
 func resourceAzureExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateExocompute,
@@ -84,7 +96,7 @@ func resourceAzureExocompute() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
-				ExactlyOneOf: []string{keyCloudAccountID, keySubscriptionID},
+				ExactlyOneOf: []string{keySubscriptionID},
 				Description: "RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for " +
 					"which the Exocompute service runs. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.IsUUID,
@@ -93,7 +105,7 @@ func resourceAzureExocompute() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
-				AtLeastOneOf: []string{keyHostCloudAccountID, keyRegion},
+				AtLeastOneOf: []string{keyRegion},
 				Description: "RSC cloud account ID of the shared exocompute host account. Changing this forces a new " +
 					"resource to be created.",
 				ValidateFunc: validation.IsUUID,
@@ -133,6 +145,9 @@ func resourceAzureExocompute() *schema.Resource {
 				Deprecated:   "use `cloud_account_id` instead.",
 				ValidateFunc: validation.IsUUID,
 			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 		SchemaVersion: 1,
 		StateUpgraders: []schema.StateUpgrader{{
@@ -215,6 +230,15 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 			return diag.FromErr(err)
 		}
 
+		if _, ok := d.GetOk(keySubscriptionID); ok {
+			if err := d.Set(keySubscriptionID, appID.String()); err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			if err := d.Set(keyCloudAccountID, appID.String()); err != nil {
+				return diag.FromErr(err)
+			}
+		}
 		if err := d.Set(keyHostCloudAccountID, hostID.String()); err != nil {
 			return diag.FromErr(err)
 		}
@@ -232,7 +256,15 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		if err != nil {
 			return diag.FromErr(err)
 		}
-
+		if _, ok := d.GetOk(keySubscriptionID); ok {
+			if err := d.Set(keySubscriptionID, exoConfig.CloudAccountID.String()); err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			if err := d.Set(keyCloudAccountID, exoConfig.CloudAccountID.String()); err != nil {
+				return diag.FromErr(err)
+			}
+		}
 		if err := d.Set(keyRegion, exoConfig.Region.Name()); err != nil {
 			return diag.FromErr(err)
 		}

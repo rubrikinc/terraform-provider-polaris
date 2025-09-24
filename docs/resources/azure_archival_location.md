@@ -81,7 +81,7 @@ resource "polaris_azure_archival_location" "archival_location" {
 
 ### Required
 
-- `cloud_account_id` (String) RSC cloud account ID. Changing this forces a new resource to be created.
+- `cloud_account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
 - `name` (String) Cloud native archival location name.
 - `storage_account_name_prefix` (String) Azure storage account name prefix. The storage account name prefix cannot be longer than 14 characters and can only consist of numbers and lower case letters. Changing this forces a new resource to be created.
 
@@ -108,3 +108,22 @@ Required:
 - `name` (String) Key name.
 - `region` (String) The region in which the key will be used. Regions without customer managed keys will use platform managed keys.
 - `vault_name` (String) Key vault name.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_azure_archival_location.archival_location
+  id = "a3386457-f775-452e-818d-d8fbae1e90bb"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_azure_archival_location.archival_location a3386457-f775-452e-818d-d8fbae1e90bb
+```

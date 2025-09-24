@@ -150,9 +150,6 @@ are used when specifying the feature set.
 ## Example Usage
 
 ```terraform
-# Enable the Cloud Native Protection and Exocompute RSC features in the EastUS2
-# region. Use the polaris_azure_permissions data source to detect changes in the
-# permissions required by RSC and inform RSC about permission updates.
 data "polaris_azure_permissions" "cloud_native_protection" {
   feature = "CLOUD_NATIVE_PROTECTION"
   permission_groups = [
@@ -170,7 +167,7 @@ data "polaris_azure_permissions" "exocompute" {
   ]
 }
 
-resource "polaris_azure_subscription" "default" {
+resource "polaris_azure_subscription" "subscription" {
   subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
   tenant_domain   = "my-domain.onmicrosoft.com"
 
@@ -358,3 +355,22 @@ Optional:
 Read-Only:
 
 - `status` (String) Status of the SQL MI Protection feature.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_azure_subscription.subscription
+  id = "3d5b93aa-67a7-46b5-b2e4-7527bdd96c95"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+% terraform import polaris_azure_subscription.subscription 3d5b93aa-67a7-46b5-b2e4-7527bdd96c95
+```

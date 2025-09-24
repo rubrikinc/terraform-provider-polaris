@@ -245,6 +245,7 @@ const (
 	keyTokenCacheDir                                = "token_cache_dir"
 	keyTokenCacheSecret                             = "token_cache_secret"
 	keyTokenRefresh                                 = "token_refresh"
+	keyTrustPolicies                                = "trust_policies"
 	keyURL                                          = "url"
 	keyUserAssignedManagedIdentityName              = "user_assigned_managed_identity_name"
 	keyUserAssignedManagedIdentityPrincipalID       = "user_assigned_managed_identity_principal_id"

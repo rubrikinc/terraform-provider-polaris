@@ -47,8 +47,8 @@ func stringIsInteger(m interface{}, p cty.Path) diag.Diagnostics {
 	return nil
 }
 
-// resourceGcpProject defines the schema for the GCP project resource. Note
-// that the update function only changes the local state.
+// This resource uses a template for its documentation, remember to update the
+// template if the documentation for any field changes.
 func resourceGcpProject() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: gcpCreateProject,
@@ -76,7 +76,7 @@ func resourceGcpProject() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				ExactlyOneOf:     []string{"credentials", "project_number"},
+				ExactlyOneOf:     []string{"project_number"},
 				Description:      "Path to GCP service account key file.",
 				ValidateDiagFunc: fileExists,
 			},
@@ -123,7 +123,9 @@ func resourceGcpProject() *schema.Resource {
 				ValidateDiagFunc: stringIsInteger,
 			},
 		},
-
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 		SchemaVersion: 2,
 		StateUpgraders: []schema.StateUpgrader{{
 			Type:    resourceGcpProjectV0().CoreConfigSchema().ImpliedType(),

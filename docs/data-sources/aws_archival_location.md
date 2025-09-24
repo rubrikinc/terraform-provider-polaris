@@ -37,6 +37,7 @@ data "polaris_aws_archival_location" "location" {
 
 ### Read-Only
 
+- `account_id` (String) RSC cloud account ID (UUID).
 - `bucket_prefix` (String) AWS bucket prefix. Note, `rubrik-` will always be prepended to the prefix.
 - `bucket_tags` (Map of String) AWS bucket tags.
 - `connection_status` (String) Connection status of the archival location.
