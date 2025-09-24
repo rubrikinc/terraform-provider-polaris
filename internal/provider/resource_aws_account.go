@@ -533,7 +533,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	cyberRecoveryDataScanningBlock, ok := d.GetOk(keyCyberRecoveryDataScanning)
 	if ok {
-		block := cyberRecoveryDataScanningBlock.([]interface{})[0].(map[string]interface{})
+		block := cyberRecoveryDataScanningBlock.([]any)[0].(map[string]interface{})
 		features := []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}
 		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
 			for i := range features {
@@ -994,8 +994,8 @@ func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, m interface
 func handleCyberRecoveryDataScanningUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
 	features := []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}
 	oldCyberRecoveryDataScanningBlock, newCyberRecoveryDataScanningBlock := d.GetChange(keyCyberRecoveryDataScanning)
-	oldCyberRecoveryDataScanningList := oldCyberRecoveryDataScanningBlock.([]interface{})
-	newCyberRecoveryDataScanningList := newCyberRecoveryDataScanningBlock.([]interface{})
+	oldCyberRecoveryDataScanningList := oldCyberRecoveryDataScanningBlock.([]any)
+	newCyberRecoveryDataScanningList := newCyberRecoveryDataScanningBlock.([]any)
 	for _, feature := range features {
 		if err := updateToNewBlock(ctx, d, m, client, id, oldCyberRecoveryDataScanningList, newCyberRecoveryDataScanningList, account, feature); err != nil {
 			return err

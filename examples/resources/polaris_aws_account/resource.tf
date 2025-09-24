@@ -118,6 +118,7 @@ resource "polaris_aws_account" "default" {
 # Enable Cloud Native Protection and Cyber Recovery Data Scanning with Outpost.
 resource "polaris_aws_account" "default" {
   profile = "default"
+
   cloud_native_protection {
     permission_groups = [
       "BASIC",
