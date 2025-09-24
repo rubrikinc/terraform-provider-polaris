@@ -4,6 +4,9 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.1.8
+* Update Go version used to build provider.
+
 ## v1.1.7
 * Add support for adding AWS Cloud Cluster with Elastic Storage. [[docs](../resources/aws_cloud_cluster)]
 * Add support for installing AWS feature SERVER_AND_APPS under `polaris_aws_account`. [[docs](../resources/aws_account)]

@@ -1,6 +1,6 @@
 module github.com/rubrikinc/terraform-provider-polaris
 
-go 1.23.7
+go 1.24.7
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.3.0
