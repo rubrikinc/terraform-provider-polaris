@@ -54,6 +54,10 @@ are used when specifying the feature set.
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
 
+´CLOUD_NATIVE_DYNAMODB_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´CLOUD_NATIVE_S3_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
@@ -451,9 +455,9 @@ func featureResource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.",
+					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.",
 				ValidateFunc: validation.StringInSlice([]string{
-					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION", "EXOCOMPUTE",
+					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", `CLOUD_NATIVE_DYNAMODB_PROTECTION`, "CLOUD_NATIVE_S3_PROTECTION", "EXOCOMPUTE",
 					"RDS_PROTECTION", "SERVERS_AND_APPS",
 				}, false),
 			},

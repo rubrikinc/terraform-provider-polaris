@@ -8,6 +8,8 @@ page_title: "Changelog"
 * Add support for importing existing resources into Terraform. All resources that support the import workflow has a
   section in the documentation showing how to import the resource.
 * Add support for Data Scanning Cyber Assisted Recovery feature to the `polaris_aws_account` resource.
+* Add support for onboarding AWS DynamoDB using the `polaris_aws_cnp_account` resource.
+* Add support for managing tag rules for AWS DynamoDB using the `polaris_tag_rule` resource.
 
 ## v1.1.7
 * Add support for adding AWS Cloud Cluster with Elastic Storage. [[docs](../resources/aws_cloud_cluster)]

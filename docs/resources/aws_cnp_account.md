@@ -19,6 +19,10 @@ are used when specifying the feature set.
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
+`CLOUD_NATIVE_DYNAMODB_PROTECTION`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+
 `CLOUD_NATIVE_S3_PROTECTION`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
@@ -58,6 +62,10 @@ are used when specifying the feature set.
     feature.
 
 `CLOUD_NATIVE_PROTECTION`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+
+`CLOUD_NATIVE_DYNAMODB_PROTECTION`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
