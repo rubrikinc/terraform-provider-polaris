@@ -64,6 +64,7 @@ const (
 	keyCustomerManagedKey                           = "customer_managed_key"
 	keyCustomerManagedPolicies                      = "customer_managed_policies"
 	keyCustomTags                                   = "custom_tags"
+	keyCyberRecoveryDataScanning                    = "cyber_recovery_data_scanning"
 	keyDataActions                                  = "data_actions"
 	keyDataScanning                                 = "data_scanning"
 	keyDeleteSnapshotsOnDestroy                     = "delete_snapshots_on_destroy"

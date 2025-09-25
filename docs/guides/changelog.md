@@ -7,6 +7,7 @@ page_title: "Changelog"
 ## v1.2.0
 * Add support for importing existing resources into Terraform. All resources that support the import workflow has a
   section in the documentation showing how to import the resource.
+* Add support for Data Scanning Cyber Assisted Recovery feature to the `polaris_aws_account` resource.
 
 ## v1.1.7
 * Add support for adding AWS Cloud Cluster with Elastic Storage. [[docs](../resources/aws_cloud_cluster)]
