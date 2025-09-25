@@ -93,12 +93,11 @@ resource "polaris_aws_cnp_account_trust_policy" "trust_policy" {
 
 - `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
 - `role_key` (String) RSC artifact key for the AWS role. Possible values are `CROSSACCOUNT`, `EXOCOMPUTE_EKS_MASTERNODE` and `EXOCOMPUTE_EKS_WORKERNODE`. Changing this forces a new resource to be created.
-- `features` (Set of String) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`. Changing this forces a new resource to be created.
 
 ### Optional
 
 - `external_id` (String) Trust policy external ID. If not specified, RSC will generate an external ID. Note, once the external ID has been set it cannot be changed. Changing this forces a new resource to be created.
-- `features` (Set of String, Deprecated) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`. **Deprecated:** no longer used by the provider, any value set is ignored.
+- `features` (Set of String, Deprecated) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`. **Deprecated:** no longer used by the provider, any value set is ignored.
 
 ### Read-Only
 
