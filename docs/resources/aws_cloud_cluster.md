@@ -54,15 +54,15 @@ resource "polaris_aws_cloud_cluster" "example" {
     bucket_name             = "my-s3-bucket"
     enable_immutability     = true
     keep_cluster_on_failure = false
+  }
 
-    vm_config {
-      cdm_version           = "9.4.0-p2-30507"
-      instance_type         = "M6I_2XLARGE"
-      instance_profile_name = "RubrikCloudClusterInstanceProfile"
-      vpc_id                = "vpc-12345678"
-      subnet_id             = "subnet-12345678"
-      security_group_ids    = ["sg-12345678", "sg-45678901"]
-    }
+  vm_config {
+    cdm_version           = "9.4.0-p2-30507"
+    instance_type         = "M6I_2XLARGE"
+    instance_profile_name = "RubrikCloudClusterInstanceProfile"
+    vpc_id                = "vpc-12345678"
+    subnet_id             = "subnet-12345678"
+    security_group_ids    = ["sg-12345678", "sg-45678901"]
   }
 }
 ```
