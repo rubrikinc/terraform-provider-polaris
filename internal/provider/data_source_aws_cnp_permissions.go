@@ -21,9 +21,11 @@
 package provider
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -172,6 +174,21 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	slices.SortFunc(customerPolicies, func(i, j aws.CustomerManagedPolicy) int {
+		if r := cmp.Compare(i.Artifact, j.Artifact); r != 0 {
+			return r
+		}
+		if r := cmp.Compare(i.Feature.Name, j.Feature.Name); r != 0 {
+			return r
+		}
+		return cmp.Compare(i.Name, j.Name)
+	})
+	slices.SortFunc(managedPolicies, func(i, j aws.ManagedPolicy) int {
+		if r := cmp.Compare(i.Artifact, j.Artifact); r != 0 {
+			return r
+		}
+		return cmp.Compare(i.Name, j.Name)
+	})
 
 	// The hash is created from customer managed policies and managed policies
 	// matching the role key.
@@ -208,6 +225,5 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	}
 
 	d.SetId(fmt.Sprintf("%x", hash.Sum(nil)))
-
 	return nil
 }

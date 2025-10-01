@@ -197,7 +197,7 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 		regions = append(regions, region.(string))
 	}
 
-	id, err := aws.Wrap(client).AddAccount(ctx, aws.AccountWithName(cloud, nativeID, name), features, aws.Regions(regions...))
+	id, err := aws.Wrap(client).AddAccountWithIAM(ctx, aws.AccountWithName(cloud, nativeID, name), features, aws.Regions(regions...))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -321,7 +321,7 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 	}
 
 	if d.HasChange(keyName) {
-		if err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), core.FeatureAll, aws.Name(name)); err != nil {
+		if err := aws.Wrap(client).UpdateAccount(ctx, id, core.FeatureAll, aws.Name(name)); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -355,12 +355,12 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 		removeFeatures, updateFeatures := diffFeatures(oldFeatures, newFeatures)
 		account := aws.AccountWithName(cloud, nativeID, name)
 		if len(updateFeatures) > 0 {
-			if _, err := aws.Wrap(client).AddAccount(ctx, account, updateFeatures, aws.Regions(regions...)); err != nil {
+			if _, err := aws.Wrap(client).AddAccountWithIAM(ctx, account, updateFeatures, aws.Regions(regions...)); err != nil {
 				return diag.FromErr(err)
 			}
 		}
 		if len(removeFeatures) > 0 {
-			if err := aws.Wrap(client).RemoveAccount(ctx, account, removeFeatures, deleteSnapshots); err != nil {
+			if err := aws.Wrap(client).RemoveAccountWithIAM(ctx, account, removeFeatures, deleteSnapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -373,7 +373,7 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 		}
 
 		for _, feature := range features {
-			if err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), feature, aws.Regions(regions...)); err != nil {
+			if err := aws.Wrap(client).UpdateAccount(ctx, id, feature, aws.Regions(regions...)); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -401,7 +401,7 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 	name := d.Get(keyName).(string)
 	nativeID := d.Get(keyNativeID).(string)
 
-	if err := aws.Wrap(client).RemoveAccount(ctx, aws.AccountWithName(cloud, nativeID, name), features, deleteSnapshots); err != nil {
+	if err := aws.Wrap(client).RemoveAccountWithIAM(ctx, aws.AccountWithName(cloud, nativeID, name), features, deleteSnapshots); err != nil {
 		return diag.FromErr(err)
 	}
 

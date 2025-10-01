@@ -434,7 +434,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 		var err error
 		cnpOpts = append(cnpOpts, opts...)
-		id, err = aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, cnpOpts...)
+		id, err = aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, cnpOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -455,7 +455,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		exoOpts = append(exoOpts, opts...)
-		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, exoOpts...)
+		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, exoOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -479,7 +479,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		outpostOpts = append(outpostOpts, opts...)
-		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, outpostOpts...)
+		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, outpostOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -502,7 +502,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		dspmOpts = append(dspmOpts, opts...)
-		_, err := aws.Wrap(client).AddAccount(ctx, account, features, dspmOpts...)
+		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, features, dspmOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -525,7 +525,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		dataScanningOpts = append(dataScanningOpts, opts...)
-		_, err := aws.Wrap(client).AddAccount(ctx, account, features, dataScanningOpts...)
+		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, features, dataScanningOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -546,7 +546,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		cyberRecoveryDataScanningOpts = append(cyberRecoveryDataScanningOpts, opts...)
-		_, err := aws.Wrap(client).AddAccount(ctx, account, features, cyberRecoveryDataScanningOpts...)
+		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, features, cyberRecoveryDataScanningOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -853,7 +853,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				opts = append(opts, aws.Region(region.(string)))
 			}
 
-			if err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), feature, opts...); err != nil {
+			if err := aws.Wrap(client).UpdateAccount(ctx, id, feature, opts...); err != nil {
 				return diag.FromErr(err)
 			}
 		} else {
@@ -862,7 +862,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 			}
 
 			snapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
-			if err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, snapshots); err != nil {
+			if err := aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, snapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -1020,7 +1020,7 @@ func handleOutpostUpdate(ctx context.Context, d *schema.ResourceData, client *po
 		} else {
 			opts = append(opts, aws.OutpostAccount(block[keyOutpostAccountID].(string)))
 		}
-		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
+		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, opts...)
 		if err != nil {
 			return err
 		}
@@ -1037,7 +1037,7 @@ func handleOutpostUpdate(ctx context.Context, d *schema.ResourceData, client *po
 				}
 			}
 		}
-		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureOutpost}, false)
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureOutpost}, false)
 		if err != nil {
 			return err
 		}
@@ -1087,12 +1087,12 @@ func updateToNewBlock(ctx context.Context, d *schema.ResourceData, m interface{}
 			opts = append(opts, aws.Region(region.(string)))
 		}
 
-		_, err := aws.Wrap(client).AddAccount(ctx, account, []core.Feature{feature}, opts...)
+		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, opts...)
 		if err != nil {
 			return err
 		}
 	case len(newBlock) == 0:
-		err := aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{feature}, false)
+		err := aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{feature}, false)
 		if err != nil {
 			return err
 		}
@@ -1102,7 +1102,7 @@ func updateToNewBlock(ctx context.Context, d *schema.ResourceData, m interface{}
 			opts = append(opts, aws.Region(region.(string)))
 		}
 
-		err := aws.Wrap(client).UpdateAccount(ctx, aws.CloudAccountID(id), feature, opts...)
+		err := aws.Wrap(client).UpdateAccount(ctx, id, feature, opts...)
 		if err != nil {
 			return err
 		}
@@ -1157,34 +1157,34 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	if _, ok := d.GetOk(keyExocompute); ok {
-		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureExocompute}, deleteSnapshots)
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureExocompute}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	if _, ok := d.GetOk(keyCloudNativeProtection); ok {
-		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, deleteSnapshots)
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	if _, ok := d.GetOk(keyDSPM); ok {
-		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}, deleteSnapshots)
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	if _, ok := d.GetOk(keyDataScanning); ok {
-		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}, deleteSnapshots)
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 	if _, ok := d.GetOk(keyCyberRecoveryDataScanning); ok {
-		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}, deleteSnapshots)
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -1204,7 +1204,7 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 				}
 			}
 		}
-		err = aws.Wrap(client).RemoveAccount(ctx, account, []core.Feature{core.FeatureOutpost}, deleteSnapshots)
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureOutpost}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}

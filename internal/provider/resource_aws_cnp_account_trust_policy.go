@@ -60,6 +60,7 @@ var trustPolicyRoleKeys = []string{
 	"CROSSACCOUNT",
 	"EXOCOMPUTE_EKS_MASTERNODE",
 	"EXOCOMPUTE_EKS_WORKERNODE",
+	"EXOCOMPUTE_EKS_LAMBDA",
 }
 
 // This resource uses a template for its documentation, remember to update the
@@ -119,8 +120,8 @@ func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 				Description: "RSC artifact key for the AWS role. Possible values are `CROSSACCOUNT`, " +
-					"`EXOCOMPUTE_EKS_MASTERNODE` and `EXOCOMPUTE_EKS_WORKERNODE`. Changing this forces a new " +
-					"resource to be created.",
+					"`EXOCOMPUTE_EKS_MASTERNODE`, `EXOCOMPUTE_EKS_WORKERNODE` and `EXOCOMPUTE_EKS_LAMBDA`. Changing " +
+					"this forces a new resource to be created.",
 				ValidateFunc: validation.StringInSlice(trustPolicyRoleKeys, false),
 			},
 		},
