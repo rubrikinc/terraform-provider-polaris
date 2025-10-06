@@ -47,7 +47,7 @@ The provider supports Terraform's native logging system (tflog) for improved deb
 
 #### Usage Examples
 
-```bash
+```shell
 # Enable DEBUG logging for the provider, including API calls
 export TF_LOG_PROVIDER_POLARIS=DEBUG
 
@@ -170,7 +170,7 @@ service account the Polaris API URL is derived from this URI.
 To build the provider for your machines OS and hardware architecture run the following command in the root of the
 repository:
 
-```bash
+```shell
 go build
 ```
 
@@ -181,7 +181,7 @@ After the build finishes you should have a binary named `terraform-provider-pola
 To install the newly built provider on your machine you first need to create the directory where Terraform looks for
 local providers:
 
-```bash
+```shell
 mkdir -p ~/.terraform.d/plugins
 ```
 
@@ -191,14 +191,14 @@ depends on your machines OS and hardware architecture. For Linux/AMD64 the subdi
 can either be `0.0.1` or the release tag closest to the commit you built. For the release tag `v0.1.0` you would use
 `0.1.0`. So the commands for copying a build of the `v0.1.0` release tag on a Linux/AMD64 machine would be:
 
-```bash
+```shell
 mkdir ~/.terraform.d/plugins/terraform.rubrik.com/rubrikinc/polaris/0.1.0/linux_amd64
 cp terraform-provider-polaris ~/.terraform.d/plugins/terraform.rubrik.com/rubrikinc/polaris/0.1.0/linux_amd64
 ```
 
 After the above commands the directory structure under `~/.terraform.d` would be:
 
-```bash
+```shell
 .terraform.d/
 └── plugins/
     └── terraform.rubrik.com/

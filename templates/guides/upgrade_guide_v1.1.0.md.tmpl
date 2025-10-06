@@ -13,7 +13,7 @@ to use the recommended replacements as soon as possible.
 Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v1.1.0 release. One
 way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
 release within the same minor version:
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {
@@ -24,17 +24,17 @@ terraform {
 }
 ```
 Next, upgrade the provider to the new version by running:
-```bash
-$ terraform init -upgrade
+```shell
+% terraform init -upgrade
 ```
 After the provider has been updated, validate the correctness of the Terraform configuration files by running:
-```bash
-$ terraform plan
+```shell
+% terraform plan
 ```
 If you get an error or an unwanted diff, please see the _Significant Changes and New Features_ below for additional
 instructions. Otherwise, proceed by running:
-```bash
-$ terraform apply -refresh-only
+```shell
+% terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to the v1.1.0 version.
 
@@ -44,7 +44,7 @@ This will read the remote state of the resources and migrate the local Terraform
 Support for custom tags has been added for AWS and Azure. The `polaris_aws_custom_tags` and `polaris_azure_custom_tags`
 resources are used to manage the custom tags. Custom tags will be applied to all resources created in the cloud account
 by RSC. Here's a simple example, showing how to add two custom AWS tags:
-```hcl
+```terraform
 resource "polaris_aws_custom_tags" "tags" {
   custom_tags = {
     "app"    = "RSC"
@@ -59,7 +59,7 @@ manage the assignment of an SLA domain to workloads. In addition, the `polaris_t
 workloads based on tags to simplify the selection of workloads to protect. Here's a simple example, showing how to
 assign the Bronze level SLA domain to all current and future Azure virtual machines in a specific cloud account tagged
 with a certain tag:
-```hcl
+```terraform
 data "polaris_azure_subscription" "subscription" {
   name = "subscription"
 }
@@ -92,7 +92,7 @@ resource "polaris_sla_domain_assignment" "assignment" {
 Support for assigning roles to SSO groups has been added. The existing `polaris_role_assignment` resource is used to
 manage the assignment of roles to SSO groups using the new `sso_group_id` field. Here's a simple example, showing how to
 assign the administrator role to an SSO group:
-```hcl
+```terraform
 data "polaris_role" "admin" {
   name = "administrator"
 }
@@ -114,7 +114,7 @@ resource "polaris_role_assignment" "assignment" {
 Support for automatically registering a CCES clusters with RSC has been added. The `polaris_cdm_registration` resource
 is used to register a bootstrapped cluster with RSC. Note, the resource can only be used to register the cluster, it
 cannot manage the registration. Here's a simple example, showing how to register a cluster with RSC:
-```hcl
+```terraform
 variable "admin_password" {
   description = "Password for the Rubrik Cloud Cluster admin account."
   type        = string
@@ -136,7 +136,7 @@ The Azure SQL DB Protection RSC feature has been updated to use a resource group
 `resource_group_name`, `resource_group_region` and `resource_group_tags` optional fields. The resource group specified
 using the fields must already exist in Azure. This update is being rolled out over time to RSC accounts. When the update
 is rolled out to an RSC account a diff similar to this will be seen:
-```hcl
+```console
 # azurerm_role_definition.resource_group["AZURE_SQL_DB_PROTECTION"] will be updated in-place
 ~ resource "azurerm_role_definition" "resource_group" {
     id                          = "/subscriptions/e64456f3-7e4f-4aa4-9e6d-097e552ddf42/providers/Microsoft.Authorization/roleDefinitions/b2243415-7c8c-f023-8e94-745666937a2f|/subscriptions/e64456f3-7e4f-4aa4-9e6d-097e552ddf42/resourceGroups/ja-sqldb-test-rg"
@@ -210,7 +210,7 @@ Note, even though the Terraform apply failed, the `permissions` field of the `po
 been updated and any plans following will not show the diff, even though the Azure SQL DB Protection feature has not
 been properly updated. To force an update of the subscription, temporarily change the `permissions` field of the
 `sql_db_protection` field of the `polaris_azure_subscription` resource to some string value, e.g:
-```hcl
+```terraform
 resource "polaris_azure_subscription" "subscription" {
   # ...
   sql_db_protection {
@@ -225,7 +225,7 @@ resource "polaris_azure_subscription" "subscription" {
 Apply the configuration and change the value back and re-apply. This will trigger an update of the feature.
 
 If the Azure SQL DB Protection feature has already been updated using the RSC UI, a diff similar to this will be seen:
-```hcl
+```console
 # polaris_azure_subscription.subscription will be updated in-place
 ~ resource "polaris_azure_subscription" "subscription" {
     id                          = "daa810ba-f749-49a2-9fcf-3e26c382c979"
@@ -274,7 +274,7 @@ The `role_id` and `user_email` fields of the `polaris_role_assignment` resource 
 field has been replaced with the `role_ids` field and the `user_email` field has been replaced with the `user_id` field.
 
 To get the user ID for a role assignment of a user managed outside of Terraform, use the new `polaris_user` data source:
-```hcl
+```terraform
 data "polaris_role" "admin" {
   name = "administrator"
 }
@@ -293,7 +293,7 @@ resource "polaris_role_assignment" "assignment" {
 ```
 
 To get the SSO group ID for a role assignment of an SSO group, use the new `polaris_sso_group` data source:
-```hcl
+```terraform
 data "polaris_role" "admin" {
   name = "administrator"
 }

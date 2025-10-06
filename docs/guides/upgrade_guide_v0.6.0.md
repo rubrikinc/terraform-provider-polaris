@@ -12,7 +12,7 @@ The v0.6.0 release introduces breaking changes to the following resources:
 Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v0.6.0 release. One
 way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
 release within the same minor version:
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {
@@ -23,16 +23,16 @@ terraform {
 }
 ```
 Next, upgrade the Terraform provider to the new version by running:
-```bash
-$ terraform init -upgrade
+```shell
+% terraform init -upgrade
 ```
 After the Terraform provider has been updated, validate the correctness of the Terraform configuration files by running:
-```bash
-$ terraform plan
+```shell
+% terraform plan
 ```
 If this doesn't produce an error or unwanted diff, proceed by running:
-```bash
-$ terraform apply -refresh-only
+```shell
+% terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to the v0.6.0 version.
 

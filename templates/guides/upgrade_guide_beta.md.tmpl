@@ -13,7 +13,7 @@ recommended replacements as soon as possible.
 ## How to upgrade
 Start by assigning the version of the latest beta release to the `version` field in the `provider` block of the
 Terraform configuration:
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {
@@ -25,15 +25,15 @@ terraform {
 ```
 With beta releases, it's important the version is pinned to the exact version number otherwise Terraform will not find
 the version in the Terraform registry. Next, upgrade the Terraform provider to the new version by running:
-```bash
-$ terraform init -upgrade
+```shell
+% terraform init -upgrade
 ```
 After the Terraform provider has been updated, validate the correctness of the Terraform configuration files by running:
-```bash
-$ terraform plan
+```shell
+% terraform plan
 ```
 If this doesn't produce an error or unwanted diff, proceed by running:
-```bash
-$ terraform apply -refresh-only
+```shell
+% terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to the latest beta version.

@@ -13,7 +13,7 @@ to use the recommended replacements as soon as possible.
 Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v1.0.0 release. One
 way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
 release within the same minor version:
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {
@@ -24,17 +24,17 @@ terraform {
 }
 ```
 Next, upgrade the provider to the new version by running:
-```bash
-$ terraform init -upgrade
+```shell
+% terraform init -upgrade
 ```
 After the provider has been updated, validate the correctness of the Terraform configuration files by running:
-```bash
-$ terraform plan
+```shell
+% terraform plan
 ```
 If you get an error or an unwanted diff, please see the _Significant Changes and New Features_ below for additional
 instructions. Otherwise, proceed by running:
-```bash
-$ terraform apply -refresh-only
+```shell
+% terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to the v1.0.0 version.
 
@@ -53,7 +53,7 @@ example in the examples repository.
 
 After upgrading the provider, if you have enabled the Cloud Native Blob Protection feature using the RSC UI, a diff
 similar to this will occur:
-```hcl
+```console
 # polaris_azure_subscription.subscription will be updated in-place
 ~ resource "polaris_azure_subscription" "subscription" {
     id                          = "60967b1e-20cb-4b61-acf6-454a55599b82"
@@ -88,7 +88,7 @@ in the example.
 
 After updating the `polaris_azure_permissions` data source and adding the `cloud_native_blob_protection` nested schema
 to the configuration, a diff similar to this will occur:
-```hcl
+```console
 # azurerm_role_assignment.resource_group["CLOUD_NATIVE_BLOB_PROTECTION"] will be created
 + resource "azurerm_role_assignment" "resource_group" {
   + id                               = (known after apply)
@@ -184,7 +184,7 @@ example in the examples repository.
 
 The new `permissions` field is optional and should not cause a diff when upgrading the provider. However, if the
 Terraform configuration is updated to use the new `permissions` field, a diff similar to this one will occur:
-```hcl
+```console
 # polaris_aws_cnp_account_attachments.attachments will be updated in-place
 ~ resource "polaris_aws_cnp_account_attachments" "attachments" {
     id         = "55cdd9de-1030-4fbb-b10c-8e703d98f1cb"
@@ -244,7 +244,7 @@ in the example.
 
 After upgrading the provider, the `permission_groups` field of the `polaris_azure_subscription` resource will have a
 diff for each RSC feature similar to this:
-```hcl
+```console
 # polaris_azure_subscription.subscription will be updated in-place
 ~ resource "polaris_azure_subscription" "subscription" {
     id                          = "771de203-b9e1-4f79-8a96-3300e219bc21"
