@@ -24,17 +24,17 @@ terraform {
 }
 ```
 Next, upgrade the provider to the new version by running:
-```bash
-$ terraform init -upgrade
+```shell
+% terraform init -upgrade
 ```
 After the provider has been updated, validate the correctness of the Terraform configuration files by running:
-```bash
-$ terraform plan
+```shell
+% terraform plan
 ```
 If you get an error or an unwanted diff, please see the _Significant Changes and New Features_ below for additional
 instructions. Otherwise, proceed by running:
-```bash
-$ terraform apply -refresh-only
+```shell
+% terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to the v1.0.0 version.
 

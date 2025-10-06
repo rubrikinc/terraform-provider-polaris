@@ -118,7 +118,7 @@ The provider supports Terraform's native logging system (tflog) for improved deb
 * `TF_LOG_PROVIDER_POLARIS_API` - Controls the log level specifically for API calls made by the provider to the Polaris service. This allows you to separately control the verbosity of API-related logging.
 
 #### Usage Examples
-```bash
+```shell
 # Enable DEBUG logging for the provider, including API calls
 export TF_LOG_PROVIDER_POLARIS=DEBUG
 
