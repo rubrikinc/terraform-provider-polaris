@@ -14,7 +14,7 @@ When only `profile` is specified, the AWS account identified by the profile is a
 in the Terraform state. This behavior is consistent with v0.3.0.
 
 ### Example Usage
-```hcl
+```terraform
 resource "polaris_aws_account" "account" {
   profile = "my-profile-for-account"
 
@@ -32,7 +32,7 @@ identified by the role (the trusting account) to RSC. Both the profile and the r
 state.
 
 ### Example Usage
-```hcl
+```terraform
 resource "polaris_aws_account" "account" {
   profile     = "my-profile"
   assume_role = "arn:aws:iam::123456789012:role/MyCrossAccountRole"
@@ -52,7 +52,7 @@ connection to the profile in the Terraform state, so when updating the configura
 it has permission to assume the role in the Terraform state.
 
 ### Example Usage
-```hcl
+```terrafomr
 resource "polaris_aws_account" "account" {
   assume_role = "arn:aws:iam::123456789012:role/MyCrossAccountRole"
 

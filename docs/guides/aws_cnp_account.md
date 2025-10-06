@@ -18,7 +18,7 @@ added to the RSC Terraform provider:
 Using these resources, it's possible to add an AWS account to RSC without using a CloudFormation stack.
 
 To add an AWS account to RSC using the new CNP resources, start by using the `polaris_aws_cnp_artifacts` data source:
-```hcl
+```terraform
 data "polaris_aws_cnp_artifacts" "artifacts" {
   feature {
     name = "CLOUD_NATIVE_PROTECTION"
@@ -35,7 +35,7 @@ returns the instance profiles and roles, referred to as _artifacts_ by RSC, whic
 
 Next, use the `polaris_aws_cnp_permissions` data source to obtain the role permission policies, customer managed
 policies and managed policies, required by RSC:
-```hcl
+```terraform
 data "polaris_aws_cnp_permissions" "permissions" {
   for_each = data.polaris_aws_cnp_artifacts.artifacts.role_keys
   role_key = each.key
@@ -52,7 +52,7 @@ data "polaris_aws_cnp_permissions" "permissions" {
 
 After defining the two data sources, use the `polaris_aws_cnp_account` resource to start the onboarding of the AWS
 account:
-```hcl
+```terraform
 resource "polaris_aws_cnp_account" "account" {
   name      = "My Account"
   native_id = "123456789123"
@@ -80,7 +80,7 @@ In addition to the fields mentioned above, the `polaris_aws_cnp_account` resourc
 various tasks.
 
 The next step is to create the required IAM instance profiles and roles using the AWS Terraform provider:
-```hcl
+```terraform
 locals {
   trust_policies = {
     for policy in polaris_aws_cnp_account.account.trust_policies : policy.role_key => policy.policy
@@ -116,7 +116,7 @@ customer inline policies which has a size limit of 10200 bytes, see the
 example of how to work around this limit.
 
 Lastly, to finalize the onboarding of the AWS account, use the `polaris_aws_cnp_account_attachments` resource:
-```hcl
+```terraform
 resource "polaris_aws_cnp_account_attachments" "attachments" {
   account_id = polaris_aws_cnp_account.account.id
   features   = polaris_aws_cnp_account.account.feature.*.name

@@ -8,6 +8,9 @@ page_title: "Changelog"
 * Add support for the `EXOCOMPUTE_EKS_LAMBDA` role artifact to the `polaris_aws_cnp_account_trust_policy` resource.
 * Add support for importing existing resources into Terraform. All resources that support the import workflow has a
   section in the documentation on how to import the resource.
+* Change the `id` field of the `polaris_aws_cnp_account_trust_policy` resource to be a combination of the role key and
+  the RSC cloud account ID. Note, this is a breaking change if a Terraform configuration expects the `id` field to be
+  just the RSC cloud account ID.
 * Deprecate the `features` field in the `polaris_aws_cnp_account_trust_policy` resource. The field has no replacement
   and is no longer used by the provider.
 * Add `trust_policies` computed field to the `polaris_aws_cnp_account` resource. Whenever the `features` field of the

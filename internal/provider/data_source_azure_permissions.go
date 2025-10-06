@@ -136,7 +136,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Computed: true,
 				Description: "Azure allowed actions. **Deprecated:** use `subscription_actions` and " +
 					"`resource_group_actions` instead.",
-				Deprecated: "use `subscription_actions` and `resource_group_actions` instead.",
+				Deprecated: "Use `subscription_actions` and `resource_group_actions` instead.",
 			},
 			keyDataActions: {
 				Type: schema.TypeList,
@@ -146,7 +146,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Computed: true,
 				Description: "Azure allowed data actions. **Deprecated:** use `subscription_data_actions` and " +
 					"`resource_group_data_actions` instead.",
-				Deprecated: "use `subscription_data_actions` and `resource_group_data_actions` instead.",
+				Deprecated: "Use `subscription_data_actions` and `resource_group_data_actions` instead.",
 			},
 			keyFeature: {
 				Type:         schema.TypeString,
@@ -178,14 +178,14 @@ func dataSourceAzurePermissions() *schema.Resource {
 					"`AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, " +
 					"`CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`. **Deprecated:** " +
 					"use `feature` instead.",
-				Deprecated: "use `feature` instead",
+				Deprecated: "Use `feature` instead",
 			},
 			keyHash: {
 				Type:     schema.TypeString,
 				Computed: true,
 				Description: "SHA-256 hash of the permissions, can be used to detect changes to the permissions. " +
 					"**Deprecated:** use `id` instead.",
-				Deprecated: "use `id` instead.",
+				Deprecated: "Use `id` instead.",
 			},
 			keyNotActions: {
 				Type: schema.TypeList,
@@ -195,7 +195,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Computed: true,
 				Description: "Azure disallowed actions. **Deprecated:** use `subscription_not_actions` and " +
 					"`resource_group_not_actions` instead.",
-				Deprecated: "use `subscription_not_actions` and `resource_group_not_actions` instead.",
+				Deprecated: "Use `subscription_not_actions` and `resource_group_not_actions` instead.",
 			},
 			keyNotDataActions: {
 				Type: schema.TypeList,
@@ -205,7 +205,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Computed: true,
 				Description: "Azure disallowed data actions. **Deprecated:** use `subscription_not_data_actions` and " +
 					"`resource_group_not_data_actions` instead.",
-				Deprecated: "use `subscription_not_data_actions` and `resource_group_not_data_actions` instead.",
+				Deprecated: "Use `subscription_not_data_actions` and `resource_group_not_data_actions` instead.",
 			},
 			keyPermissionGroups: {
 				Type: schema.TypeSet,

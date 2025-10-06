@@ -13,7 +13,7 @@ recommended replacements as soon as possible.
 ## How to upgrade
 Start by assigning the version of the latest beta release to the `version` field in the `provider` block of the
 Terraform configuration:
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {

@@ -12,7 +12,7 @@ The v0.6.0 release introduces breaking changes to the following resources:
 Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v0.6.0 release. One
 way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
 release within the same minor version:
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {

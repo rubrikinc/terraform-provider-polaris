@@ -90,7 +90,7 @@ func resourceAwsCnpAccountTrustPolicyStateUpgradeV0(ctx context.Context, state m
 		return nil, fmt.Errorf("invalid resource id: %s", err)
 	}
 
-	// Migrate the resource id to include the role key.
+	// Migrate the resource ID to include the role key.
 	trustPolicyID, err := joinTrustPolicyID(state[keyRoleKey].(string), accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create trust policy ID: %s", err)

@@ -15,7 +15,7 @@ The v0.3.0 release introduces breaking changes to the following resources:
 Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v0.3.0 release. One
 way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
 release within the same minor version:
-```hcl
+```terraform
 terraform {
   required_providers {
     polaris = {
@@ -47,7 +47,7 @@ To update the resource add a new `cloud_native_protection` block. Then move the 
 into the new `cloud_native_protection` block.
 
 I.e. if the initial resource configuration looked like this:
-```hcl
+```terraform
 resource "polaris_aws_account" "default" {
   profile = "default"
 
@@ -58,7 +58,7 @@ resource "polaris_aws_account" "default" {
 ```
 
 It should look like this after the manual update:
-```hcl
+```terraform
 resource "polaris_aws_account" "default" {
   profile = "default"
 
@@ -75,7 +75,7 @@ To update the resource add a new `cloud_native_protection` block. Then move the 
 into the new `cloud_native_protection` block.
 
 I.e. if the initial resource configuration looked like this:
-```hcl
+```terraform
 resource "polaris_azure_subscription" "default" {
   subscription_id = "1bb87eb6-2039-11ec-8a8a-3ba3fe58b590"
   tenant_domain   = "mydomain.onmicrosoft.com"
@@ -87,7 +87,7 @@ resource "polaris_azure_subscription" "default" {
 ```
 
 It should look like this after the manual update:
-```hcl
+```terraform
 resource "polaris_azure_subscription" "default" {
   subscription_id = "1bb87eb6-2039-11ec-8a8a-3ba3fe58b590"
   tenant_domain   = "mydomain.onmicrosoft.com"
@@ -105,14 +105,14 @@ To update the resource add a new `tenant_domain` argument. The value of this arg
 file, as either `tenant_domain` or `tenantDomain`.
 
 I.e. if the initial resource configuration looked like this:
-```hcl
+```terraform
 resource "polaris_azure_service_principal" "default" {
   credentials   = "${path.module}/service-principal.json"
 }
 ```
 
 It should look like this after the manual update:
-```hcl
+```terraform
 resource "polaris_azure_service_principal" "default" {
   credentials   = "${path.module}/service-principal.json"
   tenant_domain = "mydomain.onmicrosoft.com"
@@ -123,14 +123,14 @@ resource "polaris_azure_service_principal" "default" {
 To update the resource add a new `cloud_native_protection` block.
 
 I.e. if the initial resource configuration looked like this:
-```hcl
+```terraform
 resource "polaris_gcp_project" "default" {
   credentials = "${path.module}/my-project-bf80e97f8c4e.json"
 }
 ```
 
 It should look like this after the manual update:
-```hcl
+```terraform
 resource "polaris_gcp_project" "default" {
   credentials = "${path.module}/my-project-bf80e97f8c4e.json"
 
