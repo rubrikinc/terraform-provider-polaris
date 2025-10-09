@@ -4,6 +4,9 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.2.1
+* Update Go version to 1.24.8.
+
 ## v1.2.0
 * Add support for the `EXOCOMPUTE_EKS_LAMBDA` role artifact to the `polaris_aws_cnp_account_trust_policy` resource.
 * Add support for importing existing resources into Terraform. All resources that support the import workflow has a
