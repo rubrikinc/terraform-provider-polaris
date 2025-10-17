@@ -37,6 +37,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	gqlregion "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
 const resourceAzureSubscriptionDescription = `
@@ -191,7 +192,7 @@ func resourceAzureSubscription() *schema.Resource {
 							},
 							Description: "Region of the Azure resource group. Should be specified in the standard " +
 								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
-							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
 						},
 						keyResourceGroupTags: {
 							Type: schema.TypeMap,
@@ -278,7 +279,7 @@ func resourceAzureSubscription() *schema.Resource {
 							},
 							Description: "Region of the Azure resource group. Should be specified in the standard " +
 								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
-							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
 						},
 						keyResourceGroupTags: {
 							Type: schema.TypeMap,
@@ -316,7 +317,7 @@ func resourceAzureSubscription() *schema.Resource {
 							Required: true,
 							Description: "User-assigned managed identity region. Should be specified in the " +
 								"standard Azure style, e.g. `eastus`.",
-							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
 						},
 						keyUserAssignedManagedIdentityResourceGroupName: {
 							Type:         schema.TypeString,
@@ -442,7 +443,7 @@ func resourceAzureSubscription() *schema.Resource {
 							},
 							Description: "Region of the Azure resource group. Should be specified in the standard " +
 								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
-							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
 						},
 						keyResourceGroupTags: {
 							Type: schema.TypeMap,
@@ -536,7 +537,7 @@ func resourceAzureSubscription() *schema.Resource {
 							},
 							Description: "Region of the Azure resource group. Should be specified in the standard " +
 								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
-							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
 						},
 						keyResourceGroupTags: {
 							Type: schema.TypeMap,
@@ -623,7 +624,7 @@ func resourceAzureSubscription() *schema.Resource {
 							},
 							Description: "Region of the Azure resource group. Should be specified in the standard " +
 								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
-							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
 						},
 						keyResourceGroupTags: {
 							Type: schema.TypeMap,
@@ -1418,9 +1419,9 @@ func azureFeatureResourceGroup(block map[string]any) (*gqlazure.ResourceGroup, b
 		name = v.(string)
 	}
 
-	var region gqlazure.Region
+	var region gqlregion.Region
 	if v, ok := block[keyResourceGroupRegion]; ok {
-		region = gqlazure.RegionFromName(v.(string))
+		region = gqlregion.RegionFromName(v.(string))
 	}
 
 	tagList := make([]core.Tag, 0)
@@ -1430,7 +1431,7 @@ func azureFeatureResourceGroup(block map[string]any) (*gqlazure.ResourceGroup, b
 		}
 	}
 
-	if name == "" || region == gqlazure.RegionUnknown {
+	if name == "" || region == gqlregion.RegionUnknown {
 		return nil, false
 	}
 
