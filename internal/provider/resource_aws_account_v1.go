@@ -103,7 +103,7 @@ func resourceAwsAccountStateUpgradeV1(ctx context.Context, state map[string]inte
 		return nil, err
 	}
 
-	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	account, err := aws.Wrap(client).AccountByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}

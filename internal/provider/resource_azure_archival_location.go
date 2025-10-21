@@ -172,7 +172,7 @@ func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	var storageAccountTags *gqlarchival.AzureTags
+	var storageAccountTags *core.Tags
 	if tags := toAzureStorageAccountTags(d.Get(keyStorageAccountTags).(map[string]any)); len(tags.TagList) > 0 {
 		storageAccountTags = &tags
 	}
@@ -343,9 +343,9 @@ func toAzureCustomerManagedKeys(keys *schema.Set) []gqlarchival.AzureCustomerKey
 	for _, key := range keys.List() {
 		key := key.(map[string]any)
 		customerKeys = append(customerKeys, gqlarchival.AzureCustomerKey{
-			KeyName:      key[keyName].(string),
-			KeyVaultName: key[keyVaultName].(string),
-			Region:       azure.RegionFromName(key[keyRegion].(string)).ToRegionEnum(),
+			Name:      key[keyName].(string),
+			VaultName: key[keyVaultName].(string),
+			Region:    azure.RegionFromName(key[keyRegion].(string)).ToRegionEnum(),
 		})
 	}
 
@@ -358,8 +358,8 @@ func fromAzureCustomerManagedKeys(customerKeys []gqlarchival.AzureCustomerKey) *
 	keys := &schema.Set{F: schema.HashResource(customerKeyResource())}
 	for _, key := range customerKeys {
 		keys.Add(map[string]any{
-			keyName:      key.KeyName,
-			keyVaultName: key.KeyVaultName,
+			keyName:      key.Name,
+			keyVaultName: key.VaultName,
 			keyRegion:    key.Region,
 		})
 	}
@@ -369,13 +369,13 @@ func fromAzureCustomerManagedKeys(customerKeys []gqlarchival.AzureCustomerKey) *
 
 // toAzureStorageAccountTags converts from the storage account tags field type
 // to the Azure tags type.
-func toAzureStorageAccountTags(tags map[string]any) gqlarchival.AzureTags {
+func toAzureStorageAccountTags(tags map[string]any) core.Tags {
 	tagList := make([]core.Tag, 0, len(tags))
 	for key, value := range tags {
 		tagList = append(tagList, core.Tag{Key: key, Value: value.(string)})
 	}
 
-	return gqlarchival.AzureTags{TagList: tagList}
+	return core.Tags{TagList: tagList}
 }
 
 // fromAzureStorageAccountTags converts to the storage account tags field type

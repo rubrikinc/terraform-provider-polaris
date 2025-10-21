@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 const dataSourceAzureSubscriptionDescription = `
@@ -95,12 +94,12 @@ func azureSubscriptionRead(ctx context.Context, d *schema.ResourceData, m any) d
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		subscription, err = azure.Wrap(client).SubscriptionByNativeID(ctx, core.FeatureAll, id)
+		subscription, err = azure.Wrap(client).SubscriptionByNativeID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		subscription, err = azure.Wrap(client).SubscriptionByName(ctx, core.FeatureAll, d.Get(keyName).(string),
+		subscription, err = azure.Wrap(client).SubscriptionByName(ctx, d.Get(keyName).(string),
 			d.Get(keyTenantDomain).(string))
 		if err != nil {
 			return diag.FromErr(err)

@@ -91,7 +91,7 @@ func resourceAzureSubscriptionStateUpgradeV1(ctx context.Context, state map[stri
 		return nil, err
 	}
 
-	account, err := azure.Wrap(client).Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
+	account, err := azure.Wrap(client).SubscriptionByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}

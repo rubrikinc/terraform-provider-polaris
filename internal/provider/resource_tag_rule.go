@@ -308,7 +308,7 @@ func groupCloudAccounts(ctx context.Context, client *polaris.Client, cloudAccoun
 }
 
 func lookupCloudAccountID(ctx context.Context, client *polaris.Client, cloudAccountID uuid.UUID) (core.CloudVendor, error) {
-	_, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(cloudAccountID), core.FeatureAll)
+	_, err := aws.Wrap(client).AccountByID(ctx, cloudAccountID)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return core.CloudVendorUnknown, err
 	}
@@ -316,7 +316,7 @@ func lookupCloudAccountID(ctx context.Context, client *polaris.Client, cloudAcco
 		return core.CloudVendorAWS, nil
 	}
 
-	_, err = azure.Wrap(client).Subscription(ctx, azure.CloudAccountID(cloudAccountID), core.FeatureAll)
+	_, err = azure.Wrap(client).SubscriptionByID(ctx, cloudAccountID)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return core.CloudVendorUnknown, err
 	}
@@ -324,7 +324,7 @@ func lookupCloudAccountID(ctx context.Context, client *polaris.Client, cloudAcco
 		return core.CloudVendorAzure, nil
 	}
 
-	_, err = gcp.Wrap(client).Project(ctx, gcp.CloudAccountID(cloudAccountID), core.FeatureAll)
+	_, err = gcp.Wrap(client).ProjectByID(ctx, cloudAccountID)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return core.CloudVendorUnknown, err
 	}

@@ -288,13 +288,13 @@ func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 
 // toAWSBucketTags converts from the bucket tags argument to an archival AWS
 // tags. If the bucket tags argument is empty, nil is returned.
-func toAWSBucketTags(tags map[string]any) *gqlarchival.AWSTags {
+func toAWSBucketTags(tags map[string]any) *core.Tags {
 	tagList := make([]core.Tag, 0, len(tags))
 	for key, value := range tags {
 		tagList = append(tagList, core.Tag{Key: key, Value: value.(string)})
 	}
 	if len(tagList) > 0 {
-		return &gqlarchival.AWSTags{TagList: tagList}
+		return &core.Tags{TagList: tagList}
 	}
 
 	return nil

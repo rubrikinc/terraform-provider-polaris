@@ -224,7 +224,7 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.
 		return diag.FromErr(err)
 	}
 
-	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	account, err := aws.Wrap(client).AccountByID(ctx, id)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil

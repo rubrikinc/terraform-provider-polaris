@@ -153,7 +153,7 @@ func awsCreateCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData,
 	externalID := d.Get(keyExternalID).(string)
 	roleKey := d.Get(keyRoleKey).(string)
 
-	account, err := aws.Wrap(client).AccountByID(ctx, core.FeatureAll, accountID)
+	account, err := aws.Wrap(client).AccountByID(ctx, accountID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -188,7 +188,7 @@ func awsReadCnpAccountTrustPolicy(ctx context.Context, d *schema.ResourceData, m
 	}
 	externalID := d.Get(keyExternalID).(string)
 
-	account, err := aws.Wrap(client).AccountByID(ctx, core.FeatureAll, accountID)
+	account, err := aws.Wrap(client).AccountByID(ctx, accountID)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil

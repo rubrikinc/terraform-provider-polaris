@@ -32,7 +32,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 func validateAwsRegion(m interface{}, p cty.Path) diag.Diagnostics {
@@ -93,13 +92,13 @@ func resourceAwsAccountStateUpgradeV0(ctx context.Context, state map[string]inte
 	}
 
 	// Retrieve the account using the Polaris cloud account id.
-	account1, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account1, err := aws.Wrap(client).AccountByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	// Retrieve the account using the AWS account id.
-	account2, err := aws.Wrap(client).Account(ctx, aws.AccountID(parts[1]), core.FeatureCloudNativeProtection)
+	account2, err := aws.Wrap(client).AccountByNativeID(ctx, parts[1])
 	if err != nil {
 		return nil, err
 	}
