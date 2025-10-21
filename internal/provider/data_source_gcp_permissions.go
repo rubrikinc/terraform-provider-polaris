@@ -43,7 +43,7 @@ func dataSourceGcpPermissions() *schema.Resource {
 		ReadContext: gcpPermissionsRead,
 
 		Schema: map[string]*schema.Schema{
-			"features": {
+			keyFeatures: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
 					Type:         schema.TypeString,
@@ -53,12 +53,12 @@ func dataSourceGcpPermissions() *schema.Resource {
 				Required:    true,
 				Description: "Enabled features.",
 			},
-			"hash": {
+			keyHash: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "SHA-256 hash of the permissions, can be used to detect changes to the permissions.",
 			},
-			"permissions": {
+			keyPermissions: {
 				Type: schema.TypeList,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
@@ -72,7 +72,7 @@ func dataSourceGcpPermissions() *schema.Resource {
 
 // gcpPermissionsRead run the Read operation for the GCP permissions data
 // source. Reads the permissions required for the specified Polaris features.
-func gcpPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpPermissionsRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpPermissionsRead")
 
 	client, err := m.(*client).polaris()
@@ -82,7 +82,7 @@ func gcpPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 
 	// Read permissions required for the specified features.
 	var features []core.Feature
-	for _, f := range d.Get("features").(*schema.Set).List() {
+	for _, f := range d.Get(keyFeatures).(*schema.Set).List() {
 		features = append(features, core.ParseFeatureNoValidation(f.(string)))
 	}
 
@@ -94,17 +94,17 @@ func gcpPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 	sort.Strings(perms)
 
 	// Format permissions according to the data source schema.
-	var permissions []interface{}
+	var permissions []any
 	hash := sha256.New()
 	for _, perm := range perms {
 		permissions = append(permissions, perm)
 		hash.Write([]byte(perm))
 	}
-	if err := d.Set("permissions", &permissions); err != nil {
+	if err := d.Set(keyPermissions, &permissions); err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.Set("hash", fmt.Sprintf("%x", hash.Sum(nil)))
+	d.Set(keyHash, fmt.Sprintf("%x", hash.Sum(nil)))
 
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
 	return nil

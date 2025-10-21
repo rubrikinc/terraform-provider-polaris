@@ -91,7 +91,7 @@ func resourceAzureArchivalLocation() *schema.Resource {
 			},
 			keyCustomerManagedKey: {
 				Type:     schema.TypeSet,
-				Elem:     customerKeyResource(),
+				Elem:     azureCustomerKeyResource(),
 				Optional: true,
 				Description: "Customer managed storage encryption. Specify the regions and their respective " +
 					"encryption details. For other regions, data will be encrypted using platform managed keys.",
@@ -309,8 +309,9 @@ func azureDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	return nil
 }
 
-// customerKeyResource returns the schema for a customer managed key resource.
-func customerKeyResource() *schema.Resource {
+// azureCustomerKeyResource returns the schema for an Azure customer managed key
+// resource.
+func azureCustomerKeyResource() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			keyName: {

@@ -39,7 +39,7 @@ import (
 // stringIsInteger assumes m is a string holding an integer and returns nil if
 // the string can be converted to an integer, otherwise a diagnostic message is
 // returned.
-func stringIsInteger(m interface{}, p cty.Path) diag.Diagnostics {
+func stringIsInteger(m any, p cty.Path) diag.Diagnostics {
 	if _, err := strconv.ParseInt(m.(string), 10, 64); err != nil {
 		return diag.Errorf("expected an integer: %s", err)
 	}
@@ -57,11 +57,11 @@ func resourceGcpProject() *schema.Resource {
 		DeleteContext: gcpDeleteProject,
 
 		Schema: map[string]*schema.Schema{
-			"cloud_native_protection": {
+			keyCloudNativeProtection: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"status": {
+						keyStatus: {
 							Type:        schema.TypeString,
 							Computed:    true,
 							Description: "Status of the Cloud Native Protection feature.",
@@ -72,33 +72,48 @@ func resourceGcpProject() *schema.Resource {
 				Required:    true,
 				Description: "Enable the Cloud Native Protection feature for the GCP project.",
 			},
-			"credentials": {
+			keySharedVPCHost: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cloud Native Protection feature.",
+						},
+					},
+				},
+				MaxItems:    1,
+				Required:    true,
+				Description: "Enable the Shared VPC Host feature for the GCP project.",
+			},
+			keyCredentials: {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				ExactlyOneOf:     []string{"project_number"},
+				ExactlyOneOf:     []string{keyProjectNumber},
 				Description:      "Path to GCP service account key file.",
 				ValidateDiagFunc: fileExists,
 			},
-			"delete_snapshots_on_destroy": {
+			keyDeleteSnapshotsOnDestroy: {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
-			"organization_name": {
+			keyOrganizationName: {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Computed:    true,
 				Description: "Organization name.",
 			},
-			"permissions_hash": {
+			keyPermissionsHash: {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Description:      "Signals that the permissions has been updated.",
 				ValidateDiagFunc: validateHash,
 			},
-			"project": {
+			keyProject: {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
@@ -106,19 +121,19 @@ func resourceGcpProject() *schema.Resource {
 				Description:      "Project id.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
-			"project_name": {
+			keyProjectName: {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
 				Description:      "Project name.",
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
-			"project_number": {
+			keyProjectNumber: {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
 				Computed:         true,
-				RequiredWith:     []string{"organization_name", "project", "project_name"},
+				RequiredWith:     []string{keyOrganizationName, keyProject, keyProjectName},
 				Description:      "Project number.",
 				ValidateDiagFunc: stringIsInteger,
 			},
@@ -141,7 +156,7 @@ func resourceGcpProject() *schema.Resource {
 
 // gcpCreateProject run the Create operation for the GCP project resource. This
 // adds the GCP project to the Polaris platform.
-func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpCreateProject")
 
 	client, err := m.(*client).polaris()
@@ -149,21 +164,17 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 
-	credentials := d.Get("credentials").(string)
-	projectID := d.Get("project").(string)
-
+	credentials := d.Get(keyCredentials).(string)
+	projectID := d.Get(keyProject).(string)
 	var opts []gcp.OptionFunc
-	if name, ok := d.GetOk("project_name"); ok {
+	if name, ok := d.GetOk(keyProjectName); ok {
 		opts = append(opts, gcp.Name(name.(string)))
 	}
-	if orgName, ok := d.GetOk("organization_name"); ok {
+	if orgName, ok := d.GetOk(keyOrganizationName); ok {
 		opts = append(opts, gcp.Organization(orgName.(string)))
 	}
-
-	// Terraform schema integers are restricted to int and hence cannot handle
-	// a GCP project number when running on a 32-bit platform.
 	var projectNumber int64
-	if pn, ok := d.GetOk("project_number"); ok {
+	if pn, ok := d.GetOk(keyProjectNumber); ok {
 		var err error
 		projectNumber, err = strconv.ParseInt(pn.(string), 10, 64)
 		if err != nil {
@@ -194,21 +205,24 @@ func gcpCreateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 
-	// At this time GCP only supports the CNP feature.
+	cnpBlock, ok := d.GetOk(keyCloudNativeProtection)
+	if ok {
+
+	}
+
 	id, err := gcp.Wrap(client).AddProject(ctx, project, []core.Feature{core.FeatureCloudNativeProtection}, opts...)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	d.SetId(id.String())
-
 	gcpReadProject(ctx, d, m)
 	return nil
 }
 
 // gcpReadProject run the Read operation for the GCP project resource. This
 // reads the state of the GCP project in Polaris.
-func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpReadProject(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpReadProject")
 
 	client, err := m.(*client).polaris()
@@ -230,16 +244,24 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.Set("organization_name", account.OrganizationName)
-	d.Set("project", account.NativeID)
-	d.Set("project_name", account.Name)
-	d.Set("project_number", strconv.FormatInt(account.ProjectNumber, 10))
+	if err := d.Set(keyOrganizationName, account.OrganizationName); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyProject, account.NativeID); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyProjectName, account.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyProjectNumber, strconv.FormatInt(account.ProjectNumber, 10)); err != nil {
+		return diag.FromErr(err)
+	}
 
 	if feature, ok := account.Feature(core.FeatureCloudNativeProtection); ok {
 		status := core.FormatStatus(feature.Status)
-		err := d.Set("cloud_native_protection", []interface{}{
-			map[string]interface{}{
-				"status": &status,
+		err := d.Set(keyCloudNativeProtection, []any{
+			map[string]any{
+				keyStatus: &status,
 			},
 		})
 		if err != nil {
@@ -252,7 +274,7 @@ func gcpReadProject(ctx context.Context, d *schema.ResourceData, m interface{}) 
 
 // gcpUpdateProject run the Update operation for the GCP project resource. This
 // only updates the local delete_snapshots_on_destroy parameter.
-func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpUpdateProject")
 
 	client, err := m.(*client).polaris()
@@ -265,7 +287,7 @@ func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 
-	if d.HasChange("permissions_hash") {
+	if d.HasChange(keyPermissionsHash) {
 		err = gcp.Wrap(client).PermissionsUpdated(ctx, id, nil)
 		if err != nil {
 			return diag.FromErr(err)
@@ -278,7 +300,7 @@ func gcpUpdateProject(ctx context.Context, d *schema.ResourceData, m interface{}
 
 // gcpDeleteProject run the Delete operation for the GCP project resource. This
 // removes the GCP project from Polaris.
-func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpDeleteProject")
 
 	client, err := m.(*client).polaris()
@@ -292,7 +314,7 @@ func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Get the old resource arguments.
-	oldSnapshots, _ := d.GetChange("delete_snapshots_on_destroy")
+	oldSnapshots, _ := d.GetChange(keyDeleteSnapshotsOnDestroy)
 	deleteSnapshots := oldSnapshots.(bool)
 
 	// Remove the project from Polaris.
@@ -300,7 +322,7 @@ func gcpDeleteProject(ctx context.Context, d *schema.ResourceData, m interface{}
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId("")
 
+	d.SetId("")
 	return nil
 }
