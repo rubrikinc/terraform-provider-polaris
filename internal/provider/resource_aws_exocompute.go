@@ -209,9 +209,9 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		var config exocompute.AWSConfigurationFunc
 		switch {
 		case region != "" && vpcID != "" && len(subnets) > 0 && clusterSecurityGroupID != "" && nodeSecurityGroupID != "":
-			config = exocompute.AWSUnmanaged(gqlaws.RegionFromName(region), vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID)
+			config = exocompute.AWSUnmanaged(gqlaws.RegionFromName(region), vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID, false)
 		case region != "" && vpcID != "" && len(subnets) > 0:
-			config = exocompute.AWSManaged(gqlaws.RegionFromName(region), vpcID, subnets)
+			config = exocompute.AWSManaged(gqlaws.RegionFromName(region), vpcID, subnets, false)
 		case region != "":
 			config = exocompute.AWSBYOKCluster(gqlaws.RegionFromName(region))
 		default:
