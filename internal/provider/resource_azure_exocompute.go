@@ -190,9 +190,9 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		region := gqlazure.RegionFromName(d.Get(keyRegion).(string))
 		if podOverlayNetworkCIDR, ok := d.GetOk(keyPodOverlayNetworkCIDR); ok {
 			exoConfig = exocompute.AzureManagedWithOverlayNetwork(region, d.Get(keySubnet).(string),
-				podOverlayNetworkCIDR.(string))
+				podOverlayNetworkCIDR.(string), false)
 		} else if subnet, ok := d.GetOk(keySubnet); ok {
-			exoConfig = exocompute.AzureManaged(region, subnet.(string))
+			exoConfig = exocompute.AzureManaged(region, subnet.(string), false)
 		} else {
 			exoConfig = exocompute.AzureBYOKCluster(region)
 		}
