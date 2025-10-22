@@ -225,6 +225,7 @@ const (
 	keySSOGroupID                                   = "sso_group_id"
 	keyStackARN                                     = "stack_arn"
 	keyStatus                                       = "status"
+	keyStorageAccountName                           = "storage_account_name"
 	keyStorageAccountNamePrefix                     = "storage_account_name_prefix"
 	keyStorageAccountRegion                         = "storage_account_region"
 	keyStorageAccountTags                           = "storage_account_tags"
