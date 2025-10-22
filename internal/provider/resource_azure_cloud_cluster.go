@@ -88,7 +88,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Description:  "Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keyUserEmail: {
+						keyAdminEmail: {
 							Type:         schema.TypeString,
 							Required:     true,
 							Description:  "Email address for the cluster admin user. Changing this value will have no effect on the cluster.",
@@ -109,7 +109,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							ValidateFunc: validateNumNodes,
 						},
 						keyDNSNameServers: {
-							Type: schema.TypeSet,
+							Type: schema.TypeList,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -119,7 +119,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Description: "DNS name servers for the cluster. Changing this forces a new resource to be created.",
 						},
 						keyDNSSearchDomains: {
-							Type: schema.TypeSet,
+							Type: schema.TypeList,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -129,7 +129,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Description: "DNS search domains for the cluster. Changing this forces a new resource to be created.",
 						},
 						keyNTPServers: {
-							Type: schema.TypeSet,
+							Type: schema.TypeList,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -191,7 +191,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Description:  "Azure resource group name where the cluster will be deployed. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keyStorageAccountNamePrefix: {
+						keyStorageAccountName: {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
@@ -222,7 +222,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
-							Description:  "Azure region to deploy the cluster in. Changing this forces a new resource to be created.",
+							Description:  "Azure region to deploy the cluster in. The format should be the native Azure format, e.g. `eastus`, `westus`, etc. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringInSlice(azureRegion.AllRegionNames(), false),
 						},
 						keyNetworkResourceGroup: {
@@ -359,7 +359,7 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 
 	azureEsConfig := gqlcloudcluster.AzureEsConfigInput{
 		ResourceGroup:         vmConfigMap[keyResourceGroupName].(string),
-		StorageAccount:        vmConfigMap[keyStorageAccountNamePrefix].(string),
+		StorageAccount:        vmConfigMap[keyStorageAccountName].(string),
 		ContainerName:         vmConfigMap[keyContainerName].(string),
 		ShouldCreateContainer: false,
 		EnableImmutability:    vmConfigMap[keyEnableImmutability].(bool),
@@ -370,7 +370,7 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 
 	clusterConfig := gqlcloudcluster.AzureClusterConfig{
 		ClusterName:      clusterConfigMap[keyClusterName].(string),
-		UserEmail:        clusterConfigMap[keyUserEmail].(string),
+		UserEmail:        clusterConfigMap[keyAdminEmail].(string),
 		AdminPassword:    secret.String(clusterConfigMap[keyAdminPassword].(string)),
 		DNSNameServers:   dnsNameServers,
 		DNSSearchDomains: dnsSearchDomains,

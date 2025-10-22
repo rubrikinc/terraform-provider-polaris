@@ -40,7 +40,6 @@ number of nodes, instance types, and network configuration.
 # Create an Azure cloud cluster using RSC
 resource "polaris_azure_cloud_cluster" "example" {
   cloud_account_id = "12345678-1234-1234-1234-123456789012"
-  region           = "us-west-2"
 
   cluster_config {
     cluster_name            = "my-cloud-cluster"
@@ -91,17 +90,17 @@ resource "polaris_azure_cloud_cluster" "example" {
 
 Required:
 
+- `admin_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
 - `admin_password` (String, Sensitive) Password for the cluster admin user. Changing this value will have no effect on the cluster.
 - `cluster_name` (String) Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.
-- `dns_name_servers` (Set of String) DNS name servers for the cluster. Changing this forces a new resource to be created.
+- `dns_name_servers` (List of String) DNS name servers for the cluster. Changing this forces a new resource to be created.
 - `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure (can be useful for troubleshooting). Changing this forces a new resource to be created.
-- `ntp_servers` (Set of String) NTP servers for the cluster. Changing this forces a new resource to be created.
+- `ntp_servers` (List of String) NTP servers for the cluster. Changing this forces a new resource to be created.
 - `num_nodes` (Number) Number of nodes in the cluster. Changing this forces a new resource to be created.
-- `user_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
 
 Optional:
 
-- `dns_search_domains` (Set of String) DNS search domains for the cluster. Changing this forces a new resource to be created.
+- `dns_search_domains` (List of String) DNS search domains for the cluster. Changing this forces a new resource to be created.
 
 
 <a id="nestedblock--vm_config"></a>
@@ -116,9 +115,9 @@ Required:
 - `network_resource_group` (String) Azure resource group name for network resources. Changing this forces a new resource to be created.
 - `network_security_group` (String) Azure network security group name. Changing this forces a new resource to be created.
 - `network_security_resource_group` (String) Azure resource group name for the network security group. Changing this forces a new resource to be created.
-- `region` (String) Azure region to deploy the cluster in. Changing this forces a new resource to be created.
+- `region` (String) Azure region to deploy the cluster in. The format should be the native Azure format, e.g. `eastus`, `westus`, etc. Changing this forces a new resource to be created.
 - `resource_group_name` (String) Azure resource group name where the cluster will be deployed. Changing this forces a new resource to be created.
-- `storage_account_name_prefix` (String) Azure storage account name for the cluster. Changing this forces a new resource to be created.
+- `storage_account_name` (String) Azure storage account name for the cluster. Changing this forces a new resource to be created.
 - `subnet` (String) Azure subnet name for the cluster nodes. Changing this forces a new resource to be created.
 - `user_assigned_managed_identity_name` (String) Name of the user-assigned managed identity. Changing this forces a new resource to be created.
 - `vnet` (String) Azure virtual network name. Changing this forces a new resource to be created.
