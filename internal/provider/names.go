@@ -27,6 +27,8 @@ const (
 	keyAdminEmail                                   = "admin_email"
 	keyAdminPassword                                = "admin_password"
 	keyAppID                                        = "app_id"
+	keyApplyChangesToExistingSnapshots              = "apply_changes_to_existing_snapshots"
+	keyApplyChangesToNonPolicySnapshots             = "apply_changes_to_non_policy_snapshots"
 	keyAppName                                      = "app_name"
 	keyAppSecret                                    = "app_secret"
 	keyArchival                                     = "archival"

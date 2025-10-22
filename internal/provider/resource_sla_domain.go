@@ -97,6 +97,16 @@ func resourceSLADomain() *schema.Resource {
 				Computed:    true,
 				Description: "SLA Domain ID (UUID).",
 			},
+			keyApplyChangesToExistingSnapshots: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Apply changes to existing snapshots when updating the SLA domain.",
+			},
+			keyApplyChangesToNonPolicySnapshots: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Apply changes to non-policy snapshots when updating the SLA domain.",
+			},
 			keyArchival: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -683,8 +693,6 @@ func resourceSLADomain() *schema.Resource {
 	}
 }
 
-// ------
-
 // fromArchival returns a slice of ArchivalSpec structs holding the archival
 // configuration.
 func fromArchival(d *schema.ResourceData, schedule gqlsla.SnapshotSchedule) ([]gqlsla.ArchivalSpec, error) {
@@ -822,8 +830,6 @@ func frequenciesFromSchedule(schedule gqlsla.SnapshotSchedule) []gqlsla.Retentio
 	return frequencies
 }
 
-// ------
-
 // Hourly - Hour, Day, Week.
 // Daily - Day, Week.
 // Weekly - Week.
@@ -955,6 +961,71 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 
 func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	log.Print("[TRACE] updateSLADomain")
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	id, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Parse snapshot schedule. Unspecified time frame schedules are nil.
+	schedule := gqlsla.SnapshotSchedule{
+		Daily:     fromDailySchedule(d),
+		Hourly:    fromHourlySchedule(d),
+		Minute:    fromMinuteSchedule(d),
+		Monthly:   fromMonthlySchedule(d),
+		Quarterly: fromQuarterlySchedule(d),
+		Weekly:    fromWeeklySchedule(d),
+		Yearly:    fromYearlySchedule(d),
+	}
+
+	archivalSpecs, err := fromArchival(d, schedule)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	snapshotWindows, err := fromSnapshotWindow(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	objectTypes := []gqlsla.ObjectType{}
+	for _, objectType := range d.Get(keyObjectTypes).(*schema.Set).List() {
+		objectTypes = append(objectTypes, gqlsla.ObjectType(objectType.(string)))
+	}
+
+	applyToExisting := d.Get(keyApplyChangesToExistingSnapshots).(bool)
+	applyToNonPolicy := applyToExisting && d.Get(keyApplyChangesToNonPolicySnapshots).(bool)
+
+	if err := sla.Wrap(client).UpdateDomain(ctx, gqlsla.UpdateDomainParams{
+		ID:                              id,
+		ShouldApplyToExistingSnapshots:  &gqlsla.BoolValue{Value: applyToExisting},
+		ShouldApplyToNonPolicySnapshots: &gqlsla.BoolValue{Value: applyToNonPolicy},
+		CreateDomainParams: gqlsla.CreateDomainParams{
+			ArchivalSpecs:          archivalSpecs,
+			BackupWindows:          snapshotWindows,
+			Description:            d.Get(keyDescription).(string),
+			FirstFullBackupWindows: []gqlsla.BackupWindow{},
+			LocalRetentionLimit:    fromSourceRetention(d),
+			Name:                   d.Get(keyName).(string),
+			ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
+				AWSS3Config:                     nil,
+				AWSRDSConfig:                    nil,
+				AzureBlobConfig:                 nil,
+				AzureSQLDatabaseDBConfig:        nil,
+				AzureSQLManagedInstanceDBConfig: nil,
+			},
+			ObjectTypes:       objectTypes,
+			RetentionLock:     false,
+			RetentionLockMode: "",
+			SnapshotSchedule:  schedule,
+		},
+	}); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }
