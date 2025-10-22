@@ -30,7 +30,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // resourceGcpProjectV0 defines the schema for version 0 of the GCP project
@@ -110,13 +109,13 @@ func resourceGcpProjectStateUpgradeV0(ctx context.Context, state map[string]inte
 	}
 
 	// Retrieve the account using the Polaris cloud account id.
-	account1, err := gcp.Wrap(client).Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account1, err := gcp.Wrap(client).ProjectByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	// Retrieve the account using the GCP project id.
-	account2, err := gcp.Wrap(client).Project(ctx, gcp.ProjectID(parts[1]), core.FeatureCloudNativeProtection)
+	account2, err := gcp.Wrap(client).ProjectByNativeID(ctx, parts[1])
 	if err != nil {
 		return nil, err
 	}

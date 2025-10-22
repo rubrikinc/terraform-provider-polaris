@@ -124,7 +124,7 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	}
 
 	// Request artifacts be added to account.
-	id, err := aws.Wrap(client).AddAccountArtifacts(ctx, aws.CloudAccountID(accountID), features, profiles, roles)
+	id, err := aws.Wrap(client).AddAccountArtifacts(ctx, accountID, features, profiles, roles)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -148,7 +148,7 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	// Request the cloud account.
-	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	account, err := aws.Wrap(client).AccountByID(ctx, id)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -162,7 +162,7 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	// Request the cloud account artifacts.
-	instanceProfiles, roles, err := aws.Wrap(client).AccountArtifacts(ctx, aws.CloudAccountID(id))
+	instanceProfiles, roles, err := aws.Wrap(client).AccountArtifacts(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -227,7 +227,7 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	}
 
 	// Update artifacts.
-	_, err = aws.Wrap(client).AddAccountArtifacts(ctx, aws.CloudAccountID(id), features, profiles, roles)
+	_, err = aws.Wrap(client).AddAccountArtifacts(ctx, id, features, profiles, roles)
 	if err != nil {
 		return diag.FromErr(err)
 	}

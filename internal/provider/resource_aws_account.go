@@ -572,7 +572,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	}
 
 	// Lookup the Polaris cloud account using the cloud account id.
-	account, err := aws.Wrap(client).Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	account, err := aws.Wrap(client).AccountByID(ctx, id)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -827,7 +827,11 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	// Make sure that the resource id and AWS profile refers to the same
 	// account.
-	cloudAccount, err := aws.Wrap(client).Account(ctx, aws.ID(account), core.FeatureAll)
+	config, err := account(ctx)
+	if err != nil {
+		return diag.Errorf("failed to lookup native account id: %s", err)
+	}
+	cloudAccount, err := aws.Wrap(client).AccountByNativeID(ctx, config.NativeID)
 	if errors.Is(err, graphql.ErrNotFound) {
 		return diag.Errorf("account identified by profile/role could not be found")
 	}
@@ -1145,7 +1149,11 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	// Make sure that the resource id and account profile refers to the same
 	// account.
-	cloudAccount, err := aws.Wrap(client).Account(ctx, aws.ID(account), core.FeatureAll)
+	config, err := account(ctx)
+	if err != nil {
+		return diag.Errorf("failed to lookup native account id: %s", err)
+	}
+	cloudAccount, err := aws.Wrap(client).AccountByNativeID(ctx, config.NativeID)
 	if errors.Is(err, graphql.ErrNotFound) {
 		return diag.Errorf("account identified by profile/role could not be found")
 	}

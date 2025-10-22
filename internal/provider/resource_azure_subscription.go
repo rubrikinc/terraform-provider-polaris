@@ -807,7 +807,7 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m any) d
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	account, err := azure.Wrap(client).Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureAll)
+	account, err := azure.Wrap(client).SubscriptionByID(ctx, accountID)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -964,7 +964,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			if update.op == opRemoveFeature {
 				deleteSnapshots = d.Get(keyDeleteSnapshotsOnDestroy).(bool)
 			}
-			if err := azure.Wrap(polarisClient).RemoveSubscription(ctx, azure.CloudAccountID(accountID), feature, deleteSnapshots); err != nil {
+			if err := azure.Wrap(polarisClient).RemoveSubscription(ctx, accountID, feature, deleteSnapshots); err != nil {
 				return diag.FromErr(err)
 			}
 		case opUpdateSubscription:
@@ -975,11 +975,11 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			for _, region := range update.block[keyRegions].(*schema.Set).List() {
 				opts = append(opts, azure.Region(region.(string)))
 			}
-			if err := azure.Wrap(polarisClient).UpdateSubscription(ctx, azure.CloudAccountID(accountID), feature, opts...); err != nil {
+			if err := azure.Wrap(polarisClient).UpdateSubscription(ctx, accountID, feature, opts...); err != nil {
 				return diag.FromErr(err)
 			}
 		case opUpdatePermissions:
-			if err := azure.Wrap(polarisClient).PermissionsUpdated(ctx, azure.CloudAccountID(accountID), []core.Feature{feature}); err != nil {
+			if err := azure.Wrap(polarisClient).PermissionsUpdated(ctx, accountID, []core.Feature{feature}); err != nil {
 				return diag.FromErr(err)
 			}
 		}
@@ -987,7 +987,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 
 	if d.HasChange(keySubscriptionName) {
 		opts := []azure.OptionFunc{azure.Name(d.Get(keySubscriptionName).(string))}
-		if err = azure.Wrap(polarisClient).UpdateSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureAll, opts...); err != nil {
+		if err = azure.Wrap(polarisClient).UpdateSubscription(ctx, accountID, core.FeatureAll, opts...); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1026,7 +1026,7 @@ func azureDeleteSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		}
 
 		deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
-		err = azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(accountID), featureKey.feature, deleteSnapshots)
+		err = azure.Wrap(client).RemoveSubscription(ctx, accountID, featureKey.feature, deleteSnapshots)
 		if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 			return diag.FromErr(err)
 		}
@@ -1460,7 +1460,7 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 	// Read the subscription and check if the Azure SQL DB Protection feature
 	// already has a resource group set. If the Azure SQL DB feature hasn't been
 	// onboarded or already has a resource group set, we don't need to upgrade.
-	account, err := azure.Wrap(polarisClient).Subscription(ctx, azure.CloudAccountID(cloudAccountID), core.FeatureAll)
+	account, err := azure.Wrap(polarisClient).SubscriptionByID(ctx, cloudAccountID)
 	if err != nil {
 		return false, err
 	}

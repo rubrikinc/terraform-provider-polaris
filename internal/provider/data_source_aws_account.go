@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 const dataSourceAwsAccountDescription = `
@@ -97,12 +96,12 @@ func awsAccountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 	var account aws.CloudAccount
 	switch {
 	case d.Get(keyAccountID).(string) != "":
-		account, err = aws.Wrap(client).AccountByNativeID(ctx, core.FeatureAll, d.Get(keyAccountID).(string))
+		account, err = aws.Wrap(client).AccountByNativeID(ctx, d.Get(keyAccountID).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	case d.Get(keyName).(string) != "":
-		account, err = aws.Wrap(client).AccountByName(ctx, core.FeatureAll, d.Get(keyName).(string))
+		account, err = aws.Wrap(client).AccountByName(ctx, d.Get(keyName).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -111,7 +110,7 @@ func awsAccountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		account, err = aws.Wrap(client).AccountByID(ctx, core.FeatureAll, id)
+		account, err = aws.Wrap(client).AccountByID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
 		}

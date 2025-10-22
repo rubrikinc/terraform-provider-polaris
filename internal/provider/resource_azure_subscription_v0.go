@@ -30,7 +30,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 func validateAzureRegion(m interface{}, p cty.Path) diag.Diagnostics {
@@ -91,7 +90,7 @@ func resourceAzureSubscriptionStateUpgradeV0(ctx context.Context, state map[stri
 		return nil, err
 	}
 
-	account, err := azure.Wrap(client).Subscription(ctx, azure.SubscriptionID(id), core.FeatureCloudNativeProtection)
+	account, err := azure.Wrap(client).SubscriptionByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
