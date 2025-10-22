@@ -33,6 +33,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/sla"
 )
@@ -494,6 +496,53 @@ func resourceSLADomain() *schema.Resource {
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in quarters.",
 			},
+			keyReplicationSpec: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyAWSRegion: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "AWS region to replicate to. Should be specified in the standard AWS " +
+								"style, e.g. `us-west-2`.",
+							ValidateFunc: validation.StringInSlice(gqlaws.AllRegionNames(), false),
+						},
+						keyAWSCrossAccount: {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Replication targetRSC cloud account ID) for cross account replication. Set to empyt string for same account replication.",
+						},
+						keyAzureRegion: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "Azure region to replicate to. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`.",
+							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
+						},
+						keyRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Retention specifies for how long the snapshots are kept.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyRetentionUnit: {
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "Retention unit specifies the unit of `retention`. Possible values are " +
+								"`DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.",
+							ValidateFunc: validation.StringInSlice([]string{
+								string(gqlsla.Days),
+								string(gqlsla.Weeks),
+								string(gqlsla.Months),
+								string(gqlsla.Quarters),
+								string(gqlsla.Years),
+							}, false),
+						},
+					},
+				},
+				Optional:    true,
+				Description: "Replication specification for the SLA Domain. ",
+			},
 			keyRetentionLock: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -536,7 +585,7 @@ func resourceSLADomain() *schema.Resource {
 				Optional:    true,
 				Description: "Specifies an optional snapshot window.",
 			},
-			keySourceRetention: {
+			keyLocalRetention: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -730,6 +779,67 @@ func toArchival(archivalSpecs []gqlsla.ArchivalSpec) []any {
 	return archival
 }
 
+// fromReplicationSpec returns a slice of ReplicationSpec structs holding the
+// replication configuration.
+func fromReplicationSpec(d *schema.ResourceData) ([]gqlsla.ReplicationSpec, error) {
+	var replicationSpecs []gqlsla.ReplicationSpec
+	for _, spec := range d.Get(keyReplicationSpec).([]any) {
+		spec := spec.(map[string]any)
+
+		retention := &gqlsla.RetentionDuration{
+			Duration: spec[keyRetention].(int),
+			Unit:     gqlsla.RetentionUnit(spec[keyRetentionUnit].(string)),
+		}
+		var awsRegion gqlaws.Region
+		var awsCrossAccount string
+		if name := spec[keyAWSRegion].(string); name != "" {
+			awsRegion = gqlaws.RegionFromName(name)
+			if awsRegion == gqlaws.RegionUnknown {
+				return nil, fmt.Errorf("unknown AWS region: %s", name)
+			}
+			awsCrossAccount = spec[keyAWSCrossAccount].(string)
+			if awsCrossAccount == "" {
+				awsCrossAccount = "SAME"
+			}
+
+		}
+		var azureRegion gqlazure.Region
+		var azureCrossSubscription string
+		if name := spec[keyAzureRegion].(string); name != "" {
+			azureRegion = gqlazure.RegionFromName(name)
+			if azureRegion == gqlazure.RegionUnknown {
+				return nil, fmt.Errorf("unknown Azure region: %s", name)
+			}
+			azureCrossSubscription = "SAME"
+		}
+		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
+			AWSRegion:         awsRegion.ToRegionForReplicationEnum(),
+			AWSAccount:        awsCrossAccount,
+			AzureRegion:       azureRegion.ToRegionForReplicationEnum(),
+			AzureSubscription: azureCrossSubscription,
+			RetentionDuration: retention,
+		})
+	}
+
+	return replicationSpecs, nil
+}
+
+// toReplicationSpec returns a slice holding the replication configuration.
+func toReplicationSpec(replicationSpecs []gqlsla.ReplicationSpec) []any {
+	var replicationSpec []any
+	for _, spec := range replicationSpecs {
+		replicationSpec = append(replicationSpec, map[string]any{
+			keyAWSRegion:       spec.AWSRegion.Name(),
+			keyAWSCrossAccount: spec.AWSAccount,
+			keyAzureRegion:     spec.AzureRegion.Name(),
+			keyRetention:       spec.RetentionDuration.Duration,
+			keyRetentionUnit:   spec.RetentionDuration.Unit,
+		})
+	}
+
+	return replicationSpec
+}
+
 // fromSnapshotWindow returns a slice of BackupWindow structs holding the
 // snapshot window configuration.
 func fromSnapshotWindow(d *schema.ResourceData) ([]gqlsla.BackupWindow, error) {
@@ -772,32 +882,31 @@ func toSnapshotWindow(backupWindows []gqlsla.BackupWindow) []any {
 	return snapshotWindow
 }
 
-// fromSourceRetention returns a RetentionDuration struct holding the source
-// retention configuration, or nil if source retention was not configured.
-func fromSourceRetention(d *schema.ResourceData) *gqlsla.RetentionDuration {
-	block, ok := d.GetOk(keySourceRetention)
+// fromLocalRetention returns a RetentionDuration struct holding the local
+// retention configuration, or nil if local retention was not configured.
+func fromLocalRetention(d *schema.ResourceData) *gqlsla.RetentionDuration {
+	block, ok := d.GetOk(keyLocalRetention)
 	if !ok {
 		return nil
 	}
 
-	sourceRetention := block.([]any)[0].(map[string]any)
+	localRetention := block.([]any)[0].(map[string]any)
 	return &gqlsla.RetentionDuration{
-		Duration: sourceRetention[keyRetention].(int),
-		Unit:     gqlsla.RetentionUnit(sourceRetention[keyRetentionUnit].(string)),
+		Duration: localRetention[keyRetention].(int),
+		Unit:     gqlsla.RetentionUnit(localRetention[keyRetentionUnit].(string)),
 	}
 }
 
-// toSourceRetention returns a map holding the source retention configuration or
+// toLocalRetention returns a map holding the source retention configuration or
 // nil if the RetentionDuration is nil.
-func toSourceRetention(sourceRetention *gqlsla.RetentionDuration) map[string]any {
-	if sourceRetention == nil {
+func toLocalRetention(localRetention *gqlsla.RetentionDuration) []any {
+	if localRetention == nil {
 		return nil
 	}
-
-	return map[string]any{
-		keyRetention:     sourceRetention.Duration,
-		keyRetentionUnit: string(sourceRetention.Unit),
-	}
+	return []any{map[string]any{
+		keyRetention:     localRetention.Duration,
+		keyRetentionUnit: string(localRetention.Unit),
+	}}
 }
 
 // frequenciesFromSchedule returns the frequencies from the given snapshot
@@ -860,6 +969,11 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		return diag.FromErr(err)
 	}
 
+	replicationSpecs, err := fromReplicationSpec(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	snapshotWindows, err := fromSnapshotWindow(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -875,7 +989,7 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		BackupWindows:          snapshotWindows,
 		Description:            d.Get(keyDescription).(string),
 		FirstFullBackupWindows: []gqlsla.BackupWindow{},
-		LocalRetentionLimit:    fromSourceRetention(d),
+		LocalRetentionLimit:    fromLocalRetention(d),
 		Name:                   d.Get(keyName).(string),
 		ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
 			AWSS3Config:                     nil,
@@ -885,6 +999,7 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 			AzureSQLManagedInstanceDBConfig: nil,
 		},
 		ObjectTypes:       objectTypes,
+		ReplicationSpecs:  replicationSpecs,
 		RetentionLock:     false,
 		RetentionLockMode: "",
 		SnapshotSchedule:  schedule,
@@ -956,6 +1071,30 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
+	var replicationSpecs []gqlsla.ReplicationSpec
+	for _, spec := range slaDomain.ReplicationSpecs {
+		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
+			AWSRegion:   spec.AWSRegion,
+			AWSAccount:  spec.AWS.AccountID,
+			AzureRegion: spec.AzureRegion,
+			RetentionDuration: &gqlsla.RetentionDuration{
+				Duration: spec.RetentionDuration.Duration,
+				Unit:     spec.RetentionDuration.Unit,
+			},
+		})
+	}
+	if err := d.Set(keyReplicationSpec, toReplicationSpec(replicationSpecs)); err != nil {
+		return diag.FromErr(err)
+	}
+
+	if slaDomain.LocalRetentionLimit != nil {
+		if err := d.Set(keyLocalRetention, toLocalRetention(&gqlsla.RetentionDuration{
+			Duration: slaDomain.LocalRetentionLimit.Duration,
+			Unit:     slaDomain.LocalRetentionLimit.Unit,
+		})); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 	return nil
 }
 
@@ -987,6 +1126,10 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	replicationSpecs, err := fromReplicationSpec(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	snapshotWindows, err := fromSnapshotWindow(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1009,7 +1152,7 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 			BackupWindows:          snapshotWindows,
 			Description:            d.Get(keyDescription).(string),
 			FirstFullBackupWindows: []gqlsla.BackupWindow{},
-			LocalRetentionLimit:    fromSourceRetention(d),
+			LocalRetentionLimit:    fromLocalRetention(d),
 			Name:                   d.Get(keyName).(string),
 			ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
 				AWSS3Config:                     nil,
@@ -1019,6 +1162,7 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 				AzureSQLManagedInstanceDBConfig: nil,
 			},
 			ObjectTypes:       objectTypes,
+			ReplicationSpecs:  replicationSpecs,
 			RetentionLock:     false,
 			RetentionLockMode: "",
 			SnapshotSchedule:  schedule,
