@@ -126,7 +126,7 @@ func resourceSLADomain() *schema.Resource {
 							Description: "Threshold specifies the time before archiving the snapshots at the " +
 								"managing location. The archival location retains the snapshots according to the SLA " +
 								"Domain schedule.",
-							ValidateFunc: validation.IntAtLeast(1),
+							ValidateFunc: validation.IntAtLeast(0),
 						},
 						keyThresholdUnit: {
 							Type:     schema.TypeString,
@@ -766,17 +766,39 @@ func fromArchival(d *schema.ResourceData, schedule gqlsla.SnapshotSchedule) ([]g
 }
 
 // toArchival returns a slice holding the archival configuration.
-func toArchival(archivalSpecs []gqlsla.ArchivalSpec) []any {
-	var archival []any
-	for _, archivalSpec := range archivalSpecs {
-		archival = append(archival, map[string]any{
-			keyArchivalLocationID: archivalSpec.GroupID.String(),
-			keyThreshold:          archivalSpec.Threshold,
-			keyThresholdUnit:      string(archivalSpec.ThresholdUnit),
-		})
+func toArchival(archivalSpecs []gqlsla.ArchivalSpec, existing []any) ([]any, error) {
+	blocks := make(map[string]map[string]any)
+	for _, spec := range archivalSpecs {
+		id := spec.GroupID.String()
+		if blocks[id] != nil {
+			return nil, fmt.Errorf("archival location %q used multiple times", spec.GroupID.String())
+		}
+		blocks[id] = map[string]any{
+			keyArchivalLocationID: id,
+			keyThreshold:          spec.Threshold,
+			keyThresholdUnit:      string(spec.ThresholdUnit),
+		}
 	}
 
-	return archival
+	// Preserve order from existing, then add new ones to the end.
+	var sorted []any
+	for _, old := range existing {
+		id := old.(map[string]any)[keyArchivalLocationID].(string)
+		if block, ok := blocks[id]; ok {
+			sorted = append(sorted, block)
+			delete(blocks, id)
+		}
+	}
+
+	// Add remaining blocks in the order they appear in archivalSpecs.
+	for _, spec := range archivalSpecs {
+		id := spec.GroupID.String()
+		if _, ok := blocks[id]; !ok {
+			continue
+		}
+		sorted = append(sorted, blocks[id])
+	}
+	return sorted, nil
 }
 
 // fromReplicationSpec returns a slice of ReplicationSpec structs holding the
@@ -1068,6 +1090,27 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyYearlySchedule, toYearlySchedule(slaDomain)); err != nil {
+		return diag.FromErr(err)
+	}
+
+	var archivalSpecs []gqlsla.ArchivalSpec
+	for _, archivalSpec := range slaDomain.ArchivalSpecs {
+		groupID, err := uuid.Parse(archivalSpec.StorageSetting.ID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		archivalSpecs = append(archivalSpecs, gqlsla.ArchivalSpec{
+			GroupID:       groupID,
+			Frequencies:   frequenciesFromSchedule(slaDomain.SnapshotSchedule),
+			Threshold:     archivalSpec.Threshold,
+			ThresholdUnit: archivalSpec.ThresholdUnit,
+		})
+	}
+	archival, err := toArchival(archivalSpecs, d.Get(keyArchival).([]any))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyArchival, archival); err != nil {
 		return diag.FromErr(err)
 	}
 
