@@ -201,6 +201,7 @@ func resourceSLADomain() *schema.Resource {
 					},
 				},
 				Optional: true,
+				MaxItems: 1,
 				Description: "Azure Blob Storage backup location for scheduled snapshots. To avoid early deletion " +
 					"fees, retain snapshots in cool tier archival locations for at least 30 days.",
 			},
@@ -1006,6 +1007,10 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		objectTypes = append(objectTypes, gqlsla.ObjectType(objectType.(string)))
 	}
 
+	blobConfig, err := fromAzureBlobConfig(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	id, err := sla.Wrap(client).CreateDomain(ctx, gqlsla.CreateDomainParams{
 		ArchivalSpecs:          archivalSpecs,
 		BackupWindows:          snapshotWindows,
@@ -1016,7 +1021,7 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
 			AWSS3Config:                     nil,
 			AWSRDSConfig:                    nil,
-			AzureBlobConfig:                 nil,
+			AzureBlobConfig:                 blobConfig,
 			AzureSQLDatabaseDBConfig:        nil,
 			AzureSQLManagedInstanceDBConfig: nil,
 		},
@@ -1114,6 +1119,16 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
+	var azureBlobConfig []any
+	if slaDomain.ObjectSpecificConfigs.AzureBlobConfig != nil {
+		azureBlobConfig = []any{map[string]any{
+			keyArchivalLocationID: slaDomain.ObjectSpecificConfigs.AzureBlobConfig.BackupLocationID.String(),
+		}}
+	}
+	if err := d.Set(keyAzureBlobConfig, azureBlobConfig); err != nil {
+		return diag.FromErr(err)
+	}
+
 	var replicationSpecs []gqlsla.ReplicationSpec
 	for _, spec := range slaDomain.ReplicationSpecs {
 		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
@@ -1169,6 +1184,10 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	blobConfig, err := fromAzureBlobConfig(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	replicationSpecs, err := fromReplicationSpec(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1200,7 +1219,7 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 			ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
 				AWSS3Config:                     nil,
 				AWSRDSConfig:                    nil,
-				AzureBlobConfig:                 nil,
+				AzureBlobConfig:                 blobConfig,
 				AzureSQLDatabaseDBConfig:        nil,
 				AzureSQLManagedInstanceDBConfig: nil,
 			},
@@ -1236,6 +1255,24 @@ func deleteSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 
 	d.SetId("")
 	return nil
+}
+
+func fromAzureBlobConfig(d *schema.ResourceData) (*gqlsla.AzureBlobConfig, error) {
+	block, ok := d.GetOk(keyAzureBlobConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	blobConfig := block.([]any)[0].(map[string]any)
+	archivalLocationID, err := uuid.Parse(blobConfig[keyArchivalLocationID].(string))
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlsla.AzureBlobConfig{
+		BackupLocationID:                archivalLocationID,
+		ContinuousBackupRetentionInDays: 1,
+	}, nil
 }
 
 func fromDailySchedule(d *schema.ResourceData) *gqlsla.DailySnapshotSchedule {
