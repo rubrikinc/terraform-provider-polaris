@@ -25,8 +25,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -82,8 +82,6 @@ For Azure SQL Database:
 	"To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days. " +
 	"Archiving starts immediately. The archival location retains snapshots for ",
 `
-
-const snapshotWindowTimeLayout = "Mon, 15:04"
 
 func resourceSLADomain() *schema.Resource {
 	return &schema.Resource{
@@ -293,7 +291,7 @@ func resourceSLADomain() *schema.Resource {
 						keyDuration: {
 							Type:         schema.TypeInt,
 							Required:     true,
-							Description:  "Duration of snapshot window in days.",
+							Description:  "Duration of snapshot window in hours.",
 							ValidateFunc: validation.IntAtLeast(1),
 						},
 						keyStartAt: {
@@ -301,7 +299,7 @@ func resourceSLADomain() *schema.Resource {
 							Required: true,
 							Description: "Start of the snapshot window. Should be given as `DAY, HH:MM`, e.g: " +
 								"`Mon, 15:30`.",
-							ValidateFunc: validateStartAt,
+							ValidateFunc: validateStartAt(true),
 						},
 					},
 				},
@@ -571,15 +569,17 @@ func resourceSLADomain() *schema.Resource {
 						keyDuration: {
 							Type:         schema.TypeInt,
 							Required:     true,
-							Description:  "Duration of the snapshot window in days.",
+							Description:  "Duration of the snapshot window in hours.",
 							ValidateFunc: validation.IntAtLeast(1),
 						},
 						keyStartAt: {
 							Type:     schema.TypeString,
 							Required: true,
-							Description: "Start of the snapshot window. Should be given as `Day, HH:MM`, e.g: " +
-								"`Mon, 15:30`.",
-							ValidateFunc: validateStartAt,
+							Description: "Start of the snapshot window. Should be given as `HH:MM`, e.g: " +
+								"`15:30`.",
+							// Snapshot windows with day of week are accepted by the API but not used by RSC
+							// causing inaccurate diffs if allowed.
+							ValidateFunc: validateStartAt(false),
 						},
 					},
 				},
@@ -865,25 +865,59 @@ func toReplicationSpec(replicationSpecs []gqlsla.ReplicationSpec) []any {
 
 // fromSnapshotWindow returns a slice of BackupWindow structs holding the
 // snapshot window configuration.
-func fromSnapshotWindow(d *schema.ResourceData) ([]gqlsla.BackupWindow, error) {
+func fromSnapshotWindow(windows []any) ([]gqlsla.BackupWindow, error) {
 	var snapshotWindows []gqlsla.BackupWindow
-	for _, snapshotWindow := range d.Get(keySnapshotWindow).([]any) {
+	for _, snapshotWindow := range windows {
 		snapshotWindow := snapshotWindow.(map[string]any)
 
-		startAt, err := time.Parse(snapshotWindowTimeLayout, snapshotWindow[keyStartAt].(string))
+		// Parse start time, e.g. "Mon, 15:30" or "16:45".
+		var day string
+		var timeParts []string
+		parts := strings.Split(snapshotWindow[keyStartAt].(string), ", ")
+		switch len(parts) {
+		case 1:
+			// No day of week specified.
+			timeParts = strings.Split(parts[0], ":")
+		case 2:
+			// Day of week specified.
+			switch strings.ToUpper(parts[0]) {
+			case "MON":
+				day = "MONDAY"
+			case "TUE":
+				day = "TUESDAY"
+			case "WED":
+				day = "WEDNESDAY"
+			case "THU":
+				day = "THURSDAY"
+			case "FRI":
+				day = "FRIDAY"
+			case "SAT":
+				day = "SATURDAY"
+			case "SUN":
+				day = "SUNDAY"
+			default:
+				return nil, fmt.Errorf("invalid day of week for %s: %s", keyStartAt, snapshotWindow[keyStartAt].(string))
+			}
+			timeParts = strings.Split(parts[1], ":")
+		default:
+			return nil, fmt.Errorf("invalid format for %s: %s", keyStartAt, snapshotWindow[keyStartAt].(string))
+		}
+
+		if len(timeParts) != 2 {
+			return nil, fmt.Errorf("invalid time format for %s: %s", keyStartAt, snapshotWindow[keyStartAt].(string))
+		}
+		h, err := strconv.Atoi(timeParts[0])
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %s", keyStartAt, err)
+			return nil, fmt.Errorf("failed to parse hour for %s: %s", keyStartAt, err)
+		}
+		m, err := strconv.Atoi(timeParts[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse minute for %s: %s", keyStartAt, err)
 		}
 
 		snapshotWindows = append(snapshotWindows, gqlsla.BackupWindow{
 			DurationInHours: snapshotWindow[keyDuration].(int),
-			StartTime: gqlsla.StartTime{
-				DayOfWeek: gqlsla.DayOfWeek{
-					Day: gqlsla.Day(strings.ToUpper(startAt.Weekday().String())),
-				},
-				Hour:   startAt.Hour(),
-				Minute: startAt.Minute(),
-			},
+			StartTime:       gqlsla.StartTime{DayOfWeek: gqlsla.DayOfWeek{Day: gqlsla.Day(day)}, Hour: h, Minute: m},
 		})
 	}
 
@@ -891,18 +925,24 @@ func fromSnapshotWindow(d *schema.ResourceData) ([]gqlsla.BackupWindow, error) {
 }
 
 // toSnapshotWindow returns a slice holding the snapshot window configuration.
-func toSnapshotWindow(backupWindows []gqlsla.BackupWindow) []any {
+func toSnapshotWindow(backupWindows []gqlsla.BackupWindow) ([]any, error) {
 	var snapshotWindow []any
 	for _, backupWindow := range backupWindows {
-
-		startAt := time.Date(0, 0, 0, backupWindow.StartTime.Hour, backupWindow.StartTime.Minute, 0, 0, time.UTC)
+		startAt := fmt.Sprintf("%02d:%02d", backupWindow.StartTime.Hour, backupWindow.StartTime.Minute)
+		if day := backupWindow.StartTime.DayOfWeek.Day; day != "" {
+			wd, err := day.ToWeekday()
+			if err != nil {
+				return nil, err
+			}
+			startAt = wd.String()[:3] + ", " + startAt
+		}
 		snapshotWindow = append(snapshotWindow, map[string]any{
 			keyDuration: backupWindow.DurationInHours,
-			keyStartAt:  startAt.Format(snapshotWindowTimeLayout),
+			keyStartAt:  startAt,
 		})
 	}
 
-	return snapshotWindow
+	return snapshotWindow, nil
 }
 
 // fromLocalRetention returns a RetentionDuration struct holding the local
@@ -997,7 +1037,11 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		return diag.FromErr(err)
 	}
 
-	snapshotWindows, err := fromSnapshotWindow(d)
+	snapshotWindows, err := fromSnapshotWindow(d.Get(keySnapshotWindow).([]any))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	firstFullSnapshotWindows, err := fromSnapshotWindow(d.Get(keyFirstFullSnapshot).([]any))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -1015,7 +1059,7 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		ArchivalSpecs:          archivalSpecs,
 		BackupWindows:          snapshotWindows,
 		Description:            d.Get(keyDescription).(string),
-		FirstFullBackupWindows: []gqlsla.BackupWindow{},
+		FirstFullBackupWindows: firstFullSnapshotWindows,
 		LocalRetentionLimit:    fromLocalRetention(d),
 		Name:                   d.Get(keyName).(string),
 		ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
@@ -1129,6 +1173,21 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
+	snapshotWindow, err := toSnapshotWindow(slaDomain.BackupWindows)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keySnapshotWindow, snapshotWindow); err != nil {
+		return diag.FromErr(err)
+	}
+	firstFullSnapshot, err := toSnapshotWindow(slaDomain.FirstFullBackupWindows)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyFirstFullSnapshot, firstFullSnapshot); err != nil {
+		return diag.FromErr(err)
+	}
+
 	var replicationSpecs []gqlsla.ReplicationSpec
 	for _, spec := range slaDomain.ReplicationSpecs {
 		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
@@ -1192,7 +1251,11 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	snapshotWindows, err := fromSnapshotWindow(d)
+	snapshotWindows, err := fromSnapshotWindow(d.Get(keySnapshotWindow).([]any))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	firstFullSnapshotWindows, err := fromSnapshotWindow(d.Get(keyFirstFullSnapshot).([]any))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -1213,7 +1276,7 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 			ArchivalSpecs:          archivalSpecs,
 			BackupWindows:          snapshotWindows,
 			Description:            d.Get(keyDescription).(string),
-			FirstFullBackupWindows: []gqlsla.BackupWindow{},
+			FirstFullBackupWindows: firstFullSnapshotWindows,
 			LocalRetentionLimit:    fromLocalRetention(d),
 			Name:                   d.Get(keyName).(string),
 			ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
