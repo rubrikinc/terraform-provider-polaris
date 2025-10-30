@@ -197,11 +197,12 @@ func resourceSLADomain() *schema.Resource {
 							Required: true,
 							Description: "Log retention specifies for how long, in days, the continuous backups are " +
 								"kept.",
-							ValidateFunc: validation.IntAtLeast(1),
+							ValidateFunc: validation.IntBetween(1, 35),
 						},
 					},
 				},
 				Optional: true,
+				MaxItems: 1,
 				Description: "Azure SQL Database continuous backups for point-in-time recovery. Continuous " +
 					"backups are stored in the source database. Note, the changes will be applied during the next " +
 					"maintenance window.",
@@ -214,11 +215,12 @@ func resourceSLADomain() *schema.Resource {
 							Type:         schema.TypeInt,
 							Required:     true,
 							Description:  "Log retention specifies for how long, in days, the log backups are kept.",
-							ValidateFunc: validation.IntAtLeast(1),
+							ValidateFunc: validation.IntBetween(1, 35),
 						},
 					},
 				},
 				Optional: true,
+				MaxItems: 1,
 				Description: "Azure SQL MI log backups. Note, the changes will be applied during the next " +
 					"maintenance window.",
 			},
@@ -1045,11 +1047,14 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		return diag.FromErr(err)
 	}
 
-	var objectTypes []gqlsla.ObjectType
-	for _, objectType := range d.Get(keyObjectTypes).(*schema.Set).List() {
-		objectTypes = append(objectTypes, gqlsla.ObjectType(objectType.(string)))
+	azureSQLConfig, err := fromAzureSQLConfig(d, keyAzureSQLDatabaseConfig)
+	if err != nil {
+		return diag.FromErr(err)
 	}
-
+	azureSQLMIConfig, err := fromAzureSQLConfig(d, keyAzureSQLManagedInstanceConfig)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	blobConfig, err := fromAzureBlobConfig(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1069,6 +1074,60 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		}
 	}
 
+	var objectTypes []gqlsla.ObjectType
+	objectTypeList := d.Get(keyObjectTypes).(*schema.Set).List()
+	for _, objectType := range objectTypeList {
+		objectType := gqlsla.ObjectType(objectType.(string))
+
+		// Per object type validation.
+		switch objectType {
+		case gqlsla.ObjectAzureSQLDatabase:
+			if len(objectTypeList) > 1 {
+				return diag.Errorf("Azure SQL Database object type cannot be combined with other object types")
+			}
+			if azureSQLConfig == nil {
+				return diag.Errorf("Azure SQL Database object type requires Azure SQL Database configuration")
+			}
+			if len(archivalSpecs) != 1 {
+				return diag.Errorf("Azure SQL Database object type requires an archival location with instant archival enabled")
+			}
+			if archivalSpecs[0].Threshold != 0 {
+				return diag.Errorf("Azure SQL Database object type requires an archival location with instant archival enabled")
+			}
+			if len(replicationSpecs) > 0 {
+				return diag.Errorf("Azure SQL Database object type does not support replication")
+			}
+		case gqlsla.ObjectAzureSQLManagedInstance:
+			if azureSQLMIConfig == nil {
+				return diag.Errorf("Azure SQL Managed Instance object type requires Azure SQL Managed Instance configuration")
+			}
+			if azureSQLConfig != nil {
+				return diag.Errorf("Azure SQL Managed Instance object type cannot be combined with Azure SQL Database configuration")
+			}
+			if len(archivalSpecs) > 0 {
+				return diag.Errorf("Azure SQL Managed Instance object type does not support archival locations")
+			}
+			if len(replicationSpecs) > 0 {
+				return diag.Errorf("Azure SQL Managed Instance object type does not support replication")
+			}
+		case gqlsla.ObjectAzureBlob:
+			if blobConfig == nil {
+				return diag.Errorf("Azure Blob object type requires Azure Blob configuration")
+			}
+		case gqlsla.ObjectAWSS3:
+			if len(objectTypeList) > 1 {
+				return diag.Errorf("AWS S3 object type cannot be combined with other object types")
+			}
+			if mbl.Enabled && len(backupLocations) == 0 {
+				return diag.Errorf("AWS S3 object type requires at least one backup location")
+			}
+			if !mbl.Enabled && awsS3Config == nil {
+				return diag.Errorf("AWS S3 object type requires AWS S3 configuration")
+			}
+		}
+		objectTypes = append(objectTypes, objectType)
+	}
+
 	id, err := sla.Wrap(client).CreateDomain(ctx, gqlsla.CreateDomainParams{
 		ArchivalSpecs:          archivalSpecs,
 		BackupLocationSpecs:    backupLocations,
@@ -1081,8 +1140,8 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 			AWSS3Config:                     awsS3Config,
 			AWSRDSConfig:                    nil,
 			AzureBlobConfig:                 blobConfig,
-			AzureSQLDatabaseDBConfig:        nil,
-			AzureSQLManagedInstanceDBConfig: nil,
+			AzureSQLDatabaseDBConfig:        azureSQLConfig,
+			AzureSQLManagedInstanceDBConfig: azureSQLMIConfig,
 		},
 		ObjectTypes:       objectTypes,
 		ReplicationSpecs:  replicationSpecs,
@@ -1187,6 +1246,12 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 	if err := d.Set(keyAzureBlobConfig, azureBlobConfig); err != nil {
 		return diag.FromErr(err)
 	}
+	if err := d.Set(keyAzureSQLDatabaseConfig, toAzureSQLConfig(slaDomain.ObjectSpecificConfigs.AzureSQLDatabaseDBConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyAzureSQLManagedInstanceConfig, toAzureSQLConfig(slaDomain.ObjectSpecificConfigs.AzureSQLManagedInstanceDBConfig)); err != nil {
+		return diag.FromErr(err)
+	}
 
 	// AWS S3 object type is supported in two ways, either using backup location specs, or
 	// using object specific configs if multiple backup locations are not enabled.
@@ -1268,6 +1333,14 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	azureSQLConfig, err := fromAzureSQLConfig(d, keyAzureSQLDatabaseConfig)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	azureSQLMIConfig, err := fromAzureSQLConfig(d, keyAzureSQLManagedInstanceConfig)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	blobConfig, err := fromAzureBlobConfig(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1283,11 +1356,6 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	firstFullSnapshotWindows, err := fromSnapshotWindow(d.Get(keyFirstFullSnapshot).([]any))
 	if err != nil {
 		return diag.FromErr(err)
-	}
-
-	objectTypes := []gqlsla.ObjectType{}
-	for _, objectType := range d.Get(keyObjectTypes).(*schema.Set).List() {
-		objectTypes = append(objectTypes, gqlsla.ObjectType(objectType.(string)))
 	}
 
 	var backupLocations []gqlsla.BackupLocationSpec
@@ -1306,6 +1374,60 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	applyToExisting := d.Get(keyApplyChangesToExistingSnapshots).(bool)
 	applyToNonPolicy := applyToExisting && d.Get(keyApplyChangesToNonPolicySnapshots).(bool)
 
+	var objectTypes []gqlsla.ObjectType
+	objectTypeList := d.Get(keyObjectTypes).(*schema.Set).List()
+	for _, objectType := range objectTypeList {
+		objectType := gqlsla.ObjectType(objectType.(string))
+
+		// Per object type validation.
+		switch objectType {
+		case gqlsla.ObjectAzureSQLDatabase:
+			if len(objectTypeList) > 1 {
+				return diag.Errorf("Azure SQL Database object type cannot be combined with other object types")
+			}
+			if azureSQLConfig == nil {
+				return diag.Errorf("Azure SQL Database object type requires Azure SQL Database configuration")
+			}
+			if len(archivalSpecs) != 1 {
+				return diag.Errorf("Azure SQL Database object type requires an archival location with instant archival enabled")
+			}
+			if archivalSpecs[0].Threshold != 0 {
+				return diag.Errorf("Azure SQL Database object type requires an archival location with instant archival enabled")
+			}
+			if len(replicationSpecs) > 0 {
+				return diag.Errorf("Azure SQL Database object type does not support replication")
+			}
+		case gqlsla.ObjectAzureSQLManagedInstance:
+			if azureSQLMIConfig == nil {
+				return diag.Errorf("Azure SQL Managed Instance object type requires Azure SQL Managed Instance configuration")
+			}
+			if azureSQLConfig != nil {
+				return diag.Errorf("Azure SQL Managed Instance object type cannot be combined with Azure SQL Database configuration")
+			}
+			if len(archivalSpecs) > 0 {
+				return diag.Errorf("Azure SQL Managed Instance object type does not support archival locations")
+			}
+			if len(replicationSpecs) > 0 {
+				return diag.Errorf("Azure SQL Managed Instance object type does not support replication")
+			}
+		case gqlsla.ObjectAzureBlob:
+			if blobConfig == nil {
+				return diag.Errorf("Azure Blob object type requires Azure Blob configuration")
+			}
+		case gqlsla.ObjectAWSS3:
+			if len(objectTypeList) > 1 {
+				return diag.Errorf("AWS S3 object type cannot be combined with other object types")
+			}
+			if mbl.Enabled && len(backupLocations) == 0 {
+				return diag.Errorf("AWS S3 object type requires at least one backup location")
+			}
+			if !mbl.Enabled && awsS3Config == nil {
+				return diag.Errorf("AWS S3 object type requires AWS S3 configuration")
+			}
+		}
+		objectTypes = append(objectTypes, objectType)
+	}
+
 	if err := sla.Wrap(client).UpdateDomain(ctx, gqlsla.UpdateDomainParams{
 		ID:                              id,
 		ShouldApplyToExistingSnapshots:  &gqlsla.BoolValue{Value: applyToExisting},
@@ -1322,8 +1444,8 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 				AWSS3Config:                     awsS3Config,
 				AWSRDSConfig:                    nil,
 				AzureBlobConfig:                 blobConfig,
-				AzureSQLDatabaseDBConfig:        nil,
-				AzureSQLManagedInstanceDBConfig: nil,
+				AzureSQLDatabaseDBConfig:        azureSQLConfig,
+				AzureSQLManagedInstanceDBConfig: azureSQLMIConfig,
 			},
 			ObjectTypes:       objectTypes,
 			ReplicationSpecs:  replicationSpecs,
@@ -1392,6 +1514,28 @@ func fromAzureBlobConfig(d *schema.ResourceData) (*gqlsla.AzureBlobConfig, error
 		BackupLocationID:                archivalLocationID,
 		ContinuousBackupRetentionInDays: 1,
 	}, nil
+}
+
+func fromAzureSQLConfig(d *schema.ResourceData, key string) (*gqlsla.AzureDBConfig, error) {
+	block, ok := d.GetOk(key)
+	if !ok {
+		return nil, nil
+	}
+
+	sqlConfig := block.([]any)[0].(map[string]any)
+	return &gqlsla.AzureDBConfig{
+		LogRetentionInDays: sqlConfig[keyLogRetention].(int),
+	}, nil
+}
+
+func toAzureSQLConfig(sqlConfig *gqlsla.AzureDBConfig) []any {
+	if sqlConfig == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyLogRetention: sqlConfig.LogRetentionInDays,
+	}}
 }
 
 func fromBackupLocation(d *schema.ResourceData) []gqlsla.BackupLocationSpec {
