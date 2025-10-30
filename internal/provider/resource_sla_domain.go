@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
@@ -170,22 +171,6 @@ func resourceSLADomain() *schema.Resource {
 					"specified, AWS provides 1 day of continuous backup by default for Aurora databases, which can " +
 					"be changed but not disable.",
 			},
-			keyAWSS3Config: {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						keyArchivalLocationID: {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "Archival location ID (UUID).",
-							ValidateFunc: validation.IsUUID,
-						},
-					},
-				},
-				Optional: true,
-				Description: "AWS S3 backup location for scheduled snapshots. Only scheduled snapshots will be " +
-					"stored in these locations.",
-			},
 			keyAzureBlobConfig: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -236,6 +221,20 @@ func resourceSLADomain() *schema.Resource {
 				Optional: true,
 				Description: "Azure SQL MI log backups. Note, the changes will be applied during the next " +
 					"maintenance window.",
+			},
+			keyBackupLocation: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyArchivalGroupID: {
+							Type:         schema.TypeString,
+							Required:     true,
+							Description:  "Archival group ID (UUID).",
+							ValidateFunc: validation.IsUUID,
+						},
+					},
+				},
+				Optional: true,
 			},
 			keyDailySchedule: {
 				Type: schema.TypeList,
@@ -1055,15 +1054,31 @@ func createSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
+	mbl, err := core.Wrap(client.GQL).FeatureFlag(ctx, "CNP_AWS_S3_MULTIPLE_BACKUP_LOCATIONS_ENABLED")
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	var backupLocations []gqlsla.BackupLocationSpec
+	var awsS3Config *gqlsla.AWSS3Config
+	if mbl.Enabled {
+		backupLocations = fromBackupLocation(d)
+	} else {
+		if awsS3Config, err = fromAWSS3Config(d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	id, err := sla.Wrap(client).CreateDomain(ctx, gqlsla.CreateDomainParams{
 		ArchivalSpecs:          archivalSpecs,
+		BackupLocationSpecs:    backupLocations,
 		BackupWindows:          snapshotWindows,
 		Description:            d.Get(keyDescription).(string),
 		FirstFullBackupWindows: firstFullSnapshotWindows,
 		LocalRetentionLimit:    fromLocalRetention(d),
 		Name:                   d.Get(keyName).(string),
 		ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
-			AWSS3Config:                     nil,
+			AWSS3Config:                     awsS3Config,
 			AWSRDSConfig:                    nil,
 			AzureBlobConfig:                 blobConfig,
 			AzureSQLDatabaseDBConfig:        nil,
@@ -1173,6 +1188,16 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
+	// AWS S3 object type is supported in two ways, either using backup location specs, or
+	// using object specific configs if multiple backup locations are not enabled.
+	backupLocations, err := toBackupLocations(slaDomain, d.Get(keyBackupLocation).([]any))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyBackupLocation, backupLocations); err != nil {
+		return diag.FromErr(err)
+	}
+
 	snapshotWindow, err := toSnapshotWindow(slaDomain.BackupWindows)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1265,6 +1290,19 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		objectTypes = append(objectTypes, gqlsla.ObjectType(objectType.(string)))
 	}
 
+	var backupLocations []gqlsla.BackupLocationSpec
+	var awsS3Config *gqlsla.AWSS3Config
+	mbl, err := core.Wrap(client.GQL).FeatureFlag(ctx, "CNP_AWS_S3_MULTIPLE_BACKUP_LOCATIONS_ENABLED")
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if mbl.Enabled {
+		backupLocations = fromBackupLocation(d)
+	} else {
+		if awsS3Config, err = fromAWSS3Config(d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 	applyToExisting := d.Get(keyApplyChangesToExistingSnapshots).(bool)
 	applyToNonPolicy := applyToExisting && d.Get(keyApplyChangesToNonPolicySnapshots).(bool)
 
@@ -1274,13 +1312,14 @@ func updateSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 		ShouldApplyToNonPolicySnapshots: &gqlsla.BoolValue{Value: applyToNonPolicy},
 		CreateDomainParams: gqlsla.CreateDomainParams{
 			ArchivalSpecs:          archivalSpecs,
+			BackupLocationSpecs:    backupLocations,
 			BackupWindows:          snapshotWindows,
 			Description:            d.Get(keyDescription).(string),
 			FirstFullBackupWindows: firstFullSnapshotWindows,
 			LocalRetentionLimit:    fromLocalRetention(d),
 			Name:                   d.Get(keyName).(string),
 			ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
-				AWSS3Config:                     nil,
+				AWSS3Config:                     awsS3Config,
 				AWSRDSConfig:                    nil,
 				AzureBlobConfig:                 blobConfig,
 				AzureSQLDatabaseDBConfig:        nil,
@@ -1320,6 +1359,23 @@ func deleteSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	return nil
 }
 
+func fromAWSS3Config(d *schema.ResourceData) (*gqlsla.AWSS3Config, error) {
+	locations := d.Get(keyBackupLocation).([]any)
+	if len(locations) == 0 {
+		return nil, nil
+	}
+	if len(locations) > 1 {
+		return nil, fmt.Errorf("multiple backup locations not supported")
+	}
+	groupID, err := uuid.Parse(locations[0].(map[string]any)[keyArchivalGroupID].(string))
+	if err != nil {
+		return nil, err
+	}
+	return &gqlsla.AWSS3Config{
+		ArchivalLocationID: groupID,
+	}, nil
+}
+
 func fromAzureBlobConfig(d *schema.ResourceData) (*gqlsla.AzureBlobConfig, error) {
 	block, ok := d.GetOk(keyAzureBlobConfig)
 	if !ok {
@@ -1336,6 +1392,61 @@ func fromAzureBlobConfig(d *schema.ResourceData) (*gqlsla.AzureBlobConfig, error
 		BackupLocationID:                archivalLocationID,
 		ContinuousBackupRetentionInDays: 1,
 	}, nil
+}
+
+func fromBackupLocation(d *schema.ResourceData) []gqlsla.BackupLocationSpec {
+	var locations []gqlsla.BackupLocationSpec
+	for _, l := range d.Get(keyBackupLocation).([]any) {
+		l := l.(map[string]any)
+		groupID, err := uuid.Parse(l[keyArchivalGroupID].(string))
+		if err != nil {
+			return nil
+		}
+		locations = append(locations, gqlsla.BackupLocationSpec{
+			ArchivalGroupID: groupID,
+		})
+	}
+	return locations
+}
+
+func toBackupLocations(slaDomain gqlsla.Domain, existing []any) ([]any, error) {
+	blocks := make(map[string]map[string]any)
+	for _, spec := range slaDomain.BackupLocationSpecs {
+		id := spec.ArchivalGroup.ID
+		if blocks[id] != nil {
+			return nil, fmt.Errorf("archival location %q used multiple times", id)
+		}
+		blocks[id] = map[string]any{
+			keyArchivalGroupID: id,
+		}
+	}
+
+	// Preserve order from existing, then add new ones to the end.
+	var sorted []any
+	for _, old := range existing {
+		id := old.(map[string]any)[keyArchivalGroupID].(string)
+		if block, ok := blocks[id]; ok {
+			sorted = append(sorted, block)
+			delete(blocks, id)
+		}
+	}
+
+	// Add remaining blocks in the order they appear in backupLocationSpecs.
+	for _, spec := range slaDomain.BackupLocationSpecs {
+		id := spec.ArchivalGroup.ID
+		if _, ok := blocks[id]; !ok {
+			continue
+		}
+		sorted = append(sorted, blocks[id])
+	}
+
+	// AWS S3 fallback when multiple backup locations are not enabled.
+	if len(sorted) == 0 && slaDomain.ObjectSpecificConfigs.AWSS3Config != nil {
+		sorted = append(sorted, map[string]any{
+			keyArchivalGroupID: slaDomain.ObjectSpecificConfigs.AWSS3Config.ArchivalLocationID.String(),
+		})
+	}
+	return sorted, nil
 }
 
 func fromDailySchedule(d *schema.ResourceData) *gqlsla.DailySnapshotSchedule {
