@@ -167,6 +167,7 @@ func resourceSLADomain() *schema.Resource {
 					},
 				},
 				Optional: true,
+				MaxItems: 1,
 				Description: "AWS RDS continuous backups for point-in-time recovery. If continuous backup isn't " +
 					"specified, AWS provides 1 day of continuous backup by default for Aurora databases, which can " +
 					"be changed but not disable.",
@@ -275,6 +276,7 @@ func resourceSLADomain() *schema.Resource {
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
+					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in days.",
@@ -345,6 +347,7 @@ func resourceSLADomain() *schema.Resource {
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
+					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in hours.",
@@ -399,6 +402,7 @@ func resourceSLADomain() *schema.Resource {
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
+					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in months.",
@@ -492,6 +496,7 @@ func resourceSLADomain() *schema.Resource {
 					keyMonthlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
+					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in quarters.",
@@ -674,6 +679,7 @@ func resourceSLADomain() *schema.Resource {
 					keyMonthlySchedule,
 					keyQuarterlySchedule,
 					keyYearlySchedule,
+					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in weeks.",
@@ -736,6 +742,7 @@ func resourceSLADomain() *schema.Resource {
 					keyMonthlySchedule,
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
+					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in years.",
@@ -1027,6 +1034,10 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 		if err != nil {
 			return diag.FromErr(err)
 		}
+		awsRDSConfig, err := fromAWSRDSConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 		azureSQLConfig, err := fromAzureSQLConfig(d, keyAzureSQLDatabaseConfig)
 		if err != nil {
 			return diag.FromErr(err)
@@ -1132,7 +1143,7 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			Name:                   d.Get(keyName).(string),
 			ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
 				AWSS3Config:                     awsS3Config,
-				AWSRDSConfig:                    nil,
+				AWSRDSConfig:                    awsRDSConfig,
 				AzureBlobConfig:                 blobConfig,
 				AzureSQLDatabaseDBConfig:        azureSQLConfig,
 				AzureSQLManagedInstanceDBConfig: azureSQLMIConfig,
@@ -1256,6 +1267,9 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 	if err := d.Set(keyArchival, archival); err != nil {
 		return diag.FromErr(err)
 	}
+	if err := d.Set(keyAWSRDSConfig, toAWSRDSConfig(slaDomain.ObjectSpecificConfigs.AWSRDSConfig)); err != nil {
+		return diag.FromErr(err)
+	}
 
 	var azureBlobConfig []any
 	if slaDomain.ObjectSpecificConfigs.AzureBlobConfig != nil {
@@ -1344,6 +1358,32 @@ func deleteSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 
 	d.SetId("")
 	return nil
+}
+
+func fromAWSRDSConfig(d *schema.ResourceData) (*gqlsla.AWSRDSConfig, error) {
+	block, ok := d.GetOk(keyAWSRDSConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	rdsConfig := block.([]any)[0].(map[string]any)
+	return &gqlsla.AWSRDSConfig{
+		LogRetention: gqlsla.RetentionDuration{
+			Duration: rdsConfig[keyLogRetention].(int),
+			Unit:     gqlsla.RetentionUnit(rdsConfig[keyLogRetentionUnit].(string)),
+		},
+	}, nil
+}
+
+func toAWSRDSConfig(rdsConfig *gqlsla.AWSRDSConfig) []any {
+	if rdsConfig == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyLogRetention:     rdsConfig.LogRetention.Duration,
+		keyLogRetentionUnit: rdsConfig.LogRetention.Unit,
+	}}
 }
 
 func fromAWSS3Config(d *schema.ResourceData) (*gqlsla.AWSS3Config, error) {
