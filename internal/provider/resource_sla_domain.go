@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -140,6 +141,21 @@ func resourceSLADomain() *schema.Resource {
 				Optional: true,
 				Description: "Archive snapshots to the specified archival location. Note, if `instant_archive` is " +
 					"enabled, `threshold` and `threshold_unit` are ignored.",
+			},
+			keyAWSDynamoDBConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyKMSAlias: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "KMS alias for primary backup. Ensure the specified KMS key exists in the respective regions of the DynamoDB tables this SLA will be applied to. Avoid deleting it, as it will be used for data decryption during archival and recovery.",
+							ValidateFunc: validation.StringMatch(regexp.MustCompile(`^alias\/[a-zA-Z0-9:/_-]+$`), "KMS alias must be in the format `alias/<name>`"),
+						},
+					},
+				},
+				Optional: true,
+				MaxItems: 1,
 			},
 			keyAWSRDSConfig: {
 				Type: schema.TypeList,
@@ -421,8 +437,8 @@ func resourceSLADomain() *schema.Resource {
 				},
 				Required: true,
 				Description: "Object types which can be protected by the SLA Domain. Possible values are " +
-					"`AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, " +
-					"`AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
+					"`AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
+					"`AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
 					"`AZURE_BLOB_OBJECT_TYPE` and `GCP_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot " +
 					"be provided at the same time as other object types.",
 			},
@@ -1034,6 +1050,10 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 		if err != nil {
 			return diag.FromErr(err)
 		}
+		awsDynamoDBConfig, err := fromAWSDynamoDBConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 		awsRDSConfig, err := fromAWSRDSConfig(d)
 		if err != nil {
 			return diag.FromErr(err)
@@ -1142,6 +1162,7 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			LocalRetentionLimit:    fromLocalRetention(d),
 			Name:                   d.Get(keyName).(string),
 			ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
+				AWSDynamoDBConfig:               awsDynamoDBConfig,
 				AWSS3Config:                     awsS3Config,
 				AWSRDSConfig:                    awsRDSConfig,
 				AzureBlobConfig:                 blobConfig,
@@ -1267,6 +1288,9 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 	if err := d.Set(keyArchival, archival); err != nil {
 		return diag.FromErr(err)
 	}
+	if err := d.Set(keyAWSDynamoDBConfig, toAWSDynamoDBConfig(slaDomain.ObjectSpecificConfigs.AWSDynamoDBConfig)); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyAWSRDSConfig, toAWSRDSConfig(slaDomain.ObjectSpecificConfigs.AWSRDSConfig)); err != nil {
 		return diag.FromErr(err)
 	}
@@ -1358,6 +1382,36 @@ func deleteSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 
 	d.SetId("")
 	return nil
+}
+
+func fromAWSDynamoDBConfig(d *schema.ResourceData) (*gqlsla.AWSDynamoDBConfig, error) {
+	block, ok := d.GetOk(keyAWSDynamoDBConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	dynamoDBConfig := block.([]any)[0].(map[string]any)
+	kmsAlias, ok := dynamoDBConfig[keyKMSAlias].(string)
+	if !ok {
+		return nil, nil
+	}
+	return &gqlsla.AWSDynamoDBConfig{
+		KMSAliasForPrimaryBackup: kmsAlias,
+	}, nil
+}
+
+func toAWSDynamoDBConfig(dynamoDBConfig *gqlsla.AWSDynamoDBConfig) []any {
+	if dynamoDBConfig == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyKMSAlias: dynamoDBConfig.KMSAliasForPrimaryBackup,
+	}}
 }
 
 func fromAWSRDSConfig(d *schema.ResourceData) (*gqlsla.AWSRDSConfig, error) {
