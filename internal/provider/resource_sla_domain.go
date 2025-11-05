@@ -44,7 +44,7 @@ import (
 const resourceSLADomainDescription = `
 The ´polaris_sla_domain´ resource is used to manage RSC global SLA Domains. SLA
 Domain defines how you want to take snapshots of objects like virtual machines,
-databases, SaaS apps and cloud objects. An SLA Domain defines frequency,
+databases, SaaS apps and cloud objects. An SLA Domain can define frequency,
 retention, archival and replication.
 
 -> Enabling Instant Archive can increase bandwidth usage and archival storage
@@ -59,30 +59,56 @@ retention, archival and replication.
 
 ---
 
-
-
-Frequency
+### Frequency
 
 This defines when and how often snapshots are taken. This could be interval-based (days, hours, minutes) or calendar-based (a day of each month).
 
-Retention
+### Retention
 
 This defines how long the snapshot is kept on the Rubrik cluster.
 
-Before You Start: To archive snapshots, make sure you’ve added archival locations so that they’re available for selection.
+### Archival
+Before You Start: To archive snapshots, make sure you’ve added archival locations.
 
 To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days.
 
-Retention lock: https://docs.rubrik.com/en-us/saas/saas/retention_locked_sla_domain.html
-
 ---
+# Object types
 
-For Azure SQL Database:
-	"For Azure SQL Database, archival is mandatory and the backups will be instantly archived. " +
-	"These frequencies and retentions apply to archived snapshots of the Azure SQL database. " +
-	"You can configure continuous backups in the next step. " +
-	"To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days. " +
-	"Archiving starts immediately. The archival location retains snapshots for ",
+## Azure SQL Databases
+Archival is mandatory and the backups will be instantly archived. Frequency and Retention apply to archived snapshots of the Azure SQL database.
+Continuous backups for point-in-time recovery retentions is configured in ´azure_sql_database_config´.
+
+## Azure SQL Managed Instance
+Archival and Replication are not supported by Azure SQL Managed Instance.
+Log backup for Azure SQL MI is configured in ´azure_sql_managed_instance_config´.
+
+## Azure Blob Storage
+Archival and Replication are not supported by Azure Blob Storage.
+Backup location for scheduled snapshots is configured in ´azure_blob_config´.
+
+## AWS RDS
+Archival is only supported for PostgrSQL and Aurora PostgreSQL databases.
+Continuous backups for point-in-time recovery retention is configured in ´aws_rds_config´. If you don't specify a continuous backup, AWS provides 1 day of continuous backup by default for Aurora databases, which you can change but you can’t disable.
+
+## AWS S3
+Archival and Replication are not supported by AWS S3. SLA Domains protecting AWS S3 cannot protect other object types.
+Backup location(s) are configured in ´backup_location´.
+
+## AWS DynamoDB
+Replication is not supported by AWS DynamoDB.
+Primary Backup Encryption KMS Key and Continuous backups for point-in-time recovery are configured in ´aws_dynamodb_config´. Continuous backups will be automatically enabled for your DynamoDB tables.
+Disabling continuous backups or changing the retention period in your AWS console may lead to higher storage and consumption costs. To avoid this, keep continuous backups enabled in your AWS console.
+
+## GCE Instance/Disk
+Replication is not supported by GCE Instance/Disk.
+
+## Okta
+Archival and Replication are not supported by Okta.
+
+## Microsoft 365
+Archival and Replication are not supported by Microsoft 365.
+M365 protection supports a minimum of 8 hours SLA (12 hours or more recomended).
 `
 
 func resourceSLADomain() *schema.Resource {

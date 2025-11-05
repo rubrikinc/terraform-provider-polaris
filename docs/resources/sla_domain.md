@@ -5,37 +5,58 @@ subcategory: ""
 description: |-
   The polaris_sla_domain resource is used to manage RSC global SLA Domains. SLA
   Domain defines how you want to take snapshots of objects like virtual machines,
-  databases, SaaS apps and cloud objects. An SLA Domain defines frequency,
+  databases, SaaS apps and cloud objects. An SLA Domain can define frequency,
   retention, archival and replication.
   -> Enabling Instant Archive can increase bandwidth usage and archival storage
-     requirements.
+  requirements.
   -> The hourly retention for snapshots of cloud-native workloads must be a
-     multiple of 24.
+  multiple of 24.
   -> For workloads backed up on a Rubrik cluster, snapshots are scheduled using
-     the time zone of that Rubrik cluster. For workloads backed up in the cloud,
-     snapshots are scheduled using the UTC time zone.
+  the time zone of that Rubrik cluster. For workloads backed up in the cloud,
+  snapshots are scheduled using the UTC time zone.
   
   Frequency
   This defines when and how often snapshots are taken. This could be interval-based (days, hours, minutes) or calendar-based (a day of each month).
   Retention
   This defines how long the snapshot is kept on the Rubrik cluster.
-  Before You Start: To archive snapshots, make sure you’ve added archival locations so that they’re available for selection.
+  Archival
+  Before You Start: To archive snapshots, make sure you’ve added archival locations.
   To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days.
-  Retention lock: https://docs.rubrik.com/en-us/saas/saas/retentionlockedsla_domain.html
   
-  For Azure SQL Database:
-      "For Azure SQL Database, archival is mandatory and the backups will be instantly archived. " +
-      "These frequencies and retentions apply to archived snapshots of the Azure SQL database. " +
-      "You can configure continuous backups in the next step. " +
-      "To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days. " +
-      "Archiving starts immediately. The archival location retains snapshots for ",
+  Object types
+  Azure SQL Databases
+  Archival is mandatory and the backups will be instantly archived. Frequency and Retention apply to archived snapshots of the Azure SQL database.
+  Continuous backups for point-in-time recovery retentions is configured in azure_sql_database_config.
+  Azure SQL Managed Instance
+  Archival and Replication are not supported by Azure SQL Managed Instance.
+  Log backup for Azure SQL MI is configured in azure_sql_managed_instance_config.
+  Azure Blob Storage
+  Archival and Replication are not supported by Azure Blob Storage.
+  Backup location for scheduled snapshots is configured in azure_blob_config.
+  AWS RDS
+  Archival is only supported for PostgrSQL and Aurora PostgreSQL databases.
+  Continuous backups for point-in-time recovery retention is configured in aws_rds_config. If you don't specify a continuous backup, AWS provides 1 day of continuous backup by default for Aurora databases, which you can change but you can’t disable.
+  AWS S3
+  Archival and Replication are not supported by AWS S3. SLA Domains protecting AWS S3 cannot protect other object types.
+  Backup location(s) are configured in backup_location.
+  AWS DynamoDB
+  Replication is not supported by AWS DynamoDB.
+  Primary Backup Encryption KMS Key and Continuous backups for point-in-time recovery are configured in aws_dynamodb_config. Continuous backups will be automatically enabled for your DynamoDB tables.
+  Disabling continuous backups or changing the retention period in your AWS console may lead to higher storage and consumption costs. To avoid this, keep continuous backups enabled in your AWS console.
+  GCE Instance/Disk
+  Replication is not supported by GCE Instance/Disk.
+  Okta
+  Archival and Replication are not supported by Okta.
+  Microsoft 365
+  Archival and Replication are not supported by Microsoft 365.
+  M365 protection supports a minimum of 8 hours SLA (12 hours or more recomended).
 ---
 
 # polaris_sla_domain (Resource)
 
 The `polaris_sla_domain` resource is used to manage RSC global SLA Domains. SLA
 Domain defines how you want to take snapshots of objects like virtual machines,
-databases, SaaS apps and cloud objects. An SLA Domain defines frequency,
+databases, SaaS apps and cloud objects. An SLA Domain can define frequency,
 retention, archival and replication.
 
 -> Enabling Instant Archive can increase bandwidth usage and archival storage
@@ -50,30 +71,56 @@ retention, archival and replication.
 
 ---
 
-
-
-Frequency
+### Frequency
 
 This defines when and how often snapshots are taken. This could be interval-based (days, hours, minutes) or calendar-based (a day of each month).
 
-Retention
+### Retention
 
 This defines how long the snapshot is kept on the Rubrik cluster.
 
-Before You Start: To archive snapshots, make sure you’ve added archival locations so that they’re available for selection.
+### Archival
+Before You Start: To archive snapshots, make sure you’ve added archival locations.
 
 To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days.
 
-Retention lock: https://docs.rubrik.com/en-us/saas/saas/retention_locked_sla_domain.html
-
 ---
+# Object types
 
-For Azure SQL Database:
-	"For Azure SQL Database, archival is mandatory and the backups will be instantly archived. " +
-	"These frequencies and retentions apply to archived snapshots of the Azure SQL database. " +
-	"You can configure continuous backups in the next step. " +
-	"To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days. " +
-	"Archiving starts immediately. The archival location retains snapshots for ",
+## Azure SQL Databases
+Archival is mandatory and the backups will be instantly archived. Frequency and Retention apply to archived snapshots of the Azure SQL database.
+Continuous backups for point-in-time recovery retentions is configured in `azure_sql_database_config`.
+
+## Azure SQL Managed Instance
+Archival and Replication are not supported by Azure SQL Managed Instance.
+Log backup for Azure SQL MI is configured in `azure_sql_managed_instance_config`.
+
+## Azure Blob Storage
+Archival and Replication are not supported by Azure Blob Storage.
+Backup location for scheduled snapshots is configured in `azure_blob_config`.
+
+## AWS RDS
+Archival is only supported for PostgrSQL and Aurora PostgreSQL databases.
+Continuous backups for point-in-time recovery retention is configured in `aws_rds_config`. If you don't specify a continuous backup, AWS provides 1 day of continuous backup by default for Aurora databases, which you can change but you can’t disable.
+
+## AWS S3
+Archival and Replication are not supported by AWS S3. SLA Domains protecting AWS S3 cannot protect other object types.
+Backup location(s) are configured in `backup_location`.
+
+## AWS DynamoDB
+Replication is not supported by AWS DynamoDB.
+Primary Backup Encryption KMS Key and Continuous backups for point-in-time recovery are configured in `aws_dynamodb_config`. Continuous backups will be automatically enabled for your DynamoDB tables.
+Disabling continuous backups or changing the retention period in your AWS console may lead to higher storage and consumption costs. To avoid this, keep continuous backups enabled in your AWS console.
+
+## GCE Instance/Disk
+Replication is not supported by GCE Instance/Disk.
+
+## Okta
+Archival and Replication are not supported by Okta.
+
+## Microsoft 365
+Archival and Replication are not supported by Microsoft 365.
+M365 protection supports a minimum of 8 hours SLA (12 hours or more recomended).
 
 ## Example Usage
 
@@ -92,25 +139,29 @@ resource "polaris_sla_domain" "weekly" {
 ### Required
 
 - `name` (String) SLA Domain name.
-- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE` and `GCP_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
+- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE` and `GCP_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
 
 ### Optional
 
+- `apply_changes_to_existing_snapshots` (Boolean) Apply changes to existing snapshots when updating the SLA domain.
+- `apply_changes_to_non_policy_snapshots` (Boolean) Apply changes to non-policy snapshots when updating the SLA domain.
 - `archival` (Block List) Archive snapshots to the specified archival location. Note, if `instant_archive` is enabled, `threshold` and `threshold_unit` are ignored. (see [below for nested schema](#nestedblock--archival))
-- `aws_rds_config` (Block List) AWS RDS continuous backups for point-in-time recovery. If continuous backup isn't specified, AWS provides 1 day of continuous backup by default for Aurora databases, which can be changed but not disable. (see [below for nested schema](#nestedblock--aws_rds_config))
-- `aws_s3_config` (Block List) AWS S3 backup location for scheduled snapshots. Only scheduled snapshots will be stored in these locations. (see [below for nested schema](#nestedblock--aws_s3_config))
-- `azure_blob_config` (Block List) Azure Blob Storage backup location for scheduled snapshots. To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days. (see [below for nested schema](#nestedblock--azure_blob_config))
-- `azure_sql_database_config` (Block List) Azure SQL Database continuous backups for point-in-time recovery. Continuous backups are stored in the source database. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_database_config))
-- `azure_sql_managed_instance_config` (Block List) Azure SQL MI log backups. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config))
+- `aws_dynamodb_config` (Block List, Max: 1) (see [below for nested schema](#nestedblock--aws_dynamodb_config))
+- `aws_rds_config` (Block List, Max: 1) AWS RDS continuous backups for point-in-time recovery. If continuous backup isn't specified, AWS provides 1 day of continuous backup by default for Aurora databases, which can be changed but not disable. (see [below for nested schema](#nestedblock--aws_rds_config))
+- `azure_blob_config` (Block List, Max: 1) Azure Blob Storage backup location for scheduled snapshots. To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days. (see [below for nested schema](#nestedblock--azure_blob_config))
+- `azure_sql_database_config` (Block List, Max: 1) Azure SQL Database continuous backups for point-in-time recovery. Continuous backups are stored in the source database. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_database_config))
+- `azure_sql_managed_instance_config` (Block List, Max: 1) Azure SQL MI log backups. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config))
+- `backup_location` (Block List) (see [below for nested schema](#nestedblock--backup_location))
 - `daily_schedule` (Block List, Max: 1) Take snapshots with frequency specified in days. (see [below for nested schema](#nestedblock--daily_schedule))
 - `description` (String) SLA Domain description.
 - `first_full_snapshot` (Block List) Specifies the snapshot window where the first full snapshot will be taken. If not specified it will be at first opportunity. (see [below for nested schema](#nestedblock--first_full_snapshot))
 - `hourly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in hours. (see [below for nested schema](#nestedblock--hourly_schedule))
+- `local_retention` (Block List, Max: 1) (see [below for nested schema](#nestedblock--local_retention))
 - `monthly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in months. (see [below for nested schema](#nestedblock--monthly_schedule))
 - `quarterly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in quarters. (see [below for nested schema](#nestedblock--quarterly_schedule))
+- `replication_spec` (Block List) Replication specification for the SLA Domain. (see [below for nested schema](#nestedblock--replication_spec))
 - `retention_lock` (Block List, Max: 1) Enable retention lock. Retention lock prevents data from being accidentally or maliciously modified or deleted during the retention period (see [below for nested schema](#nestedblock--retention_lock))
 - `snapshot_window` (Block List) Specifies an optional snapshot window. (see [below for nested schema](#nestedblock--snapshot_window))
-- `source_retention` (Block List, Max: 1) (see [below for nested schema](#nestedblock--source_retention))
 - `weekly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in weeks. (see [below for nested schema](#nestedblock--weekly_schedule))
 - `yearly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in years. (see [below for nested schema](#nestedblock--yearly_schedule))
 
@@ -131,6 +182,14 @@ Optional:
 - `threshold_unit` (String) Threshold unit specifies the unit of `threshold`. Possible values are `DAYS`, `WEEKS`, `MONTHS` and `YEARS`. Default value is `DAYS`.
 
 
+<a id="nestedblock--aws_dynamodb_config"></a>
+### Nested Schema for `aws_dynamodb_config`
+
+Optional:
+
+- `kms_alias` (String) KMS alias for primary backup. Ensure the specified KMS key exists in the respective regions of the DynamoDB tables this SLA will be applied to. Avoid deleting it, as it will be used for data decryption during archival and recovery.
+
+
 <a id="nestedblock--aws_rds_config"></a>
 ### Nested Schema for `aws_rds_config`
 
@@ -141,14 +200,6 @@ Required:
 Optional:
 
 - `log_retention_unit` (String) Log retention unit specifies the unit of the `log_retention` field. Possible values are `DAYS`, `WEEKS`, `MONTHS` and `YEARS`. Default is `DAYS`.
-
-
-<a id="nestedblock--aws_s3_config"></a>
-### Nested Schema for `aws_s3_config`
-
-Required:
-
-- `archival_location_id` (String) Archival location ID (UUID).
 
 
 <a id="nestedblock--azure_blob_config"></a>
@@ -175,6 +226,14 @@ Required:
 - `log_retention` (Number) Log retention specifies for how long, in days, the log backups are kept.
 
 
+<a id="nestedblock--backup_location"></a>
+### Nested Schema for `backup_location`
+
+Required:
+
+- `archival_group_id` (String) Archival group ID (UUID).
+
+
 <a id="nestedblock--daily_schedule"></a>
 ### Nested Schema for `daily_schedule`
 
@@ -193,7 +252,7 @@ Optional:
 
 Required:
 
-- `duration` (Number) Duration of snapshot window in days.
+- `duration` (Number) Duration of snapshot window in hours.
 - `start_at` (String) Start of the snapshot window. Should be given as `DAY, HH:MM`, e.g: `Mon, 15:30`.
 
 
@@ -208,6 +267,18 @@ Required:
 Optional:
 
 - `retention_unit` (String) Retention unit specifies the unit of the `retention` field. Possible values are `HOURS`, `DAYS` and `WEEKS`. Default value is `DAYS`.
+
+
+<a id="nestedblock--local_retention"></a>
+### Nested Schema for `local_retention`
+
+Required:
+
+- `retention` (Number) Retention specifies for how long the snapshots are kept.
+
+Optional:
+
+- `retention_unit` (String) Retention unit specifies the unit of `retention`. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
 
 
 <a id="nestedblock--monthly_schedule"></a>
@@ -233,6 +304,21 @@ Required:
 - `retention_unit` (String) Retention unit specifies the unit of `retention`. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
 
 
+<a id="nestedblock--replication_spec"></a>
+### Nested Schema for `replication_spec`
+
+Required:
+
+- `retention` (Number) Retention specifies for how long the snapshots are kept.
+- `retention_unit` (String) Retention unit specifies the unit of `retention`. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
+
+Optional:
+
+- `aws_cross_account` (String) Replication targetRSC cloud account ID) for cross account replication. Set to empyt string for same account replication.
+- `aws_region` (String) AWS region to replicate to. Should be specified in the standard AWS style, e.g. `us-west-2`.
+- `azure_region` (String) Azure region to replicate to. Should be specified in the standard Azure style, e.g. `eastus`.
+
+
 <a id="nestedblock--retention_lock"></a>
 ### Nested Schema for `retention_lock`
 
@@ -246,20 +332,8 @@ Required:
 
 Required:
 
-- `duration` (Number) Duration of the snapshot window in days.
-- `start_at` (String) Start of the snapshot window. Should be given as `Day, HH:MM`, e.g: `Mon, 15:30`.
-
-
-<a id="nestedblock--source_retention"></a>
-### Nested Schema for `source_retention`
-
-Required:
-
-- `retention` (Number) Retention specifies for how long the snapshots are kept.
-
-Optional:
-
-- `retention_unit` (String) Retention unit specifies the unit of `retention`. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
+- `duration` (Number) Duration of the snapshot window in hours.
+- `start_at` (String) Start of the snapshot window. Should be given as `HH:MM`, e.g: `15:30`.
 
 
 <a id="nestedblock--weekly_schedule"></a>
