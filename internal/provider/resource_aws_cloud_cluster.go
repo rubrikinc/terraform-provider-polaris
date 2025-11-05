@@ -323,13 +323,13 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	vmConfig := gqlcloudcluster.AwsVmConfig{
-		CdmVersion:          vmConfigMap[keyCDMVersion].(string),
+		CDMVersion:          vmConfigMap[keyCDMVersion].(string),
 		InstanceProfileName: vmConfigMap[keyInstanceProfileName].(string),
 		InstanceType:        instanceType,
 		SecurityGroups:      securityGroups,
 		Subnet:              vmConfigMap[keySubnetID].(string),
-		VmType:              vmType,
-		Vpc:                 vmConfigMap[keyVPCID].(string),
+		VMType:              vmType,
+		VPC:                 vmConfigMap[keyVPCID].(string),
 	}
 
 	awsEsConfig := gqlcloudcluster.AwsEsConfigInput{
@@ -343,9 +343,9 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		ClusterName:      clusterConfigMap[keyClusterName].(string),
 		UserEmail:        clusterConfigMap[keyAdminEmail].(string),
 		AdminPassword:    secret.String(clusterConfigMap[keyAdminPassword].(string)),
-		DnsNameServers:   dnsNameServers,
-		DnsSearchDomains: dnsSearchDomains,
-		NtpServers:       ntpServers,
+		DNSNameServers:   dnsNameServers,
+		DNSSearchDomains: dnsSearchDomains,
+		NTPServers:       ntpServers,
 		NumNodes:         clusterConfigMap[keyNumNodes].(int),
 		AwsEsConfig:      awsEsConfig,
 	}
@@ -358,7 +358,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		Region:               d.Get(keyRegion).(string),
 		UsePlacementGroups:   d.Get(keyUsePlacementGroups).(bool),
 		Validations:          validations,
-		VmConfig:             vmConfig,
+		VMConfig:             vmConfig,
 	}
 
 	cloudcluster, err := cloudcluster.Wrap(client).CreateCloudCluster(ctx, input, false)

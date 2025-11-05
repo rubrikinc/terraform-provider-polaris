@@ -272,7 +272,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Optional:    true,
 							ForceNew:    true,
 							Default:     "DENSE",
-							Description: "VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`. `DENSE` is recommended for CCES.",
+							Description: "VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`. `EXTRA_DENSE` is recommended for CCES.",
 							ValidateFunc: validation.StringInSlice([]string{
 								string(gqlcloudcluster.CCVmConfigStandard),
 								string(gqlcloudcluster.CCVmConfigDense),
