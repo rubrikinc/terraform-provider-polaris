@@ -109,7 +109,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							ValidateFunc: validateNumNodes,
 						},
 						keyDNSNameServers: {
-							Type: schema.TypeList,
+							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -119,7 +119,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Description: "DNS name servers for the cluster. Changing this forces a new resource to be created.",
 						},
 						keyDNSSearchDomains: {
-							Type: schema.TypeList,
+							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -129,7 +129,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Description: "DNS search domains for the cluster. Changing this forces a new resource to be created.",
 						},
 						keyNTPServers: {
-							Type: schema.TypeList,
+							Type: schema.TypeSet,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
