@@ -54,6 +54,9 @@ number of nodes, instance types, and network configuration.
    will be removed from state and you must remove the cluster through the RSC UI.
 `
 
+// This resource uses a template for its documentation due to a bug in the TF
+// docs generator. Remember to update the template if the documentation for any
+// fields are changed.
 func resourceAzureCloudCluster() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateCloudCluster,
