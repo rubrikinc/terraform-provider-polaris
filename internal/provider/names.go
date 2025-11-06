@@ -281,6 +281,8 @@ const (
 	keyTagValue                                     = "tag_value"
 	keyTenantDomain                                 = "tenant_domain"
 	keyTenantID                                     = "tenant_id"
+	keyThreshold                                    = "threshold"
+	keyThresholdUnit                                = "threshold_unit"
 	keyTimeout                                      = "timeout"
 	keyTokenCache                                   = "token_cache"
 	keyTokenCacheDir                                = "token_cache_dir"
