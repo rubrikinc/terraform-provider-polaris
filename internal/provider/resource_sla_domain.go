@@ -464,9 +464,9 @@ func resourceSLADomain() *schema.Resource {
 				Required: true,
 				Description: "Object types which can be protected by the SLA Domain. Possible values are " +
 					"`AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
-					"`AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
-					"`AZURE_BLOB_OBJECT_TYPE` and `GCP_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot " +
-					"be provided at the same time as other object types.",
+					"`AZURE_OBJECT_TYPE`, `AZUE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
+					"`AZURE_BLOB_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `O365_OBJECT_TYPE` and `OKTA_OBJECT_TYPE`. " +
+					"Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.",
 			},
 			keyQuarterlySchedule: {
 				Type: schema.TypeList,
@@ -1174,6 +1174,16 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 				}
 				if !mbl.Enabled && awsS3Config == nil {
 					return diag.Errorf("AWS S3 object type requires AWS S3 configuration")
+				}
+			case gqlsla.ObjectMicrosoft365:
+				if len(snapshotWindows) > 0 {
+					return diag.Errorf("Microsoft 365 object type does not support snapshot windows")
+				}
+				if len(firstFullSnapshotWindows) > 0 {
+					return diag.Errorf("Microsoft 365 object type does not support first full snapshot windows")
+				}
+				if schedule.Hourly != nil && schedule.Hourly.BasicSchedule.Frequency < 8 {
+					return diag.Errorf("Microsoft 365 object type requires minimum of 8 hours SLA")
 				}
 			}
 			objectTypes = append(objectTypes, objectType)
