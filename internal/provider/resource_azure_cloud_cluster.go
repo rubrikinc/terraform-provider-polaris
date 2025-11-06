@@ -401,7 +401,6 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 		vmConfigMap[keyCDMProduct] = azureCluster.CdmProduct
 		d.Set(keyVMConfig, []any{vmConfigMap})
 	}
-	d.Set(keyCloudAccountID, azureCluster.CloudAccountID)
 
 	return azureReadCloudCluster(ctx, d, m)
 }
@@ -419,22 +418,27 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	// create gqlapi client
-	client := m.(*client).polarisClient.GQL
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Get cloud cluster ID
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
+	// Create filter for cloud cluster
 	clusterFilter := gqlcloudcluster.ClusterFilter{
 		ID: []string{id.String()},
 	}
 
 	// Use AllCloudClusters and filter for cluster
-	cloudClusters, err := gqlcloudcluster.Wrap(client).AllCloudClusters(ctx, 1, "", clusterFilter, gqlcloudcluster.SortByClusterName, core.SortOrderDesc)
+	cloudClusters, err := gqlcloudcluster.Wrap(client.GQL).AllCloudClusters(ctx, 1, "", clusterFilter, gqlcloudcluster.SortByClusterName, core.SortOrderDesc)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-
 	if len(cloudClusters) == 0 {
 		d.SetId("")
 		return nil
