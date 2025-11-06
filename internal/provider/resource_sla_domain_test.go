@@ -656,6 +656,14 @@ resource "polaris_sla_domain" "default" {
 		retention_unit = "MONTHS"
 	}
 }
+
+data "polaris_sla_domain" "default_by_id" {
+	id = polaris_sla_domain.default.id
+}
+
+data "polaris_sla_domain" "default_by_name" {
+	name = polaris_sla_domain.default.name
+}
 `
 
 const slaDomainWithArchivalTmpl = `
@@ -673,6 +681,10 @@ resource "polaris_sla_domain" "default" {
 		retention      = 24
 		retention_unit = "HOURS"
 	}
+}
+
+data "polaris_sla_domain" "default_by_name" {
+	name = polaris_sla_domain.default.name
 }
 `
 
@@ -696,6 +708,10 @@ resource "polaris_sla_domain" "default" {
 		start_at = "14:30"
 		duration = 2
 	}
+}
+
+data "polaris_sla_domain" "default_by_name" {
+	name = polaris_sla_domain.default.name
 }
 `
 
@@ -721,6 +737,10 @@ resource "polaris_sla_domain" "default" {
 		duration = 4
 	}
 }
+
+data "polaris_sla_domain" "default_by_name" {
+	name = polaris_sla_domain.default.name
+}
 `
 
 const slaDomainUpdatedTmpl = `
@@ -745,6 +765,14 @@ resource "polaris_sla_domain" "default" {
 		retention_unit = "DAYS"
 	}
 }
+
+data "polaris_sla_domain" "default_by_id" {
+	id = polaris_sla_domain.default.id
+}
+
+data "polaris_sla_domain" "default_by_name" {
+	name = polaris_sla_domain.default.name
+}
 `
 
 const slaDomainMultipleObjectTypesTmpl = `
@@ -768,6 +796,14 @@ resource "polaris_sla_domain" "default" {
 		retention      = 7
 		retention_unit = "DAYS"
 	}
+}
+
+data "polaris_sla_domain" "default_by_id" {
+	id = polaris_sla_domain.default.id
+}
+
+data "polaris_sla_domain" "default_by_name" {
+	name = polaris_sla_domain.default.name
 }
 `
 
@@ -794,6 +830,7 @@ func TestAccPolarisSLADomain_basic(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: slaDomainBasic,
 			Check: resource.ComposeTestCheckFunc(
+				// Resource checks
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "name", "Test SLA Domain Basic"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "description", "Basic SLA Domain for testing"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "object_types.#", "1"),
@@ -811,10 +848,27 @@ func TestAccPolarisSLADomain_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "monthly_schedule.0.frequency", "1"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "monthly_schedule.0.retention", "12"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "monthly_schedule.0.retention_unit", "MONTHS"),
+				// Data source checks (by ID)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "name", "Test SLA Domain Basic"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "description", "Basic SLA Domain for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "object_types.#", "1"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "hourly_schedule.0.frequency", "4"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "daily_schedule.0.frequency", "1"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "weekly_schedule.0.day_of_week", "MONDAY"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "monthly_schedule.0.day_of_month", "FIRST_DAY"),
+				// Data source checks (by name)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "name", "Test SLA Domain Basic"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "description", "Basic SLA Domain for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "object_types.#", "1"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "hourly_schedule.0.frequency", "4"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "daily_schedule.0.frequency", "1"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "weekly_schedule.0.day_of_week", "MONDAY"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "monthly_schedule.0.day_of_month", "FIRST_DAY"),
 			),
 		}, {
 			Config: slaDomainUpdated,
 			Check: resource.ComposeTestCheckFunc(
+				// Resource checks
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "name", "Test SLA Domain Updated"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "description", "Updated SLA Domain for testing"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "hourly_schedule.0.frequency", "6"),
@@ -823,6 +877,16 @@ func TestAccPolarisSLADomain_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "daily_schedule.0.frequency", "2"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "daily_schedule.0.retention", "14"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "daily_schedule.0.retention_unit", "DAYS"),
+				// Data source checks (by ID)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "name", "Test SLA Domain Updated"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "description", "Updated SLA Domain for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "hourly_schedule.0.frequency", "6"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "daily_schedule.0.frequency", "2"),
+				// Data source checks (by name)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "name", "Test SLA Domain Updated"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "description", "Updated SLA Domain for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "hourly_schedule.0.frequency", "6"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "daily_schedule.0.frequency", "2"),
 			),
 		}},
 	})
@@ -844,6 +908,7 @@ func TestAccPolarisSLADomain_multipleObjectTypes(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: slaDomainMultipleObjectTypes,
 			Check: resource.ComposeTestCheckFunc(
+				// Resource checks
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "name", "Test SLA Domain Multiple Object Types"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "description", "SLA Domain with multiple object types for testing"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "object_types.#", "3"),
@@ -856,6 +921,24 @@ func TestAccPolarisSLADomain_multipleObjectTypes(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "daily_schedule.0.frequency", "1"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "daily_schedule.0.retention", "7"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "daily_schedule.0.retention_unit", "DAYS"),
+				// Data source checks (by ID)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "name", "Test SLA Domain Multiple Object Types"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "description", "SLA Domain with multiple object types for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "object_types.#", "3"),
+				resource.TestCheckTypeSetElemAttr("data.polaris_sla_domain.default_by_id", "object_types.*", "AWS_EC2_EBS_OBJECT_TYPE"),
+				resource.TestCheckTypeSetElemAttr("data.polaris_sla_domain.default_by_id", "object_types.*", "AZURE_OBJECT_TYPE"),
+				resource.TestCheckTypeSetElemAttr("data.polaris_sla_domain.default_by_id", "object_types.*", "GCP_OBJECT_TYPE"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "hourly_schedule.0.frequency", "4"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_id", "daily_schedule.0.frequency", "1"),
+				// Data source checks (by name)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "name", "Test SLA Domain Multiple Object Types"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "description", "SLA Domain with multiple object types for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "object_types.#", "3"),
+				resource.TestCheckTypeSetElemAttr("data.polaris_sla_domain.default_by_name", "object_types.*", "AWS_EC2_EBS_OBJECT_TYPE"),
+				resource.TestCheckTypeSetElemAttr("data.polaris_sla_domain.default_by_name", "object_types.*", "AZURE_OBJECT_TYPE"),
+				resource.TestCheckTypeSetElemAttr("data.polaris_sla_domain.default_by_name", "object_types.*", "GCP_OBJECT_TYPE"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "hourly_schedule.0.frequency", "4"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "daily_schedule.0.frequency", "1"),
 			),
 		}},
 	})
@@ -877,11 +960,16 @@ func TestAccPolarisSLADomain_withArchival(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: slaDomainWithArchival,
 			Check: resource.ComposeTestCheckFunc(
+				// Resource checks
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "name", "Test SLA Domain with Archival"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "description", "SLA Domain with archival for testing"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "hourly_schedule.0.frequency", "4"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "hourly_schedule.0.retention", "24"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "hourly_schedule.0.retention_unit", "HOURS"),
+				// Data source checks (by name)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "name", "Test SLA Domain with Archival"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "description", "SLA Domain with archival for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "hourly_schedule.0.frequency", "4"),
 			),
 		}},
 	})
@@ -903,6 +991,7 @@ func TestAccPolarisSLADomain_withSnapshotWindow(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: slaDomainWithSnapshotWindow,
 			Check: resource.ComposeTestCheckFunc(
+				// Resource checks
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "name", "Test SLA Domain with Snapshot Window"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "description", "SLA Domain with snapshot window for testing"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "daily_schedule.0.frequency", "1"),
@@ -910,6 +999,10 @@ func TestAccPolarisSLADomain_withSnapshotWindow(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "daily_schedule.0.retention_unit", "DAYS"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "snapshot_window.0.start_at", "14:30"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "snapshot_window.0.duration", "2"),
+				// Data source checks (by name)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "name", "Test SLA Domain with Snapshot Window"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "description", "SLA Domain with snapshot window for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "daily_schedule.0.frequency", "1"),
 			),
 		}},
 	})
@@ -931,6 +1024,7 @@ func TestAccPolarisSLADomain_withWeeklySnapshotWindow(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: slaDomainWithWeeklySnapshotWindow,
 			Check: resource.ComposeTestCheckFunc(
+				// Resource checks
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "name", "Test SLA Domain with Weekly Snapshot Window"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "description", "SLA Domain with weekly snapshot window for testing"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "weekly_schedule.0.day_of_week", "MONDAY"),
@@ -939,6 +1033,11 @@ func TestAccPolarisSLADomain_withWeeklySnapshotWindow(t *testing.T) {
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "weekly_schedule.0.retention_unit", "WEEKS"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "snapshot_window.0.start_at", "09:00"),
 				resource.TestCheckResourceAttr("polaris_sla_domain.default", "snapshot_window.0.duration", "4"),
+				// Data source checks (by name)
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "name", "Test SLA Domain with Weekly Snapshot Window"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "description", "SLA Domain with weekly snapshot window for testing"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "weekly_schedule.0.day_of_week", "MONDAY"),
+				resource.TestCheckResourceAttr("data.polaris_sla_domain.default_by_name", "weekly_schedule.0.frequency", "1"),
 			),
 		}},
 	})
