@@ -22,8 +22,9 @@ package provider
 
 import (
 	"context"
-	"path/filepath"
-	"strings"
+	"crypto/sha256"
+	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -32,9 +33,24 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 )
 
-// resourceGcpServiceAccount defines the schema for the GCP service account
-// resource. Note that the delete function cannot remove the service account
-// since there is no delete operation in the Polaris API.
+const resourceGCPServiceAccountDescription = `
+The ´polaris_gcp_service_account´ resource adds the GCP service account to RSC
+as the default service account. The default service account will be used by RSC
+to authenticate to the GCP for projects added to RSC without a service account.
+
+~> **Note:** Changing the name of the default service account can take a
+   considerable time to propagate through the system. Use the ´ignore_changes´
+   field of the ´lifecycle´ block if it becomes an issue.
+
+~> **Note:** Destroying the ´polaris_gcp_service_account´ resource only updates
+   the local state, it does not remove the service account from RSC. However,
+   it's possible to overwrite the RSC global service account with new service
+   accounts.
+
+-> **Note:** There is no way to verify if an default GCP service account has
+   been added to RSC using the UI.
+`
+
 func resourceGcpServiceAccount() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: gcpCreateServiceAccount,
@@ -42,33 +58,46 @@ func resourceGcpServiceAccount() *schema.Resource {
 		UpdateContext: gcpUpdateServiceAccount,
 		DeleteContext: gcpDeleteServiceAccount,
 
+		Description: description(resourceGCPServiceAccountDescription),
 		Schema: map[string]*schema.Schema{
+			keyID: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "SHA-256 hash of the  service account name.",
+			},
 			keyCredentials: {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: fileExists,
-				Description:      "Path to GCP service account key file.",
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
+				Description: "Base64 encoded GCP service account private key or path to GCP service account key " +
+					"file.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyName: {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Computed:         true,
-				Description:      "Service account name in Polaris. If not given the name of the service account key file is used.",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				Description:  "Service account name in RSC. Defaults to `service-account-<timestamp>`.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyPermissionsHash: {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Description:      "Signals that the permissions has been updated.",
-				ValidateDiagFunc: validateHash,
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "Signals that the permissions has been updated. **Deprecated:** use the " +
+					"`permissions` field of the `feature` block of the `polaris_gcp_project` resource instead.",
+				Deprecated: "Use the `permissions` field of the `feature` block of `polaris_gcp_project` " +
+					"instead.",
 			},
 		},
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceGcpServiceAccountV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceGcpServiceAccountStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
-// gcpCreateServiceAccount run the Create operation for the GCP service account
-// resource. This adds the GCP service account to the Polaris platform.
 func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpCreateServiceAccount")
 
@@ -78,26 +107,22 @@ func gcpCreateServiceAccount(ctx context.Context, d *schema.ResourceData, m any)
 	}
 
 	credentials := d.Get(keyCredentials).(string)
-
-	// Derive name from credentials filename if missing.
 	name := d.Get(keyName).(string)
 	if name == "" {
-		name = strings.TrimSuffix(filepath.Base(credentials), filepath.Ext(credentials))
+		name = fmt.Sprintf("service-account-%d", time.Now().UnixMicro())
 	}
 
-	err = gcp.Wrap(client).SetServiceAccount(ctx, gcp.KeyFile(credentials), gcp.Name(name))
-	if err != nil {
+	if err := gcp.Wrap(client).SetServiceAccount(ctx, gcp.Key(credentials), gcp.Name(name)); err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.SetId(name)
-
+	hash := sha256.New()
+	hash.Write([]byte(name))
+	d.SetId(fmt.Sprintf("%x", hash.Sum(nil)))
 	gcpReadServiceAccount(ctx, d, m)
 	return nil
 }
 
-// gcpReadServiceAccount run the Read operation for the GCP service account
-// resource. This reads the state of the GCP service account in Polaris.
 func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpReadServiceAccount")
 
@@ -110,13 +135,13 @@ func gcpReadServiceAccount(ctx context.Context, d *schema.ResourceData, m any) d
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.Set("name", name)
+	if err := d.Set("name", name); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }
 
-// gcpUpdateServiceAccount run the Update operation for the GCP service account
-// resource. This updates the service account in Polaris.
 func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpUpdateServiceAccount")
 
@@ -125,8 +150,13 @@ func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 
-	if d.HasChange(keyName) {
-		d.Set(keyName, d.Get("name").(string))
+	if d.HasChanges(keyCredentials, keyName) {
+		credentials := d.Get(keyCredentials).(string)
+		name := d.Get(keyName).(string)
+
+		if err := gcp.Wrap(client).SetServiceAccount(ctx, gcp.Key(credentials), gcp.Name(name)); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if d.HasChange(keyPermissionsHash) {
@@ -140,9 +170,8 @@ func gcpUpdateServiceAccount(ctx context.Context, d *schema.ResourceData, m any)
 	return nil
 }
 
-// gcpDeleteServiceAccount run the Delete operation for the GCP service account
-// resource. This only removes the local state of the GCP service account since
-// the service account cannot be removed using the Polaris API.
+// This function only removes the local state of the RSC global GCP service
+// account since the service account cannot be removed using the Polaris API.
 func gcpDeleteServiceAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpDeleteServiceAccount")
 

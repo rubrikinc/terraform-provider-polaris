@@ -6,7 +6,7 @@ description: |-
 The `polaris_azure_custom_tags` resource manages RSC custom Azure tags. Simplify
 your cloud resource management by assigning custom tags for easy identification.
 These custom tags will be used on all existing and future Azure subscriptions in
-your cloud account.
+your RSC account.
 
 -> **Note:** The newly updated custom tags will be applied to all existing and
    new resources, while the previously applied tags will remain unchanged.
@@ -32,7 +32,7 @@ your cloud account.
 The `polaris_azure_custom_tags` resource manages RSC custom Azure tags. Simplify
 your cloud resource management by assigning custom tags for easy identification.
 These custom tags will be used on all existing and future Azure subscriptions in
-your cloud account.
+your RSC account.
 
 -> **Note:** The newly updated custom tags will be applied to all existing and
    new resources, while the previously applied tags will remain unchanged.

@@ -33,9 +33,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/gcp"
 )
 
 const resourceGCPArchivalLocationDescription = `
@@ -51,11 +50,17 @@ needs to be specified:
   * ´SPECIFIC_REGION´ - Storing snapshots in another region can increase total
     data transfer charges. The ´region´ field specifies the region.
 
--> **Note:** The GCP bucket holding the archived data is not created until the
+Custom storage encryption is enabled by specifying one or more customer managed
+key blocks. For ´SPECIFIC_REGION´, a customer managed key block for the specific
+region must be specified. For ´SOURCE_REGION´, a customer managed key block for
+each source region should be specified, source regions not having a customer
+managed key block will have its data encrypted with platform managed keys.
+
+-> **Note:** When using ´SOURCE_REGION´ the GCP bucket isn't created until the
    first protected object is archived.
 `
 
-func resourceGCPArchivalLocation() *schema.Resource {
+func resourceGcpArchivalLocation() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: gcpCreateArchivalLocation,
 		ReadContext:   gcpReadArchivalLocation,
@@ -76,6 +81,14 @@ func resourceGCPArchivalLocation() *schema.Resource {
 				Description:  "RSC cloud account ID (UUID). Changing this forces a new resource to be created.",
 				ValidateFunc: validation.IsUUID,
 			},
+			keyBucketLabels: {
+				Type: schema.TypeMap,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Optional:    true,
+				Description: "GCP bucket labels. Each label will be added to the GCP bucket created by RSC.",
+			},
 			keyBucketPrefix: {
 				Type:     schema.TypeString,
 				Required: true,
@@ -83,14 +96,6 @@ func resourceGCPArchivalLocation() *schema.Resource {
 				Description: "GCP bucket prefix. The prefix cannot be longer than 19 characters. Note that `rubrik-` " +
 					"will always be prepended to the prefix. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringLenBetween(1, 19),
-			},
-			keyBucketLabels: {
-				Type: schema.TypeMap,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-				Optional:    true,
-				Description: "GCP bucket labels. Each label will be added to the bucket created by RSC.",
 			},
 			keyConnectionStatus: {
 				Type:        schema.TypeString,
@@ -101,14 +106,16 @@ func resourceGCPArchivalLocation() *schema.Resource {
 				Type:     schema.TypeSet,
 				Elem:     gcpCustomerKeyResource(),
 				Optional: true,
-				Description: "Customer managed storage encryption. Specify the regions and their respective " +
-					"encryption details. For other regions, data will be encrypted using platform managed keys.",
+				Description: "Customer managed storage encryption. For `SPECIFIC_REGION`, a customer managed key " +
+					"block for the specific region must be specified. For `SOURCE_REGION`, a customer managed key " +
+					"block for each source region should be specified, source regions not having a customer managed " +
+					"key block will have its data encrypted with platform managed keys.",
 			},
 			keyLocationTemplate: {
 				Type:     schema.TypeString,
 				Computed: true,
-				Description: "Location template. If a region was specified, it will be `SPECIFIC_REGION`, otherwise " +
-					"`SOURCE_REGION`.",
+				Description: "RSC location template. If a region was specified, it will be `SPECIFIC_REGION`, " +
+					"otherwise `SOURCE_REGION`.",
 			},
 			keyName: {
 				Type:         schema.TypeString,
@@ -120,20 +127,19 @@ func resourceGCPArchivalLocation() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
-				Description: "AWS region to store the snapshots in. If not specified, the snapshots will be " +
-					"stored in the same region as the workload. Changing this forces a new resource to be created.",
-				ValidateFunc: validation.StringInSlice(aws.AllRegionNames(), false),
+				Description: "GCP region to store the snapshots in (`SPECIFIC_REGION`). If not specified, the " +
+					"snapshots will be stored in the same region as the workload (`SOURCE_REGION`). Changing this " +
+					"forces a new resource to be created.",
+				ValidateFunc: validation.StringInSlice(gcp.AllRegionNames(), false),
 			},
 			keyStorageClass: {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "STANDARD_IA",
-				Description: "AWS bucket storage class. Possible values are `STANDARD`, `STANDARD_IA`, `ONEZONE_IA`, " +
-					"`GLACIER_INSTANT_RETRIEVAL`, `GLACIER_DEEP_ARCHIVE` and `GLACIER_FLEXIBLE_RETRIEVAL`. Default " +
-					"value is `STANDARD_IA`.",
+				Default:  "STANDARD",
+				Description: "AWS bucket storage class. Possible values are `ARCHIVE`, `COLDLINE`, " +
+					"`NEARLINE`, `STANDARD` and `DURABLE_REDUCED_AVAILABILITY`. Default value is `STANDARD`.",
 				ValidateFunc: validation.StringInSlice([]string{
-					"STANDARD", "STANDARD_IA", "ONEZONE_IA", "GLACIER_INSTANT_RETRIEVAL", "GLACIER_DEEP_ARCHIVE",
-					"GLACIER_FLEXIBLE_RETRIEVAL",
+					"ARCHIVE", "COLDLINE", "NEARLINE", "STANDARD", "DURABLE_REDUCED_AVAILABILITY",
 				}, false),
 			},
 		},
@@ -143,7 +149,7 @@ func resourceGCPArchivalLocation() *schema.Resource {
 	}
 }
 
-func gcpCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpCreateArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -151,31 +157,36 @@ func gcpCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	cloudAccountID, err := uuid.Parse(d.Get(keyAccountID).(string))
+	cloudAccountID, err := uuid.Parse(d.Get(keyCloudAccountID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	// Create the AWS cloud native archival location.
-	targetMappingID, err := archival.Wrap(client).CreateAWSStorageSetting(ctx, gqlarchival.CreateAWSStorageSettingParams{
+	var bucketLabels *core.Tags
+	if labels := toGCPBucketLabels(d.Get(keyBucketLabels).(map[string]any)); len(labels.TagList) > 0 {
+		bucketLabels = &labels
+	}
+
+	// Create the GCP cloud native archival location.
+	targetMappingID, err := archival.Wrap(client).CreateGCPStorageSetting(ctx, gqlarchival.CreateGCPStorageSettingParams{
 		CloudAccountID: cloudAccountID,
 		Name:           d.Get(keyName).(string),
 		BucketPrefix:   d.Get(keyBucketPrefix).(string),
-		StorageClass:   d.Get(keyStorageClass).(string),
-		Region:         aws.RegionFromName(d.Get(keyRegion).(string)).ToRegionEnum(),
-		KmsMasterKey:   d.Get(keyKMSMasterKey).(string),
-		BucketTags:     toAWSBucketTags(d.Get(keyBucketTags).(map[string]any)),
+		Region:         gcp.RegionFromName(d.Get(keyRegion).(string)).ToRegionEnum(),
+		BucketLabels:   bucketLabels,
+		CMKInfo:        toGCPCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set)),
+		StorageClass:   toGCPStorageClass(d.Get(keyStorageClass).(string)),
 	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	d.SetId(targetMappingID.String())
-	awsReadArchivalLocation(ctx, d, m)
+	gcpReadArchivalLocation(ctx, d, m)
 	return nil
 }
 
-func gcpReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpReadArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -188,9 +199,9 @@ func gcpReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 		return diag.FromErr(err)
 	}
 
-	// Read the AWS cloud native archival location. If the archival location
+	// Read the GCP cloud native archival location. If the archival location
 	// isn't found we remove it from the local state and return.
-	targetMapping, err := archival.Wrap(client).AWSTargetMappingByID(ctx, targetMappingID)
+	targetMapping, err := archival.Wrap(client).GCPTargetMappingByID(ctx, targetMappingID)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
@@ -203,13 +214,10 @@ func gcpReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 	if err := d.Set(keyBucketPrefix, strings.TrimPrefix(targetTemplate.BucketPrefix, implicitPrefix)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyAccountID, targetTemplate.CloudAccount.ID.String()); err != nil {
+	if err := d.Set(keyCloudAccountID, targetTemplate.CloudAccount.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keyKMSMasterKey, targetTemplate.KMSMasterKey); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyLocationTemplate, targetTemplate.LocTemplate); err != nil {
@@ -221,17 +229,20 @@ func gcpReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 	if err := d.Set(keyRegion, targetTemplate.Region.Name()); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyStorageClass, targetTemplate.StorageClass); err != nil {
+	if err := d.Set(keyBucketLabels, fromGCPBucketLabels(targetTemplate.BucketLabels)); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyBucketTags, fromAWSBucketTags(targetTemplate.BucketTags)); err != nil {
+	if err := d.Set(keyCustomerManagedKey, fromGCPCustomerManagedKeys(targetTemplate.CMKInfo)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyStorageClass, fromGCPStorageClass(targetTemplate.StorageClass)); err != nil {
 		return diag.FromErr(err)
 	}
 
 	return nil
 }
 
-func gcpUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpUpdateArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -244,16 +255,13 @@ func gcpUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	bucketTags := toAWSBucketTags(d.Get(keyBucketTags).(map[string]any))
-
-	// Update the AWS cloud native archival location. Note, the API doesn't
-	// support updating all arguments.
-	err = archival.Wrap(client).UpdateAWSStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAWSStorageSettingParams{
-		Name:                d.Get(keyName).(string),
-		StorageClass:        d.Get(keyStorageClass).(string),
-		KmsMasterKey:        d.Get(keyKMSMasterKey).(string),
-		DeleteAllBucketTags: bucketTags == nil,
-		BucketTags:          bucketTags,
+	// Update the GCP cloud native archival location. Note, the API doesn't
+	// support updating all fields.
+	err = archival.Wrap(client).UpdateGCPStorageSetting(ctx, targetMappingID, gqlarchival.UpdateGCPStorageSettingParams{
+		Name:         d.Get(keyName).(string),
+		BucketLabels: toGCPBucketLabels(d.Get(keyBucketLabels).(map[string]any)),
+		CMKInfo:      toGCPCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set)),
+		StorageClass: toGCPStorageClass(d.Get(keyStorageClass).(string)),
 	})
 	if err != nil {
 		return diag.FromErr(err)
@@ -262,7 +270,7 @@ func gcpUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 	return nil
 }
 
-func gcpDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func gcpDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "gcpDeleteArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -275,7 +283,7 @@ func gcpDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 
-	// Delete the AWS cloud native archival location.
+	// Delete the GCP cloud native archival location.
 	if err := archival.Wrap(client).DeleteTargetMapping(ctx, targetMappingID); err != nil {
 		return diag.FromErr(err)
 	}
@@ -295,11 +303,10 @@ func gcpCustomerKeyResource() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyRegion: {
-				Type:     schema.TypeString,
-				Required: true,
-				Description: "The region in which the key will be used. Regions without customer managed keys will " +
-					"use platform managed keys.",
-				ValidateFunc: validation.StringInSlice(azure.AllRegionNames(), false),
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "The region in which the key will be used.",
+				ValidateFunc: validation.StringInSlice(gcp.AllRegionNames(), false),
 			},
 			keyRingName: {
 				Type:         schema.TypeString,
@@ -312,57 +319,62 @@ func gcpCustomerKeyResource() *schema.Resource {
 }
 
 // toGCPCustomerManagedKeys converts from the customer managed keys field type
-// to a slice of Azure customer keys.
+// to a slice of GCP customer keys.
 func toGCPCustomerManagedKeys(keys *schema.Set) []gqlarchival.GCPCustomerKey {
 	var customerKeys []gqlarchival.GCPCustomerKey
 	for _, key := range keys.List() {
 		key := key.(map[string]any)
 		customerKeys = append(customerKeys, gqlarchival.GCPCustomerKey{
-			KeyName:     key[keyName].(string),
-			KeyRingName: key[keyRingName].(string),
-			Region:      gcp.RegionFromName(key[keyRegion].(string)).ToRegionEnum(),
+			Name:     key[keyName].(string),
+			RingName: key[keyRingName].(string),
+			Region:   gcp.RegionFromName(key[keyRegion].(string)).ToRegionEnum(),
 		})
 	}
 
 	return customerKeys
 }
 
-// fromGCPCustomerManagedKeys converts to the customer managed keys field type from
-// a slice of GCP customer keys.
+// fromGCPCustomerManagedKeys converts to the customer managed keys field type
+// from a slice of GCP customer keys.
 func fromGCPCustomerManagedKeys(customerKeys []gqlarchival.GCPCustomerKey) *schema.Set {
 	keys := &schema.Set{F: schema.HashResource(gcpCustomerKeyResource())}
 	for _, key := range customerKeys {
 		keys.Add(map[string]any{
-			keyName:     key.KeyName,
-			keyRingName: key.KeyRingName,
-			keyRegion:   key.Region,
+			keyName:     key.Name,
+			keyRingName: key.RingName,
+			keyRegion:   key.Region.Name(),
 		})
 	}
 
 	return keys
 }
 
-// toGCPBucketLabels converts from the bucket labels argument to archival GCP
-// tags. If the bucket labels argument is empty, nil is returned.
-func toGCPBucketLabels(tags map[string]any) *gqlarchival.AWSTags {
-	tagList := make([]core.Tag, 0, len(tags))
-	for key, value := range tags {
+// toGCPBucketLabels converts from the bucket labels field type to the GCP tags
+// type.
+func toGCPBucketLabels(labels map[string]any) core.Tags {
+	tagList := make([]core.Tag, 0, len(labels))
+	for key, value := range labels {
 		tagList = append(tagList, core.Tag{Key: key, Value: value.(string)})
 	}
-	if len(tagList) > 0 {
-		return &gqlarchival.AWSTags{TagList: tagList}
-	}
 
-	return nil
+	return core.Tags{TagList: tagList}
 }
 
-// fromGCPBucketLabels converts to the bucket labels argument from a slice
-// of GCP tags.
+// fromGCPBucketLabels converts to the bucket labels field type from the GCP
+// tags type.
 func fromGCPBucketLabels(tags []core.Tag) map[string]any {
-	bucketTags := make(map[string]any, len(tags))
+	bucketLabels := make(map[string]any, len(tags))
 	for _, tag := range tags {
-		bucketTags[tag.Key] = tag.Value
+		bucketLabels[tag.Key] = tag.Value
 	}
 
-	return bucketTags
+	return bucketLabels
+}
+
+func toGCPStorageClass(storageClass string) string {
+	return storageClass + "_GCP"
+}
+
+func fromGCPStorageClass(storageClass string) string {
+	return strings.TrimSuffix(storageClass, "_GCP")
 }

@@ -1,5 +1,7 @@
-data "polaris_gcp_permissions" "default" {
-  features = [
-    "CLOUD_NATIVE_PROTECTION",
+data "polaris_gcp_permissions" "cloud_native_archival" {
+  feature = "CLOUD_NATIVE_ARCHIVAL"
+  permission_groups = [
+    "BASIC",
+    "ENCRYPTION",
   ]
 }

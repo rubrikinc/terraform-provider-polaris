@@ -35,7 +35,7 @@ var resourceAzureCustomTagsDescription = `
 The ´polaris_azure_custom_tags´ resource manages RSC custom Azure tags. Simplify
 your cloud resource management by assigning custom tags for easy identification.
 These custom tags will be used on all existing and future Azure subscriptions in
-your cloud account.
+your RSC account.
 
 -> **Note:** The newly updated custom tags will be applied to all existing and
    new resources, while the previously applied tags will remain unchanged.
@@ -93,7 +93,7 @@ func resourceAzureCustomTags() *schema.Resource {
 	}
 }
 
-func azureCreateCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func azureCreateCustomTags(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureCreateCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -118,7 +118,7 @@ func azureCreateCustomTags(ctx context.Context, d *schema.ResourceData, m interf
 	return nil
 }
 
-func azureReadCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func azureReadCustomTags(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureReadCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -130,7 +130,7 @@ func azureReadCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if err := setCustomTags(d, customerTags.Tags); err != nil {
+	if err := setCustomTags(d, keyCustomTags, customerTags.Tags); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyOverrideResourceTags, customerTags.OverrideResourceTags); err != nil {
@@ -140,7 +140,7 @@ func azureReadCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 	return nil
 }
 
-func azureUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func azureUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureUpdateCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -188,7 +188,7 @@ func azureUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m interf
 	return nil
 }
 
-func azureDeleteCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func azureDeleteCustomTags(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureDeleteCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -211,7 +211,7 @@ func azureDeleteCustomTags(ctx context.Context, d *schema.ResourceData, m interf
 // Note, the custom tags resource is designed to only manage custom tags owned
 // by the resource. An import on the other hand will take ownership of all
 // custom tags for a cloud vendor.
-func azureImportCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+func azureImportCustomTags(ctx context.Context, d *schema.ResourceData, m any) ([]*schema.ResourceData, error) {
 	tflog.Trace(ctx, "azureImportCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -223,7 +223,7 @@ func azureImportCustomTags(ctx context.Context, d *schema.ResourceData, m interf
 	if err != nil {
 		return nil, err
 	}
-	if err := importCustomTags(d, customerTags.Tags); err != nil {
+	if err := importCustomTags(d, keyCustomTags, customerTags.Tags); err != nil {
 		return nil, err
 	}
 

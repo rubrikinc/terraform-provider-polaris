@@ -35,7 +35,7 @@ var resourceAWSCustomTagsDescription = `
 The ´polaris_aws_custom_tags´ resource manages RSC custom AWS tags. Simplify
 your cloud resource management by assigning custom tags for easy identification.
 These custom tags will be used on all existing and future AWS accounts in your
-cloud account.
+RSC account.
 
 -> **Note:** The newly updated custom tags will be applied to all existing and
    new resources, while the previously applied tags will remain unchanged.
@@ -93,7 +93,7 @@ func resourceAwsCustomTags() *schema.Resource {
 	}
 }
 
-func awsCreateCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsCreateCustomTags(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsCreateCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -118,7 +118,7 @@ func awsCreateCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 	return nil
 }
 
-func awsReadCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsReadCustomTags(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsReadCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -130,7 +130,7 @@ func awsReadCustomTags(ctx context.Context, d *schema.ResourceData, m interface{
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if err := setCustomTags(d, customerTags.Tags); err != nil {
+	if err := setCustomTags(d, keyCustomTags, customerTags.Tags); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyOverrideResourceTags, customerTags.OverrideResourceTags); err != nil {
@@ -140,7 +140,7 @@ func awsReadCustomTags(ctx context.Context, d *schema.ResourceData, m interface{
 	return nil
 }
 
-func awsUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsUpdateCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -188,7 +188,7 @@ func awsUpdateCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 	return nil
 }
 
-func awsDeleteCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsDeleteCustomTags(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsDeleteCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -211,7 +211,7 @@ func awsDeleteCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 // Note, the custom tags resource is designed to only manage custom tags owned
 // by the resource. An import on the other hand will take ownership of all
 // custom tags for a cloud vendor.
-func awsImportCustomTags(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+func awsImportCustomTags(ctx context.Context, d *schema.ResourceData, m any) ([]*schema.ResourceData, error) {
 	tflog.Trace(ctx, "awsImportCustomTags")
 
 	client, err := m.(*client).polaris()
@@ -223,7 +223,7 @@ func awsImportCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 	if err != nil {
 		return nil, err
 	}
-	if err := importCustomTags(d, customerTags.Tags); err != nil {
+	if err := importCustomTags(d, keyCustomTags, customerTags.Tags); err != nil {
 		return nil, err
 	}
 
@@ -232,12 +232,12 @@ func awsImportCustomTags(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 // importCustomTags imports the custom tags into the resource data.
-func importCustomTags(d *schema.ResourceData, customTags []core.Tag) error {
+func importCustomTags(d *schema.ResourceData, resourceKey string, customTags []core.Tag) error {
 	cts := make(map[string]any, len(customTags))
 	for _, tag := range customTags {
 		cts[tag.Key] = tag.Value
 	}
-	if err := d.Set(keyCustomTags, cts); err != nil {
+	if err := d.Set(resourceKey, cts); err != nil {
 		return err
 	}
 
@@ -245,8 +245,8 @@ func importCustomTags(d *schema.ResourceData, customTags []core.Tag) error {
 }
 
 // setCustomTags sets the custom tags in the resource data.
-func setCustomTags(d *schema.ResourceData, customTags []core.Tag) error {
-	cts := d.Get(keyCustomTags).(map[string]any)
+func setCustomTags(d *schema.ResourceData, resourceKey string, customTags []core.Tag) error {
+	cts := d.Get(resourceKey).(map[string]any)
 
 	// Create a set holding the custom tag keys specified in the Terraform
 	// configuration.
@@ -273,7 +273,7 @@ func setCustomTags(d *schema.ResourceData, customTags []core.Tag) error {
 		}
 	}
 
-	if err := d.Set(keyCustomTags, cts); err != nil {
+	if err := d.Set(resourceKey, cts); err != nil {
 		return err
 	}
 

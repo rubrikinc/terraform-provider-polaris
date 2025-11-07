@@ -6,7 +6,7 @@ description: |-
 The `polaris_aws_custom_tags` resource manages RSC custom AWS tags. Simplify
 your cloud resource management by assigning custom tags for easy identification.
 These custom tags will be used on all existing and future AWS accounts in your
-cloud account.
+RSC account.
 
 -> **Note:** The newly updated custom tags will be applied to all existing and
    new resources, while the previously applied tags will remain unchanged.
@@ -32,7 +32,7 @@ cloud account.
 The `polaris_aws_custom_tags` resource manages RSC custom AWS tags. Simplify
 your cloud resource management by assigning custom tags for easy identification.
 These custom tags will be used on all existing and future AWS accounts in your
-cloud account.
+RSC account.
 
 -> **Note:** The newly updated custom tags will be applied to all existing and
    new resources, while the previously applied tags will remain unchanged.

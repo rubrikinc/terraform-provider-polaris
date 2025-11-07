@@ -77,6 +77,9 @@ are used when specifying the feature set.
    is always required except for the ´SERVERS_AND_APPS´ feature.
 `
 
+// This data source uses a template for its documentation due to a bug in the TF
+// docs generator. Remember to update the template if the documentation for any
+// fields are changed.
 func dataSourceAwsPermissions() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: awsPermissionsRead,

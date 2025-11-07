@@ -4,6 +4,50 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.3.0
+* Add support for GCP custom labels. [[docs](../resources/gcp_custom_labels.md)]
+* Add support for GCP archival locations. [[docs](../data-sources/gcp_archival_location.md)]
+  [[docs](../resources/gcp_archival_location.md)]
+* Add `polaris_gcp_project` data source. [[docs](../data-sources/gcp_project.md)]
+* The `id` field of the `polaris_gcp_service_account` resource is now the SHA-256 hash sum of the service account name.
+  Note, this is a breaking change if a Terraform configuration expects the `id` field to be the service account name.
+* The `credentials` field of the `polaris_gcp_service_account` resource can now be updated without recreating the
+  resource.
+* The `credentials` field of the `polaris_gcp_service_account` now accepts the credentials both as a file and as a
+  base64 encoded string.
+* The `credentials` field of the `polaris_gcp_service_account` resource is now marked as sensitive.
+* Deprecate the `permissions_hash` field of the `polaris_gcp_service_account` resource. Use the `permissions` field
+  of the `feature` block in the `polaris_gcp_project` resource instead.
+* The `id` field of the `polaris_gcp_permissions` data source is now the SHA-256 hash sum of all the GCP permissions
+  returned.
+* Deprecate the `features` field of the `polaris_gcp_permissions` data source. Use the `feature` field instead.
+* Deprecate the `hash` field of the `polaris_gcp_permissions` data source. Use the `id` field instead.
+* Deprecate the `permissions` field of the `polaris_gcp_permissions` data source. Use the `with_conditions` and
+  `without_conditions` fields instead.
+* Add `feature` field to the `polaris_gcp_permissions` data source. The `feature` field is used to specify the RSC
+  feature and permissions groups to look up the GCP permissions for.
+* Add `conditions` field to the `polaris_gcp_permissions` data source. The `conditions` field holds the GCP conditions
+  for the `with_conditions` GCP permissions.
+* Add `services` field to the `polaris_gcp_permissions` data source. The `servcices` field holds the GCP services
+  required for the RSC feature and permission groups.
+* Add `with_conditions` field to the `polaris_gcp_permissions` data source. The `with_conditions` field holds the GCP
+  permissions with conditions required for the RSC feature and permission groups.
+* Add `without_conditions` field to the `polaris_gcp_permissions` data source. The `without_conditions` field holds the
+  GCP permissions without conditions required for the RSC feature and permission groups.
+* Deprecate the `cloud_native_protection` field of the `polaris_gcp_project` resource. Use the `feature` field instead.
+  Using the `feature` field, setting `name` to `CLOUD_NATIVE_PROTECTION` and `permission_groups` to `BASIC`,
+  `EXPORT_AND_RESTORE` and `FILE_LEVEL_RECOVERY` should be equivalent.
+* Deprecate the `permissions_hash` field of the `polaris_gcp_project` resource. Use the `permissions` field of the
+  `feature` block instead.
+* Add `feature` field to the `polaris_gcp_project` resource. The `feature` field is used to specify one or more RSC
+  features with permissions groups to onboard the GCP project with.
+* The `credentials` field of the `polaris_gcp_project` resource is now marked as optional and sensitive.
+* The `credentials` field of the `polaris_gcp_project` now accepts the credentials both as a file and as a base64
+  encoded string.
+* The `project`, `project_name`, and `project_number` fields of the `polaris_gcp_project` resource are now marked as
+  required. Note, this is a breaking change if they are not specified in a Terraform configuration. Use the
+  `terraform state show <resource-address>` command to look up the values to add to the configuration.
+
 ## v1.2.1
 * Update Go version to 1.24.8.
 

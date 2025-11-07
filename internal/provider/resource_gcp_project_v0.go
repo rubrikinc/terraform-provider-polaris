@@ -38,11 +38,11 @@ func resourceGcpProjectV0() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"credentials": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				AtLeastOneOf:     []string{"credentials", "project"},
-				ValidateDiagFunc: fileExists,
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				AtLeastOneOf: []string{"credentials", "project"},
+				ValidateFunc: validateFileExist,
 			},
 			"delete_snapshots_on_destroy": {
 				Type:     schema.TypeBool,
@@ -75,13 +75,13 @@ func resourceGcpProjectV0() *schema.Resource {
 				ValidateDiagFunc: validation.ToDiagFunc(validation.StringIsNotWhiteSpace),
 			},
 			"project_number": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				Computed:         true,
-				ConflictsWith:    []string{"credentials"},
-				RequiredWith:     []string{"organization_name", "project", "project_number"},
-				ValidateDiagFunc: stringIsInteger,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				Computed:      true,
+				ConflictsWith: []string{"credentials"},
+				RequiredWith:  []string{"organization_name", "project", "project_number"},
+				ValidateFunc:  validateStringIsNumber,
 			},
 		},
 	}

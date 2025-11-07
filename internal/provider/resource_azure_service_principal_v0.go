@@ -37,12 +37,12 @@ func resourceAzureServicePrincipalV0() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"credentials": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				AtLeastOneOf:     []string{"credentials", "app_id"},
-				Description:      "Path to Azure service principal file.",
-				ValidateDiagFunc: fileExists,
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				AtLeastOneOf: []string{"credentials", "app_id"},
+				Description:  "Path to Azure service principal file.",
+				ValidateFunc: validateFileExist,
 			},
 			"app_id": {
 				Type:             schema.TypeString,
