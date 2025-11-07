@@ -4,7 +4,7 @@ page_title: "Changelog"
 
 # Changelog
 
-## v1.3.0-beta.1
+## v1.4.0-beta.1
 * Add `polaris_sla_domain` resource for managing RSC global SLA Domains. The resource supports creating and updating
   SLA domains with frequency, retention, archival, and replication configurations.
   [[docs](../resources/sla_domain.md)]
