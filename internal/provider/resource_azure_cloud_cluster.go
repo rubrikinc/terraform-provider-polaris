@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cloudcluster"
 	gqlcloudcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -398,14 +399,8 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 
 	d.SetId(azureCluster.ID.String())
 
-	vmConfigList = d.Get(keyVMConfig).([]any)
-	if len(vmConfigList) > 0 {
-		vmConfigMap := vmConfigList[0].(map[string]any)
-		vmConfigMap[keyCDMProduct] = azureCluster.CdmProduct
-		d.Set(keyVMConfig, []any{vmConfigMap})
-	}
-
-	return azureReadCloudCluster(ctx, d, m)
+	azureReadCloudCluster(ctx, d, m)
+	return nil
 }
 
 func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
@@ -415,12 +410,7 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	// creation is a long-running operation and the cluster state is managed
 	// by RSC. We mainly verify that the resource still exists in the state.
 
-	// If the ID is empty, the resource doesn't exist
-	if d.Id() == "" {
-		return nil
-	}
-
-	// create gqlapi client
+	// Create the gqlapi client
 	client, err := m.(*client).polaris()
 	if err != nil {
 		return diag.FromErr(err)
@@ -453,6 +443,31 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		return diag.Errorf("Cloud cluster ID mismatch. Expected %q, got %q", id, cloudCluster.ID)
 	}
 
+	// set the CDM product codes
+	nativeCloudAccountID, err := uuid.Parse(cloudCluster.CloudInfo.NativeCloudAccountID)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	// get cloudAccountID from NativeCloudAccountID
+	cloudAccount, err := azure.Wrap(client).SubscriptionByNativeID(ctx, nativeCloudAccountID)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	// get CDM product code from cloudAccountID and region
+	region := azureRegion.RegionFromName(cloudCluster.CloudInfo.Region)
+	cdmProducts, err := gqlcloudcluster.Wrap(client.GQL).AllAzureCdmVersions(ctx, cloudAccount.ID, region)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	var productCode string
+	for _, product := range cdmProducts {
+		if product.CDMVersion == cloudCluster.Version {
+			productCode = product.Version
+			break
+		}
+	}
+
 	// Get and update cluster_config block
 	clusterConfigList := d.Get(keyClusterConfig).([]any)
 	clusterConfigMap := clusterConfigList[0].(map[string]any)
@@ -462,6 +477,7 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	vmConfigList := d.Get(keyVMConfig).([]any)
 	vmConfigMap := vmConfigList[0].(map[string]any)
 	vmConfigMap[keyCDMVersion] = cloudCluster.Version
+	vmConfigMap[keyCDMProduct] = productCode
 
 	d.Set(keyClusterConfig, []any{clusterConfigMap})
 	d.Set(keyVMConfig, []any{vmConfigMap})
