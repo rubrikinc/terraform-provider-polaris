@@ -29,25 +29,26 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cloudcluster"
 	gqlcloudcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
-	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
+	azureRegion "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
-const resourceAWSCloudClusterDescription = `
-The ´polaris_aws_cloud_cluster´ resource creates an AWS cloud cluster using RSC.
+const resourceAzureCloudClusterDescription = `
+The ´polaris_azure_cloud_cluster´ resource creates an Azure cloud cluster using RSC.
 
-This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage 
-in AWS using the specified configuration. The cluster will be deployed with the specified
+This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage
+in Azure using the specified configuration. The cluster will be deployed with the specified
 number of nodes, instance types, and network configuration.
 
-~> **Note:** This resource creates actual AWS infrastructure. Destroying the
+~> **Note:** This resource creates actual Azure infrastructure. Destroying the
    resource will attempt to clean up the created resources, but manual cleanup
    may be required.
 
-~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
+~> **Note:** The Azure subscription must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
 
 ~> **Note:** Cloud Cluster Removal is not supported via terraform yet. The cluster
@@ -57,12 +58,12 @@ number of nodes, instance types, and network configuration.
 // This resource uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
-func resourceAwsCloudCluster() *schema.Resource {
+func resourceAzureCloudCluster() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: awsCreateCloudCluster,
-		ReadContext:   awsReadCloudCluster,
-		DeleteContext: awsDeleteCloudCluster,
-		Description:   description(resourceAWSCloudClusterDescription),
+		CreateContext: azureCreateCloudCluster,
+		ReadContext:   azureReadCloudCluster,
+		DeleteContext: azureDeleteCloudCluster,
+		Description:   description(resourceAzureCloudClusterDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -75,20 +76,6 @@ func resourceAwsCloudCluster() *schema.Resource {
 				ForceNew:     true,
 				Description:  "RSC cloud account ID (UUID).",
 				ValidateFunc: validation.IsUUID,
-			},
-			keyRegion: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "AWS region to deploy the cluster in. Changing this forces a new resource to be created.",
-				ValidateFunc: validation.StringInSlice(gqlaws.AllRegionNames(), false),
-			},
-			keyUsePlacementGroups: {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				ForceNew:    true,
-				Default:     false,
-				Description: "Whether to use placement groups for the cluster. Changing this forces a new resource to be created.",
 			},
 			keyClusterConfig: {
 				Type:        schema.TypeList,
@@ -155,19 +142,6 @@ func resourceAwsCloudCluster() *schema.Resource {
 							MinItems:    1,
 							Description: "NTP servers for the cluster. Changing this forces a new resource to be created.",
 						},
-						keyBucketName: {
-							Type:         schema.TypeString,
-							Required:     true,
-							ForceNew:     true,
-							Description:  "Name of the S3 bucket to use for the cluster. Changing this forces a new resource to be created.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-						keyEnableImmutability: {
-							Type:        schema.TypeBool,
-							Required:    true,
-							ForceNew:    true,
-							Description: "Whether to enable immutability and object lock for the S3 bucket. Changing this forces a new resource to be created.",
-						},
 						keyKeepClusterOnFailure: {
 							Type:        schema.TypeBool,
 							Required:    true,
@@ -201,55 +175,108 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Type:        schema.TypeString,
 							Required:    true,
 							ForceNew:    true,
-							Description: "AWS instance type for the cluster nodes. Changing this forces a new resource to be created. Supported values are `M5_4XLARGE`, `M6I_2XLARGE`, `M6I_4XLARGE`, `M6I_8XLARGE`, `R6I_4XLARGE`, `M6A_2XLARGE`, `M6A_4XLARGE`, `M6A_8XLARGE` and `R6A_4XLARGE`.",
+							Description: "Azure instance type for the cluster nodes. Allowed values are `STANDARD_DS5_V2`, `STANDARD_D16S_V5`, `STANDARD_D8S_V5`, `STANDARD_D32S_V5`, `STANDARD_E16S_V5`, `STANDARD_D8AS_V5`, `STANDARD_D16AS_V5`, `STANDARD_D32AS_V5` and `STANDARD_E16AS_V5`. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringInSlice([]string{
-								string(gqlcloudcluster.AwsInstanceTypeM5_4XLarge),
-								string(gqlcloudcluster.AwsInstanceTypeM6I_2XLarge),
-								string(gqlcloudcluster.AwsInstanceTypeM6I_4XLarge),
-								string(gqlcloudcluster.AwsInstanceTypeM6I_8XLarge),
-								string(gqlcloudcluster.AwsInstanceTypeR6I_4XLarge),
-								string(gqlcloudcluster.AwsInstanceTypeM6A_2XLarge),
-								string(gqlcloudcluster.AwsInstanceTypeM6A_4XLarge),
-								string(gqlcloudcluster.AwsInstanceTypeM6A_8XLarge),
-								string(gqlcloudcluster.AwsInstanceTypeR6A_4XLarge),
+								string(gqlcloudcluster.AzureInstanceTypeStandardDS5V2),
+								string(gqlcloudcluster.AzureInstanceTypeStandardD16SV5),
+								string(gqlcloudcluster.AzureInstanceTypeStandardD8SV5),
+								string(gqlcloudcluster.AzureInstanceTypeStandardD32SV5),
+								string(gqlcloudcluster.AzureInstanceTypeStandardE16SV5),
+								string(gqlcloudcluster.AzureInstanceTypeStandardD8ASV5),
+								string(gqlcloudcluster.AzureInstanceTypeStandardD16ASV5),
+								string(gqlcloudcluster.AzureInstanceTypeStandardD32ASV5),
+								string(gqlcloudcluster.AzureInstanceTypeStandardE16ASV5),
 							}, false),
 						},
-						keyInstanceProfileName: {
+						keyResourceGroupName: {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
-							Description:  "AWS instance profile name for the cluster nodes. Changing this forces a new resource to be created.",
+							Description:  "Azure resource group name where the cluster will be deployed. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keyVPCID: {
+						keyStorageAccountName: {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
-							Description:  "AWS VPC ID where the cluster will be deployed. Changing this forces a new resource to be created.",
+							Description:  "Azure storage account name for the cluster. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keySubnetID: {
+						keyContainerName: {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
-							Description:  "AWS subnet ID where the cluster nodes will be deployed. Changing this forces a new resource to be created.",
+							Description:  "Azure storage container name for the cluster. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
-						keySecurityGroupIDs: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
+						keyEnableImmutability: {
+							Type:        schema.TypeBool,
 							Required:    true,
 							ForceNew:    true,
-							Description: "AWS security group IDs for the cluster nodes. Changing this forces a new resource to be created.",
+							Description: "Whether to enable immutability for the storage account. Changing this forces a new resource to be created.",
+						},
+						keyUserAssignedManagedIdentityName: {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							Description:  "Name of the user-assigned managed identity. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyRegion: {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							Description:  "Azure region to deploy the cluster in. The format should be the native Azure format, e.g. `eastus`, `westus`, etc. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringInSlice(azureRegion.AllRegionNames(), false),
+						},
+						keyNetworkResourceGroup: {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							Description:  "Azure resource group name for network resources. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyVnetResourceGroup: {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							Description:  "Azure resource group name for the virtual network. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keySubnet: {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							Description:  "Azure subnet name for the cluster nodes. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyVnet: {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							Description:  "Azure virtual network name. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyNetworkSecurityGroup: {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							Description:  "Azure network security group name. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyNetworkSecurityResourceGroup: {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							Description:  "Azure resource group name for the network security group. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyVMType: {
 							Type:        schema.TypeString,
 							Optional:    true,
 							ForceNew:    true,
 							Default:     "DENSE",
-							Description: "VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`. `DENSE` is recommended for CCES.",
+							Description: "VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`. `EXTRA_DENSE` is recommended for CCES.",
 							ValidateFunc: validation.StringInSlice([]string{
 								string(gqlcloudcluster.CCVmConfigStandard),
 								string(gqlcloudcluster.CCVmConfigDense),
@@ -268,8 +295,8 @@ func resourceAwsCloudCluster() *schema.Resource {
 	}
 }
 
-func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	tflog.Trace(ctx, "awsCreateCloudCluster")
+func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
+	tflog.Trace(ctx, "azureCreateCloudCluster")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -287,14 +314,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 	vmConfigMap := vmConfigList[0].(map[string]any)
 
-	securityGroupsSet := vmConfigMap[keySecurityGroupIDs].(*schema.Set)
-	securityGroups := make([]string, 0, securityGroupsSet.Len())
-	for _, sg := range securityGroupsSet.List() {
-		securityGroups = append(securityGroups, sg.(string))
-	}
-
 	instanceTypeStr := vmConfigMap[keyInstanceType].(string)
-	instanceType := gqlcloudcluster.AwsCCInstanceType(instanceTypeStr)
 	vmTypeStr := vmConfigMap[keyVMType].(string)
 	vmType := gqlcloudcluster.VmConfigType(vmTypeStr)
 
@@ -325,24 +345,34 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		gqlcloudcluster.AllChecks,
 	}
 
-	vmConfig := gqlcloudcluster.AwsVmConfig{
-		CDMVersion:          vmConfigMap[keyCDMVersion].(string),
-		InstanceProfileName: vmConfigMap[keyInstanceProfileName].(string),
-		InstanceType:        instanceType,
-		SecurityGroups:      securityGroups,
-		Subnet:              vmConfigMap[keySubnetID].(string),
-		VMType:              vmType,
-		VPC:                 vmConfigMap[keyVPCID].(string),
+	region := azureRegion.RegionFromName(vmConfigMap[keyRegion].(string))
+
+	vmConfig := gqlcloudcluster.AzureVMConfig{
+		CDMVersion:                   vmConfigMap[keyCDMVersion].(string),
+		InstanceType:                 gqlcloudcluster.AzureCCESSupportedInstanceType(instanceTypeStr),
+		Location:                     region,
+		ResourceGroup:                vmConfigMap[keyResourceGroupName].(string),
+		NetworkResourceGroup:         vmConfigMap[keyNetworkResourceGroup].(string),
+		VnetResourceGroup:            vmConfigMap[keyVnetResourceGroup].(string),
+		Subnet:                       vmConfigMap[keySubnet].(string),
+		Vnet:                         vmConfigMap[keyVnet].(string),
+		NetworkSecurityGroup:         vmConfigMap[keyNetworkSecurityGroup].(string),
+		NetworkSecurityResourceGroup: vmConfigMap[keyNetworkSecurityResourceGroup].(string),
+		VMType:                       vmType,
 	}
 
-	awsEsConfig := gqlcloudcluster.AwsEsConfigInput{
-		BucketName:         clusterConfigMap[keyBucketName].(string),
-		EnableImmutability: clusterConfigMap[keyEnableImmutability].(bool),
-		ShouldCreateBucket: false,
-		EnableObjectLock:   clusterConfigMap[keyEnableImmutability].(bool),
+	azureEsConfig := gqlcloudcluster.AzureEsConfigInput{
+		ResourceGroup:         vmConfigMap[keyResourceGroupName].(string),
+		StorageAccount:        vmConfigMap[keyStorageAccountName].(string),
+		ContainerName:         vmConfigMap[keyContainerName].(string),
+		ShouldCreateContainer: false,
+		EnableImmutability:    vmConfigMap[keyEnableImmutability].(bool),
+		ManagedIdentity: gqlcloudcluster.AzureManagedIdentityName{
+			Name: vmConfigMap[keyUserAssignedManagedIdentityName].(string),
+		},
 	}
 
-	clusterConfig := gqlcloudcluster.AwsClusterConfig{
+	clusterConfig := gqlcloudcluster.AzureClusterConfig{
 		ClusterName:      clusterConfigMap[keyClusterName].(string),
 		UserEmail:        clusterConfigMap[keyAdminEmail].(string),
 		AdminPassword:    secret.String(clusterConfigMap[keyAdminPassword].(string)),
@@ -350,67 +380,58 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		DNSSearchDomains: dnsSearchDomains,
 		NTPServers:       ntpServers,
 		NumNodes:         clusterConfigMap[keyNumNodes].(int),
-		AwsEsConfig:      awsEsConfig,
+		AzureESConfig:    azureEsConfig,
 	}
 
-	input := gqlcloudcluster.CreateAwsClusterInput{
+	input := gqlcloudcluster.CreateAzureClusterInput{
 		CloudAccountID:       cloudAccountID,
 		ClusterConfig:        clusterConfig,
-		IsEsType:             true,
+		IsESType:             true,
 		KeepClusterOnFailure: clusterConfigMap[keyKeepClusterOnFailure].(bool),
-		Region:               d.Get(keyRegion).(string),
-		UsePlacementGroups:   d.Get(keyUsePlacementGroups).(bool),
 		Validations:          validations,
 		VMConfig:             vmConfig,
 	}
 
-	cloudcluster, err := cloudcluster.Wrap(client).CreateCloudCluster(ctx, input, false)
+	azureCluster, err := cloudcluster.Wrap(client).CreateAzureCloudCluster(ctx, input)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.SetId(cloudcluster.ID.String())
+	d.SetId(azureCluster.ID.String())
 
-	vmConfigList = d.Get(keyVMConfig).([]any)
-	if len(vmConfigList) > 0 {
-		vmConfigMap := vmConfigList[0].(map[string]any)
-		vmConfigMap[keyCDMProduct] = cloudcluster.CdmProduct
-		d.Set(keyVMConfig, []any{vmConfigMap})
-	}
-	d.Set(keyCloudAccountID, cloudcluster.CloudAccountID)
-
-	return awsReadCloudCluster(ctx, d, m)
+	azureReadCloudCluster(ctx, d, m)
+	return nil
 }
 
-func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	tflog.Trace(ctx, "awsReadCloudCluster")
+func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
+	tflog.Trace(ctx, "azureReadCloudCluster")
 
 	// For cloud clusters, the read operation is limited since the cluster
 	// creation is a long-running operation and the cluster state is managed
 	// by RSC. We mainly verify that the resource still exists in the state.
 
-	// If the ID is empty, the resource doesn't exist
-	if d.Id() == "" {
-		return nil
+	// Create the gqlapi client
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
-	// create gqlapi client
-	client := m.(*client).polarisClient.GQL
+	// Get cloud cluster ID
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
+	// Create filter for cloud cluster
 	clusterFilter := gqlcloudcluster.ClusterFilter{
 		ID: []string{id.String()},
 	}
 
 	// Use AllCloudClusters and filter for cluster
-	cloudClusters, err := gqlcloudcluster.Wrap(client).AllCloudClusters(ctx, 1, "", clusterFilter, gqlcloudcluster.SortByClusterName, core.SortOrderDesc)
+	cloudClusters, err := gqlcloudcluster.Wrap(client.GQL).AllCloudClusters(ctx, 1, "", clusterFilter, gqlcloudcluster.SortByClusterName, core.SortOrderDesc)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-
 	if len(cloudClusters) == 0 {
 		d.SetId("")
 		return nil
@@ -422,6 +443,31 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 		return diag.Errorf("Cloud cluster ID mismatch. Expected %q, got %q", id, cloudCluster.ID)
 	}
 
+	// set the CDM product codes
+	nativeCloudAccountID, err := uuid.Parse(cloudCluster.CloudInfo.NativeCloudAccountID)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	// get cloudAccountID from NativeCloudAccountID
+	cloudAccount, err := azure.Wrap(client).SubscriptionByNativeID(ctx, nativeCloudAccountID)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	// get CDM product code from cloudAccountID and region
+	region := azureRegion.RegionFromName(cloudCluster.CloudInfo.Region)
+	cdmProducts, err := gqlcloudcluster.Wrap(client.GQL).AllAzureCdmVersions(ctx, cloudAccount.ID, region)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	var productCode string
+	for _, product := range cdmProducts {
+		if product.CDMVersion == cloudCluster.Version {
+			productCode = product.Version
+			break
+		}
+	}
+
 	// Get and update cluster_config block
 	clusterConfigList := d.Get(keyClusterConfig).([]any)
 	clusterConfigMap := clusterConfigList[0].(map[string]any)
@@ -431,6 +477,7 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	vmConfigList := d.Get(keyVMConfig).([]any)
 	vmConfigMap := vmConfigList[0].(map[string]any)
 	vmConfigMap[keyCDMVersion] = cloudCluster.Version
+	vmConfigMap[keyCDMProduct] = productCode
 
 	d.Set(keyClusterConfig, []any{clusterConfigMap})
 	d.Set(keyVMConfig, []any{vmConfigMap})
@@ -438,8 +485,8 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	return nil
 }
 
-func awsDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	tflog.Trace(ctx, "awsDeleteCloudCluster")
+func azureDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
+	tflog.Trace(ctx, "azureDeleteCloudCluster")
 
 	// Cluster Removal is not supported via terraform yet. The user must remove the
 	// cluster through the RSC UI. This will be implemented in the future.
