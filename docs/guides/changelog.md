@@ -4,6 +4,24 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.4.0-beta.1
+* Add `polaris_sla_domain` resource for managing RSC global SLA Domains. The resource supports creating and updating
+  SLA domains with frequency, retention, archival, and replication configurations.
+  [[docs](../resources/sla_domain.md)]
+* Add support for the following object types in SLA domains:
+  - Azure SQL Databases with instant archival and continuous backup for point-in-time recovery
+  - Azure SQL Managed Instance with log backup configuration
+  - Azure Blob Storage with backup location configuration
+  - AWS RDS with continuous backup for point-in-time recovery (archival supported for PostgreSQL and Aurora PostgreSQL)
+  - AWS S3 with backup location configuration
+  - AWS DynamoDB with primary backup encryption KMS key and continuous backup configuration
+  - GCE Instance/Disk
+  - Okta
+  - Microsoft 365 (minimum 8 hours SLA, 12 hours or more recommended)
+* Add support for backup windows in SLA domains to control when snapshots are taken.
+* Update `polaris_sla_domain` data source with additional computed fields for archival specifications, and various
+  schedule types (daily, hourly, minute, monthly, quarterly, weekly, yearly).
+
 ## v1.3.0
 * Add support for GCP custom labels. [[docs](../resources/gcp_custom_labels.md)]
 * Add support for GCP archival locations. [[docs](../data-sources/gcp_archival_location.md)]

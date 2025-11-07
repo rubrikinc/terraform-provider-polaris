@@ -6,7 +6,9 @@ import (
 	"io/fs"
 	"net/mail"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/hashicorp/go-cty/cty"
@@ -109,4 +111,49 @@ func validateStringIsNumber(i any, k string) ([]string, []error) {
 	}
 
 	return nil, nil
+// validateStartAt returns a function that validates the start_at value.
+// The GQL type allows specifying a day of week optionally, but different
+// endpoints use the value in different ways. E.g. "First full snapshot"
+// requires the day of week, but "Snapshot window" requires it to be omitted.
+func validateStartAt(withDay bool) func(i interface{}, k string) ([]string, []error) {
+	return func(i interface{}, k string) ([]string, []error) {
+		v, ok := i.(string)
+		if !ok {
+			return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+		}
+		parts := strings.Split(v, ", ")
+		var timeParts []string
+		switch len(parts) {
+		case 1:
+			// Day of week not specified.
+			if withDay {
+				return nil, []error{fmt.Errorf("day of week required for %s: %s", k, v)}
+			}
+			timeParts = strings.Split(parts[0], ":")
+		case 2:
+			// Day of week specified.
+			if !withDay {
+				return nil, []error{fmt.Errorf("day of week not allowed for %s: %s", k, v)}
+			}
+			if !slices.Contains([]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}, parts[0]) {
+				return nil, []error{fmt.Errorf("invalid day of week for %s: %s", k, v)}
+			}
+			timeParts = strings.Split(parts[1], ":")
+		default:
+			return nil, []error{fmt.Errorf("invalid format for %s: %s", k, v)}
+		}
+		if len(timeParts) != 2 {
+			return nil, []error{fmt.Errorf("invalid time format for %s: %s", k, v)}
+		}
+
+		if n, err := strconv.Atoi(timeParts[0]); err != nil || n < 0 || n > 23 {
+			return nil, []error{fmt.Errorf("invalid hour for %s: %s", k, v)}
+		}
+
+		if n, err := strconv.Atoi(timeParts[1]); err != nil || n < 0 || n > 59 {
+			return nil, []error{fmt.Errorf("invalid minute for %s: %s", k, v)}
+		}
+
+		return nil, nil
+	}
 }
