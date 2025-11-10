@@ -266,7 +266,7 @@ func gcpPermissionsRead(ctx context.Context, d *schema.ResourceData, m any) diag
 		perms = append(perms, featurePerms.WithoutConditions...)
 	}
 	slices.Sort(perms)
-	slices.Compact(perms)
+	perms = slices.Compact(perms)
 	var permissions []any
 	for _, perm := range perms {
 		permissions = append(permissions, perm)
