@@ -100,6 +100,10 @@ are used when specifying the feature.
   * ´CUSTOMER_MANAGED_BASIC´ - Represents the permissions required to enable
     customer-managed Exocompute feature.
 
+´SERVERS_AND_APPS´
+  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
    is always required .
 
@@ -158,11 +162,11 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Description: "RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` " +
 					"style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  " +
 					"`CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, " +
-					"`CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`.",
+					"`CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS` and `EXOCOMPUTE`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_NATIVE_ARCHIVAL",
 					"CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_BLOB_PROTECTION", "CLOUD_NATIVE_PROTECTION",
-					"EXOCOMPUTE",
+					"EXOCOMPUTE", "SERVERS_AND_APPS",
 				}, false),
 			},
 			keyFeatures: {
@@ -172,14 +176,14 @@ func dataSourceAzurePermissions() *schema.Resource {
 					ValidateFunc: validation.StringInSlice([]string{
 						"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_NATIVE_ARCHIVAL",
 						"CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_BLOB_PROTECTION", "CLOUD_NATIVE_PROTECTION",
-						"EXOCOMPUTE",
+						"EXOCOMPUTE", "SERVERS_AND_APPS",
 					}, false),
 				},
 				MinItems: 1,
 				Optional: true,
 				Description: "RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, " +
 					"`AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, " +
-					"`CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`. **Deprecated:** " +
+					"`CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS`  and `EXOCOMPUTE`. **Deprecated:** " +
 					"use `feature` instead.",
 				Deprecated: "Use `feature` instead",
 			},
@@ -228,7 +232,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 				RequiredWith:  []string{keyFeature},
 				Description: "Permission groups for the RSC feature. Possible values are `BASIC`, " +
 					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINTS`, " +
-					"`CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY` and `BACKUP_V2`.",
+					"`CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY`, `CLOUD_CLUSTER_ES` and `BACKUP_V2`.",
 			},
 			keyResourceGroupActions: {
 				Type: schema.TypeList,

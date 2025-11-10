@@ -47,6 +47,9 @@ description: |-
   feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage
   of private endpoints.CUSTOMER_MANAGED_BASIC - Represents the permissions required to enable
   customer-managed Exocompute feature.
+  SERVERS_AND_APPS
+  CLOUD_CLUSTER_ES - Represents the basic set of permissions required to onboard the
+  feature.
   ~> Note: Even though the resource_group_name and the
   resource_group_region fields are marked as optional you should always
   specify them. They are marked as optional to simplify the migration of
@@ -131,6 +134,10 @@ are used when specifying the feature set.
   * `CUSTOMER_MANAGED_BASIC` - Represents the permissions required to enable
     customer-managed Exocompute feature.
 
+`SERVERS_AND_APPS`
+  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
+    feature.
+
 ~> **Note:** Even though the `resource_group_name` and the
    `resource_group_region` fields are marked as optional you should always
    specify them. They are marked as optional to simplify the migration of
@@ -211,6 +218,7 @@ resource "polaris_azure_subscription" "subscription" {
 - `cloud_native_protection` (Block List, Max: 1) Enable the RSC Cloud Native Protection feature for the Azure subscription. Provides protection for Azure virtual machines and managed disks through the rules and policies of SLA Domains. (see [below for nested schema](#nestedblock--cloud_native_protection))
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed. Default value is `false`.
 - `exocompute` (Block List, Max: 1) Enable the RSC Exocompute feature for the Azure subscription. Provides snapshot indexing, file recovery, storage tiering, and application-consistent protection of Azure objects. (see [below for nested schema](#nestedblock--exocompute))
+- `servers_and_apps` (Block List, Max: 1) Enable the RSC Cloud Cluster feature for the Azure subscription. Provides ability to deploy Rubrik Cloud Data Management (CDM) clusters in Azure. (see [below for nested schema](#nestedblock--servers_and_apps))
 - `sql_db_protection` (Block List, Max: 1) Enable the RSC SQL DB Protection feature for the Azure subscription. Provides centralized database backup management and recovery in an Azure SQL Database deployment. (see [below for nested schema](#nestedblock--sql_db_protection))
 - `sql_mi_protection` (Block List, Max: 1) Enable the RSC SQL MI Protection feature for the Azure subscription. Provides centralized database backup management and recovery for an Azure SQL Managed Instance deployment. (see [below for nested schema](#nestedblock--sql_mi_protection))
 - `subscription_name` (String) Azure subscription name.
@@ -318,6 +326,23 @@ Optional:
 Read-Only:
 
 - `status` (String) Status of the Exocompute feature.
+
+
+<a id="nestedblock--servers_and_apps"></a>
+### Nested Schema for `servers_and_apps`
+
+Required:
+
+- `regions` (Set of String) Azure regions to enable the Cloud Cluster feature in. Should be specified in the standard Azure style, e.g. `eastus`.
+
+Optional:
+
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Cluster feature. Possible values are `CLOUD_CLUSTER_ES`.
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+
+Read-Only:
+
+- `status` (String) Status of the Cloud Cluster feature.
 
 
 <a id="nestedblock--sql_db_protection"></a>

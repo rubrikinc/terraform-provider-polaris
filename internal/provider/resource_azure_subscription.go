@@ -108,6 +108,10 @@ are used when specifying the feature set.
   * ´CUSTOMER_MANAGED_BASIC´ - Represents the permissions required to enable
     customer-managed Exocompute feature.
 
+´SERVERS_AND_APPS´
+  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ~> **Note:** Even though the ´resource_group_name´ and the
    ´resource_group_region´ fields are marked as optional you should always
    specify them. They are marked as optional to simplify the migration of
@@ -570,6 +574,52 @@ func resourceAzureSubscription() *schema.Resource {
 				},
 				Description: "Enable the RSC Exocompute feature for the Azure subscription. Provides snapshot " +
 					"indexing, file recovery, storage tiering, and application-consistent protection of Azure objects.",
+			},
+			keyServersAndApps: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"CLOUD_CLUSTER_ES",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the Cloud Cluster feature. " +
+								"Possible values are `CLOUD_CLUSTER_ES`.",
+						},
+						keyPermissions: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "Permissions updated signal. When this field changes, the provider will notify " +
+								"RSC that the permissions for the feature has been updated. Use this field with the " +
+								"`polaris_azure_permissions` data source.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							MinItems: 1,
+							Required: true,
+							Description: "Azure regions to enable the Cloud Cluster feature in. Should be specified " +
+								"in the standard Azure style, e.g. `eastus`.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cloud Cluster feature.",
+						},
+					},
+				},
+				MaxItems: 1,
+				Optional: true,
+				Description: "Enable the RSC Cloud Cluster feature for the Azure subscription. Provides " +
+					"ability to deploy Rubrik Cloud Data Management (CDM) clusters in Azure.",
 			},
 			keySQLDBProtection: {
 				Type: schema.TypeList,
@@ -1115,6 +1165,13 @@ var azureKeyFeatureMap = map[string]orderedFeature{
 		orderRemove:      306,
 		orderSplitAdd:    213,
 		orderSplitRemove: 212,
+	},
+	keyServersAndApps: {
+		feature:          core.FeatureServerAndApps,
+		orderAdd:         107,
+		orderRemove:      307,
+		orderSplitAdd:    215,
+		orderSplitRemove: 214,
 	},
 }
 
