@@ -7,7 +7,7 @@ page_title: "Upgrade Guide: v1.3.0"
 ## Before Upgrading
 
 Review the [changelog](changelog.md) to understand what has changed and what might cause an issue when upgrading the
-provider. Note, deprecated resources and fields will be removed in a future release, please migrate your configurations
+provider. Note that deprecated resources and fields will be removed in a future release. Please migrate your configurations
 to use the recommended replacements as soon as possible.
 
 ## How to Upgrade
@@ -33,7 +33,7 @@ After the provider has been updated, validate the correctness of the Terraform c
 ```shell
 % terraform plan
 ```
-If you get an error or an unwanted diff, please see the _Significant Changes and New Features_ below for additional
+If you get an error or an unwanted diff, please see the _Significant Changes_ and _New Features_ sections below for additional
 instructions. Otherwise, proceed by running:
 ```shell
 % terraform apply -refresh-only
@@ -48,7 +48,7 @@ labels. Custom labels are applied to all resources created in GCP cloud accounts
 showing how to add two custom GCP labels:
 ```terraform
 resource "polaris_gcp_custom_labels" "labels" {
-  custom_tags = {
+  custom_labels = {
     "app"    = "RSC"
     "vendor" = "Rubrik"
   }
@@ -57,7 +57,7 @@ resource "polaris_gcp_custom_labels" "labels" {
 
 ### GCP Archival Locations
 Support for archival locations has been added for GCP. The `polaris_gcp_archival_location` resource is used to create an
-archival location. Here's a simple example, showing how to create an archival location:
+archival location. A simple example for creating a GCP archival location is as follows:
 ```terraform
 data "polaris_gcp_project" "project" {
   name = "my-gcp-project"
@@ -113,7 +113,7 @@ As part of adding support for permission groups, the `cloud_native_protection` f
 resource and the `features` field of the `polaris_gcp_permissions` data source have been deprecated.
 
 ### GCP Conditional Permissions
-The `polaris_gcp_perissions` data source has been extended with new fields to support an improved permissions model with
+The `polaris_gcp_permissions` data source has been extended with new fields to support an improved permissions model with
 conditional permissions. Previously, the `polaris_gcp_permissions` data source was used to get a list of permissions for
 a set of RSC features. The permissions were then used to create a custom role which was assigned to the RSC service
 account. Now, the `polaris_gcp_permissions` data source is used to get two sets of permissions, one for permissions with
@@ -168,7 +168,7 @@ resource "google_project_iam_member" "cnp_with_conditions" {
 resource "google_project_iam_member" "cnp_without_conditions" {
   member  = data.google_service_account.account.member
   project = var.project_id
-  role    = google_project_iam_custom_role.without_conditions.id
+  role    = google_project_iam_custom_role.cnp_without_conditions.id
 }
 ```
 
@@ -203,7 +203,7 @@ resource "polaris_gcp_project" "project" {
 The `project`, `project_name` and `project_number` fields of the `polaris_gcp_project` resource are now required.
 Previously they were optional, but due to changes in the permissions required by RSC, they are now required. Existing
 Terraform configurations will need to be updated to include these fields. Not having these fields included in the
-Terraform configuration will result in an error similar to:
+Terraform configuration will result in an error similar to the following:
 ```console
 ╷
 │ Error: Missing required argument
@@ -230,7 +230,7 @@ Terraform configuration will result in an error similar to:
 │ The argument "project" is required, but no definition was found.
 ╵
 ```
-To resolve this, add the values for the fields to the `polaris_gcp_project` resource. The current, implicit values, of
+To resolve these errors, add the values for the fields to the `polaris_gcp_project` resource. The current implicit values of
 the fields can be found in the Terraform state for the `polaris_gcp_project` resource. Use the `terraform state show`
 command to print the state for the `polaris_gcp_project` resource. E.g:
 ```console

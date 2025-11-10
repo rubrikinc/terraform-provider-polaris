@@ -28,7 +28,7 @@ page_title: "Changelog"
   feature and permissions groups to look up the GCP permissions for.
 * Add `conditions` field to the `polaris_gcp_permissions` data source. The `conditions` field holds the GCP conditions
   for the `with_conditions` GCP permissions.
-* Add `services` field to the `polaris_gcp_permissions` data source. The `servcices` field holds the GCP services
+* Add `services` field to the `polaris_gcp_permissions` data source. The `services` field holds the GCP services
   required for the RSC feature and permission groups.
 * Add `with_conditions` field to the `polaris_gcp_permissions` data source. The `with_conditions` field holds the GCP
   permissions with conditions required for the RSC feature and permission groups.
