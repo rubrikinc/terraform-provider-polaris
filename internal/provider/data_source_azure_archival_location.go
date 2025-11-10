@@ -50,6 +50,7 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			keyID: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
 				Description:  "Cloud native archival location ID (UUID).",
 				ValidateFunc: validation.IsUUID,
@@ -57,6 +58,7 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			keyArchivalLocationID: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
 				Description:  "Cloud native archival location ID (UUID). **Deprecated:** use `id` instead.",
 				ValidateFunc: validation.IsUUID,
@@ -79,10 +81,12 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			},
 			keyCustomerManagedKey: {
 				Type:     schema.TypeSet,
-				Elem:     customerKeyResource(),
+				Elem:     azureCustomerKeyResource(),
 				Computed: true,
-				Description: "Customer managed storage encryption. Specify the regions and their respective " +
-					"encryption details. For other regions, data will be encrypted using platform managed keys.",
+				Description: "Customer managed storage encryption. For `SPECIFIC_REGION`, a customer managed key " +
+					"for the specific region will be returned. For `SOURCE_REGION`, a customer managed key for each " +
+					"source region will be returned, for other regions, data will be encrypted using platform " +
+					"managed keys.",
 			},
 			keyLocationTemplate: {
 				Type:     schema.TypeString,
@@ -93,6 +97,7 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			keyName: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ExactlyOneOf: []string{keyID, keyArchivalLocationID, keyName},
 				Description:  "Cloud native archival location name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
@@ -112,8 +117,8 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			keyStorageAccountRegion: {
 				Type:     schema.TypeString,
 				Computed: true,
-				Description: "Azure region to store the snapshots in. If not specified, the snapshots will be " +
-					"stored in the same region as the workload.",
+				Description: "Azure region to store the snapshots in (`SPECIFIC_REGION`). If not specified, the " +
+					"snapshots will be stored in the same region as the workload (`SOURCE_REGION`).",
 			},
 			keyStorageAccountTags: {
 				Type: schema.TypeMap,

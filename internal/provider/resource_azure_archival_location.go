@@ -50,12 +50,14 @@ to be specified:
   * ´SPECIFIC_REGION´ - Storing snapshots in another region can increase total data
     transfer charges. The ´storage_account_region´ field specifies the region.
 
-Custom storage encryption is enabled by specifying one or more ´customer_managed_key´
-blocks. Each ´customer_managed_key´ block specifies the encryption details to use for
-a region. For other regions, data will be encrypted using platform managed keys.
+Custom storage encryption is enabled by specifying one or more customer managed
+key blocks. For ´SPECIFIC_REGION´, a customer managed key block for the specific
+region must be specified. For ´SOURCE_REGION´, a customer managed key block for
+each source region should be specified, source regions not having a customer
+managed key block will have its data encrypted with platform managed keys.
 
--> **Note:** The Azure storage account is not created until the first protected object
-   is archived to the location.
+-> **Note:** When using ´SOURCE_REGION´ the Azure storage account isn't created
+   until the first protected object is archived.
 `
 
 func resourceAzureArchivalLocation() *schema.Resource {
@@ -91,10 +93,12 @@ func resourceAzureArchivalLocation() *schema.Resource {
 			},
 			keyCustomerManagedKey: {
 				Type:     schema.TypeSet,
-				Elem:     customerKeyResource(),
+				Elem:     azureCustomerKeyResource(),
 				Optional: true,
-				Description: "Customer managed storage encryption. Specify the regions and their respective " +
-					"encryption details. For other regions, data will be encrypted using platform managed keys.",
+				Description: "Customer managed storage encryption. For `SPECIFIC_REGION`, a customer managed key " +
+					"block for the specific region must be specified. For `SOURCE_REGION`, a customer managed key " +
+					"block for each source region should be specified, source regions not having a customer managed " +
+					"key block will have its data encrypted with platform managed keys.",
 			},
 			keyLocationTemplate: {
 				Type:     schema.TypeString,
@@ -159,7 +163,7 @@ func resourceAzureArchivalLocation() *schema.Resource {
 	}
 }
 
-func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureCreateArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -197,7 +201,7 @@ func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	return nil
 }
 
-func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureReadArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -260,7 +264,7 @@ func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 	return nil
 }
 
-func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureUpdateArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -274,7 +278,7 @@ func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	}
 
 	// Update the Azure cloud native archival location. Note, the API doesn't
-	// support updating all arguments.
+	// support updating all fields.
 	err = archival.Wrap(client).UpdateAzureStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAzureStorageSettingParams{
 		Name:               d.Get(keyName).(string),
 		StorageTier:        d.Get(keyStorageTier).(string),
@@ -288,7 +292,7 @@ func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	return nil
 }
 
-func azureDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func azureDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureDeleteArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -309,8 +313,9 @@ func azureDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	return nil
 }
 
-// customerKeyResource returns the schema for a customer managed key resource.
-func customerKeyResource() *schema.Resource {
+// azureCustomerKeyResource returns the schema for an Azure customer managed key
+// resource.
+func azureCustomerKeyResource() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			keyName: {
@@ -320,10 +325,9 @@ func customerKeyResource() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyRegion: {
-				Type:     schema.TypeString,
-				Required: true,
-				Description: "The region in which the key will be used. Regions without customer managed keys will " +
-					"use platform managed keys.",
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "The region in which the key will be used.",
 				ValidateFunc: validation.StringInSlice(azure.AllRegionNames(), false),
 			},
 			keyVaultName: {
@@ -355,12 +359,12 @@ func toAzureCustomerManagedKeys(keys *schema.Set) []gqlarchival.AzureCustomerKey
 // fromAzureCustomerManagedKeys converts to the customer managed keys field type from
 // a slice of Azure customer keys.
 func fromAzureCustomerManagedKeys(customerKeys []gqlarchival.AzureCustomerKey) *schema.Set {
-	keys := &schema.Set{F: schema.HashResource(customerKeyResource())}
+	keys := &schema.Set{F: schema.HashResource(azureCustomerKeyResource())}
 	for _, key := range customerKeys {
 		keys.Add(map[string]any{
 			keyName:      key.Name,
 			keyVaultName: key.VaultName,
-			keyRegion:    key.Region,
+			keyRegion:    key.Region.Name(),
 		})
 	}
 

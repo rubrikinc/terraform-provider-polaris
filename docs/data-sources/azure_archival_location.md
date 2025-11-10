@@ -45,11 +45,11 @@ data "polaris_azure_archival_location" "archival_location" {
 
 - `connection_status` (String) Connection status of the cloud native archival location.
 - `container_name` (String) Azure storage container name.
-- `customer_managed_key` (Set of Object) Customer managed storage encryption. Specify the regions and their respective encryption details. For other regions, data will be encrypted using platform managed keys. (see [below for nested schema](#nestedatt--customer_managed_key))
+- `customer_managed_key` (Set of Object) Customer managed storage encryption. For `SPECIFIC_REGION`, a customer managed key for the specified region will be returned. For `SOURCE_REGION`, a customer managed key for each specified region will be returned, for other regions, data will be encrypted using platform managed keys. (see [below for nested schema](#nestedatt--customer_managed_key))
 - `location_template` (String) RSC location template. If a storage account region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.
 - `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`.
 - `storage_account_name_prefix` (String) Azure storage account name prefix. The storage account name prefix cannot be longer than 14 characters and can only consist of numbers and lower case letters.
-- `storage_account_region` (String) Azure region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload.
+- `storage_account_region` (String) Azure region to store the snapshots in (`SPECIFIC_REGION`). If not specified, the snapshots will be stored in the same region as the workload (`SOURCE_REGION`).
 - `storage_account_tags` (Map of String) Azure storage account tags. Each tag will be added to the storage account created by RSC.
 - `storage_tier` (String) Azure storage tier. Possible values are `COOL` and `HOT`. Default value is `COOL`.
 
@@ -59,5 +59,5 @@ data "polaris_azure_archival_location" "archival_location" {
 Read-Only:
 
 - `name` (String) Key name.
-- `region` (String) The region in which the key will be used. Regions without customer managed keys will use platform managed keys.
+- `region` (String) The region in which the key will be used.
 - `vault_name` (String) Key vault name.

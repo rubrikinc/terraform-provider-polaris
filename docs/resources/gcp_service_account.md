@@ -3,12 +3,37 @@
 page_title: "polaris_gcp_service_account Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  
+  The polaris_gcp_service_account resource adds the GCP service account to RSC
+  as the default service account. The default service account will be used by RSC
+  to authenticate to the GCP for projects added to RSC without a service account.
+  ~> Note: Changing the name of the default service account can take a
+  considerable time to propagate through the system. Use the ignore_changes
+  field of the lifecycle block if it becomes an issue.
+  ~> Note: Destroying the polaris_gcp_service_account resource only updates
+  the local state, it does not remove the service account from RSC. However,
+  it's possible to overwrite the RSC global service account with new service
+  accounts.
+  -> Note: There is no way to verify if an default GCP service account has
+  been added to RSC using the UI.
 ---
 
 # polaris_gcp_service_account (Resource)
 
+The `polaris_gcp_service_account` resource adds the GCP service account to RSC
+as the default service account. The default service account will be used by RSC
+to authenticate to the GCP for projects added to RSC without a service account.
 
+~> **Note:** Changing the name of the default service account can take a
+   considerable time to propagate through the system. Use the `ignore_changes`
+   field of the `lifecycle` block if it becomes an issue.
+
+~> **Note:** Destroying the `polaris_gcp_service_account` resource only updates
+   the local state, it does not remove the service account from RSC. However,
+   it's possible to overwrite the RSC global service account with new service
+   accounts.
+
+-> **Note:** There is no way to verify if an default GCP service account has
+   been added to RSC using the UI.
 
 ## Example Usage
 
@@ -23,13 +48,13 @@ resource "polaris_gcp_service_account" "default" {
 
 ### Required
 
-- `credentials` (String) Path to GCP service account key file.
+- `credentials` (String, Sensitive) Base64 encoded GCP service account private key or path to GCP service account key file.
 
 ### Optional
 
-- `name` (String) Service account name in Polaris. If not given the name of the service account key file is used.
-- `permissions_hash` (String) Signals that the permissions has been updated.
+- `name` (String) Service account name in RSC. Defaults to `service-account-<timestamp>`.
+- `permissions_hash` (String, Deprecated) Signals that the permissions has been updated. **Deprecated:** use the `permissions` field of the `feature` block of the `polaris_gcp_project` resource instead.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) SHA-256 hash of the  service account name.

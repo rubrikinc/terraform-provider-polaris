@@ -146,7 +146,7 @@ func resourceAwsArchivalLocation() *schema.Resource {
 	}
 }
 
-func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsCreateArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -178,7 +178,7 @@ func awsCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 	return nil
 }
 
-func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsReadArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -234,7 +234,7 @@ func awsReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m inte
 	return nil
 }
 
-func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsUpdateArchivalLocation")
 
 	client, err := m.(*client).polaris()
@@ -265,7 +265,7 @@ func awsUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m in
 	return nil
 }
 
-func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsDeleteArchivalLocation")
 
 	client, err := m.(*client).polaris()

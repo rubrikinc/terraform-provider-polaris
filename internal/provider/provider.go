@@ -98,6 +98,8 @@ func Provider() *schema.Provider {
 			keyPolarisDataCenterAWSAccount:               resourceDataCenterAWSAccount(),
 			keyPolarisDataCenterAzureSubscription:        resourceDataCenterAzureSubscription(),
 			keyPolarisDataCenterArchivalLocationAmazonS3: resourceDataCenterArchivalLocationAmazonS3(),
+			keyPolarisGCPArchivalLocation:                resourceGcpArchivalLocation(),
+			keyPolarisGCPCustomLabels:                    resourceGcpCustomLabels(),
 			keyPolarisGCPProject:                         resourceGcpProject(),
 			keyPolarisGCPServiceAccount:                  resourceGcpServiceAccount(),
 			keyPolarisRoleAssignment:                     resourceRoleAssignment(),
@@ -119,7 +121,9 @@ func Provider() *schema.Provider {
 			keyPolarisDataCenterAzureSubscription: dataSourceDataCenterAzureSubscription(),
 			keyPolarisDeployment:                  dataSourceDeployment(),
 			keyPolarisFeatures:                    dataSourceFeatures(),
+			keyPolarisGCPArchivalLocation:         dataSourceGcpArchivalLocation(),
 			keyPolarisGCPPermissions:              dataSourceGcpPermissions(),
+			keyPolarisGCPProject:                  dataSourceGcpProject(),
 			keyPolarisRole:                        dataSourceRole(),
 			keyPolarisRoleTemplate:                dataSourceRoleTemplate(),
 			keyPolarisSLADomain:                   dataSourceSLADomain(),
@@ -178,7 +182,7 @@ func newClient(ctx context.Context, credentials string, cacheParams polaris.Cach
 	}, nil
 }
 
-func (c *client) flag(ctx context.Context, name string) bool {
+func (c *client) flag(ctx context.Context, name core.FeatureFlagName) bool {
 	ff, err := core.Wrap(c.polarisClient.GQL).FeatureFlag(ctx, name)
 	return err != nil && ff.Enabled
 }

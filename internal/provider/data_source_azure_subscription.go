@@ -32,11 +32,11 @@ import (
 )
 
 const dataSourceAzureSubscriptionDescription = `
-The ´polaris_azure_subscription´ data source is used to access information about an
-Azure subscription added to RSC. An Azure subscription is looked up using either the
-Azure subscription ID or the name. When looking up an Azure subscription using the
-subscription name, the tenant domain can be used to specify in which tenant to look
-for the name.
+The ´polaris_azure_subscription´ data source is used to access information
+about an Azure subscription added to RSC. An Azure subscription is looked up
+using either the Azure subscription ID, the RSC cloud account ID, or the name.
+When looking up an Azure subscription using the subscription name, the tenant
+domain can be used to specify in which tenant to look for the name.
 
 -> **Note:** The subscription name is the name of the Azure subscription as it appears
    in RSC.
@@ -49,27 +49,32 @@ func dataSourceAzureSubscription() *schema.Resource {
 		Description: description(dataSourceAzureSubscriptionDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "RSC cloud account ID (UUID).",
-			},
-			keySubscriptionID: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{keySubscriptionID, keyName},
-				Description:  "Azure subscription ID.",
-				ValidateFunc: validation.IsUUID,
+				Computed:     true,
+				ExactlyOneOf: []string{keyName, keySubscriptionID},
+				Description:  "RSC cloud account ID (UUID).",
 			},
 			keyName: {
 				Type:         schema.TypeString,
 				Optional:     true,
-				ExactlyOneOf: []string{keySubscriptionID, keyName},
+				Computed:     true,
+				ExactlyOneOf: []string{keyID, keySubscriptionID},
 				Description:  "Azure subscription name.",
 				ValidateFunc: validation.StringIsNotEmpty,
+			},
+			keySubscriptionID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ExactlyOneOf: []string{keyID, keyName},
+				Description:  "Azure subscription ID.",
+				ValidateFunc: validation.IsUUID,
 			},
 			keyTenantDomain: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				Description:  "Azure tenant primary domain.",
 				ValidateFunc: validation.StringIsNotEmpty,
 			},
@@ -85,31 +90,41 @@ func azureSubscriptionRead(ctx context.Context, d *schema.ResourceData, m any) d
 		return diag.FromErr(err)
 	}
 
-	// Read the Azure subscription using either the ID or the name. We don't
-	// allow prefix searches since it would be impossible to uniquely identify
-	// a subscription with a name being the prefix of another subscription.
+	// We don't allow prefix searches since it would be impossible to uniquely
+	// identify a subscription with a name being the prefix of another
+	// subscription.
 	var subscription azure.CloudAccount
-	if subscriptionID := d.Get(keySubscriptionID).(string); subscriptionID != "" {
-		id, err := uuid.Parse(subscriptionID)
+	switch {
+	case d.Get(keySubscriptionID).(string) != "":
+		id, err := uuid.Parse(d.Get(keySubscriptionID).(string))
 		if err != nil {
-			return diag.FromErr(err)
+			return diag.Errorf("failed to parse subscription id: %s", err)
 		}
 		subscription, err = azure.Wrap(client).SubscriptionByNativeID(ctx, id)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-	} else {
+	case d.Get(keyName).(string) != "":
 		subscription, err = azure.Wrap(client).SubscriptionByName(ctx, d.Get(keyName).(string),
 			d.Get(keyTenantDomain).(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
+	default:
+		id, err := uuid.Parse(d.Get(keyID).(string))
+		if err != nil {
+			return diag.Errorf("failed to parse id: %s", err)
+		}
+		subscription, err = azure.Wrap(client).SubscriptionByID(ctx, id)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
-	if err := d.Set(keySubscriptionID, subscription.NativeID.String()); err != nil {
+	if err := d.Set(keyName, subscription.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyName, subscription.Name); err != nil {
+	if err := d.Set(keySubscriptionID, subscription.NativeID.String()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyTenantDomain, subscription.TenantDomain); err != nil {

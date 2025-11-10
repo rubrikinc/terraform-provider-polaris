@@ -114,7 +114,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				ExactlyOneOf: []string{keyAppID, keySDKAuth},
 				Description: "Path to a custom service principal file. Changing this forces a new resource to be " +
 					"created.",
-				ValidateFunc: isExistingFile,
+				ValidateFunc: validateFileExist,
 			},
 			keySDKAuth: {
 				Type:         schema.TypeString,
@@ -123,7 +123,7 @@ func resourceAzureServicePrincipal() *schema.Resource {
 				ExactlyOneOf: []string{keyAppID, keyCredentials},
 				Description: "Path to an Azure service principal created with the Azure SDK using the `--sdk-auth` " +
 					"parameter. Changing this forces a new resource to be created.",
-				ValidateFunc: isExistingFile,
+				ValidateFunc: validateFileExist,
 			},
 			keyPermissions: {
 				Type:     schema.TypeString,

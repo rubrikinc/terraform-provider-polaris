@@ -31,7 +31,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 )
 
-const dataSourceAwsAccountDescription = `
+const dataSourceAWSAccountDescription = `
 The ´polaris_aws_account´ data source is used to access information about an AWS
 account added to RSC. An AWS account is looked up using either the AWS account
 ID, the RSC cloud account ID or the name.
@@ -44,7 +44,7 @@ func dataSourceAwsAccount() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: awsAccountRead,
 
-		Description: description(dataSourceAwsAccountDescription),
+		Description: description(dataSourceAWSAccountDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -90,9 +90,8 @@ func awsAccountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 		return diag.FromErr(err)
 	}
 
-	// Read the AWS account using either the ID or the name. We don't allow
-	// prefix searches since it would be impossible to uniquely identify an
-	// account with a name being the prefix of another account.
+	// We don't allow prefix searches since it would be impossible to uniquely
+	// identify an account with a name being the prefix of another account.
 	var account aws.CloudAccount
 	switch {
 	case d.Get(keyAccountID).(string) != "":

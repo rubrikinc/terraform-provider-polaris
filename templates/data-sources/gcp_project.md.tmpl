@@ -1,0 +1,39 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+  {{.Description}}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{.Description}}
+
+{{if .HasExample}}
+## Example Usage
+
+{{tffile .ExampleFile}}
+{{end}}
+
+## Schema
+
+### Optional
+
+- `id` (String) RSC cloud account ID (UUID).
+- `name` (String) GCP project name.
+- `project_id` (String) GCP project ID.
+- `project_number` (String) GCP project number.
+
+### Read-Only
+
+- `feature` (Set of Object) RSC feature with permission groups and status. (see [below for nested schema](#nestedatt--feature))
+- `organization_name` (String) GCP organization name.
+
+<a id="nestedatt--feature"></a>
+### Nested Schema for `feature`
+
+Read-Only:
+
+- `name` (String) Feature name.
+- `permission_groups` (Set of String) Permission groups for the feature.
+- `status` (String) Status of the feature.

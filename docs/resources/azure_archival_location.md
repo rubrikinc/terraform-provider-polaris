@@ -12,11 +12,13 @@ description: |-
   charges. This is the default behaviour when the storage_account_region field is
   not specified.SPECIFIC_REGION - Storing snapshots in another region can increase total data
   transfer charges. The storage_account_region field specifies the region.
-  Custom storage encryption is enabled by specifying one or more customer_managed_key
-  blocks. Each customer_managed_key block specifies the encryption details to use for
-  a region. For other regions, data will be encrypted using platform managed keys.
-  -> Note: The Azure storage account is not created until the first protected object
-  is archived to the location.
+  Custom storage encryption is enabled by specifying one or more customer managed
+  key blocks. For SPECIFIC_REGION, a customer managed key block for the specific
+  region must be specified. For SOURCE_REGION, a customer managed key block for
+  each source region should be specified, source regions not having a customer
+  managed key block will have its data encrypted with platform managed keys.
+  -> Note: When using SOURCE_REGION the Azure storage account isn't created
+  until the first protected object is archived.
 ---
 
 # polaris_azure_archival_location (Resource)
@@ -33,12 +35,14 @@ to be specified:
   * `SPECIFIC_REGION` - Storing snapshots in another region can increase total data
     transfer charges. The `storage_account_region` field specifies the region.
 
-Custom storage encryption is enabled by specifying one or more `customer_managed_key`
-blocks. Each `customer_managed_key` block specifies the encryption details to use for
-a region. For other regions, data will be encrypted using platform managed keys.
+Custom storage encryption is enabled by specifying one or more customer managed
+key blocks. For `SPECIFIC_REGION`, a customer managed key block for the specific
+region must be specified. For `SOURCE_REGION`, a customer managed key block for
+each source region should be specified, source regions not having a customer
+managed key block will have its data encrypted with platform managed keys.
 
--> **Note:** The Azure storage account is not created until the first protected object
-   is archived to the location.
+-> **Note:** When using `SOURCE_REGION` the Azure storage account isn't created
+   until the first protected object is archived.
 
 ## Example Usage
 
@@ -87,7 +91,7 @@ resource "polaris_azure_archival_location" "archival_location" {
 
 ### Optional
 
-- `customer_managed_key` (Block Set) Customer managed storage encryption. Specify the regions and their respective encryption details. For other regions, data will be encrypted using platform managed keys. (see [below for nested schema](#nestedblock--customer_managed_key))
+- `customer_managed_key` (Block Set) Customer managed storage encryption. For `SPECIFIC_REGION`, a customer managed key block for the specific region must be specified. For `SOURCE_REGION`, a customer managed key block for each source region should be specified, source regions not having a customer managed key block will have its data encrypted with platform managed keys. (see [below for nested schema](#nestedblock--customer_managed_key))
 - `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`. Changing this forces a new resource to be created.
 - `storage_account_region` (String) Azure region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload. Changing this forces a new resource to be created.
 - `storage_account_tags` (Map of String) Azure storage account tags. Each tag will be added to the storage account created by RSC.
@@ -106,7 +110,7 @@ resource "polaris_azure_archival_location" "archival_location" {
 Required:
 
 - `name` (String) Key name.
-- `region` (String) The region in which the key will be used. Regions without customer managed keys will use platform managed keys.
+- `region` (String) The region in which the key will be used.
 - `vault_name` (String) Key vault name.
 
 ## Import

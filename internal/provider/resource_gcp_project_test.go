@@ -33,8 +33,10 @@ provider "polaris" {
 }
 
 resource "polaris_gcp_project" "default" {
-	credentials = "{{ .Resource.Credentials }}"
-	project     = "{{ .Resource.ProjectID }}"
+	credentials    = "{{ .Resource.Credentials }}"
+	project        = "{{ .Resource.ProjectID }}"
+	project_name   = "{{ .Resource.ProjectName }}"
+	project_number = {{ .Resource.ProjectNumber }}
 
 	cloud_native_protection {
 	}

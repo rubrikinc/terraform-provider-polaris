@@ -4,14 +4,14 @@ page_title: "polaris_azure_permissions Data Source - terraform-provider-polaris"
 subcategory: ""
 description: |-
   The polaris_azure_permissions data source is used to access information about
-  the permissions required by RSC for a specified RSC feature.
-  The polaris_azure_permissions data source can be used with the permissions
-  field of the polaris_azure_subscription resource and the
-  azurerm_role_definition resource to automatically update the permissions of
-  roles and notify RSC about the updated permissions.
+  the permissions required by RSC for an RSC feature.
+  The polaris_azure_permissions data source can be used with the
+  azurerm_role_definition resource and the permissions field of the
+  polaris_azure_subscription resource to automatically update the permissions
+  of roles and notify RSC about the updated.
   Permission Groups
   Following is a list of features and their applicable permission groups. These
-  are used when specifying the feature set.
+  are used when specifying the feature.
   AZURE_SQL_DB_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the
   feature.RECOVERY - Represents the set of permissions required for all recovery
@@ -46,6 +46,8 @@ description: |-
   feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage
   of private endpoints.CUSTOMER_MANAGED_BASIC - Represents the permissions required to enable
   customer-managed Exocompute feature.
+  -> Note: When permission groups are specified, the BASIC permission group
+  is always required .
   -> Note: To better fit the RSC Azure permission model where each RSC feature
   have two Azure roles, the features field has been deprecated and replaced
   with the feature field.
@@ -63,16 +65,16 @@ description: |-
 # polaris_azure_permissions (Data Source)
 
 The `polaris_azure_permissions` data source is used to access information about
-the permissions required by RSC for a specified RSC feature. 
+the permissions required by RSC for an RSC feature.
 
-The `polaris_azure_permissions` data source can be used with the `permissions`
-field of the `polaris_azure_subscription` resource and the
-`azurerm_role_definition` resource to automatically update the permissions of
-roles and notify RSC about the updated permissions.
+The `polaris_azure_permissions` data source can be used with the
+`azurerm_role_definition` resource and the `permissions` field of the
+`polaris_azure_subscription` resource to automatically update the permissions
+of roles and notify RSC about the updated.
 
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
-are used when specifying the feature set.
+are used when specifying the feature.
 
 `AZURE_SQL_DB_PROTECTION`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -127,6 +129,9 @@ are used when specifying the feature set.
     of private endpoints.
   * `CUSTOMER_MANAGED_BASIC` - Represents the permissions required to enable
     customer-managed Exocompute feature.
+
+-> **Note:** When permission groups are specified, the `BASIC` permission group
+   is always required .
 
 -> **Note:** To better fit the RSC Azure permission model where each RSC feature
    have two Azure roles, the `features` field has been deprecated and replaced
@@ -188,7 +193,7 @@ resource "polaris_azure_subscription" "subscription" {
 
 ### Optional
 
-- `feature` (String) RSC feature. Note that the feature name must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`.
+- `feature` (String) RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`.
 - `features` (Set of String, Deprecated) RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`. **Deprecated:** use `feature` instead.
 - `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY` and `BACKUP_V2`.
 
