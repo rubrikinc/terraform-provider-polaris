@@ -226,6 +226,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyExocompute,
 					keySQLDBProtection,
 					keySQLMIProtection,
+					keyServersAndApps,
 				},
 				Description: "Enable the RSC Cloud Native Archival feature for the Azure subscription. Provides " +
 					"archival of data from workloads for disaster recovery and long-term retention.",
@@ -388,6 +389,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyExocompute,
 					keySQLDBProtection,
 					keySQLMIProtection,
+					keyServersAndApps,
 				},
 				Description: "Enable the RSC Cloud Native Protection feature for Azure Blob Storage. Provides " +
 					"protection for Azure Blob Storage through the rules and policies of SLA Domains.",
@@ -477,6 +479,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyExocompute,
 					keySQLDBProtection,
 					keySQLMIProtection,
+					keyServersAndApps,
 				},
 				Description: "Enable the RSC Cloud Native Protection feature for the Azure subscription. Provides " +
 					"protection for Azure virtual machines and managed disks through the rules and policies of SLA " +
@@ -571,6 +574,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeProtection,
 					keySQLDBProtection,
 					keySQLMIProtection,
+					keyServersAndApps,
 				},
 				Description: "Enable the RSC Exocompute feature for the Azure subscription. Provides snapshot " +
 					"indexing, file recovery, storage tiering, and application-consistent protection of Azure objects.",
@@ -609,6 +613,40 @@ func resourceAzureSubscription() *schema.Resource {
 							Description: "Azure regions to enable the Cloud Cluster feature in. Should be specified " +
 								"in the standard Azure style, e.g. `eastus`.",
 						},
+						keyResourceGroupName: {
+							Type:     schema.TypeString,
+							Optional: true,
+							RequiredWith: []string{
+								keyServersAndApps + ".0." + keyResourceGroupRegion,
+							},
+							Description: "Name of the Azure resource group where RSC places all resources created by " +
+								"the feature. RSC assumes the resource group already exists. Changing this forces the " +
+								"RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyResourceGroupRegion: {
+							Type:     schema.TypeString,
+							Optional: true,
+							RequiredWith: []string{
+								keyServersAndApps + ".0." + keyResourceGroupName,
+							},
+							Description: "Region of the Azure resource group. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
+						},
+						keyResourceGroupTags: {
+							Type: schema.TypeMap,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional: true,
+							RequiredWith: []string{
+								keyServersAndApps + ".0." + keyResourceGroupName,
+								keyServersAndApps + ".0." + keyResourceGroupRegion,
+							},
+							Description: "Tags to add to the Azure resource group. Changing this forces the RSC feature " +
+								"to be re-onboarded.",
+						},
 						keyStatus: {
 							Type:        schema.TypeString,
 							Computed:    true,
@@ -618,6 +656,14 @@ func resourceAzureSubscription() *schema.Resource {
 				},
 				MaxItems: 1,
 				Optional: true,
+				AtLeastOneOf: []string{
+					keyCloudNativeArchival,
+					keyCloudNativeBlobProtection,
+					keyCloudNativeProtection,
+					keyExocompute,
+					keySQLDBProtection,
+					keySQLMIProtection,
+				},
 				Description: "Enable the RSC Cloud Cluster feature for the Azure subscription. Provides " +
 					"ability to deploy Rubrik Cloud Data Management (CDM) clusters in Azure.",
 			},
@@ -704,6 +750,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeProtection,
 					keyExocompute,
 					keySQLMIProtection,
+					keyServersAndApps,
 				},
 				Description: "Enable the RSC SQL DB Protection feature for the Azure subscription. Provides " +
 					"centralized database backup management and recovery in an Azure SQL Database deployment.",
@@ -757,6 +804,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeProtection,
 					keyExocompute,
 					keySQLDBProtection,
+					keyServersAndApps,
 				},
 				Description: "Enable the RSC SQL MI Protection feature for the Azure subscription. Provides " +
 					"centralized database backup management and recovery for an Azure SQL Managed Instance deployment.",
