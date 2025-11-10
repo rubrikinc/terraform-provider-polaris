@@ -46,6 +46,9 @@ description: |-
   feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage
   of private endpoints.CUSTOMER_MANAGED_BASIC - Represents the permissions required to enable
   customer-managed Exocompute feature.
+  SERVERS_AND_APPS
+  CLOUD_CLUSTER_ES - Represents the basic set of permissions required to onboard the
+  feature.
   -> Note: When permission groups are specified, the BASIC permission group
   is always required .
   -> Note: To better fit the RSC Azure permission model where each RSC feature
@@ -130,6 +133,10 @@ are used when specifying the feature.
   * `CUSTOMER_MANAGED_BASIC` - Represents the permissions required to enable
     customer-managed Exocompute feature.
 
+`SERVERS_AND_APPS`
+  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
+    feature.
+
 -> **Note:** When permission groups are specified, the `BASIC` permission group
    is always required .
 
@@ -193,9 +200,9 @@ resource "polaris_azure_subscription" "subscription" {
 
 ### Optional
 
-- `feature` (String) RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`.
-- `features` (Set of String, Deprecated) RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION` and `EXOCOMPUTE`. **Deprecated:** use `feature` instead.
-- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY` and `BACKUP_V2`.
+- `feature` (String) RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS` and `EXOCOMPUTE`.
+- `features` (Set of String, Deprecated) RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS`  and `EXOCOMPUTE`. **Deprecated:** use `feature` instead.
+- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY`, `CLOUD_CLUSTER_ES` and `BACKUP_V2`.
 
 ### Read-Only
 

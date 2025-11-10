@@ -47,6 +47,11 @@ page_title: "Changelog"
 * The `project`, `project_name`, and `project_number` fields of the `polaris_gcp_project` resource are now marked as
   required. Note, this is a breaking change if they are not specified in a Terraform configuration. Use the
   `terraform state show <resource-address>` command to look up the values to add to the configuration.
+* Adds `servers_and_apps` field to the `polaris_azure_subscription` resource. The `servers_and_apps` field is used to
+  specify the permission groups for the `SERVERS_AND_APPS` feature which is required for provisioning an Azure cloud
+  cluster.
+* Adds a new resource `polaris_azure_cloud_cluster`. The `polaris_azure_cloud_cluster` resource creates an Azure cloud
+  cluster using RSC. [[docs](../resources/azure_cloud_cluster.md)]
 
 ## v1.2.1
 * Update Go version to 1.24.8.

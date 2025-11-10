@@ -230,6 +230,7 @@ const (
 	keySecurityGroupID                              = "security_group_id"
 	keySecurityGroupIDs                             = "security_group_ids"
 	keyServices                                     = "services"
+	keyServersAndApps                               = "servers_and_apps"
 	keySnappableType                                = "snappable_type"
 	keySQLDBProtection                              = "sql_db_protection"
 	keySQLMIProtection                              = "sql_mi_protection"
