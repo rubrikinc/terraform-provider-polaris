@@ -14,7 +14,7 @@ import (
 )
 
 // validateAwsAccountID verifies the account number is numeric, 12 digits.
-func validateAwsAccountID(i interface{}, k string) ([]string, []error) {
+func validateAwsAccountID(i any, k string) ([]string, []error) {
 	v, ok := i.(string)
 	if !ok {
 		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
@@ -30,7 +30,7 @@ func validateAwsAccountID(i interface{}, k string) ([]string, []error) {
 }
 
 // validateEmailAddress verifies that i contains a valid email address.
-func validateEmailAddress(i interface{}, k string) ([]string, []error) {
+func validateEmailAddress(i any, k string) ([]string, []error) {
 	v, ok := i.(string)
 	if !ok {
 		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
@@ -44,7 +44,7 @@ func validateEmailAddress(i interface{}, k string) ([]string, []error) {
 
 // validateFileExist assumes m is a file path and returns nil if the file exist,
 // otherwise a diagnostic message is returned.
-func validateFileExist(i interface{}, k string) ([]string, []error) {
+func validateFileExist(i any, k string) ([]string, []error) {
 	v, ok := i.(string)
 	if !ok {
 		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
@@ -63,18 +63,8 @@ func validateFileExist(i interface{}, k string) ([]string, []error) {
 	return nil, nil
 }
 
-// validateHash verifies that m contains a valid base 16 encoded SHA-256 hash
-// with two characters per byte.
-func validateHash(m interface{}, p cty.Path) diag.Diagnostics {
-	if hash, ok := m.(string); ok && len(hash) == 64 {
-		return nil
-	}
-
-	return diag.Errorf("invalid hash value")
-}
-
 // validate numNodes verifies that the num_nodes value is valid. 2 is not allowed
-func validateNumNodes(i interface{}, k string) ([]string, []error) {
+func validateNumNodes(i any, k string) ([]string, []error) {
 	v, ok := i.(int)
 	if !ok {
 		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
@@ -89,7 +79,7 @@ func validateNumNodes(i interface{}, k string) ([]string, []error) {
 }
 
 // validatePermissions verifies that the permissions value is valid.
-func validatePermissions(m interface{}, p cty.Path) diag.Diagnostics {
+func validatePermissions(m any, p cty.Path) diag.Diagnostics {
 	if m.(string) != "update" {
 		return diag.Errorf("invalid permissions value")
 	}
@@ -98,7 +88,7 @@ func validatePermissions(m interface{}, p cty.Path) diag.Diagnostics {
 }
 
 // validateRoleARN verifies that the role ARN is a valid AWS ARN.
-func validateRoleARN(m interface{}, p cty.Path) diag.Diagnostics {
+func validateRoleARN(m any, p cty.Path) diag.Diagnostics {
 	if _, err := arn.Parse(m.(string)); err != nil {
 		return diag.Errorf("failed to parse role ARN: %v", err)
 	}
@@ -109,7 +99,7 @@ func validateRoleARN(m interface{}, p cty.Path) diag.Diagnostics {
 // validateStringIsNumber assumes m is a string holding an integer and returns
 // nil if the string can be converted to an integer, otherwise a diagnostic
 // message is returned.
-func validateStringIsNumber(i interface{}, k string) ([]string, []error) {
+func validateStringIsNumber(i any, k string) ([]string, []error) {
 	v, ok := i.(string)
 	if !ok {
 		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
