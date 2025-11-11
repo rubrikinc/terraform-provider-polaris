@@ -37,6 +37,10 @@ provider "polaris" {
 
 resource "polaris_gcp_service_account" "default" {
 	credentials = "{{ .Resource.Credentials }}"
+
+	lifecycle {
+		ignore_changes = [name]
+	}
 }
 `
 
@@ -48,6 +52,10 @@ provider "polaris" {
 resource "polaris_gcp_service_account" "default" {
 	credentials = "{{ .Resource.Credentials }}"
 	name        = "test-name"
+
+	lifecycle {
+		ignore_changes = [name]
+	}
 }
 `
 
@@ -111,7 +119,7 @@ func gcpCheckServiceAccountID(resourceName, serviceAccountName string) func(stat
 		// name. Since we cannot reliably read out the generated name, we fall
 		// back to verifying that the ID is a valid SHA-256 hash.
 		if serviceAccountName == "" {
-			ok, err := regexp.Match("[0-9a-f]{64}", []byte(inst.ID))
+			ok, err := regexp.Match("^[0-9a-f]{64}$", []byte(inst.ID))
 			if err != nil {
 				return fmt.Errorf("failed to compile regexp: %s", err)
 			}
