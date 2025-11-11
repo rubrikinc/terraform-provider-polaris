@@ -21,14 +21,15 @@
 package provider
 
 import (
-	"path/filepath"
-	"strings"
+	"crypto/sha256"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-const gcpServiceAccountTmpl = `
+const gcpServiceAccountWithDefaultNameTmpl = `
 provider "polaris" {
 	credentials = "{{ .Provider.Credentials }}"
 }
@@ -38,28 +39,78 @@ resource "polaris_gcp_service_account" "default" {
 }
 `
 
+const gcpServiceAccountWithNameTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_gcp_service_account" "default" {
+	credentials = "{{ .Resource.Credentials }}"
+	name        = "test-name"
+}
+`
+
 func TestAccPolarisGCPServiceAccount_basic(t *testing.T) {
 	config, project, err := loadGCPTestConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// When name isn't specified the file name, without extension, is used.
-	id := strings.TrimSuffix(filepath.Base(project.Credentials), filepath.Ext(project.Credentials))
-
-	serviceAccount, err := makeTerraformConfig(config, gcpServiceAccountTmpl)
+	serviceAccountWithDefaultName, err := makeTerraformConfig(config, gcpServiceAccountWithDefaultNameTmpl)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: serviceAccount,
+			Config: serviceAccountWithDefaultName,
 			Check: resource.ComposeTestCheckFunc(
-				resource.TestCheckResourceAttr("polaris_gcp_service_account.default", "id", id),
+				gcpCheckServiceAccountID("polaris_gcp_service_account.default"),
 				resource.TestCheckResourceAttr("polaris_gcp_service_account.default", "credentials", project.Credentials),
 			),
 		}},
 	})
+
+	serviceAccountWithName, err := makeTerraformConfig(config, gcpServiceAccountWithNameTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: serviceAccountWithName,
+			Check: resource.ComposeTestCheckFunc(
+				gcpCheckServiceAccountID("polaris_gcp_service_account.default"),
+				resource.TestCheckResourceAttr("polaris_gcp_service_account.default", "name", "test-name"),
+				resource.TestCheckResourceAttr("polaris_gcp_service_account.default", "credentials", project.Credentials),
+			),
+		}},
+	})
+}
+
+// gcpCheckServiceAccountID checks that the resource ID is the SHA-256 sum of
+// the service account name. Note, the returned error messages are written to
+// follow the format used by the Terraform SDK.
+func gcpCheckServiceAccountID(resourceName string) func(state *terraform.State) error {
+	return func(state *terraform.State) error {
+		res, ok := state.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("%s: Not found in %s", resourceName, state.RootModule().Path)
+		}
+		inst := res.Primary
+		if inst == nil {
+			return fmt.Errorf("%s: No primary instance in %s", resourceName, state.RootModule().Path)
+		}
+
+		name, ok := inst.Attributes[keyName]
+		if !ok || name == "" {
+			return fmt.Errorf("%s: No name in state", resourceName)
+		}
+		id := fmt.Sprintf("%x", sha256.Sum256([]byte(name)))
+		if inst.ID != id {
+			return fmt.Errorf("%s: Attribute 'id' expected %#v, got %#v", resourceName, id, inst.ID)
+		}
+
+		return nil
+	}
 }
