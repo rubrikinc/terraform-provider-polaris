@@ -251,6 +251,7 @@ const (
 	keyResourceGroupRegion                          = "resource_group_region"
 	keyRetention                                    = "retention"
 	keyRetentionLock                                = "retention_lock"
+	keyRetentionLockComplianceAcknowledgment        = "compliance_mode_acknowledgment"
 	keyRetentionUnit                                = "retention_unit"
 	keyRetrievalTier                                = "retrieval_tier"
 	keyRingName                                     = "ring_name"

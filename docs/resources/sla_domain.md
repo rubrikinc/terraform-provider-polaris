@@ -357,6 +357,12 @@ Required:
 
 - `mode` (String) Retention lock mode. Possible values are `COMPLIANCE` and `GOVERNANCE`.
 
+Optional:
+
+- `compliance_mode_acknowledgment` (Boolean) Acknowledgment that snapshots protected under compliance mode cannot be deleted before the scheduled expiry date. This field must be set to `true` when using `COMPLIANCE` mode. Compliance mode is recommended to meet regulations and governance mode is recommended to only protect data. Default value is `false`.
+
+!> **Warning:** Snapshots protected under compliance mode cannot be deleted before the scheduled expiry date.
+
 
 <a id="nestedblock--snapshot_window"></a>
 ### Nested Schema for `snapshot_window`
