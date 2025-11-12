@@ -111,6 +111,8 @@ func validateStringIsNumber(i any, k string) ([]string, []error) {
 	}
 
 	return nil, nil
+}
+
 // validateStartAt returns a function that validates the start_at value.
 // The GQL type allows specifying a day of week optionally, but different
 // endpoints use the value in different ways. E.g. "First full snapshot"
