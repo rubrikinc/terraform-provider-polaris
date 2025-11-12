@@ -599,9 +599,18 @@ func resourceSLADomain() *schema.Resource {
 							Required:    true,
 							Description: "Retention lock mode. Possible values are `COMPLIANCE` and `GOVERNANCE`.",
 							ValidateFunc: validation.StringInSlice([]string{
-								"COMPLIANCE",
-								"GOVERNANCE",
+								string(gqlsla.Compliance),
+								string(gqlsla.Protection),
 							}, false),
+						},
+						keyRetentionLockComplianceAcknowledgment: {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Description: "Acknowledgment that snapshots protected under compliance mode cannot be deleted " +
+								"before the scheduled expiry date. This field must be set to `true` when using `COMPLIANCE` mode. " +
+								"Compliance mode is recommended to meet regulations and governance mode is recommended to only " +
+								"protect data. Default value is `false`.\n\n" +
+								"!> **Warning:** Snapshots protected under compliance mode cannot be deleted before the scheduled expiry date.",
 						},
 					},
 				},
@@ -1104,6 +1113,23 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 		if err != nil {
 			return diag.FromErr(err)
 		}
+		var retentionLockMode gqlsla.RetentionLockMode
+		if rl := d.Get(keyRetentionLock).([]any); len(rl) > 0 {
+			rlMap := rl[0].(map[string]any)
+			retentionLockMode = gqlsla.RetentionLockMode(rlMap[keyMode].(string))
+
+			// Validate that COMPLIANCE mode requires acknowledgment
+			if retentionLockMode == gqlsla.Compliance {
+				// Check if the acknowledgment field is set and is true
+				acknowledged, ok := rlMap[keyRetentionLockComplianceAcknowledgment].(bool)
+				if !ok || !acknowledged {
+					return diag.Errorf("compliance_mode_acknowledgment must be set to true when using COMPLIANCE mode. " +
+						"This acknowledges that snapshots protected under compliance mode cannot be deleted before the " +
+						"scheduled expiry date. Compliance mode is recommended to meet regulations and governance mode " +
+						"is recommended to only protect data.")
+				}
+			}
+		}
 		snapshotWindows, err := fromSnapshotWindow(d.Get(keySnapshotWindow).([]any))
 		if err != nil {
 			return diag.FromErr(err)
@@ -1207,8 +1233,8 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			},
 			ObjectTypes:       objectTypes,
 			ReplicationSpecs:  replicationSpecs,
-			RetentionLock:     false,
-			RetentionLockMode: "",
+			RetentionLock:     retentionLockMode != "" && retentionLockMode != gqlsla.NoLock,
+			RetentionLockMode: retentionLockMode,
 			SnapshotSchedule:  schedule,
 		}
 
@@ -1385,6 +1411,9 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		})
 	}
 	if err := d.Set(keyReplicationSpec, toReplicationSpec(replicationSpecs)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyRetentionLock, toRetentionLock(slaDomain)); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -1793,5 +1822,25 @@ func toYearlySchedule(slaDomain gqlsla.Domain) []any {
 		keyRetentionUnit:  slaDomain.SnapshotSchedule.Yearly.BasicSchedule.RetentionUnit,
 		keyDayOfYear:      slaDomain.SnapshotSchedule.Yearly.DayOfYear,
 		keyYearStartMonth: slaDomain.SnapshotSchedule.Yearly.YearStartMonth,
+	}}
+}
+
+func toRetentionLock(slaDomain gqlsla.Domain) []any {
+	if !slaDomain.RetentionLock {
+		return nil
+	}
+
+	mode := slaDomain.RetentionLockMode
+	if mode != gqlsla.Compliance && mode != gqlsla.Protection {
+		mode = gqlsla.NoLock
+	}
+
+	// Set acknowledgment to true if mode is COMPLIANCE, false otherwise
+	// This ensures the state reflects the requirement
+	acknowledged := mode == gqlsla.Compliance
+
+	return []any{map[string]any{
+		keyMode:                                  mode,
+		keyRetentionLockComplianceAcknowledgment: acknowledged,
 	}}
 }
