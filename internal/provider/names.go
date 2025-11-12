@@ -223,6 +223,7 @@ const (
 	keyPolarisRoleTemplate                          = "polaris_role_template"
 	keyPolarisSLADomain                             = "polaris_sla_domain"
 	keyPolarisSLADomainAssignment                   = "polaris_sla_domain_assignment"
+	keyPolarisSLASourceCluster                      = "polaris_sla_source_cluster"
 	keyPolarisSSOGroup                              = "polaris_sso_group"
 	keyPolarisTagRule                               = "polaris_tag_rule"
 	keyPolarisUser                                  = "polaris_user"

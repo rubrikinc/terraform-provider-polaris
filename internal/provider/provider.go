@@ -128,6 +128,7 @@ func Provider() *schema.Provider {
 			keyPolarisRole:                        dataSourceRole(),
 			keyPolarisRoleTemplate:                dataSourceRoleTemplate(),
 			keyPolarisSLADomain:                   dataSourceSLADomain(),
+			keyPolarisSLASourceCluster:            dataSourceSLASourceCluster(),
 			keyPolarisSSOGroup:                    dataSourceSSOGroup(),
 			keyPolarisTagRule:                     dataSourceTagRule(),
 			keyPolarisUser:                        dataSourceUser(),
