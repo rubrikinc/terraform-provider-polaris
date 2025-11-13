@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/terraform-plugin-docs v0.22.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
-	github.com/rubrikinc/rubrik-polaris-sdk-for-go v1.1.11
+	github.com/rubrikinc/rubrik-polaris-sdk-for-go v1.1.12-0.20251113102600-685c256f8ed9
 )
 
 require (
@@ -120,5 +120,3 @@ require (
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/rubrikinc/rubrik-polaris-sdk-for-go => ../rubrik-polaris-sdk-for-go
