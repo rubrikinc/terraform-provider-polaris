@@ -566,6 +566,27 @@ func resourceSLADomain() *schema.Resource {
 								"Azure style, e.g. `eastus`.",
 							ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
 						},
+						keyReplicationPair: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keySourceCluster: {
+										Type:         schema.TypeString,
+										Required:     true,
+										Description:  "Source cluster ID (UUID).",
+										ValidateFunc: validation.IsUUID,
+									},
+									keyTargetCluster: {
+										Type:         schema.TypeString,
+										Required:     true,
+										Description:  "Target cluster ID (UUID).",
+										ValidateFunc: validation.IsUUID,
+									},
+								},
+							},
+							Optional:    true,
+							Description: "Replication pairs specifying source and target clusters.",
+						},
 						keyRetention: {
 							Type:         schema.TypeInt,
 							Required:     true,
@@ -894,12 +915,26 @@ func fromReplicationSpec(d *schema.ResourceData) ([]gqlsla.ReplicationSpec, erro
 			}
 			azureCrossSubscription = "SAME"
 		}
+
+		// Parse replication pairs
+		var replicationPairs []gqlsla.ReplicationPair
+		if pairs, ok := spec[keyReplicationPair].([]any); ok {
+			for _, pair := range pairs {
+				pairMap := pair.(map[string]any)
+				replicationPairs = append(replicationPairs, gqlsla.ReplicationPair{
+					SourceClusterID: pairMap[keySourceCluster].(string),
+					TargetClusterID: pairMap[keyTargetCluster].(string),
+				})
+			}
+		}
+
 		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
 			AWSRegion:         awsRegion.ToRegionForReplicationEnum(),
 			AWSAccount:        awsCrossAccount,
 			AzureRegion:       azureRegion.ToRegionForReplicationEnum(),
 			AzureSubscription: azureCrossSubscription,
 			RetentionDuration: retention,
+			ReplicationPairs:  replicationPairs,
 		})
 	}
 
@@ -910,13 +945,24 @@ func fromReplicationSpec(d *schema.ResourceData) ([]gqlsla.ReplicationSpec, erro
 func toReplicationSpec(replicationSpecs []gqlsla.ReplicationSpec) []any {
 	var replicationSpec []any
 	for _, spec := range replicationSpecs {
-		replicationSpec = append(replicationSpec, map[string]any{
+		specMap := map[string]any{
 			keyAWSRegion:       spec.AWSRegion.Name(),
 			keyAWSCrossAccount: spec.AWSAccount,
 			keyAzureRegion:     spec.AzureRegion.Name(),
 			keyRetention:       spec.RetentionDuration.Duration,
 			keyRetentionUnit:   spec.RetentionDuration.Unit,
-		})
+		}
+
+		var replicationPairs []any
+		for _, pair := range spec.ReplicationPairs {
+			replicationPairs = append(replicationPairs, map[string]any{
+				keySourceCluster: pair.SourceClusterID,
+				keyTargetCluster: pair.TargetClusterID,
+			})
+		}
+		specMap[keyReplicationPair] = replicationPairs
+
+		replicationSpec = append(replicationSpec, specMap)
 	}
 
 	return replicationSpec
@@ -1400,6 +1446,14 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 
 	var replicationSpecs []gqlsla.ReplicationSpec
 	for _, spec := range slaDomain.ReplicationSpecs {
+		var replicationPairs []gqlsla.ReplicationPair
+		for _, pair := range spec.ReplicationPairs {
+			replicationPairs = append(replicationPairs, gqlsla.ReplicationPair{
+				SourceClusterID: pair.SourceCluster.ID,
+				TargetClusterID: pair.TargetCluster.ID,
+			})
+		}
+
 		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
 			AWSRegion:   spec.AWSRegion,
 			AWSAccount:  spec.AWS.AccountID,
@@ -1408,6 +1462,7 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 				Duration: spec.RetentionDuration.Duration,
 				Unit:     spec.RetentionDuration.Unit,
 			},
+			ReplicationPairs: replicationPairs,
 		})
 	}
 	if err := d.Set(keyReplicationSpec, toReplicationSpec(replicationSpecs)); err != nil {
