@@ -441,6 +441,25 @@ func dataSourceSLADomain() *schema.Resource {
 							Computed:    true,
 							Description: "Azure region to replicate to.",
 						},
+						keyReplicationPair: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keySourceCluster: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Source cluster ID (UUID).",
+									},
+									keyTargetCluster: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Target cluster ID (UUID).",
+									},
+								},
+							},
+							Computed:    true,
+							Description: "Replication pairs specifying source and target clusters.",
+						},
 						keyRetention: {
 							Type:        schema.TypeInt,
 							Computed:    true,
@@ -634,6 +653,14 @@ func slaDomainRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 	// Set replication spec - transform the replication specs
 	var replicationSpecs []gqlsla.ReplicationSpec
 	for _, spec := range slaDomain.ReplicationSpecs {
+		var replicationPairs []gqlsla.ReplicationPair
+		for _, pair := range spec.ReplicationPairs {
+			replicationPairs = append(replicationPairs, gqlsla.ReplicationPair{
+				SourceClusterID: pair.SourceCluster.ID,
+				TargetClusterID: pair.TargetCluster.ID,
+			})
+		}
+
 		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
 			AWSRegion:   spec.AWSRegion,
 			AWSAccount:  spec.AWS.AccountID,
@@ -642,6 +669,7 @@ func slaDomainRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 				Duration: spec.RetentionDuration.Duration,
 				Unit:     spec.RetentionDuration.Unit,
 			},
+			ReplicationPairs: replicationPairs,
 		})
 	}
 	if err := d.Set(keyReplicationSpec, toReplicationSpec(replicationSpecs)); err != nil {

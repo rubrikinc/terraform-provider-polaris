@@ -348,6 +348,16 @@ Optional:
 - `aws_cross_account` (String) Replication targetRSC cloud account ID) for cross account replication. Set to empyt string for same account replication.
 - `aws_region` (String) AWS region to replicate to. Should be specified in the standard AWS style, e.g. `us-west-2`.
 - `azure_region` (String) Azure region to replicate to. Should be specified in the standard Azure style, e.g. `eastus`.
+- `replication_pair` (Block List) Replication pairs specifying source and target clusters. (see [below for nested schema](#nestedblock--replication_spec--replication_pair))
+
+<a id="nestedblock--replication_spec--replication_pair"></a>
+### Nested Schema for `replication_spec.replication_pair`
+
+Required:
+
+- `source_cluster` (String) Source cluster ID (UUID).
+- `target_cluster` (String) Target cluster ID (UUID).
+
 
 
 <a id="nestedblock--retention_lock"></a>

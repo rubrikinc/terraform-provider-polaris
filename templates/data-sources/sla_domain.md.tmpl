@@ -185,8 +185,17 @@ Read-Only:
 - `aws_cross_account` (String) Replication target (RSC cloud account ID) for cross account replication.
 - `aws_region` (String) AWS region to replicate to.
 - `azure_region` (String) Azure region to replicate to.
+- `replication_pair` (List of Object) Replication pairs specifying source and target clusters. (see [below for nested schema](#nestedatt--replication_spec--replication_pair))
 - `retention` (Number) Retention specifies for how long the snapshots are kept.
 - `retention_unit` (String) Retention unit specifies the unit of retention.
+
+<a id="nestedatt--replication_spec--replication_pair"></a>
+### Nested Schema for `replication_spec.replication_pair`
+
+Read-Only:
+
+- `source_cluster` (String) Source cluster ID (UUID).
+- `target_cluster` (String) Target cluster ID (UUID).
 
 
 <a id="nestedatt--retention_lock"></a>
