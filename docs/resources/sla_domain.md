@@ -239,7 +239,7 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 ### Required
 
 - `name` (String) SLA Domain name.
-- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZUE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `O365_OBJECT_TYPE` and `OKTA_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
+- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZUE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE` and `VSPHERE_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
 
 ### Optional
 
@@ -262,6 +262,7 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 - `replication_spec` (Block List) Replication specification for the SLA Domain. (see [below for nested schema](#nestedblock--replication_spec))
 - `retention_lock` (Block List, Max: 1) Enable retention lock. Retention lock prevents data from being accidentally or maliciously modified or deleted during the retention period (see [below for nested schema](#nestedblock--retention_lock))
 - `snapshot_window` (Block List) Specifies an optional snapshot window. (see [below for nested schema](#nestedblock--snapshot_window))
+- `vmware_vm_config` (Block List, Max: 1) VMware vSphere VM log backups. (see [below for nested schema](#nestedblock--vmware_vm_config))
 - `weekly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in weeks. (see [below for nested schema](#nestedblock--weekly_schedule))
 - `yearly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in years. (see [below for nested schema](#nestedblock--yearly_schedule))
 
@@ -487,6 +488,14 @@ Required:
 
 - `duration` (Number) Duration of the snapshot window in hours.
 - `start_at` (String) Start of the snapshot window. Should be given as `HH:MM`, e.g: `15:30`.
+
+
+<a id="nestedblock--vmware_vm_config"></a>
+### Nested Schema for `vmware_vm_config`
+
+Required:
+
+- `log_retention` (Number) Log retention specifies for how long, in seconds, the log backups are kept.
 
 
 <a id="nestedblock--weekly_schedule"></a>

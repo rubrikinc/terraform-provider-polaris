@@ -267,6 +267,22 @@ func resourceSLADomain() *schema.Resource {
 				Description: "Azure SQL MI log backups. Note, the changes will be applied during the next " +
 					"maintenance window.",
 			},
+			keyVMwareVMConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyLogRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log retention specifies for how long, in seconds, the log backups are kept.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "VMware vSphere VM log backups.",
+			},
 			keyBackupLocation: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -465,7 +481,7 @@ func resourceSLADomain() *schema.Resource {
 				Description: "Object types which can be protected by the SLA Domain. Possible values are " +
 					"`AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
 					"`AZURE_OBJECT_TYPE`, `AZUE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
-					"`AZURE_BLOB_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `O365_OBJECT_TYPE` and `OKTA_OBJECT_TYPE`. " +
+					"`AZURE_BLOB_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE` and `VSPHERE_OBJECT_TYPE`. " +
 					"Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.",
 			},
 			keyQuarterlySchedule: {
@@ -1391,6 +1407,10 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 		if err != nil {
 			return diag.FromErr(err)
 		}
+		vmwareVMConfig, err := fromVMwareVMConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 		firstFullSnapshotWindows, err := fromSnapshotWindow(d.Get(keyFirstFullSnapshot).([]any))
 		if err != nil {
 			return diag.FromErr(err)
@@ -1516,6 +1536,7 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 				AzureBlobConfig:                 blobConfig,
 				AzureSQLDatabaseDBConfig:        azureSQLConfig,
 				AzureSQLManagedInstanceDBConfig: azureSQLMIConfig,
+				VMwareVMConfig:                  vmwareVMConfig,
 			},
 			ObjectTypes:       objectTypes,
 			ReplicationSpecs:  replicationSpecs,
@@ -1656,6 +1677,9 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyAzureSQLManagedInstanceConfig, toAzureSQLConfig(slaDomain.ObjectSpecificConfigs.AzureSQLManagedInstanceDBConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyVMwareVMConfig, toVMwareVMConfig(slaDomain.ObjectSpecificConfigs.VMwareVMConfig)); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -1905,6 +1929,32 @@ func toAzureSQLConfig(sqlConfig *gqlsla.AzureDBConfig) []any {
 
 	return []any{map[string]any{
 		keyLogRetention: sqlConfig.LogRetentionInDays,
+	}}
+}
+
+func fromVMwareVMConfig(d *schema.ResourceData) (*gqlsla.VMwareVMConfig, error) {
+	block, ok := d.GetOk(keyVMwareVMConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	vmwareConfig := block.([]any)[0].(map[string]any)
+	return &gqlsla.VMwareVMConfig{
+		LogRetentionSeconds: int64(vmwareConfig[keyLogRetention].(int)),
+	}, nil
+}
+
+func toVMwareVMConfig(vmwareConfig *gqlsla.VMwareVMConfig) []any {
+	if vmwareConfig == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyLogRetention: int(vmwareConfig.LogRetentionSeconds),
 	}}
 }
 
