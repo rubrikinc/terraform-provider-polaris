@@ -75,6 +75,9 @@ To avoid early deletion fees, retain snapshots in cool tier archival locations f
 ---
 # Object types
 
+## Active Directory
+Active Directory protection supports a minimum of 4 hours SLA.
+
 ## Azure SQL Databases
 Archival is mandatory and the backups will be instantly archived. Frequency and Retention apply to archived snapshots of the Azure SQL database.
 Continuous backups for point-in-time recovery retentions is configured in ´azure_sql_database_config´.
@@ -109,6 +112,9 @@ Archival and Replication are not supported by Okta.
 ## Microsoft 365
 Archival and Replication are not supported by Microsoft 365.
 M365 protection supports a minimum of 8 hours SLA (12 hours or more recomended).
+
+## OLVM
+Archival is not supported by OLVM.
 `
 
 func resourceSLADomain() *schema.Resource {
@@ -479,9 +485,11 @@ func resourceSLADomain() *schema.Resource {
 				},
 				Required: true,
 				Description: "Object types which can be protected by the SLA Domain. Possible values are " +
-					"`AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
-					"`AZURE_OBJECT_TYPE`, `AZUE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
-					"`AZURE_BLOB_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE` and `VSPHERE_OBJECT_TYPE`. " +
+					"`ACTIVE_DIRECTORY_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
+					"`AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
+					"`AZURE_BLOB_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, " +
+					"`K8S_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `NAS_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, " +
+					"`OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. " +
 					"Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.",
 			},
 			keyQuarterlySchedule: {
@@ -1464,6 +1472,10 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 
 			// Per object type validation.
 			switch objectType {
+			case gqlsla.ObjectActiveDirectory:
+				if schedule.Hourly != nil && schedule.Hourly.BasicSchedule.Frequency < 4 {
+					return diag.Errorf("Active Directory object type requires minimum of 4 hours SLA")
+				}
 			case gqlsla.ObjectAzureSQLDatabase:
 				if len(objectTypeList) > 1 {
 					return diag.Errorf("Azure SQL Database object type cannot be combined with other object types")
@@ -1516,6 +1528,10 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 				}
 				if schedule.Hourly != nil && schedule.Hourly.BasicSchedule.Frequency < 8 {
 					return diag.Errorf("Microsoft 365 object type requires minimum of 8 hours SLA")
+				}
+			case gqlsla.ObjectOLVM:
+				if len(archivalSpecs) > 0 {
+					return diag.Errorf("OLVM object type does not support archival locations")
 				}
 			}
 			objectTypes = append(objectTypes, objectType)
