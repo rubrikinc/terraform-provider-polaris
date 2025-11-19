@@ -283,14 +283,29 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 <a id="nestedblock--archival"></a>
 ### Nested Schema for `archival`
 
+Optional:
+
+- `archival_location_id` (String) Archival location ID (UUID).
+- `archival_location_to_cluster_mapping` (Block List) Mapping between archival location and Rubrik cluster. Each mapping specifies which cluster should be used for archiving to a specific location. (see [below for nested schema](#nestedblock--archival--archival_location_to_cluster_mapping))
+- `threshold` (Number) Threshold specifies the time before archiving the snapshots at the managing location. The archival location retains the snapshots according to the SLA Domain schedule.
+- `threshold_unit` (String) Threshold unit specifies the unit of `threshold`. Possible values are `DAYS`, `WEEKS`, `MONTHS` and `YEARS`. Default value is `DAYS`.
+
+<a id="nestedblock--archival--archival_location_to_cluster_mapping"></a>
+### Nested Schema for `archival.archival_location_to_cluster_mapping`
+
 Required:
 
 - `archival_location_id` (String) Archival location ID (UUID).
 
 Optional:
 
-- `threshold` (Number) Threshold specifies the time before archiving the snapshots at the managing location. The archival location retains the snapshots according to the SLA Domain schedule.
-- `threshold_unit` (String) Threshold unit specifies the unit of `threshold`. Possible values are `DAYS`, `WEEKS`, `MONTHS` and `YEARS`. Default value is `DAYS`.
+- `cluster_id` (String) Cluster ID (UUID).
+
+Read-Only:
+
+- `cluster_name` (String) Cluster name.
+- `name` (String) Archival location name.
+
 
 
 <a id="nestedblock--aws_dynamodb_config"></a>
