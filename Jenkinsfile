@@ -77,6 +77,8 @@ pipeline {
                 sh 'go version' // Log Go version used.
                 sh 'go mod tidy'
                 sh 'go vet ./...'
+                sh 'go generate ./... >/dev/null'
+                sh 'git diff --exit-code || (echo "Generated files are out of sync. Please run go generate and commit the changes." && exit 1)'
                 sh 'go run honnef.co/go/tools/cmd/staticcheck@v0.6.1 ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
