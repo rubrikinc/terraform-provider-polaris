@@ -53,8 +53,19 @@ description: |-
 Read-Only:
 
 - `archival_location_id` (String) Archival location ID (UUID).
+- `archival_location_to_cluster_mapping` (List of Object) Mapping between archival location and Rubrik cluster. (see [below for nested schema](#nestedatt--archival--archival_location_to_cluster_mapping))
 - `threshold` (Number) Threshold specifies the time before archiving the snapshots at the managing location.
 - `threshold_unit` (String) Threshold unit specifies the unit of threshold.
+
+<a id="nestedatt--archival--archival_location_to_cluster_mapping"></a>
+### Nested Schema for `archival.archival_location_to_cluster_mapping`
+
+Read-Only:
+
+- `archival_location_id` (String) Archival location ID (UUID).
+- `cluster_id` (String) Cluster ID (UUID).
+- `cluster_name` (String) Cluster name.
+- `name` (String) Archival location name.
 
 
 <a id="nestedatt--aws_dynamodb_config"></a>

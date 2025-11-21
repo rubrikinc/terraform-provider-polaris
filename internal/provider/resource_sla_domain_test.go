@@ -31,6 +31,27 @@ import (
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 )
 
+// archivalSpecType is a type alias for the anonymous struct in gqlsla.Domain.ArchivalSpecs
+type archivalSpecType = struct {
+	Frequencies    []gqlsla.RetentionUnit `json:"frequencies"`
+	Threshold      int                    `json:"threshold"`
+	ThresholdUnit  gqlsla.RetentionUnit   `json:"thresholdUnit"`
+	StorageSetting struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"storageSetting"`
+	ArchivalLocationToClusterMapping []struct {
+		Cluster struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"cluster"`
+		Location struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"location"`
+	} `json:"archivalLocationToClusterMapping"`
+}
+
 func TestToArchival(t *testing.T) {
 	locationID1 := uuid.New()
 	locationID2 := uuid.New()
@@ -38,22 +59,30 @@ func TestToArchival(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		archivalSpecs []gqlsla.ArchivalSpec
+		domain        gqlsla.Domain
 		existing      []any
 		expected      []any
 		expectError   bool
 		errorContains string
 	}{
 		{
-			name:          "empty specs and existing",
-			archivalSpecs: []gqlsla.ArchivalSpec{},
-			existing:      []any{},
-			expected:      []any{},
+			name:     "empty specs and existing",
+			domain:   gqlsla.Domain{},
+			existing: []any{},
+			expected: []any{},
 		}, {
 			name: "new specs only",
-			archivalSpecs: []gqlsla.ArchivalSpec{
-				{GroupID: locationID1, Threshold: 30, ThresholdUnit: gqlsla.Days},
-				{GroupID: locationID2, Threshold: 90, ThresholdUnit: gqlsla.Weeks},
+			domain: gqlsla.Domain{
+				ArchivalSpecs: []archivalSpecType{
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID1.String()}, Threshold: 30, ThresholdUnit: gqlsla.Days},
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID2.String()}, Threshold: 90, ThresholdUnit: gqlsla.Weeks},
+				},
 			},
 			existing: []any{},
 			expected: []any{
@@ -62,9 +91,17 @@ func TestToArchival(t *testing.T) {
 			},
 		}, {
 			name: "preserve existing order",
-			archivalSpecs: []gqlsla.ArchivalSpec{
-				{GroupID: locationID1, Threshold: 30, ThresholdUnit: gqlsla.Days},
-				{GroupID: locationID2, Threshold: 90, ThresholdUnit: gqlsla.Weeks},
+			domain: gqlsla.Domain{
+				ArchivalSpecs: []archivalSpecType{
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID1.String()}, Threshold: 30, ThresholdUnit: gqlsla.Days},
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID2.String()}, Threshold: 90, ThresholdUnit: gqlsla.Weeks},
+				},
 			},
 			existing: []any{
 				map[string]any{keyArchivalLocationID: locationID2.String()},
@@ -76,10 +113,21 @@ func TestToArchival(t *testing.T) {
 			},
 		}, {
 			name: "add new specs to end",
-			archivalSpecs: []gqlsla.ArchivalSpec{
-				{GroupID: locationID1, Threshold: 30, ThresholdUnit: gqlsla.Days},
-				{GroupID: locationID2, Threshold: 90, ThresholdUnit: gqlsla.Weeks},
-				{GroupID: locationID3, Threshold: 12, ThresholdUnit: gqlsla.Months},
+			domain: gqlsla.Domain{
+				ArchivalSpecs: []archivalSpecType{
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID1.String()}, Threshold: 30, ThresholdUnit: gqlsla.Days},
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID2.String()}, Threshold: 90, ThresholdUnit: gqlsla.Weeks},
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID3.String()}, Threshold: 12, ThresholdUnit: gqlsla.Months},
+				},
 			},
 			existing: []any{
 				map[string]any{keyArchivalLocationID: locationID2.String()},
@@ -91,9 +139,17 @@ func TestToArchival(t *testing.T) {
 			},
 		}, {
 			name: "remove existing specs",
-			archivalSpecs: []gqlsla.ArchivalSpec{
-				{GroupID: locationID1, Threshold: 30, ThresholdUnit: gqlsla.Days},
-				{GroupID: locationID3, Threshold: 12, ThresholdUnit: gqlsla.Months},
+			domain: gqlsla.Domain{
+				ArchivalSpecs: []archivalSpecType{
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID1.String()}, Threshold: 30, ThresholdUnit: gqlsla.Days},
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID3.String()}, Threshold: 12, ThresholdUnit: gqlsla.Months},
+				},
 			},
 			existing: []any{
 				map[string]any{keyArchivalLocationID: locationID3.String()},
@@ -106,9 +162,17 @@ func TestToArchival(t *testing.T) {
 			},
 		}, {
 			name: "duplicate location IDs",
-			archivalSpecs: []gqlsla.ArchivalSpec{
-				{GroupID: locationID1, Threshold: 30, ThresholdUnit: gqlsla.Days},
-				{GroupID: locationID1, Threshold: 90, ThresholdUnit: gqlsla.Weeks},
+			domain: gqlsla.Domain{
+				ArchivalSpecs: []archivalSpecType{
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID1.String()}, Threshold: 30, ThresholdUnit: gqlsla.Days},
+					{StorageSetting: struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					}{ID: locationID1.String()}, Threshold: 90, ThresholdUnit: gqlsla.Weeks},
+				},
 			},
 			existing:      []any{},
 			expectError:   true,
@@ -118,7 +182,7 @@ func TestToArchival(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := toArchival(tt.archivalSpecs, tt.existing)
+			result, err := toArchival(tt.domain, tt.existing)
 
 			if tt.expectError {
 				if err == nil {

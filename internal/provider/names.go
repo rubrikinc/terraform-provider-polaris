@@ -34,6 +34,7 @@ const (
 	keyArchival                                     = "archival"
 	keyArchivalConsolidation                        = "archival_consolidation"
 	keyArchivalLocationID                           = "archival_location_id"
+	keyArchivalLocationToClusterMapping             = "archival_location_to_cluster_mapping"
 	keyArchivalGroupID                              = "archival_group_id"
 	keyArchivalProxySettings                        = "archival_proxy_settings"
 	keyARN                                          = "arn"
