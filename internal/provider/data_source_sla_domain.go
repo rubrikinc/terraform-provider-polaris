@@ -172,6 +172,20 @@ func dataSourceSLADomain() *schema.Resource {
 				Computed:    true,
 				Description: "Azure SQL MI log backups.",
 			},
+			keyVMwareVMConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention specifies for how long, in seconds, the log backups are kept.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "VMware vSphere VM log backups.",
+			},
 			keyBackupLocation: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -700,6 +714,9 @@ func slaDomainRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyAzureSQLManagedInstanceConfig, toAzureSQLConfig(slaDomain.ObjectSpecificConfigs.AzureSQLManagedInstanceDBConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyVMwareVMConfig, toVMwareVMConfig(slaDomain.ObjectSpecificConfigs.VMwareVMConfig)); err != nil {
 		return diag.FromErr(err)
 	}
 

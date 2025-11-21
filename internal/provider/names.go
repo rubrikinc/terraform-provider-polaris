@@ -337,6 +337,7 @@ const (
 	keyUsePlacementGroups                           = "use_placement_groups"
 	keyVMConfig                                     = "vm_config"
 	keyVMType                                       = "vm_type"
+	keyVMwareVMConfig                               = "vmware_vm_config"
 	keyUsers                                        = "users"
 	keyVaultName                                    = "vault_name"
 	keyVersion                                      = "version"
