@@ -470,6 +470,86 @@ func dataSourceSLADomain() *schema.Resource {
 							Computed:    true,
 							Description: "Retention unit specifies the unit of retention.",
 						},
+						keyLocalRetention: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyRetention: {
+										Type:        schema.TypeInt,
+										Computed:    true,
+										Description: "Local retention on replication target specifies for how long the snapshots are kept on the replication target before being archived.",
+									},
+									keyRetentionUnit: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Local retention unit.",
+									},
+								},
+							},
+							Computed:    true,
+							Description: "Local retention on replication target.",
+						},
+						keyCascadingArchival: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyArchivalLocationID: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Archival location ID (UUID) for cascading archival.",
+									},
+									keyArchivalThreshold: {
+										Type:        schema.TypeInt,
+										Computed:    true,
+										Description: "Archival threshold specifies when to archive replicated snapshots.",
+									},
+									keyArchivalThresholdUnit: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Archival threshold unit.",
+									},
+									keyArchivalTiering: {
+										Type: schema.TypeList,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												keyInstantTiering: {
+													Type:        schema.TypeBool,
+													Computed:    true,
+													Description: "Enable instant tiering to cold storage.",
+												},
+												keyMinAccessibleDurationInSeconds: {
+													Type:        schema.TypeInt,
+													Computed:    true,
+													Description: "Minimum duration in seconds that data must remain accessible before tiering.",
+												},
+												keyColdStorageClass: {
+													Type:        schema.TypeString,
+													Computed:    true,
+													Description: "Cold storage class for tiering.",
+												},
+												keyTierExistingSnapshots: {
+													Type:        schema.TypeBool,
+													Computed:    true,
+													Description: "Whether to tier existing snapshots to cold storage.",
+												},
+											},
+										},
+										Computed:    true,
+										Description: "Archival tiering specification for cold storage.",
+									},
+									keyFrequency: {
+										Type: schema.TypeSet,
+										Elem: &schema.Schema{
+											Type: schema.TypeString,
+										},
+										Computed:    true,
+										Description: "Frequencies for cascading archival.",
+									},
+								},
+							},
+							Computed:    true,
+							Description: "Cascading archival specifications for replication.",
+						},
 					},
 				},
 				Computed:    true,

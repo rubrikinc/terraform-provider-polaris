@@ -606,6 +606,122 @@ func resourceSLADomain() *schema.Resource {
 								string(gqlsla.Years),
 							}, false),
 						},
+						keyLocalRetention: {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyRetention: {
+										Type:         schema.TypeInt,
+										Required:     true,
+										Description:  "Local retention on replication target specifies for how long the snapshots are kept on the replication target before being archived.",
+										ValidateFunc: validation.IntAtLeast(1),
+									},
+									keyRetentionUnit: {
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Local retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.",
+										ValidateFunc: validation.StringInSlice([]string{
+											string(gqlsla.Days),
+											string(gqlsla.Weeks),
+											string(gqlsla.Months),
+											string(gqlsla.Quarters),
+											string(gqlsla.Years),
+										}, false),
+									},
+								},
+							},
+							Description: "Local retention on replication target.",
+						},
+						keyCascadingArchival: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyArchivalLocationID: {
+										Type:         schema.TypeString,
+										Required:     true,
+										Description:  "Archival location ID (UUID) for cascading archival.",
+										ValidateFunc: validation.IsUUID,
+									},
+									keyArchivalThreshold: {
+										Type:         schema.TypeInt,
+										Optional:     true,
+										Description:  "Archival threshold specifies when to archive replicated snapshots.",
+										ValidateFunc: validation.IntAtLeast(1),
+									},
+									keyArchivalThresholdUnit: {
+										Type:     schema.TypeString,
+										Optional: true,
+										Description: "Archival threshold unit. Possible values are " +
+											"`DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.",
+										ValidateFunc: validation.StringInSlice([]string{
+											string(gqlsla.Days),
+											string(gqlsla.Weeks),
+											string(gqlsla.Months),
+											string(gqlsla.Quarters),
+											string(gqlsla.Years),
+										}, false),
+									},
+									keyArchivalTiering: {
+										Type: schema.TypeList,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												keyInstantTiering: {
+													Type:        schema.TypeBool,
+													Optional:    true,
+													Description: "Enable instant tiering to cold storage.",
+												},
+												keyMinAccessibleDurationInSeconds: {
+													Type:         schema.TypeInt,
+													Optional:     true,
+													Description:  "Minimum duration in seconds that data must remain accessible before tiering.",
+													ValidateFunc: validation.IntAtLeast(0),
+												},
+												keyColdStorageClass: {
+													Type:     schema.TypeString,
+													Optional: true,
+													Description: "Cold storage class for tiering. Possible values are " +
+														"`AZURE_ARCHIVE`, `AWS_GLACIER`, `AWS_GLACIER_DEEP_ARCHIVE`.",
+													ValidateFunc: validation.StringInSlice([]string{
+														string(gqlsla.ColdStorageClassAzureArchive),
+														string(gqlsla.ColdStorageClassAWSGlacier),
+														string(gqlsla.ColdStorageClassAWSGlacierDeepArchive),
+													}, false),
+												},
+												keyTierExistingSnapshots: {
+													Type:        schema.TypeBool,
+													Optional:    true,
+													Description: "Whether to tier existing snapshots to cold storage.",
+												},
+											},
+										},
+										MaxItems:    1,
+										Optional:    true,
+										Description: "Archival tiering specification for cold storage.",
+									},
+									keyFrequency: {
+										Type: schema.TypeSet,
+										Elem: &schema.Schema{
+											Type: schema.TypeString,
+											ValidateFunc: validation.StringInSlice([]string{
+												string(gqlsla.Minute),
+												string(gqlsla.Hours),
+												string(gqlsla.Days),
+												string(gqlsla.Weeks),
+												string(gqlsla.Months),
+												string(gqlsla.Quarters),
+												string(gqlsla.Years),
+											}, false),
+										},
+										Optional:    true,
+										Description: "Frequencies for cascading archival. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS`, `YEARS`.",
+									},
+								},
+							},
+							Optional:    true,
+							Description: "Cascading archival specifications for replication.",
+						},
 					},
 				},
 				Optional:    true,
@@ -928,13 +1044,84 @@ func fromReplicationSpec(d *schema.ResourceData) ([]gqlsla.ReplicationSpec, erro
 			}
 		}
 
+		// Parse replication local retention
+		var replicationLocalRetention *gqlsla.RetentionDuration
+		if localRetentionList, ok := spec[keyLocalRetention].([]any); ok && len(localRetentionList) > 0 {
+			localRetentionMap := localRetentionList[0].(map[string]any)
+			replicationLocalRetention = &gqlsla.RetentionDuration{
+				Duration: localRetentionMap[keyRetention].(int),
+				Unit:     gqlsla.RetentionUnit(localRetentionMap[keyRetentionUnit].(string)),
+			}
+		}
+
+		// Parse cascading archival specs
+		var cascadingArchivalSpecs []gqlsla.CascadingArchivalSpec
+		if cascadingArchival, ok := spec[keyCascadingArchival].([]any); ok {
+			for _, ca := range cascadingArchival {
+				caMap := ca.(map[string]any)
+
+				archivalLocationID, err := uuid.Parse(caMap[keyArchivalLocationID].(string))
+				if err != nil {
+					return nil, fmt.Errorf("invalid archival location ID: %w", err)
+				}
+
+				cascadingSpec := gqlsla.CascadingArchivalSpec{}
+
+				// Build archival location to cluster mapping for each target cluster
+				// This is the recommended approach instead of using the deprecated ArchivalLocationID
+				for _, pair := range replicationPairs {
+					targetClusterID, err := uuid.Parse(pair.TargetClusterID)
+					if err != nil {
+						return nil, fmt.Errorf("invalid target cluster ID: %w", err)
+					}
+					cascadingSpec.ArchivalLocationToClusterMappings = append(
+						cascadingSpec.ArchivalLocationToClusterMappings,
+						gqlsla.ArchivalLocationToClusterMapping{
+							ClusterID:  targetClusterID,
+							LocationID: archivalLocationID,
+						},
+					)
+				}
+
+				// Parse archival threshold
+				if threshold, ok := caMap[keyArchivalThreshold].(int); ok && threshold > 0 {
+					cascadingSpec.ArchivalThreshold = &gqlsla.RetentionDuration{
+						Duration: threshold,
+						Unit:     gqlsla.RetentionUnit(caMap[keyArchivalThresholdUnit].(string)),
+					}
+				}
+
+				// Parse archival tiering
+				if tieringList, ok := caMap[keyArchivalTiering].([]any); ok && len(tieringList) > 0 {
+					tieringMap := tieringList[0].(map[string]any)
+					cascadingSpec.ArchivalTieringSpec = &gqlsla.ArchivalTieringSpec{
+						InstantTiering:                 tieringMap[keyInstantTiering].(bool),
+						MinAccessibleDurationInSeconds: int64(tieringMap[keyMinAccessibleDurationInSeconds].(int)),
+						ColdStorageClass:               gqlsla.ColdStorageClass(tieringMap[keyColdStorageClass].(string)),
+						TierExistingSnapshots:          tieringMap[keyTierExistingSnapshots].(bool),
+					}
+				}
+
+				// Parse frequencies
+				if freqSet, ok := caMap[keyFrequency].(*schema.Set); ok {
+					for _, freq := range freqSet.List() {
+						cascadingSpec.Frequencies = append(cascadingSpec.Frequencies, gqlsla.RetentionUnit(freq.(string)))
+					}
+				}
+
+				cascadingArchivalSpecs = append(cascadingArchivalSpecs, cascadingSpec)
+			}
+		}
+
 		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
-			AWSRegion:         awsRegion.ToRegionForReplicationEnum(),
-			AWSAccount:        awsCrossAccount,
-			AzureRegion:       azureRegion.ToRegionForReplicationEnum(),
-			AzureSubscription: azureCrossSubscription,
-			RetentionDuration: retention,
-			ReplicationPairs:  replicationPairs,
+			AWSRegion:                         awsRegion.ToRegionForReplicationEnum(),
+			AWSAccount:                        awsCrossAccount,
+			AzureRegion:                       azureRegion.ToRegionForReplicationEnum(),
+			AzureSubscription:                 azureCrossSubscription,
+			RetentionDuration:                 retention,
+			ReplicationPairs:                  replicationPairs,
+			ReplicationLocalRetentionDuration: replicationLocalRetention,
+			CascadingArchivalSpecs:            cascadingArchivalSpecs,
 		})
 	}
 
@@ -961,6 +1148,59 @@ func toReplicationSpec(replicationSpecs []gqlsla.ReplicationSpec) []any {
 			})
 		}
 		specMap[keyReplicationPair] = replicationPairs
+
+		// Add replication local retention (only if present)
+		if spec.ReplicationLocalRetentionDuration != nil {
+			localRetentionMap := map[string]any{
+				keyRetention:     spec.ReplicationLocalRetentionDuration.Duration,
+				keyRetentionUnit: spec.ReplicationLocalRetentionDuration.Unit,
+			}
+			specMap[keyLocalRetention] = []any{localRetentionMap}
+		}
+
+		// Add cascading archival specs (only if present)
+		if len(spec.CascadingArchivalSpecs) > 0 {
+			var cascadingArchival []any
+			for _, ca := range spec.CascadingArchivalSpecs {
+				caMap := map[string]any{}
+
+				// Extract archival location ID from the mapping
+				// The mapping should have the same location ID for all clusters
+				if len(ca.ArchivalLocationToClusterMappings) > 0 {
+					caMap[keyArchivalLocationID] = ca.ArchivalLocationToClusterMappings[0].LocationID.String()
+					//lint:ignore SA1019 Fallback to deprecated field when reading in the else branch below.
+				} else if alID := ca.ArchivalLocationID; alID != nil {
+					// Fallback to deprecated field if mapping is not present
+					caMap[keyArchivalLocationID] = alID.String()
+				}
+
+				if ca.ArchivalThreshold != nil {
+					caMap[keyArchivalThreshold] = ca.ArchivalThreshold.Duration
+					caMap[keyArchivalThresholdUnit] = ca.ArchivalThreshold.Unit
+				}
+
+				if ca.ArchivalTieringSpec != nil {
+					tieringMap := map[string]any{
+						keyInstantTiering:                 ca.ArchivalTieringSpec.InstantTiering,
+						keyMinAccessibleDurationInSeconds: ca.ArchivalTieringSpec.MinAccessibleDurationInSeconds,
+						keyColdStorageClass:               ca.ArchivalTieringSpec.ColdStorageClass,
+						keyTierExistingSnapshots:          ca.ArchivalTieringSpec.TierExistingSnapshots,
+					}
+					caMap[keyArchivalTiering] = []any{tieringMap}
+				}
+
+				if len(ca.Frequencies) > 0 {
+					frequencies := &schema.Set{F: schema.HashString}
+					for _, freq := range ca.Frequencies {
+						frequencies.Add(string(freq))
+					}
+					caMap[keyFrequency] = frequencies
+				}
+
+				cascadingArchival = append(cascadingArchival, caMap)
+			}
+			specMap[keyCascadingArchival] = cascadingArchival
+		}
 
 		replicationSpec = append(replicationSpec, specMap)
 	}
@@ -1454,6 +1694,55 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 			})
 		}
 
+		// Convert cascading archival specs from GraphQL response to SDK structure
+		var cascadingArchivalSpecs []gqlsla.CascadingArchivalSpec
+		for _, cas := range spec.CascadingArchivalSpecs {
+			cascadingSpec := gqlsla.CascadingArchivalSpec{
+				ArchivalThreshold: cas.ArchivalThreshold,
+				Frequencies:       cas.Frequencies,
+			}
+
+			// Convert archival location
+			if cas.ArchivalLocation != nil {
+				locationID, err := uuid.Parse(cas.ArchivalLocation.ID)
+				if err == nil {
+					//lint:ignore SA1019 Allow deprecated field when reading
+					cascadingSpec.ArchivalLocationID = &locationID
+				}
+			}
+
+			// Convert archival tiering spec
+			if cas.ArchivalTieringSpec != nil {
+				cascadingSpec.ArchivalTieringSpec = &gqlsla.ArchivalTieringSpec{
+					InstantTiering:                 cas.ArchivalTieringSpec.InstantTiering,
+					MinAccessibleDurationInSeconds: cas.ArchivalTieringSpec.MinAccessibleDurationInSeconds,
+					ColdStorageClass:               cas.ArchivalTieringSpec.ColdStorageClass,
+					TierExistingSnapshots:          cas.ArchivalTieringSpec.TierExistingSnapshots,
+				}
+			}
+
+			// Convert archival location to cluster mapping
+			for _, mapping := range cas.ArchivalLocationToClusterMapping {
+				clusterID, err := uuid.Parse(mapping.Cluster.ID)
+				if err != nil {
+					continue
+				}
+				locationID, err := uuid.Parse(mapping.Location.ID)
+				if err != nil {
+					continue
+				}
+				cascadingSpec.ArchivalLocationToClusterMappings = append(
+					cascadingSpec.ArchivalLocationToClusterMappings,
+					gqlsla.ArchivalLocationToClusterMapping{
+						ClusterID:  clusterID,
+						LocationID: locationID,
+					},
+				)
+			}
+
+			cascadingArchivalSpecs = append(cascadingArchivalSpecs, cascadingSpec)
+		}
+
 		replicationSpecs = append(replicationSpecs, gqlsla.ReplicationSpec{
 			AWSRegion:   spec.AWSRegion,
 			AWSAccount:  spec.AWS.AccountID,
@@ -1462,7 +1751,9 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 				Duration: spec.RetentionDuration.Duration,
 				Unit:     spec.RetentionDuration.Unit,
 			},
-			ReplicationPairs: replicationPairs,
+			ReplicationLocalRetentionDuration: spec.ReplicationLocalRetentionDuration,
+			CascadingArchivalSpecs:            cascadingArchivalSpecs,
+			ReplicationPairs:                  replicationPairs,
 		})
 	}
 	if err := d.Set(keyReplicationSpec, toReplicationSpec(replicationSpecs)); err != nil {

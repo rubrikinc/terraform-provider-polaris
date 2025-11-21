@@ -185,9 +185,41 @@ Read-Only:
 - `aws_cross_account` (String) Replication target (RSC cloud account ID) for cross account replication.
 - `aws_region` (String) AWS region to replicate to.
 - `azure_region` (String) Azure region to replicate to.
+- `cascading_archival` (List of Object) Cascading archival specifications for replication. (see [below for nested schema](#nestedatt--replication_spec--cascading_archival))
+- `local_retention` (List of Object) Local retention on replication target. (see [below for nested schema](#nestedatt--replication_spec--local_retention))
 - `replication_pair` (List of Object) Replication pairs specifying source and target clusters. (see [below for nested schema](#nestedatt--replication_spec--replication_pair))
 - `retention` (Number) Retention specifies for how long the snapshots are kept.
 - `retention_unit` (String) Retention unit specifies the unit of retention.
+
+<a id="nestedatt--replication_spec--local_retention"></a>
+### Nested Schema for `replication_spec.local_retention`
+
+Read-Only:
+
+- `retention` (Number) Local retention on replication target specifies for how long the snapshots are kept on the replication target before being archived.
+- `retention_unit` (String) Local retention unit.
+
+<a id="nestedatt--replication_spec--cascading_archival"></a>
+### Nested Schema for `replication_spec.cascading_archival`
+
+Read-Only:
+
+- `archival_location_id` (String) Archival location ID (UUID) for cascading archival.
+- `archival_threshold` (Number) Archival threshold specifies when to archive replicated snapshots.
+- `archival_threshold_unit` (String) Archival threshold unit.
+- `archival_tiering` (List of Object) Archival tiering specification for cold storage. (see [below for nested schema](#nestedatt--replication_spec--cascading_archival--archival_tiering))
+- `frequency` (Set of String) Frequencies for cascading archival.
+
+<a id="nestedatt--replication_spec--cascading_archival--archival_tiering"></a>
+### Nested Schema for `replication_spec.cascading_archival.archival_tiering`
+
+Read-Only:
+
+- `cold_storage_class` (String) Cold storage class for tiering.
+- `instant_tiering` (Boolean) Enable instant tiering to cold storage.
+- `min_accessible_duration_in_seconds` (Number) Minimum duration in seconds that data must remain accessible before tiering.
+- `tier_existing_snapshots` (Boolean) Whether to tier existing snapshots to cold storage.
+
 
 <a id="nestedatt--replication_spec--replication_pair"></a>
 ### Nested Schema for `replication_spec.replication_pair`

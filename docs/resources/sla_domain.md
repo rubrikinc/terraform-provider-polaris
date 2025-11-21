@@ -125,6 +125,10 @@ M365 protection supports a minimum of 8 hours SLA (12 hours or more recomended).
 ## Example Usage
 
 ```terraform
+# Basic daily SLA domain with snapshot windows
+# - Daily backup schedule with 7-day retention
+# - Snapshot window configuration (starts at 9 AM, 4-hour duration)
+# - First full snapshot scheduling (Tuesday at 7 PM, 5-hour duration)
 resource "polaris_sla_domain" "daily" {
   name = "daily"
   description = "Daily SLA Domain"
@@ -144,6 +148,10 @@ resource "polaris_sla_domain" "daily" {
 }
 
 
+# Weekly SLA domain with Azure Blob archival
+# - Weekly backup schedule (every Monday) with 4-week retention
+# - Azure Blob-specific configuration with archival location
+# - Using a data source to reference an existing archival location
 data "polaris_azure_archival_location" "archival_location" {
   name = "my-archival-location"
 }
@@ -160,6 +168,67 @@ resource "polaris_sla_domain" "weekly" {
   }
   azure_blob_config {
     archival_location_id = data.polaris_azure_archival_location.archival_location.id
+  }
+}
+
+# Advanced SLA domain with replication and cascading archival
+# - Daily backup schedule with 7-day retention
+# - Cross-cluster replication from mycluster2 to mycluster1
+# - Local retention on the target cluster (7 days)
+# - Cascading archival to a data center archival location after 7 days
+# - Archival tiering with instant tiering to Azure Archive storage
+# - Minimum accessible duration of 1 day (86400 seconds)
+data "polaris_sla_source_cluster" "mycluster1" {
+  name = "MY-CLUSTER-1"
+}
+
+data "polaris_sla_source_cluster" "mycluster2" {
+  name = "MY-CLUSTER-2"
+}
+
+data "polaris_data_center_archival_location" "myarchivallocation" {
+  cluster_id = data.polaris_sla_source_cluster.mycluster1.id
+  name       = "My Archival Location"
+}
+
+resource "polaris_sla_domain" "with_cascading_archival" {
+  name = "with-cascading-archival"
+  description = "SLA Domain with replication and cascading archival"
+  object_types = ["VSPHERE_OBJECT_TYPE"]
+
+  daily_schedule {
+    frequency = 1
+    retention = 7
+    retention_unit = "DAYS"
+  }
+
+  replication_spec {
+    retention = 7
+    retention_unit = "DAYS"
+
+    local_retention {
+      retention = 7
+      retention_unit = "DAYS"
+    }
+
+    replication_pair {
+      source_cluster = data.polaris_sla_source_cluster.mycluster2.id
+      target_cluster = data.polaris_sla_source_cluster.mycluster1.id
+    }
+
+    cascading_archival {
+      archival_location_id = data.polaris_data_center_archival_location.myarchivallocation.id
+      archival_threshold = 7
+      archival_threshold_unit = "DAYS"
+      frequency = ["DAYS"]
+
+      archival_tiering {
+        instant_tiering = true
+        cold_storage_class = "AZURE_ARCHIVE"
+        min_accessible_duration_in_seconds = 86400
+        tier_existing_snapshots = false
+      }
+    }
   }
 }
 ```
@@ -348,7 +417,44 @@ Optional:
 - `aws_cross_account` (String) Replication targetRSC cloud account ID) for cross account replication. Set to empyt string for same account replication.
 - `aws_region` (String) AWS region to replicate to. Should be specified in the standard AWS style, e.g. `us-west-2`.
 - `azure_region` (String) Azure region to replicate to. Should be specified in the standard Azure style, e.g. `eastus`.
+- `cascading_archival` (Block List) Cascading archival specifications for replication. (see [below for nested schema](#nestedblock--replication_spec--cascading_archival))
+- `local_retention` (Block List, Max: 1) Local retention on replication target. (see [below for nested schema](#nestedblock--replication_spec--local_retention))
 - `replication_pair` (Block List) Replication pairs specifying source and target clusters. (see [below for nested schema](#nestedblock--replication_spec--replication_pair))
+
+<a id="nestedblock--replication_spec--cascading_archival"></a>
+### Nested Schema for `replication_spec.cascading_archival`
+
+Required:
+
+- `archival_location_id` (String) Archival location ID (UUID) for cascading archival.
+
+Optional:
+
+- `archival_threshold` (Number) Archival threshold specifies when to archive replicated snapshots.
+- `archival_threshold_unit` (String) Archival threshold unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
+- `archival_tiering` (Block List, Max: 1) Archival tiering specification for cold storage. (see [below for nested schema](#nestedblock--replication_spec--cascading_archival--archival_tiering))
+- `frequency` (Set of String) Frequencies for cascading archival. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS`, `YEARS`.
+
+<a id="nestedblock--replication_spec--cascading_archival--archival_tiering"></a>
+### Nested Schema for `replication_spec.cascading_archival.archival_tiering`
+
+Optional:
+
+- `cold_storage_class` (String) Cold storage class for tiering. Possible values are `AZURE_ARCHIVE`, `AWS_GLACIER`, `AWS_GLACIER_DEEP_ARCHIVE`.
+- `instant_tiering` (Boolean) Enable instant tiering to cold storage.
+- `min_accessible_duration_in_seconds` (Number) Minimum duration in seconds that data must remain accessible before tiering.
+- `tier_existing_snapshots` (Boolean) Whether to tier existing snapshots to cold storage.
+
+
+
+<a id="nestedblock--replication_spec--local_retention"></a>
+### Nested Schema for `replication_spec.local_retention`
+
+Required:
+
+- `retention` (Number) Local retention on replication target specifies for how long the snapshots are kept on the replication target before being archived.
+- `retention_unit` (String) Local retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
+
 
 <a id="nestedblock--replication_spec--replication_pair"></a>
 ### Nested Schema for `replication_spec.replication_pair`
