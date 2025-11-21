@@ -147,7 +147,8 @@ func resourceSLADomain() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						keyArchivalLocationID: {
 							Type:         schema.TypeString,
-							Required:     true,
+							Optional:     true,
+							Computed:     true,
 							Description:  "Archival location ID (UUID).",
 							ValidateFunc: validation.IsUUID,
 						},
@@ -167,6 +168,38 @@ func resourceSLADomain() *schema.Resource {
 							Description: "Threshold unit specifies the unit of `threshold`. Possible values are " +
 								"`DAYS`, `WEEKS`, `MONTHS` and `YEARS`. Default value is `DAYS`.",
 							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyArchivalLocationToClusterMapping: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyClusterID: {
+										Type:         schema.TypeString,
+										Optional:     true,
+										Computed:     true,
+										Description:  "Cluster ID (UUID).",
+										ValidateFunc: validation.IsUUID,
+									},
+									keyArchivalLocationID: {
+										Type:         schema.TypeString,
+										Required:     true,
+										Description:  "Archival location ID (UUID).",
+										ValidateFunc: validation.IsUUID,
+									},
+									keyClusterName: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Cluster name.",
+									},
+									keyName: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Archival location name.",
+									},
+								},
+							},
+							Optional:    true,
+							Description: "Mapping between archival location and Rubrik cluster. Each mapping specifies which cluster should be used for archiving to a specific location.",
 						},
 					},
 				},
@@ -970,16 +1003,47 @@ func fromArchival(d *schema.ResourceData, schedule gqlsla.SnapshotSchedule) ([]g
 	for _, archival := range d.Get(keyArchival).([]any) {
 		archival := archival.(map[string]any)
 
-		groupID, err := uuid.Parse(archival[keyArchivalLocationID].(string))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %s", keyArchivalLocationID, err)
+		var groupID uuid.UUID
+		var err error
+		if alID := archival[keyArchivalLocationID].(string); len(alID) > 0 {
+			groupID, err = uuid.Parse(archival[keyArchivalLocationID].(string))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse %s: %s", keyArchivalLocationID, err)
+			}
+		}
+
+		// Parse archival location to cluster mapping
+		var mappings []gqlsla.ArchivalLocationToClusterMapping
+		if mappingList, ok := archival[keyArchivalLocationToClusterMapping].([]any); ok {
+			for _, m := range mappingList {
+				mapping := m.(map[string]any)
+
+				locationID, err := uuid.Parse(mapping[keyArchivalLocationID].(string))
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse archival location ID in mapping: %s", err)
+				}
+
+				var clusterID uuid.UUID
+				if clusterIDStr, ok := mapping[keyClusterID].(string); ok && clusterIDStr != "" {
+					clusterID, err = uuid.Parse(clusterIDStr)
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse cluster ID in mapping: %s", err)
+					}
+				}
+
+				mappings = append(mappings, gqlsla.ArchivalLocationToClusterMapping{
+					ClusterID:  clusterID,
+					LocationID: locationID,
+				})
+			}
 		}
 
 		archivalSpecs = append(archivalSpecs, gqlsla.ArchivalSpec{
-			GroupID:       groupID,
-			Frequencies:   frequenciesFromSchedule(schedule),
-			Threshold:     archival[keyThreshold].(int),
-			ThresholdUnit: gqlsla.RetentionUnit(archival[keyThresholdUnit].(string)),
+			GroupID:                          groupID,
+			Frequencies:                      frequenciesFromSchedule(schedule),
+			Threshold:                        archival[keyThreshold].(int),
+			ThresholdUnit:                    gqlsla.RetentionUnit(archival[keyThresholdUnit].(string)),
+			ArchivalLocationToClusterMapping: mappings,
 		})
 	}
 
@@ -987,17 +1051,30 @@ func fromArchival(d *schema.ResourceData, schedule gqlsla.SnapshotSchedule) ([]g
 }
 
 // toArchival returns a slice holding the archival configuration.
-func toArchival(archivalSpecs []gqlsla.ArchivalSpec, existing []any) ([]any, error) {
+func toArchival(domain gqlsla.Domain, existing []any) ([]any, error) {
 	blocks := make(map[string]map[string]any)
-	for _, spec := range archivalSpecs {
-		id := spec.GroupID.String()
+	for _, spec := range domain.ArchivalSpecs {
+		id := spec.StorageSetting.ID
 		if blocks[id] != nil {
-			return nil, fmt.Errorf("archival location %q used multiple times", spec.GroupID.String())
+			return nil, fmt.Errorf("archival location %q used multiple times", id)
 		}
+
+		// Convert archival location to cluster mapping
+		var mappings []any
+		for _, mapping := range spec.ArchivalLocationToClusterMapping {
+			mappings = append(mappings, map[string]any{
+				keyClusterID:          mapping.Cluster.ID,
+				keyClusterName:        mapping.Cluster.Name,
+				keyArchivalLocationID: mapping.Location.ID,
+				keyName:               mapping.Location.Name,
+			})
+		}
+
 		blocks[id] = map[string]any{
-			keyArchivalLocationID: id,
-			keyThreshold:          spec.Threshold,
-			keyThresholdUnit:      string(spec.ThresholdUnit),
+			keyArchivalLocationID:               id,
+			keyThreshold:                        spec.Threshold,
+			keyThresholdUnit:                    string(spec.ThresholdUnit),
+			keyArchivalLocationToClusterMapping: mappings,
 		}
 	}
 
@@ -1012,8 +1089,8 @@ func toArchival(archivalSpecs []gqlsla.ArchivalSpec, existing []any) ([]any, err
 	}
 
 	// Add remaining blocks in the order they appear in archivalSpecs.
-	for _, spec := range archivalSpecs {
-		id := spec.GroupID.String()
+	for _, spec := range domain.ArchivalSpecs {
+		id := spec.StorageSetting.ID
 		if _, ok := blocks[id]; !ok {
 			continue
 		}
@@ -1653,20 +1730,7 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
-	var archivalSpecs []gqlsla.ArchivalSpec
-	for _, archivalSpec := range slaDomain.ArchivalSpecs {
-		groupID, err := uuid.Parse(archivalSpec.StorageSetting.ID)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		archivalSpecs = append(archivalSpecs, gqlsla.ArchivalSpec{
-			GroupID:       groupID,
-			Frequencies:   frequenciesFromSchedule(slaDomain.SnapshotSchedule),
-			Threshold:     archivalSpec.Threshold,
-			ThresholdUnit: archivalSpec.ThresholdUnit,
-		})
-	}
-	archival, err := toArchival(archivalSpecs, d.Get(keyArchival).([]any))
+	archival, err := toArchival(slaDomain, d.Get(keyArchival).([]any))
 	if err != nil {
 		return diag.FromErr(err)
 	}

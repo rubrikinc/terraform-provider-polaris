@@ -92,6 +92,35 @@ func dataSourceSLADomain() *schema.Resource {
 							Computed:    true,
 							Description: "Threshold unit specifies the unit of threshold.",
 						},
+						keyArchivalLocationToClusterMapping: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyClusterID: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Cluster ID (UUID).",
+									},
+									keyClusterName: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Cluster name.",
+									},
+									keyArchivalLocationID: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Archival location ID (UUID).",
+									},
+									keyName: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Archival location name.",
+									},
+								},
+							},
+							Computed:    true,
+							Description: "Mapping between archival location and Rubrik cluster.",
+						},
 					},
 				},
 				Computed:    true,
@@ -669,21 +698,8 @@ func slaDomainRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
-	// Set archival configuration - transform the archival specs
-	var archivalSpecs []gqlsla.ArchivalSpec
-	for _, archivalSpec := range slaDomain.ArchivalSpecs {
-		groupID, err := uuid.Parse(archivalSpec.StorageSetting.ID)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		archivalSpecs = append(archivalSpecs, gqlsla.ArchivalSpec{
-			GroupID:       groupID,
-			Frequencies:   frequenciesFromSchedule(slaDomain.SnapshotSchedule),
-			Threshold:     archivalSpec.Threshold,
-			ThresholdUnit: archivalSpec.ThresholdUnit,
-		})
-	}
-	archival, err := toArchival(archivalSpecs, d.Get(keyArchival).([]any))
+	// Set archival configuration
+	archival, err := toArchival(slaDomain, d.Get(keyArchival).([]any))
 	if err != nil {
 		return diag.FromErr(err)
 	}
