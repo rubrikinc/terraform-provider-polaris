@@ -287,6 +287,7 @@ Optional:
 
 - `archival_location_id` (String) Archival location ID (UUID).
 - `archival_location_to_cluster_mapping` (Block List) Mapping between archival location and Rubrik cluster. Each mapping specifies which cluster should be used for archiving to a specific location. (see [below for nested schema](#nestedblock--archival--archival_location_to_cluster_mapping))
+- `archival_tiering` (Block List, Max: 1) Archival tiering specification for cold storage. (see [below for nested schema](#nestedblock--archival--archival_tiering))
 - `threshold` (Number) Threshold specifies the time before archiving the snapshots at the managing location. The archival location retains the snapshots according to the SLA Domain schedule.
 - `threshold_unit` (String) Threshold unit specifies the unit of `threshold`. Possible values are `DAYS`, `WEEKS`, `MONTHS` and `YEARS`. Default value is `DAYS`.
 
@@ -305,6 +306,17 @@ Read-Only:
 
 - `cluster_name` (String) Cluster name.
 - `name` (String) Archival location name.
+
+
+<a id="nestedblock--archival--archival_tiering"></a>
+### Nested Schema for `archival.archival_tiering`
+
+Optional:
+
+- `cold_storage_class` (String) Cold storage class for tiering. Possible values are `AZURE_ARCHIVE`, `AWS_GLACIER`, `AWS_GLACIER_DEEP_ARCHIVE`.
+- `instant_tiering` (Boolean) Enable instant tiering to cold storage.
+- `min_accessible_duration_in_seconds` (Number) Minimum duration in seconds that data must remain accessible before tiering.
+- `tier_existing_snapshots` (Boolean) Whether to tier existing snapshots to cold storage.
 
 
 

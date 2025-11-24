@@ -121,6 +121,35 @@ func dataSourceSLADomain() *schema.Resource {
 							Computed:    true,
 							Description: "Mapping between archival location and Rubrik cluster.",
 						},
+						keyArchivalTiering: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyInstantTiering: {
+										Type:        schema.TypeBool,
+										Computed:    true,
+										Description: "Enable instant tiering to cold storage.",
+									},
+									keyMinAccessibleDurationInSeconds: {
+										Type:        schema.TypeInt,
+										Computed:    true,
+										Description: "Minimum duration in seconds that data must remain accessible before tiering.",
+									},
+									keyColdStorageClass: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Cold storage class for tiering.",
+									},
+									keyTierExistingSnapshots: {
+										Type:        schema.TypeBool,
+										Computed:    true,
+										Description: "Whether to tier existing snapshots to cold storage.",
+									},
+								},
+							},
+							Computed:    true,
+							Description: "Archival tiering specification for cold storage.",
+						},
 					},
 				},
 				Computed:    true,
