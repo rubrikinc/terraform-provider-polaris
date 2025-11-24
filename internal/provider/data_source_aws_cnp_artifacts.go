@@ -63,6 +63,10 @@ are used when specifying the feature set.
   * ´RSC_MANAGED_CLUSTER´ - Represents the set of permissions required for the
     Rubrik-managed Exocompute cluster.
 
+´KUBERNETES_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´RDS_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.

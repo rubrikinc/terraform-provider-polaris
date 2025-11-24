@@ -52,7 +52,7 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 ### Required
 
 - `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
-- `features` (Set of String) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `features` (Set of String) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
 - `role` (Block Set, Min: 1) Roles to attach to the cloud account. (see [below for nested schema](#nestedblock--role))
 
 ### Optional
