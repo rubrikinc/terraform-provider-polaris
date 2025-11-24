@@ -201,6 +201,43 @@ func resourceSLADomain() *schema.Resource {
 							Optional:    true,
 							Description: "Mapping between archival location and Rubrik cluster. Each mapping specifies which cluster should be used for archiving to a specific location.",
 						},
+						keyArchivalTiering: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyInstantTiering: {
+										Type:        schema.TypeBool,
+										Optional:    true,
+										Description: "Enable instant tiering to cold storage.",
+									},
+									keyMinAccessibleDurationInSeconds: {
+										Type:         schema.TypeInt,
+										Optional:     true,
+										Description:  "Minimum duration in seconds that data must remain accessible before tiering.",
+										ValidateFunc: validation.IntAtLeast(0),
+									},
+									keyColdStorageClass: {
+										Type:     schema.TypeString,
+										Optional: true,
+										Description: "Cold storage class for tiering. Possible values are " +
+											"`AZURE_ARCHIVE`, `AWS_GLACIER`, `AWS_GLACIER_DEEP_ARCHIVE`.",
+										ValidateFunc: validation.StringInSlice([]string{
+											string(gqlsla.ColdStorageClassAzureArchive),
+											string(gqlsla.ColdStorageClassAWSGlacier),
+											string(gqlsla.ColdStorageClassAWSGlacierDeepArchive),
+										}, false),
+									},
+									keyTierExistingSnapshots: {
+										Type:        schema.TypeBool,
+										Optional:    true,
+										Description: "Whether to tier existing snapshots to cold storage.",
+									},
+								},
+							},
+							MaxItems:    1,
+							Optional:    true,
+							Description: "Archival tiering specification for cold storage.",
+						},
 					},
 				},
 				Optional: true,
@@ -1038,12 +1075,25 @@ func fromArchival(d *schema.ResourceData, schedule gqlsla.SnapshotSchedule) ([]g
 			}
 		}
 
+		// Parse archival tiering
+		var tieringSpec *gqlsla.ArchivalTieringSpec
+		if tieringList, ok := archival[keyArchivalTiering].([]any); ok && len(tieringList) > 0 {
+			tieringMap := tieringList[0].(map[string]any)
+			tieringSpec = &gqlsla.ArchivalTieringSpec{
+				InstantTiering:                 tieringMap[keyInstantTiering].(bool),
+				MinAccessibleDurationInSeconds: int64(tieringMap[keyMinAccessibleDurationInSeconds].(int)),
+				ColdStorageClass:               gqlsla.ColdStorageClass(tieringMap[keyColdStorageClass].(string)),
+				TierExistingSnapshots:          tieringMap[keyTierExistingSnapshots].(bool),
+			}
+		}
+
 		archivalSpecs = append(archivalSpecs, gqlsla.ArchivalSpec{
 			GroupID:                          groupID,
 			Frequencies:                      frequenciesFromSchedule(schedule),
 			Threshold:                        archival[keyThreshold].(int),
 			ThresholdUnit:                    gqlsla.RetentionUnit(archival[keyThresholdUnit].(string)),
 			ArchivalLocationToClusterMapping: mappings,
+			ArchivalTieringSpec:              tieringSpec,
 		})
 	}
 
@@ -1070,12 +1120,25 @@ func toArchival(domain gqlsla.Domain, existing []any) ([]any, error) {
 			})
 		}
 
-		blocks[id] = map[string]any{
+		block := map[string]any{
 			keyArchivalLocationID:               id,
 			keyThreshold:                        spec.Threshold,
 			keyThresholdUnit:                    string(spec.ThresholdUnit),
 			keyArchivalLocationToClusterMapping: mappings,
 		}
+
+		// Convert archival tiering spec
+		if spec.ArchivalTieringSpec != nil {
+			tieringMap := map[string]any{
+				keyInstantTiering:                 spec.ArchivalTieringSpec.InstantTiering,
+				keyMinAccessibleDurationInSeconds: spec.ArchivalTieringSpec.MinAccessibleDurationInSeconds,
+				keyColdStorageClass:               spec.ArchivalTieringSpec.ColdStorageClass,
+				keyTierExistingSnapshots:          spec.ArchivalTieringSpec.TierExistingSnapshots,
+			}
+			block[keyArchivalTiering] = []any{tieringMap}
+		}
+
+		blocks[id] = block
 	}
 
 	// Preserve order from existing, then add new ones to the end.
@@ -1652,6 +1715,13 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			id, err := uuid.Parse(d.Id())
 			if err != nil {
 				return diag.FromErr(err)
+			}
+
+			// When updating a data center archival, RSC requires the group ID to be set to nil.
+			for i, spec := range createParams.ArchivalSpecs {
+				if len(spec.ArchivalLocationToClusterMapping) > 0 {
+					createParams.ArchivalSpecs[i].GroupID = uuid.Nil
+				}
 			}
 
 			applyToExisting := d.Get(keyApplyChangesToExistingSnapshots).(bool)

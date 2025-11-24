@@ -50,6 +50,12 @@ type archivalSpecType = struct {
 			Name string `json:"name"`
 		} `json:"location"`
 	} `json:"archivalLocationToClusterMapping"`
+	ArchivalTieringSpec *struct {
+		InstantTiering                 bool                    `json:"isInstantTieringEnabled"`
+		MinAccessibleDurationInSeconds int64                   `json:"minAccessibleDurationInSeconds"`
+		ColdStorageClass               gqlsla.ColdStorageClass `json:"coldStorageClass"`
+		TierExistingSnapshots          bool                    `json:"shouldTierExistingSnapshots"`
+	} `json:"archivalTieringSpec"`
 }
 
 func TestToArchival(t *testing.T) {
