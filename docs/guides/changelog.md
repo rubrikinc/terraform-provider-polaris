@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.3.1
+* Fix a bug in the `polaris_tag_rule` resource where the wrong ID was used when scoping a tag rule to a particular Azure
+  subscription.
+* Add support for onboarding the Kubernetes Protection RSC feature using the `polaris_aws_cnp_account` resource.
+
 ## v1.4.0-beta.1
 * Add `polaris_sla_domain` resource for managing RSC global SLA Domains. The resource supports creating and updating
   SLA domains with frequency, retention, archival, and replication configurations.
