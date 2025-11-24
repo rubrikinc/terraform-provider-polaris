@@ -210,8 +210,12 @@ func readTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 
 	if !tagRule.AllACloudAccounts {
 		cloudAccountIDs := &schema.Set{F: schema.HashString}
-		for _, cloudAccount := range tagRule.CloudAccounts {
-			cloudAccountIDs.Add(cloudAccount.ID.String())
+		for _, nativeCloudAccount := range tagRule.CloudAccounts {
+			cloudAccountID, err := lookupCloudAccountID(ctx, client, nativeCloudAccount.ID)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			cloudAccountIDs.Add(cloudAccountID.String())
 		}
 		if err := d.Set(keyCloudAccountIDs, cloudAccountIDs); err != nil {
 			return diag.FromErr(err)
@@ -287,18 +291,18 @@ func groupCloudAccounts(ctx context.Context, client *polaris.Client, cloudAccoun
 
 	cloudAccounts := &gqlsla.TagRuleCloudAccounts{}
 	for _, cloudAccountID := range cloudAccountIDs {
-		cloudVendor, err := lookupCloudAccountID(ctx, client, cloudAccountID)
+		cloudVendor, nativeCloudAccountID, err := lookupNativeCloudAccountID(ctx, client, cloudAccountID)
 		if err != nil {
 			return nil, err
 		}
 
 		switch cloudVendor {
 		case core.CloudVendorAWS:
-			cloudAccounts.AWSAccountIDs = append(cloudAccounts.AWSAccountIDs, cloudAccountID)
+			cloudAccounts.AWSAccountIDs = append(cloudAccounts.AWSAccountIDs, nativeCloudAccountID)
 		case core.CloudVendorAzure:
-			cloudAccounts.AzureSubscriptionIDs = append(cloudAccounts.AzureSubscriptionIDs, cloudAccountID)
+			cloudAccounts.AzureSubscriptionIDs = append(cloudAccounts.AzureSubscriptionIDs, nativeCloudAccountID)
 		case core.CloudVendorGCP:
-			cloudAccounts.GCPProjectIDs = append(cloudAccounts.GCPProjectIDs, cloudAccountID)
+			cloudAccounts.GCPProjectIDs = append(cloudAccounts.GCPProjectIDs, nativeCloudAccountID)
 		default:
 			return nil, fmt.Errorf("unknown cloud vendor: %s", cloudVendor)
 		}
@@ -307,30 +311,62 @@ func groupCloudAccounts(ctx context.Context, client *polaris.Client, cloudAccoun
 	return cloudAccounts, nil
 }
 
-func lookupCloudAccountID(ctx context.Context, client *polaris.Client, cloudAccountID uuid.UUID) (core.CloudVendor, error) {
+// Looks up the cloud account ID for the specified native cloud account ID.
+// Note, AWS uses the same ID for both cloud accounts and native cloud accounts.
+func lookupCloudAccountID(ctx context.Context, client *polaris.Client, nativeCloudAccountID uuid.UUID) (uuid.UUID, error) {
+	_, err := aws.Wrap(client).AccountByID(ctx, nativeCloudAccountID)
+	if err == nil {
+		return nativeCloudAccountID, nil
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		return uuid.Nil, err
+	}
+
+	subscription, err := azure.Wrap(client).SubscriptionByNativeCloudAccountID(ctx, nativeCloudAccountID)
+	if err == nil {
+		return subscription.ID, nil
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		return uuid.Nil, err
+	}
+
+	project, err := gcp.Wrap(client).ProjectByNativeCloudAccountID(ctx, nativeCloudAccountID)
+	if err == nil {
+		return project.ID, nil
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		return uuid.Nil, err
+	}
+
+	return uuid.Nil, fmt.Errorf("cloud account id for native cloud account %q %w", nativeCloudAccountID, graphql.ErrNotFound)
+}
+
+// Looks up the native cloud account ID for the specified cloud account ID.
+// Note, AWS uses the same ID for both cloud accounts and native cloud accounts.
+func lookupNativeCloudAccountID(ctx context.Context, client *polaris.Client, cloudAccountID uuid.UUID) (core.CloudVendor, uuid.UUID, error) {
 	_, err := aws.Wrap(client).AccountByID(ctx, cloudAccountID)
-	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return core.CloudVendorUnknown, err
-	}
 	if err == nil {
-		return core.CloudVendorAWS, nil
+		return core.CloudVendorAWS, cloudAccountID, nil
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		return core.CloudVendorUnknown, uuid.Nil, err
 	}
 
-	_, err = azure.Wrap(client).SubscriptionByID(ctx, cloudAccountID)
-	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return core.CloudVendorUnknown, err
-	}
+	nativeSubscription, err := azure.Wrap(client).NativeSubscriptionByCloudAccountID(ctx, cloudAccountID)
 	if err == nil {
-		return core.CloudVendorAzure, nil
+		return core.CloudVendorAzure, nativeSubscription.ID, nil
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		return core.CloudVendorUnknown, uuid.Nil, err
 	}
 
-	_, err = gcp.Wrap(client).ProjectByID(ctx, cloudAccountID)
-	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return core.CloudVendorUnknown, err
-	}
+	nativeProject, err := gcp.Wrap(client).NativeProjectByCloudAccountID(ctx, cloudAccountID)
 	if err == nil {
-		return core.CloudVendorGCP, nil
+		return core.CloudVendorGCP, nativeProject.ID, nil
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		return core.CloudVendorUnknown, uuid.Nil, err
 	}
 
-	return core.CloudVendorUnknown, fmt.Errorf("cloud account %q %w", cloudAccountID, graphql.ErrNotFound)
+	return core.CloudVendorUnknown, uuid.Nil, fmt.Errorf("native cloud account id for cloud account %q %w", cloudAccountID, graphql.ErrNotFound)
 }
