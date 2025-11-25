@@ -1,3 +1,7 @@
+---
+type: "always_apply"
+---
+
 # Documentation Guidelines
 
 This document defines the standards for documenting resources, data sources, and guides in the Terraform Provider for Rubrik Polaris project.
@@ -280,59 +284,28 @@ All upgrade guides must be created as template files in `templates/guides/` with
 
 ### Standard Upgrade Guide Format
 
-Every upgrade guide should follow this structure:
+Every upgrade guide should follow this structure (see existing upgrade guides in `templates/guides/` for complete examples):
 
-```markdown
----
-page_title: "Upgrade Guide: v<VERSION>"
----
+**File**: `templates/guides/upgrade_guide_v<VERSION>.md.tmpl`
 
-# Upgrade Guide v<VERSION>
+**Required Sections**:
 
-## Before Upgrading
+1. **Front Matter**: YAML header with page title
+2. **Before Upgrading**: Link to changelog and deprecation warnings
+3. **How to Upgrade**: Step-by-step upgrade instructions
+   - Configure version constraint using `~>` operator
+   - Run `terraform init -upgrade`
+   - Run `terraform plan` to validate
+   - Run `terraform apply -refresh-only` to migrate state
+4. **Significant Changes**: Breaking changes and significant changes
+5. **New Features**: New features requiring explanation
 
-Review the [changelog](changelog.md) to understand what has changed and what might cause an issue when upgrading the
-provider. Note that deprecated resources and fields will be removed in a future release. Please migrate your configurations
-to use the recommended replacements as soon as possible.
-
-## How to Upgrade
-
-Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v<VERSION> release. One
-way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
-release within the same minor version:
-```terraform
-terraform {
-  required_providers {
-    polaris = {
-      source  = "rubrikinc/polaris"
-      version = "~> <VERSION>"
-    }
-  }
-}
-```
-Next, upgrade the provider to the new version by running:
-```shell
-% terraform init -upgrade
-```
-After the provider has been updated, validate the correctness of the Terraform configuration files by running:
-```shell
-% terraform plan
-```
-If you get an error or an unwanted diff, please see the _Significant Changes_ and _New Features_ sections below for additional
-instructions. Otherwise, proceed by running:
-```shell
-% terraform apply -refresh-only
-```
-This will read the remote state of the resources and migrate the local Terraform state to the v<VERSION> version.
-
-## Significant Changes
-
-[Document breaking changes and significant changes here]
-
-## New Features
-
-[Document new features that require explanation here]
-```
+**Template Structure**:
+- Start with YAML front matter: `page_title: "Upgrade Guide: v<VERSION>"`
+- Include "Before Upgrading" section linking to changelog
+- Provide "How to Upgrade" with terraform version configuration example
+- Document "Significant Changes" with error messages and fixes
+- Document "New Features" with code examples
 
 ### Documenting Breaking Changes
 
@@ -346,30 +319,13 @@ For each breaking change, provide:
 6. **Code examples** showing the fix
 
 **Example Pattern**:
-```markdown
-### Resource Field Now Required
 
-The `project`, `project_name` and `project_number` fields of the `polaris_gcp_project` resource are now required.
-Previously they were optional, but due to changes in the permissions required by RSC, they are now required. Existing
-Terraform configurations will need to be updated to include these fields. Not having these fields included in the
-Terraform configuration will result in an error similar to the following:
-```console
-╷
-│ Error: Missing required argument
-│
-│   on main.tf line 43, in resource "polaris_gcp_project" "project":
-│   43: resource "polaris_gcp_project" "project" {
-│
-│ The argument "project_name" is required, but no definition was found.
-╵
-```
-To resolve these errors, add the values for the fields to the `polaris_gcp_project` resource. The current implicit values of
-the fields can be found in the Terraform state for the `polaris_gcp_project` resource. Use the `terraform state show`
-command to print the state for the `polaris_gcp_project` resource. E.g:
-```console
-terraform state show polaris_gcp_project.<resource_name>
-```
-```
+See `templates/guides/upgrade_guide_v1.3.0.md.tmpl` for a complete example. The pattern includes:
+- Section heading describing the change (e.g., "### Resource Field Now Required")
+- Description of what changed and why
+- Error message in a console code block showing what users will see
+- Step-by-step instructions to resolve the error
+- Command examples (e.g., `terraform state show`) to help users migrate
 
 ### Documenting New Features
 
@@ -382,29 +338,13 @@ For each new feature that requires explanation, provide:
 5. **Links to related documentation**
 
 **Example Pattern**:
-```markdown
-### Data Scanning Cyber Assisted Recovery
 
-Support for Data Scanning Cyber Assisted Recovery has been added to the `polaris_aws_account` resource. The feature can
-be enabled by adding the `cyber_recovery_data_scanning` block to the `polaris_aws_account` resource. Here's a simple
-example showing how to enable the feature:
-```terraform
-resource "polaris_aws_account" "default" {
-  profile = "default"
-
-  cyber_recovery_data_scanning {
-    permission_groups = [
-      "BASIC",
-    ]
-
-    regions = [
-      "us-east-2",
-      "us-west-2",
-    ]
-  }
-}
-```
-```
+See `templates/guides/upgrade_guide_v1.2.0.md.tmpl` for complete examples. The pattern includes:
+- Section heading with feature name (e.g., "### Data Scanning Cyber Assisted Recovery")
+- Description of what the feature does and when to use it
+- Complete Terraform code examples showing the feature configuration
+- Integration with other resources if applicable
+- Links to resource documentation
 
 ### Documenting Deprecations
 
@@ -417,26 +357,13 @@ For deprecations, provide:
 5. **Timeline** for removal (if known)
 
 **Example Pattern**:
-```markdown
-### Trust Policy Features Field Deprecated
 
-The `features` field of the `polaris_aws_cnp_account_trust_policy` resource has been deprecated. The field has no
-replacement and is no longer used by the provider. If the `features` field is used in a configuration, Terraform will
-output a warning similar to this:
-```console
-╷
-│ Warning: Argument is deprecated
-│
-│   with polaris_aws_cnp_account_trust_policy.trust_policy["CROSSACCOUNT"],
-│   on main.tf line 65, in resource "polaris_aws_cnp_account_trust_policy" "trust_policy":
-│   65:   features    = keys(var.features)
-│
-│ no longer used by the provider, any value set is ignored.
-╵
-```
-Removing the `features` field from the `polaris_cnp_account_trust_policy` should be safe and only result in an in-place
-update of the resource.
-```
+See `templates/guides/upgrade_guide_v1.2.0.md.tmpl` for a complete example. The pattern includes:
+- Section heading with what is deprecated (e.g., "### Trust Policy Features Field Deprecated")
+- Description of what is deprecated and what to use instead
+- Warning message in a console code block showing what users will see
+- Migration instructions showing the safe removal process
+- Expected diff output showing the in-place update
 
 ### Best Practices for Upgrade Guides
 
@@ -475,8 +402,8 @@ Before committing documentation changes:
 4. Ensure no manual edits were made to `docs/`
 
 The CI pipeline will fail if generated files are out of sync:
+
 ```bash
 go generate ./... >/dev/null
 git diff --exit-code || (echo "Generated files are out of sync. Please run go generate and commit the changes." && exit 1)
 ```
-

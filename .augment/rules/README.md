@@ -52,6 +52,16 @@ Defines standards for documenting resources, data sources, and guides:
 - **Best Practices**: Formatting, field descriptions, examples
 - **Verification**: How to verify documentation changes before committing
 
+### 6. [Release Process](./release-process.md)
+
+Defines the process for releasing new provider versions:
+- **Pre-Release Checklist**: Changelog, upgrade guides, documentation, tests, code quality
+- **Release Steps**: Git commands for tagging and pushing releases
+- **Automation**: GitHub Actions workflow and GoReleaser configuration
+- **Post-Release Tasks**: Verification, announcements, monitoring
+- **Troubleshooting**: Handling common release issues
+- **Best Practices**: Testing, versioning, communication
+
 ## Quick Reference
 
 ### When Adding New Resources or Data Sources
