@@ -131,6 +131,58 @@ func resourceDelete(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 
 ## Common Patterns
 
+### Error Handling
+
+**Critical Rules**:
+- CRUD functions MUST return `diag.Diagnostics`
+- Use `diag.FromErr(err)` to wrap standard errors
+- Use `diag.Errorf(format, args...)` for custom error messages
+- ALWAYS check errors from `d.Set()` calls
+- Handle `graphql.ErrNotFound` specially in Read operations
+
+**Standard Error Patterns**:
+
+```go
+// 1. Wrap standard errors
+if err != nil {
+    return diag.FromErr(err)
+}
+
+// 2. Custom error messages
+if condition {
+    return diag.Errorf("invalid region: %s", regionName)
+}
+
+// 3. Check d.Set() errors
+if err := d.Set(keyName, resource.Name); err != nil {
+    return diag.FromErr(err)
+}
+
+// 4. Handle NotFound in Read (remove from state)
+resource, err := someSDKFunction(ctx, id)
+if errors.Is(err, graphql.ErrNotFound) {
+    d.SetId("")
+    return nil
+}
+if err != nil {
+    return diag.FromErr(err)
+}
+
+// 5. Ignore NotFound in Delete
+if err := someSDKFunction(ctx, id); err != nil && !errors.Is(err, graphql.ErrNotFound) {
+    return diag.FromErr(err)
+}
+```
+
+**Import Required**:
+```go
+import (
+    "errors"
+    "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+    "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+)
+```
+
 ### Logging
 - Use `tflog.Trace(ctx, "functionName")` at the start of all CRUD functions
 - Provider supports `TF_LOG_PROVIDER_POLARIS` and `TF_LOG_PROVIDER_POLARIS_API` env vars

@@ -1,3 +1,7 @@
+---
+type: "always_apply"
+---
+
 # Augment AI Guidelines for Terraform Provider Polaris
 
 This directory contains guidelines and coding standards for the Terraform Provider for Rubrik Polaris project.
@@ -6,7 +10,6 @@ This directory contains guidelines and coding standards for the Terraform Provid
 
 ### [Core Standards](./core-standards.md)
 Essential coding standards that apply to all code:
-- **Acronym Capitalization**: All acronyms must be fully uppercase (AWS, API, ID, UUID, etc.)
 - **Documentation Requirements**: All exported types and functions must have documentation comments
 - **Naming Conventions**: Constants, resources, data sources, and functions
 - **Error Handling**: Consistent error handling patterns
