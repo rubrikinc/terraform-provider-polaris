@@ -1,185 +1,92 @@
 ---
-type: "always_apply"
+type: "agent_requested"
+description: "Rules when releasing a new terraform provider"
 ---
 
-# Release Process Guidelines
-
-This document defines the process for releasing new versions of the Terraform Provider for Rubrik Polaris.
-
-## Overview
-
-The release process is automated through GitHub Actions. When a version tag is pushed to the repository, the GitHub Actions workflow automatically:
-1. Builds the provider for multiple platforms (Linux, macOS, Windows, FreeBSD)
-2. Signs the release artifacts with GPG
-3. Creates a GitHub release
-4. Publishes the provider to the Terraform Registry
+# Release Process
 
 ## Pre-Release Checklist
 
-Before creating a new release, ensure the following tasks are completed:
-
 ### 1. Update Changelog
-
-- [ ] Update `templates/guides/changelog.md.tmpl` with all changes for the new version
-- [ ] Follow the [Changelog Guidelines](./changelog-guidelines.md) for proper formatting
-- [ ] Include all breaking changes, new features, improvements, and bug fixes
+- [ ] Update `templates/guides/changelog.md.tmpl` with all changes
+- [ ] Follow changelog guidelines for proper formatting
 - [ ] Order entries correctly (breaking changes first, then features, then fixes)
 
 ### 2. Create Upgrade Guide (if needed)
-
-- [ ] If the release contains breaking changes, create an upgrade guide
-- [ ] Create `templates/guides/upgrade_guide_v<VERSION>.md.tmpl`
-- [ ] Follow the [Documentation Guidelines](./documentation-guidelines.md#upgrade-guides)
-- [ ] Link to the upgrade guide from breaking change entries in the changelog
-- [ ] Document all breaking changes with error messages and migration paths
-- [ ] Document significant changes that may cause unexpected diffs
+- [ ] If breaking changes, create `templates/guides/upgrade_guide_v<VERSION>.md.tmpl`
+- [ ] Link to upgrade guide from changelog
+- [ ] Document error messages and migration paths
 
 ### 3. Update Documentation
-
 - [ ] Run `go generate ./...` to regenerate all documentation
 - [ ] Verify generated files in `docs/` are correct
-- [ ] Ensure no manual edits were made to `docs/` directory
 - [ ] Check `git diff` to verify documentation changes
 
 ### 4. Run Tests
-
 - [ ] Run unit tests: `go test ./...`
 - [ ] Run acceptance tests: `TF_ACC=1 go test -count=1 -timeout=120m -v ./...`
 - [ ] Ensure all tests pass
-- [ ] Fix any failing tests before proceeding
 
 ### 5. Code Quality Checks
-
-- [ ] Run `go mod tidy` to clean up dependencies
-- [ ] Run `go vet ./...` to check for common errors
+- [ ] Run `go mod tidy`
+- [ ] Run `go vet ./...`
 - [ ] Run `go generate ./...` and verify no files changed
-- [ ] Run `gofmt -d .` to check formatting
+- [ ] Run `gofmt -d .`
 - [ ] Run static analysis: `go run honnef.co/go/tools/cmd/staticcheck@latest ./...`
 
 ### 6. Verify CI Pipeline
+- [ ] Ensure latest commit on `main` has passed all CI checks
+- [ ] Verify no pending PRs that should be included
 
-- [ ] Ensure the latest commit on `main` branch has passed all CI checks
-- [ ] Check Jenkins pipeline status (if applicable)
-- [ ] Verify no pending pull requests that should be included
+## Release Steps
 
-## Release Process
-
-Follow these steps to create a new release:
-
-### Step 1: Checkout and Update Main Branch
-
+### 1. Checkout and Update Main
 ```bash
 git checkout main
 git pull origin main
 ```
 
-**Important**: Always ensure you're on the latest `main` branch before creating a release tag.
-
-### Step 2: Create Version Tag
-
+### 2. Create Version Tag
 ```bash
 git tag v<MAJOR>.<MINOR>.<PATCH>
 ```
 
-**Examples**:
-- `git tag v1.4.0` - New minor version with features
-- `git tag v1.4.1` - Patch version with bug fixes
-- `git tag v2.0.0` - Major version with breaking changes
-
 **Version Numbering**:
-- **Major** (v2.0.0): Breaking changes that require user action
+- **Major** (v2.0.0): Breaking changes
 - **Minor** (v1.4.0): New features, backward compatible
 - **Patch** (v1.4.1): Bug fixes, backward compatible
 
-### Step 3: Verify Tag (Dry Run)
-
+### 3. Verify Tag (Dry Run)
 ```bash
 git push --dry-run --tags
 ```
 
-**What to check**:
-- Verify the tag name is correct
-- Ensure you're pushing to the correct remote (`origin`)
-- Check that only the intended tag will be pushed
-
-### Step 4: Push Tag to GitHub
-
+### 4. Push Tag to GitHub
 ```bash
 git push --tags
 ```
 
-**What happens next**:
-1. GitHub Actions workflow is triggered automatically
-2. GoReleaser builds binaries for all platforms
-3. Artifacts are signed with GPG
-4. GitHub release is created
-5. Provider is published to Terraform Registry
+**What happens**: GitHub Actions triggers, GoReleaser builds binaries, signs artifacts, creates release, publishes to Terraform Registry.
 
-### Step 5: Verify Tag Was Created
-
+### 5. Verify Tag
 ```bash
 git tag -l
-```
-
-**Expected output**: List of all tags including the newly created tag
-
-### Step 6: Inspect Tag Details
-
-```bash
 git show v<MAJOR>.<MINOR>.<PATCH>
 ```
 
-**Example**:
-```bash
-git show v1.4.0
-```
-
-**What to verify**:
-- Tag points to the correct commit
-- Commit message is appropriate
-- Commit includes all intended changes
-
-### Step 7: Monitor Release Process
-
-1. **GitHub Actions**: Navigate to https://github.com/rubrikinc/terraform-provider-polaris/actions
-   - Watch the `release` workflow
-   - Ensure all steps complete successfully
-   - Check for any errors in the build or signing process
-
-2. **GitHub Releases**: Navigate to https://github.com/rubrikinc/terraform-provider-polaris/releases
-   - Verify the release was created
-   - Check that all platform binaries are attached
-   - Verify GPG signatures are present
-   - Ensure checksums file is included
-
-3. **Terraform Registry**: Navigate to https://registry.terraform.io/providers/rubrikinc/polaris
-   - Wait for the new version to appear (may take a few minutes)
-   - Verify the version is listed
-   - Check that documentation is updated
-   - Test downloading the provider
+### 6. Monitor Release
+1. **GitHub Actions**: Watch `release` workflow
+2. **GitHub Releases**: Verify binaries, signatures, checksums
+3. **Terraform Registry**: Verify version appears and documentation updated
 
 ## Post-Release Tasks
 
-After the release is published:
-
-### 1. Verify Release
-
 - [ ] Check GitHub release page for completeness
-- [ ] Verify all platform binaries are present
-- [ ] Test downloading and using the new provider version
-- [ ] Verify Terraform Registry shows the new version
-
-### 2. Announce Release
-
-- [ ] Update internal documentation (if applicable)
-- [ ] Notify team via Slack or other communication channels
-- [ ] Update any external documentation or blog posts
-
-### 3. Monitor for Issues
-
-- [ ] Watch for GitHub issues related to the new release
-- [ ] Monitor Slack channels for user feedback
-- [ ] Be prepared to create a patch release if critical issues are found
+- [ ] Verify all platform binaries present
+- [ ] Test downloading new provider version
+- [ ] Verify Terraform Registry shows new version
+- [ ] Notify team
+- [ ] Monitor for issues
 
 ## Troubleshooting
 
