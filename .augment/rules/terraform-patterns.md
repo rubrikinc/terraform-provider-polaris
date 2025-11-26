@@ -1,3 +1,7 @@
+---
+type: "always_apply"
+---
+
 # Terraform Provider Patterns
 
 ## Resource Schema Definition
