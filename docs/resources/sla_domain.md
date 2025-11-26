@@ -249,7 +249,7 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 ### Required
 
 - `name` (String) SLA Domain name.
-- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `ACTIVE_DIRECTORY_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `NAS_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
+- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `ACTIVE_DIRECTORY_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `CASSANDRA_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, `ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, `SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
 
 ### Optional
 
@@ -263,14 +263,25 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 - `azure_sql_managed_instance_config` (Block List, Max: 1) Azure SQL MI log backups. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config))
 - `backup_location` (Block List) (see [below for nested schema](#nestedblock--backup_location))
 - `daily_schedule` (Block List, Max: 1) Take snapshots with frequency specified in days. (see [below for nested schema](#nestedblock--daily_schedule))
+- `db2_config` (Block List, Max: 1) Db2 database configuration. (see [below for nested schema](#nestedblock--db2_config))
 - `description` (String) SLA Domain description.
 - `first_full_snapshot` (Block List) Specifies the snapshot window where the first full snapshot will be taken. If not specified it will be at first opportunity. (see [below for nested schema](#nestedblock--first_full_snapshot))
+- `gcp_cloud_sql_config` (Block List, Max: 1) GCP Cloud SQL configuration. (see [below for nested schema](#nestedblock--gcp_cloud_sql_config))
 - `hourly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in hours. (see [below for nested schema](#nestedblock--hourly_schedule))
+- `informix_config` (Block List, Max: 1) Informix database configuration. (see [below for nested schema](#nestedblock--informix_config))
 - `local_retention` (Block List, Max: 1) (see [below for nested schema](#nestedblock--local_retention))
+- `managed_volume_config` (Block List, Max: 1) Managed Volume configuration. (see [below for nested schema](#nestedblock--managed_volume_config))
+- `mongo_config` (Block List, Max: 1) MongoDB database configuration. (see [below for nested schema](#nestedblock--mongo_config))
 - `monthly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in months. (see [below for nested schema](#nestedblock--monthly_schedule))
+- `mssql_config` (Block List, Max: 1) SQL Server database configuration. (see [below for nested schema](#nestedblock--mssql_config))
+- `mysqldb_config` (Block List, Max: 1) MySQL database configuration. (see [below for nested schema](#nestedblock--mysqldb_config))
+- `ncd_config` (Block List, Max: 1) NAS Cloud Direct configuration. (see [below for nested schema](#nestedblock--ncd_config))
+- `oracle_config` (Block List, Max: 1) Oracle database configuration. (see [below for nested schema](#nestedblock--oracle_config))
+- `postgres_db_cluster_config` (Block List, Max: 1) Postgres DB Cluster configuration. (see [below for nested schema](#nestedblock--postgres_db_cluster_config))
 - `quarterly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in quarters. (see [below for nested schema](#nestedblock--quarterly_schedule))
 - `replication_spec` (Block List) Replication specification for the SLA Domain. (see [below for nested schema](#nestedblock--replication_spec))
 - `retention_lock` (Block List, Max: 1) Enable retention lock. Retention lock prevents data from being accidentally or maliciously modified or deleted during the retention period (see [below for nested schema](#nestedblock--retention_lock))
+- `sap_hana_config` (Block List, Max: 1) SAP HANA database configuration. (see [below for nested schema](#nestedblock--sap_hana_config))
 - `snapshot_window` (Block List) Specifies an optional snapshot window. (see [below for nested schema](#nestedblock--snapshot_window))
 - `vmware_vm_config` (Block List, Max: 1) VMware vSphere VM log backups. (see [below for nested schema](#nestedblock--vmware_vm_config))
 - `weekly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in weeks. (see [below for nested schema](#nestedblock--weekly_schedule))
@@ -385,6 +396,20 @@ Optional:
 - `retention_unit` (String) Retention unit specifies the unit of the `retention` field. Possible values are `DAYS`, `WEEKS` and `MONTHS`. Default is `DAYS`.
 
 
+<a id="nestedblock--db2_config"></a>
+### Nested Schema for `db2_config`
+
+Optional:
+
+- `differential_frequency` (Number) Differential backup frequency.
+- `differential_frequency_unit` (String) Differential frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `incremental_frequency` (Number) Incremental backup frequency.
+- `incremental_frequency_unit` (String) Incremental frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `log_archival_method` (String) Log archival method. Possible values are `LOGARCHMETH1`, `LOGARCHMETH2`.
+- `log_retention` (Number) Log retention duration.
+- `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
+
 <a id="nestedblock--first_full_snapshot"></a>
 ### Nested Schema for `first_full_snapshot`
 
@@ -392,6 +417,18 @@ Required:
 
 - `duration` (Number) Duration of snapshot window in hours.
 - `start_at` (String) Start of the snapshot window. Should be given as `DAY, HH:MM`, e.g: `Mon, 15:30`.
+
+
+<a id="nestedblock--gcp_cloud_sql_config"></a>
+### Nested Schema for `gcp_cloud_sql_config`
+
+Required:
+
+- `log_retention` (Number) Log retention duration.
+
+Optional:
+
+- `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
 
 
 <a id="nestedblock--hourly_schedule"></a>
@@ -407,6 +444,21 @@ Optional:
 - `retention_unit` (String) Retention unit specifies the unit of the `retention` field. Possible values are `HOURS`, `DAYS` and `WEEKS`. Default value is `DAYS`.
 
 
+<a id="nestedblock--informix_config"></a>
+### Nested Schema for `informix_config`
+
+Optional:
+
+- `frequency` (Number) Log backup frequency.
+- `frequency_unit` (String) Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `incremental_frequency` (Number) Incremental backup frequency.
+- `incremental_frequency_unit` (String) Incremental frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `incremental_retention` (Number) Incremental backup retention duration.
+- `incremental_retention_unit` (String) Incremental retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `retention` (Number) Log retention duration.
+- `retention_unit` (String) Retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
+
 <a id="nestedblock--local_retention"></a>
 ### Nested Schema for `local_retention`
 
@@ -419,6 +471,32 @@ Optional:
 - `retention_unit` (String) Retention unit specifies the unit of `retention`. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
 
 
+<a id="nestedblock--managed_volume_config"></a>
+### Nested Schema for `managed_volume_config`
+
+Required:
+
+- `log_retention` (Number) Log retention duration.
+
+Optional:
+
+- `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
+
+<a id="nestedblock--mongo_config"></a>
+### Nested Schema for `mongo_config`
+
+Required:
+
+- `frequency` (Number) Log backup frequency.
+- `retention` (Number) Log retention duration.
+
+Optional:
+
+- `frequency_unit` (String) Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `retention_unit` (String) Retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
+
 <a id="nestedblock--monthly_schedule"></a>
 ### Nested Schema for `monthly_schedule`
 
@@ -428,6 +506,76 @@ Required:
 - `frequency` (Number) Frequency in months.
 - `retention` (Number) Retention specifies for how long the snapshots are kept.
 - `retention_unit` (String) Retention unit specifies the unit of `retention`. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
+
+
+<a id="nestedblock--mssql_config"></a>
+### Nested Schema for `mssql_config`
+
+Required:
+
+- `frequency` (Number) Log backup frequency.
+- `log_retention` (Number) Log retention duration.
+
+Optional:
+
+- `frequency_unit` (String) Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
+
+<a id="nestedblock--mysqldb_config"></a>
+### Nested Schema for `mysqldb_config`
+
+Required:
+
+- `frequency` (Number) Log backup frequency.
+- `retention` (Number) Log retention duration.
+
+Optional:
+
+- `frequency_unit` (String) Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `retention_unit` (String) Retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
+
+<a id="nestedblock--ncd_config"></a>
+### Nested Schema for `ncd_config`
+
+Optional:
+
+- `daily_backup_locations` (List of String) Target location UUIDs for daily schedule backups.
+- `hourly_backup_locations` (List of String) Target location UUIDs for hourly schedule backups.
+- `minutely_backup_locations` (List of String) Target location UUIDs for per-minute schedule backups.
+- `monthly_backup_locations` (List of String) Target location UUIDs for monthly schedule backups.
+- `quarterly_backup_locations` (List of String) Target location UUIDs for quarterly schedule backups.
+- `weekly_backup_locations` (List of String) Target location UUIDs for weekly schedule backups.
+- `yearly_backup_locations` (List of String) Target location UUIDs for yearly schedule backups.
+
+
+<a id="nestedblock--oracle_config"></a>
+### Nested Schema for `oracle_config`
+
+Required:
+
+- `frequency` (Number) Log backup frequency.
+- `log_retention` (Number) Log retention duration.
+
+Optional:
+
+- `frequency_unit` (String) Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `host_log_retention` (Number) Host log retention duration for archived redo logs.
+- `host_log_retention_unit` (String) Host log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
+
+<a id="nestedblock--postgres_db_cluster_config"></a>
+### Nested Schema for `postgres_db_cluster_config`
+
+Required:
+
+- `log_retention` (Number) Log retention duration for Write-Ahead Logging (WAL) logs.
+
+Optional:
+
+- `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
 
 
 <a id="nestedblock--quarterly_schedule"></a>
@@ -516,6 +664,34 @@ Optional:
 - `compliance_mode_acknowledgment` (Boolean) Acknowledgment that snapshots protected under compliance mode cannot be deleted before the scheduled expiry date. This field must be set to `true` when using `COMPLIANCE` mode. Compliance mode is recommended to meet regulations and governance mode is recommended to only protect data. Default value is `false`.
 
 !> **Warning:** Snapshots protected under compliance mode cannot be deleted before the scheduled expiry date.
+
+
+<a id="nestedblock--sap_hana_config"></a>
+### Nested Schema for `sap_hana_config`
+
+Optional:
+
+- `differential_frequency` (Number) Differential backup frequency.
+- `differential_frequency_unit` (String) Differential frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `incremental_frequency` (Number) Incremental backup frequency.
+- `incremental_frequency_unit` (String) Incremental frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `log_retention` (Number) Log retention duration.
+- `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `storage_snapshot_config` (Block List, Max: 1) SAP HANA storage snapshot configuration. (see [below for nested schema](#nestedblock--sap_hana_config--storage_snapshot_config))
+
+<a id="nestedblock--sap_hana_config--storage_snapshot_config"></a>
+### Nested Schema for `sap_hana_config.storage_snapshot_config`
+
+Required:
+
+- `frequency` (Number) Storage snapshot frequency.
+- `retention` (Number) Storage snapshot retention.
+
+Optional:
+
+- `frequency_unit` (String) Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `retention_unit` (String) Retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
 
 
 <a id="nestedblock--snapshot_window"></a>

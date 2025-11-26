@@ -359,6 +359,507 @@ func resourceSLADomain() *schema.Resource {
 				MaxItems:    1,
 				Description: "VMware vSphere VM log backups.",
 			},
+			keySapHanaConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyIncrementalFrequency: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Incremental backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyIncrementalFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Incremental frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyLogRetention: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyLogRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyDifferentialFrequency: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Differential backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyDifferentialFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Differential frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyStorageSnapshotConfig: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyFrequency: {
+										Type:         schema.TypeInt,
+										Required:     true,
+										Description:  "Storage snapshot frequency.",
+										ValidateFunc: validation.IntAtLeast(1),
+									},
+									keyFrequencyUnit: {
+										Type:         schema.TypeString,
+										Optional:     true,
+										Default:      string(gqlsla.Days),
+										Description:  "Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+										ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+									},
+									keyRetention: {
+										Type:         schema.TypeInt,
+										Required:     true,
+										Description:  "Storage snapshot retention.",
+										ValidateFunc: validation.IntAtLeast(1),
+									},
+									keyRetentionUnit: {
+										Type:         schema.TypeString,
+										Optional:     true,
+										Default:      string(gqlsla.Days),
+										Description:  "Retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+										ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+									},
+								},
+							},
+							Optional:    true,
+							MaxItems:    1,
+							Description: "SAP HANA storage snapshot configuration.",
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "SAP HANA database configuration.",
+			},
+			keyDB2Config: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyIncrementalFrequency: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Incremental backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyIncrementalFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Incremental frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyLogRetention: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyLogRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyDifferentialFrequency: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Differential backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyDifferentialFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Differential frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyLogArchivalMethod: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "Log archival method. Possible values are `LOGARCHMETH1`, `LOGARCHMETH2`.",
+							ValidateFunc: validation.StringInSlice([]string{"LOGARCHMETH1", "LOGARCHMETH2"}, false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "Db2 database configuration.",
+			},
+			keyMSSQLConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyLogRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyLogRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "SQL Server database configuration.",
+			},
+			keyOracleConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyLogRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyLogRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyHostLogRetention: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Host log retention duration for archived redo logs.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyHostLogRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Host log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "Oracle database configuration.",
+			},
+			keyMongoConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "MongoDB database configuration.",
+			},
+			keyManagedVolumeConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyLogRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyLogRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "Managed Volume configuration.",
+			},
+			keyPostgresDBClusterConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyLogRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log retention duration for Write-Ahead Logging (WAL) logs.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyLogRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "Postgres DB Cluster configuration.",
+			},
+			keyMySQLDBConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "MySQL database configuration.",
+			},
+			keyInformixConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyIncrementalFrequency: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Incremental backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyIncrementalFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Incremental frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyIncrementalRetention: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Incremental backup retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyIncrementalRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Incremental retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyFrequency: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Log backup frequency.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyFrequencyUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyRetention: {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "Informix database configuration.",
+			},
+			keyGCPCloudSQLConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyLogRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Log retention duration.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyLogRetentionUnit: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      string(gqlsla.Days),
+							Description:  "Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "GCP Cloud SQL configuration.",
+			},
+			keyNCDConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyMinutelyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.IsUUID,
+							},
+							Optional:    true,
+							Description: "Target location UUIDs for per-minute schedule backups.",
+						},
+						keyHourlyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.IsUUID,
+							},
+							Optional:    true,
+							Description: "Target location UUIDs for hourly schedule backups.",
+						},
+						keyDailyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.IsUUID,
+							},
+							Optional:    true,
+							Description: "Target location UUIDs for daily schedule backups.",
+						},
+						keyWeeklyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.IsUUID,
+							},
+							Optional:    true,
+							Description: "Target location UUIDs for weekly schedule backups.",
+						},
+						keyMonthlyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.IsUUID,
+							},
+							Optional:    true,
+							Description: "Target location UUIDs for monthly schedule backups.",
+						},
+						keyQuarterlyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.IsUUID,
+							},
+							Optional:    true,
+							Description: "Target location UUIDs for quarterly schedule backups.",
+						},
+						keyYearlyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.IsUUID,
+							},
+							Optional:    true,
+							Description: "Target location UUIDs for yearly schedule backups.",
+						},
+					},
+				},
+				Optional:    true,
+				MaxItems:    1,
+				Description: "NAS Cloud Direct configuration.",
+			},
 			keyBackupLocation: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -556,10 +1057,11 @@ func resourceSLADomain() *schema.Resource {
 				Required: true,
 				Description: "Object types which can be protected by the SLA Domain. Possible values are " +
 					"`ACTIVE_DIRECTORY_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
-					"`AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
-					"`AZURE_BLOB_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, " +
-					"`K8S_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `NAS_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, " +
-					"`OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. " +
+					"`AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
+					"`CASSANDRA_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, " +
+					"`INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, " +
+					"`NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, " +
+					"`ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, `SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. " +
 					"Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.",
 			},
 			keyQuarterlySchedule: {
@@ -1559,6 +2061,50 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 		if err != nil {
 			return diag.FromErr(err)
 		}
+		sapHanaConfig, err := fromSapHanaConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		db2Config, err := fromDB2Config(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		mssqlConfig, err := fromMssqlConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		oracleConfig, err := fromOracleConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		mongoConfig, err := fromMongoConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		managedVolumeConfig, err := fromManagedVolumeConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		postgresDbClusterConfig, err := fromPostgresDbClusterConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		mysqldbConfig, err := fromMysqldbConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		informixConfig, err := fromInformixConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		gcpCloudSqlConfig, err := fromGcpCloudSqlConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		ncdConfig, err := fromNcdConfig(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 		firstFullSnapshotWindows, err := fromSnapshotWindow(d.Get(keyFirstFullSnapshot).([]any))
 		if err != nil {
 			return diag.FromErr(err)
@@ -1673,6 +2219,17 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 				if len(archivalSpecs) > 0 {
 					return diag.Errorf("OLVM object type does not support archival locations")
 				}
+			case gqlsla.ObjectCassandra:
+				if len(archivalSpecs) > 0 {
+					return diag.Errorf("Cassandra object type does not support archival locations")
+				}
+				if len(replicationSpecs) > 0 {
+					return diag.Errorf("Cassandra object type does not support replication")
+				}
+			case gqlsla.ObjectMongoDB:
+				if len(replicationSpecs) > 0 {
+					return diag.Errorf("MongoDB object type does not support replication")
+				}
 			}
 			objectTypes = append(objectTypes, objectType)
 		}
@@ -1693,6 +2250,17 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 				AzureSQLDatabaseDBConfig:        azureSQLConfig,
 				AzureSQLManagedInstanceDBConfig: azureSQLMIConfig,
 				VMwareVMConfig:                  vmwareVMConfig,
+				SapHanaConfig:                   sapHanaConfig,
+				DB2Config:                       db2Config,
+				MssqlConfig:                     mssqlConfig,
+				OracleConfig:                    oracleConfig,
+				MongoConfig:                     mongoConfig,
+				ManagedVolumeSlaConfig:          managedVolumeConfig,
+				PostgresDbClusterSlaConfig:      postgresDbClusterConfig,
+				MysqldbSlaConfig:                mysqldbConfig,
+				NcdSlaConfig:                    ncdConfig,
+				InformixSlaConfig:               informixConfig,
+				GcpCloudSqlConfig:               gcpCloudSqlConfig,
 			},
 			ObjectTypes:       objectTypes,
 			ReplicationSpecs:  replicationSpecs,
@@ -1830,6 +2398,39 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyVMwareVMConfig, toVMwareVMConfig(slaDomain.ObjectSpecificConfigs.VMwareVMConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keySapHanaConfig, toSapHanaConfig(slaDomain.ObjectSpecificConfigs.SapHanaConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyDB2Config, toDB2Config(slaDomain.ObjectSpecificConfigs.DB2Config)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyMSSQLConfig, toMssqlConfig(slaDomain.ObjectSpecificConfigs.MssqlConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyOracleConfig, toOracleConfig(slaDomain.ObjectSpecificConfigs.OracleConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyMongoConfig, toMongoConfig(slaDomain.ObjectSpecificConfigs.MongoConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyManagedVolumeConfig, toManagedVolumeConfig(slaDomain.ObjectSpecificConfigs.ManagedVolumeSlaConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyPostgresDBClusterConfig, toPostgresDbClusterConfig(slaDomain.ObjectSpecificConfigs.PostgresDbClusterSlaConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyMySQLDBConfig, toMysqldbConfig(slaDomain.ObjectSpecificConfigs.MysqldbSlaConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyInformixConfig, toInformixConfig(slaDomain.ObjectSpecificConfigs.InformixSlaConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyGCPCloudSQLConfig, toGcpCloudSqlConfig(slaDomain.ObjectSpecificConfigs.GcpCloudSqlConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyNCDConfig, toNcdConfig(slaDomain.ObjectSpecificConfigs.NcdSlaConfig)); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -2106,6 +2707,544 @@ func toVMwareVMConfig(vmwareConfig *gqlsla.VMwareVMConfig) []any {
 	return []any{map[string]any{
 		keyLogRetention: int(vmwareConfig.LogRetentionSeconds),
 	}}
+}
+
+func fromSapHanaConfig(d *schema.ResourceData) (*gqlsla.SapHanaConfig, error) {
+	block, ok := d.GetOk(keySapHanaConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	sapHanaConfig := &gqlsla.SapHanaConfig{}
+
+	if freq, ok := config[keyIncrementalFrequency].(int); ok && freq > 0 {
+		sapHanaConfig.IncrementalFrequency = gqlsla.RetentionDuration{
+			Duration: freq,
+			Unit:     gqlsla.RetentionUnit(config[keyIncrementalFrequencyUnit].(string)),
+		}
+	}
+	if ret, ok := config[keyLogRetention].(int); ok && ret > 0 {
+		sapHanaConfig.LogRetention = gqlsla.RetentionDuration{
+			Duration: ret,
+			Unit:     gqlsla.RetentionUnit(config[keyLogRetentionUnit].(string)),
+		}
+	}
+	if freq, ok := config[keyDifferentialFrequency].(int); ok && freq > 0 {
+		sapHanaConfig.DifferentialFrequency = gqlsla.RetentionDuration{
+			Duration: freq,
+			Unit:     gqlsla.RetentionUnit(config[keyDifferentialFrequencyUnit].(string)),
+		}
+	}
+
+	if snapConfig, ok := config[keyStorageSnapshotConfig].([]any); ok && len(snapConfig) > 0 && snapConfig[0] != nil {
+		snap := snapConfig[0].(map[string]any)
+		sapHanaConfig.StorageSnapshotConfig = &gqlsla.SapHanaStorageSnapshotConfig{
+			Frequency: gqlsla.RetentionDuration{
+				Duration: snap[keyFrequency].(int),
+				Unit:     gqlsla.RetentionUnit(snap[keyFrequencyUnit].(string)),
+			},
+			Retention: gqlsla.RetentionDuration{
+				Duration: snap[keyRetention].(int),
+				Unit:     gqlsla.RetentionUnit(snap[keyRetentionUnit].(string)),
+			},
+		}
+	}
+
+	return sapHanaConfig, nil
+}
+
+func toSapHanaConfig(config *gqlsla.SapHanaConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	result := map[string]any{}
+	if config.IncrementalFrequency.Duration > 0 {
+		result[keyIncrementalFrequency] = config.IncrementalFrequency.Duration
+		result[keyIncrementalFrequencyUnit] = config.IncrementalFrequency.Unit
+	}
+	if config.LogRetention.Duration > 0 {
+		result[keyLogRetention] = config.LogRetention.Duration
+		result[keyLogRetentionUnit] = config.LogRetention.Unit
+	}
+	if config.DifferentialFrequency.Duration > 0 {
+		result[keyDifferentialFrequency] = config.DifferentialFrequency.Duration
+		result[keyDifferentialFrequencyUnit] = config.DifferentialFrequency.Unit
+	}
+	if config.StorageSnapshotConfig != nil {
+		result[keyStorageSnapshotConfig] = []any{map[string]any{
+			keyFrequency:     config.StorageSnapshotConfig.Frequency.Duration,
+			keyFrequencyUnit: config.StorageSnapshotConfig.Frequency.Unit,
+			keyRetention:     config.StorageSnapshotConfig.Retention.Duration,
+			keyRetentionUnit: config.StorageSnapshotConfig.Retention.Unit,
+		}}
+	}
+
+	return []any{result}
+}
+
+func fromDB2Config(d *schema.ResourceData) (*gqlsla.DB2Config, error) {
+	block, ok := d.GetOk(keyDB2Config)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	db2Config := &gqlsla.DB2Config{}
+
+	if freq, ok := config[keyIncrementalFrequency].(int); ok && freq > 0 {
+		db2Config.IncrementalFrequency = gqlsla.RetentionDuration{
+			Duration: freq,
+			Unit:     gqlsla.RetentionUnit(config[keyIncrementalFrequencyUnit].(string)),
+		}
+	}
+	if ret, ok := config[keyLogRetention].(int); ok && ret > 0 {
+		db2Config.LogRetention = gqlsla.RetentionDuration{
+			Duration: ret,
+			Unit:     gqlsla.RetentionUnit(config[keyLogRetentionUnit].(string)),
+		}
+	}
+	if freq, ok := config[keyDifferentialFrequency].(int); ok && freq > 0 {
+		db2Config.DifferentialFrequency = gqlsla.RetentionDuration{
+			Duration: freq,
+			Unit:     gqlsla.RetentionUnit(config[keyDifferentialFrequencyUnit].(string)),
+		}
+	}
+	if method, ok := config[keyLogArchivalMethod].(string); ok && method != "" {
+		db2Config.LogArchivalMethod = gqlsla.Db2LogArchivalMethod(method)
+	}
+
+	return db2Config, nil
+}
+
+func toDB2Config(config *gqlsla.DB2Config) []any {
+	if config == nil {
+		return nil
+	}
+
+	result := map[string]any{}
+	if config.IncrementalFrequency.Duration > 0 {
+		result[keyIncrementalFrequency] = config.IncrementalFrequency.Duration
+		result[keyIncrementalFrequencyUnit] = config.IncrementalFrequency.Unit
+	}
+	if config.LogRetention.Duration > 0 {
+		result[keyLogRetention] = config.LogRetention.Duration
+		result[keyLogRetentionUnit] = config.LogRetention.Unit
+	}
+	if config.DifferentialFrequency.Duration > 0 {
+		result[keyDifferentialFrequency] = config.DifferentialFrequency.Duration
+		result[keyDifferentialFrequencyUnit] = config.DifferentialFrequency.Unit
+	}
+	if config.LogArchivalMethod != "" {
+		result[keyLogArchivalMethod] = string(config.LogArchivalMethod)
+	}
+
+	return []any{result}
+}
+
+func fromMssqlConfig(d *schema.ResourceData) (*gqlsla.MssqlConfig, error) {
+	block, ok := d.GetOk(keyMSSQLConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	return &gqlsla.MssqlConfig{
+		Frequency: gqlsla.RetentionDuration{
+			Duration: config[keyFrequency].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyFrequencyUnit].(string)),
+		},
+		LogRetention: gqlsla.RetentionDuration{
+			Duration: config[keyLogRetention].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyLogRetentionUnit].(string)),
+		},
+	}, nil
+}
+
+func toMssqlConfig(config *gqlsla.MssqlConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyFrequency:        config.Frequency.Duration,
+		keyFrequencyUnit:    config.Frequency.Unit,
+		keyLogRetention:     config.LogRetention.Duration,
+		keyLogRetentionUnit: config.LogRetention.Unit,
+	}}
+}
+
+func fromOracleConfig(d *schema.ResourceData) (*gqlsla.OracleConfig, error) {
+	block, ok := d.GetOk(keyOracleConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	oracleConfig := &gqlsla.OracleConfig{
+		Frequency: gqlsla.RetentionDuration{
+			Duration: config[keyFrequency].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyFrequencyUnit].(string)),
+		},
+		LogRetention: gqlsla.RetentionDuration{
+			Duration: config[keyLogRetention].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyLogRetentionUnit].(string)),
+		},
+	}
+
+	if hostRet, ok := config[keyHostLogRetention].(int); ok && hostRet > 0 {
+		oracleConfig.HostLogRetention = gqlsla.RetentionDuration{
+			Duration: hostRet,
+			Unit:     gqlsla.RetentionUnit(config[keyHostLogRetentionUnit].(string)),
+		}
+	}
+
+	return oracleConfig, nil
+}
+
+func toOracleConfig(config *gqlsla.OracleConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	result := map[string]any{
+		keyFrequency:        config.Frequency.Duration,
+		keyFrequencyUnit:    config.Frequency.Unit,
+		keyLogRetention:     config.LogRetention.Duration,
+		keyLogRetentionUnit: config.LogRetention.Unit,
+	}
+
+	if config.HostLogRetention.Duration > 0 {
+		result[keyHostLogRetention] = config.HostLogRetention.Duration
+		result[keyHostLogRetentionUnit] = config.HostLogRetention.Unit
+	}
+
+	return []any{result}
+}
+
+func fromMongoConfig(d *schema.ResourceData) (*gqlsla.MongoConfig, error) {
+	block, ok := d.GetOk(keyMongoConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	return &gqlsla.MongoConfig{
+		LogFrequency: gqlsla.RetentionDuration{
+			Duration: config[keyFrequency].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyFrequencyUnit].(string)),
+		},
+		LogRetention: gqlsla.RetentionDuration{
+			Duration: config[keyRetention].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyRetentionUnit].(string)),
+		},
+	}, nil
+}
+
+func toMongoConfig(config *gqlsla.MongoConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyFrequency:     config.LogFrequency.Duration,
+		keyFrequencyUnit: config.LogFrequency.Unit,
+		keyRetention:     config.LogRetention.Duration,
+		keyRetentionUnit: config.LogRetention.Unit,
+	}}
+}
+
+func fromManagedVolumeConfig(d *schema.ResourceData) (*gqlsla.ManagedVolumeSlaConfig, error) {
+	block, ok := d.GetOk(keyManagedVolumeConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	return &gqlsla.ManagedVolumeSlaConfig{
+		LogRetention: gqlsla.RetentionDuration{
+			Duration: config[keyLogRetention].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyLogRetentionUnit].(string)),
+		},
+	}, nil
+}
+
+func toManagedVolumeConfig(config *gqlsla.ManagedVolumeSlaConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyLogRetention:     config.LogRetention.Duration,
+		keyLogRetentionUnit: config.LogRetention.Unit,
+	}}
+}
+
+func fromPostgresDbClusterConfig(d *schema.ResourceData) (*gqlsla.PostgresDbClusterSlaConfig, error) {
+	block, ok := d.GetOk(keyPostgresDBClusterConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	return &gqlsla.PostgresDbClusterSlaConfig{
+		LogRetention: gqlsla.RetentionDuration{
+			Duration: config[keyLogRetention].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyLogRetentionUnit].(string)),
+		},
+	}, nil
+}
+
+func toPostgresDbClusterConfig(config *gqlsla.PostgresDbClusterSlaConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyLogRetention:     config.LogRetention.Duration,
+		keyLogRetentionUnit: config.LogRetention.Unit,
+	}}
+}
+
+func fromMysqldbConfig(d *schema.ResourceData) (*gqlsla.MysqldbSlaConfig, error) {
+	block, ok := d.GetOk(keyMySQLDBConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	return &gqlsla.MysqldbSlaConfig{
+		LogFrequency: gqlsla.RetentionDuration{
+			Duration: config[keyFrequency].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyFrequencyUnit].(string)),
+		},
+		LogRetention: gqlsla.RetentionDuration{
+			Duration: config[keyRetention].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyRetentionUnit].(string)),
+		},
+	}, nil
+}
+
+func toMysqldbConfig(config *gqlsla.MysqldbSlaConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyFrequency:     config.LogFrequency.Duration,
+		keyFrequencyUnit: config.LogFrequency.Unit,
+		keyRetention:     config.LogRetention.Duration,
+		keyRetentionUnit: config.LogRetention.Unit,
+	}}
+}
+
+func fromInformixConfig(d *schema.ResourceData) (*gqlsla.InformixSlaConfig, error) {
+	block, ok := d.GetOk(keyInformixConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	informixConfig := &gqlsla.InformixSlaConfig{}
+
+	if freq, ok := config[keyIncrementalFrequency].(int); ok && freq > 0 {
+		informixConfig.IncrementalFrequency = gqlsla.RetentionDuration{
+			Duration: freq,
+			Unit:     gqlsla.RetentionUnit(config[keyIncrementalFrequencyUnit].(string)),
+		}
+	}
+	if ret, ok := config[keyIncrementalRetention].(int); ok && ret > 0 {
+		informixConfig.IncrementalRetention = gqlsla.RetentionDuration{
+			Duration: ret,
+			Unit:     gqlsla.RetentionUnit(config[keyIncrementalRetentionUnit].(string)),
+		}
+	}
+	if freq, ok := config[keyFrequency].(int); ok && freq > 0 {
+		informixConfig.LogFrequency = gqlsla.RetentionDuration{
+			Duration: freq,
+			Unit:     gqlsla.RetentionUnit(config[keyFrequencyUnit].(string)),
+		}
+	}
+	if ret, ok := config[keyRetention].(int); ok && ret > 0 {
+		informixConfig.LogRetention = gqlsla.RetentionDuration{
+			Duration: ret,
+			Unit:     gqlsla.RetentionUnit(config[keyRetentionUnit].(string)),
+		}
+	}
+
+	return informixConfig, nil
+}
+
+func toInformixConfig(config *gqlsla.InformixSlaConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	result := map[string]any{}
+	if config.IncrementalFrequency.Duration > 0 {
+		result[keyIncrementalFrequency] = config.IncrementalFrequency.Duration
+		result[keyIncrementalFrequencyUnit] = config.IncrementalFrequency.Unit
+	}
+	if config.IncrementalRetention.Duration > 0 {
+		result[keyIncrementalRetention] = config.IncrementalRetention.Duration
+		result[keyIncrementalRetentionUnit] = config.IncrementalRetention.Unit
+	}
+	if config.LogFrequency.Duration > 0 {
+		result[keyFrequency] = config.LogFrequency.Duration
+		result[keyFrequencyUnit] = config.LogFrequency.Unit
+	}
+	if config.LogRetention.Duration > 0 {
+		result[keyRetention] = config.LogRetention.Duration
+		result[keyRetentionUnit] = config.LogRetention.Unit
+	}
+
+	return []any{result}
+}
+
+func fromGcpCloudSqlConfig(d *schema.ResourceData) (*gqlsla.GcpCloudSqlConfig, error) {
+	block, ok := d.GetOk(keyGCPCloudSQLConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	return &gqlsla.GcpCloudSqlConfig{
+		LogRetention: gqlsla.RetentionDuration{
+			Duration: config[keyLogRetention].(int),
+			Unit:     gqlsla.RetentionUnit(config[keyLogRetentionUnit].(string)),
+		},
+	}, nil
+}
+
+func toGcpCloudSqlConfig(config *gqlsla.GcpCloudSqlConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyLogRetention:     config.LogRetention.Duration,
+		keyLogRetentionUnit: config.LogRetention.Unit,
+	}}
+}
+
+func fromNcdConfig(d *schema.ResourceData) (*gqlsla.NcdSlaConfig, error) {
+	block, ok := d.GetOk(keyNCDConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil, nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	ncdConfig := &gqlsla.NcdSlaConfig{}
+
+	parseUUIDs := func(key string) []uuid.UUID {
+		if locs, ok := config[key].([]any); ok && len(locs) > 0 {
+			var uuids []uuid.UUID
+			for _, loc := range locs {
+				if id, err := uuid.Parse(loc.(string)); err == nil {
+					uuids = append(uuids, id)
+				}
+			}
+			return uuids
+		}
+		return nil
+	}
+
+	ncdConfig.MinutelyBackupLocations = parseUUIDs(keyMinutelyBackupLocations)
+	ncdConfig.HourlyBackupLocations = parseUUIDs(keyHourlyBackupLocations)
+	ncdConfig.DailyBackupLocations = parseUUIDs(keyDailyBackupLocations)
+	ncdConfig.WeeklyBackupLocations = parseUUIDs(keyWeeklyBackupLocations)
+	ncdConfig.MonthlyBackupLocations = parseUUIDs(keyMonthlyBackupLocations)
+	ncdConfig.QuarterlyBackupLocations = parseUUIDs(keyQuarterlyBackupLocations)
+	ncdConfig.YearlyBackupLocations = parseUUIDs(keyYearlyBackupLocations)
+
+	return ncdConfig, nil
+}
+
+func toNcdConfig(config *gqlsla.NcdSlaConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	uuidsToStrings := func(uuids []uuid.UUID) []any {
+		if len(uuids) == 0 {
+			return nil
+		}
+		var strs []any
+		for _, id := range uuids {
+			strs = append(strs, id.String())
+		}
+		return strs
+	}
+
+	result := map[string]any{}
+	if locs := uuidsToStrings(config.MinutelyBackupLocations); locs != nil {
+		result[keyMinutelyBackupLocations] = locs
+	}
+	if locs := uuidsToStrings(config.HourlyBackupLocations); locs != nil {
+		result[keyHourlyBackupLocations] = locs
+	}
+	if locs := uuidsToStrings(config.DailyBackupLocations); locs != nil {
+		result[keyDailyBackupLocations] = locs
+	}
+	if locs := uuidsToStrings(config.WeeklyBackupLocations); locs != nil {
+		result[keyWeeklyBackupLocations] = locs
+	}
+	if locs := uuidsToStrings(config.MonthlyBackupLocations); locs != nil {
+		result[keyMonthlyBackupLocations] = locs
+	}
+	if locs := uuidsToStrings(config.QuarterlyBackupLocations); locs != nil {
+		result[keyQuarterlyBackupLocations] = locs
+	}
+	if locs := uuidsToStrings(config.YearlyBackupLocations); locs != nil {
+		result[keyYearlyBackupLocations] = locs
+	}
+
+	return []any{result}
 }
 
 func fromBackupLocation(d *schema.ResourceData) []gqlsla.BackupLocationSpec {
