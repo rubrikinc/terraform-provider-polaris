@@ -61,7 +61,6 @@ resource "polaris_cdm_bootstrap_cces_azure" "default" {
 - `admin_email` (String) The Rubrik cluster sends messages for the admin account to this email address.
 - `admin_password` (String, Sensitive) Password for the admin account.
 - `cluster_name` (String) Unique name to assign to the Rubrik cluster.
-- `connection_string` (String) The connection string for the Azure storage account where CCES will store its data.
 - `container_name` (String) The name of the container in the Azure storage account where CCES will store its data.
 - `dns_name_servers` (List of String) IPv4 addresses of DNS servers.
 - `dns_search_domain` (List of String) The search domain that the DNS Service will use to resolve hostnames that are not fully qualified.
@@ -72,8 +71,9 @@ resource "polaris_cdm_bootstrap_cces_azure" "default" {
 
 ### Optional
 
-- `cluster_node_ip` (String) IP address of the cluster node to connect to. If not specified, a random node from the `cluster_nodes` map will be used.
+- `cluster_node_ip_address` (String) IP address of the cluster node to connect to. If not specified, a random node from the `cluster_nodes` map will be used.
 - `cluster_nodes` (Map of String) The node name and IP formatted as a map.
+- `connection_string` (String) The connection string for the Azure storage account where CCES will store its data.
 - `enable_encryption` (Boolean, Deprecated) When bootstrapping a Cloud Cluster this value must be `false`. **Deprecated:** not used. Only kept for backwards compatibility.
 - `enable_immutability` (Boolean) Flag to determine if versioning will be used on the Azure Blob storage to enable immutability.
 - `node_config` (Map of String, Deprecated) The node name and IP address formatted as a map. **Deprecated:** use `cluster_nodes` instead. Only kept for backwards compatibility.
@@ -83,8 +83,11 @@ resource "polaris_cdm_bootstrap_cces_azure" "default" {
 - `ntp_server2_key` (String) Symmetric key material for NTP server #2.
 - `ntp_server2_key_id` (Number) Key id number for NTP server #2 (typically this is 1).
 - `ntp_server2_key_type` (String) Symmetric key type for NTP server #2.
+- `storage_account_endpoint_suffix` (String) The endpoint suffix of the storage account when using user assigned managed identity, e.g. core.windows.net
+- `storage_account_name` (String) The storage account name where CCES will store its data. Use instead of connection_string to connect with a user assigned managed identity.
 - `timeout` (String) The time to wait to establish a connection the Rubrik cluster before returning an error (defaults to `4m`).
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `user_assigned_managed_identity_client_id` (String) The client ID of the user assigned managed identity to use to connect to the storage account for CCES.
 - `wait_for_completion` (Boolean) Flag to determine if Terraform should wait for the bootstrap process to complete.
 
 ### Read-Only
