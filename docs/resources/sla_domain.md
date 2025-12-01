@@ -249,7 +249,7 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 ### Required
 
 - `name` (String) SLA Domain name.
-- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `ACTIVE_DIRECTORY_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `CASSANDRA_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, `ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, `SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
+- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `ACTIVE_DIRECTORY_OBJECT_TYPE`, `ATLASSIAN_JIRA_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_DEVOPS_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `CASSANDRA_OBJECT_TYPE`, `D365_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `GOOGLE_WORKSPACE_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `KUPR_OBJECT_TYPE`, `M365_BACKUP_STORAGE_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `MYSQLDB_OBJECT_TYPE`, `NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, `ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `PROXMOX_OBJECT_TYPE`, `SALESFORCE_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, `SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
 
 ### Optional
 
@@ -271,6 +271,7 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 - `informix_config` (Block List, Max: 1) Informix database configuration. (see [below for nested schema](#nestedblock--informix_config))
 - `local_retention` (Block List, Max: 1) (see [below for nested schema](#nestedblock--local_retention))
 - `managed_volume_config` (Block List, Max: 1) Managed Volume configuration. (see [below for nested schema](#nestedblock--managed_volume_config))
+- `minute_schedule` (Block List, Max: 1) Take snapshots with frequency specified in minutes. (see [below for nested schema](#nestedblock--minute_schedule))
 - `mongo_config` (Block List, Max: 1) MongoDB database configuration. (see [below for nested schema](#nestedblock--mongo_config))
 - `monthly_schedule` (Block List, Max: 1) Take snapshots with frequency specified in months. (see [below for nested schema](#nestedblock--monthly_schedule))
 - `mssql_config` (Block List, Max: 1) SQL Server database configuration. (see [below for nested schema](#nestedblock--mssql_config))
@@ -441,7 +442,7 @@ Required:
 
 Optional:
 
-- `retention_unit` (String) Retention unit specifies the unit of the `retention` field. Possible values are `HOURS`, `DAYS` and `WEEKS`. Default value is `DAYS`.
+- `retention_unit` (String) Retention unit specifies the unit of the `retention` field. Possible values are `HOURS`, `DAYS`, `WEEKS` and `MONTHS`. Default value is `DAYS`.
 
 
 <a id="nestedblock--informix_config"></a>
@@ -481,6 +482,19 @@ Required:
 Optional:
 
 - `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+
+
+<a id="nestedblock--minute_schedule"></a>
+### Nested Schema for `minute_schedule`
+
+Required:
+
+- `frequency` (Number) Frequency in minutes.
+- `retention` (Number) Retention specifies for how long the snapshots are kept.
+
+Optional:
+
+- `retention_unit` (String) Retention unit specifies the unit of the `retention` field. Possible values are `HOURS`, `DAYS` and `WEEKS`. Default value is `DAYS`.
 
 
 <a id="nestedblock--mongo_config"></a>
@@ -716,10 +730,13 @@ Required:
 
 Required:
 
-- `day_of_week` (String) Day of week. Possible values are `MONDAY`, `TUESDAY`, `WEDNESDAY`, `THURSDAY`, `FRIDAY`, `SATURDAY` and `SUNDAY`.
 - `frequency` (Number) Frequency in weeks.
 - `retention` (Number) Retention specifies for how long the snapshots are kept.
 - `retention_unit` (String) Retention unit specifies the unit of `retention`. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
+
+Optional:
+
+- `day_of_week` (String) Day of week. Possible values are `MONDAY`, `TUESDAY`, `WEDNESDAY`, `THURSDAY`, `FRIDAY`, `SATURDAY` and `SUNDAY`. Note: For M365 Backup Storage SLAs, this field should be omitted.
 
 
 <a id="nestedblock--yearly_schedule"></a>
