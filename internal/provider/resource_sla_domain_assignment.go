@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/sla"
 )
@@ -47,8 +48,16 @@ Existing snapshots of the object will be retained according to the SLA Domain
 inherited from the parent object. If the parent object doesn't have an SLA
 Domain, the existing snapshots will be retained forever.
 
--> **Note:** As of now, it's not possible to assign objects as Do Not Protect.
+The ´assignment_type´ attribute controls how the SLA domain is assigned:
+  * ´protectWithSlaId´ - Protect objects with the specified SLA domain. Requires
+    ´sla_domain_id´ to be set.
+  * ´doNotProtect´ - Do not protect objects. ´sla_domain_id´ is optional and
+    will be ignored if set.
 `
+
+// doNotProtectID is the sentinel resource ID used when the assignment type is
+// DoNotProtect.
+const doNotProtectID = "doNotProtect"
 
 func resourceSLADomainAssignment() *schema.Resource {
 	return &schema.Resource{
@@ -64,6 +73,17 @@ func resourceSLADomainAssignment() *schema.Resource {
 				Computed:    true,
 				Description: "SLA domain ID (UUID).",
 			},
+			keyAssignmentType: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  string(gqlsla.ProtectWithSLA),
+				ValidateFunc: validation.StringInSlice([]string{
+					string(gqlsla.ProtectWithSLA),
+					string(gqlsla.DoNotProtect),
+				}, false),
+				Description: "SLA domain assignment type. Valid values are `protectWithSlaId` and " +
+					"`doNotProtect`. Defaults to `protectWithSlaId`.",
+			},
 			keyObjectIDs: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
@@ -76,9 +96,32 @@ func resourceSLADomainAssignment() *schema.Resource {
 			},
 			keySLADomainID: {
 				Type:         schema.TypeString,
-				Required:     true,
-				Description:  "SLA domain ID (UUID).",
+				Optional:     true,
+				Description:  "SLA domain ID (UUID). Required when `assignment_type` is `protectWithSlaId`.",
 				ValidateFunc: validation.IsUUID,
+			},
+			keyApplyChangesToExistingSnapshots: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Apply SLA changes to existing snapshots. Only valid when `assignment_type` is `protectWithSlaId`. Defaults to `true`.",
+			},
+			keyApplyChangesToNonPolicySnapshots: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Apply SLA changes to non-policy snapshots. Only valid when `assignment_type` is `protectWithSlaId`. Defaults to `false`.",
+			},
+			keyExistingSnapshotRetention: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					string(gqlsla.RetainSnapshots),
+					string(gqlsla.KeepForever),
+					string(gqlsla.ExpireImmediately),
+				}, false),
+				Description: "Existing snapshot retention policy. Only valid when `assignment_type` is " +
+					"`doNotProtect`. Valid values are `RETAIN_SNAPSHOTS`, `KEEP_FOREVER`, and `EXPIRE_IMMEDIATELY`.",
 			},
 		},
 		Importer: &schema.ResourceImporter{
@@ -95,11 +138,6 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		return diag.FromErr(err)
 	}
 
-	domainID, err := uuid.Parse(d.Get(keySLADomainID).(string))
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
 	var objectIDs []uuid.UUID
 	for _, id := range d.Get(keyObjectIDs).(*schema.Set).List() {
 		id, err := uuid.Parse(id.(string))
@@ -109,20 +147,68 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		objectIDs = append(objectIDs, id)
 	}
 
-	if err := sla.Wrap(client).AssignDomain(ctx, gqlsla.AssignDomainParams{
-		DomainID:                  &domainID,
-		DomainAssignType:          gqlsla.ProtectWithSLA,
-		ObjectIDs:                 objectIDs,
-		ApplyToExistingSnapshots:  ptr(true),
-		ApplyToNonPolicySnapshots: ptr(false),
-	}); err != nil {
-		return diag.FromErr(err)
+	assignType := gqlsla.AssignmentType(d.Get(keyAssignmentType).(string))
+	domainID := d.Get(keySLADomainID).(string)
+	snapshotRetention := d.Get(keyExistingSnapshotRetention).(string)
+	applyToExisting := d.Get(keyApplyChangesToExistingSnapshots).(bool)
+	applyToNonPolicy := d.Get(keyApplyChangesToNonPolicySnapshots).(bool)
+
+	params := gqlsla.AssignDomainParams{
+		DomainAssignType: assignType,
+		ObjectIDs:        objectIDs,
 	}
-	if err := waitForAssignment(ctx, client, domainID, objectIDs); err != nil {
+
+	// For protectWithSlaId, sla_domain_id is required.
+	// For doNotProtect, sla_domain_id must be empty and existing_snapshot_retention is allowed.
+	var expectedDomainID string
+	switch assignType {
+	case gqlsla.ProtectWithSLA:
+		if domainID == "" {
+			return diag.Errorf("sla_domain_id is required when assignment_type is %q", gqlsla.ProtectWithSLA)
+		}
+		if snapshotRetention != "" {
+			return diag.Errorf("existing_snapshot_retention is only valid when assignment_type is %q", gqlsla.DoNotProtect)
+		}
+		if applyToNonPolicy && !applyToExisting {
+			return diag.Errorf("apply_changes_to_non_policy_snapshots requires apply_changes_to_existing_snapshots to be true")
+		}
+		dID, err := uuid.Parse(domainID)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		params.DomainID = &dID
+		params.ApplyToExistingSnapshots = ptr(applyToExisting)
+		params.ApplyToNonPolicySnapshots = ptr(applyToNonPolicy)
+		expectedDomainID = domainID
+	case gqlsla.DoNotProtect:
+		if domainID != "" {
+			return diag.Errorf("sla_domain_id must be empty when assignment_type is %q", gqlsla.DoNotProtect)
+		}
+		if !applyToExisting || applyToNonPolicy {
+			return diag.Errorf("apply_changes_to_existing_snapshots and apply_changes_to_non_policy_snapshots are only valid when assignment_type is %q", gqlsla.ProtectWithSLA)
+		}
+		if snapshotRetention != "" {
+			params.ExistingSnapshotRetention = gqlsla.ExistingSnapshotRetention(snapshotRetention)
+		}
+		expectedDomainID = core.DoNotProtectSLAID
+	}
+
+	if err := sla.Wrap(client).AssignDomain(ctx, params); err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.SetId(domainID.String())
+	// Wait for the assignment to be applied.
+	if err := waitForAssignment(ctx, client, expectedDomainID, objectIDs); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Set the resource ID based on assignment type.
+	if assignType == gqlsla.DoNotProtect {
+		d.SetId(doNotProtectID)
+	} else {
+		d.SetId(params.DomainID.String())
+	}
+
 	return nil
 }
 
@@ -134,45 +220,71 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 		return diag.FromErr(err)
 	}
 
-	domainID, err := uuid.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	assignType := gqlsla.AssignmentType(d.Get(keyAssignmentType).(string))
+	domainIDStr := d.Get(keySLADomainID).(string)
 
-	// Make sure the SLA domain still exists.
-	if _, err := sla.Wrap(client).DomainByID(ctx, domainID); err != nil {
-		if errors.Is(err, graphql.ErrNotFound) {
-			d.SetId("")
-			return nil
-		}
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keySLADomainID, domainID.String()); err != nil {
-		return diag.FromErr(err)
-	}
-
-	objectIDs := d.Get(keyObjectIDs).(*schema.Set)
-	idSet := make(map[uuid.UUID]struct{}, objectIDs.Len())
-	for _, id := range objectIDs.List() {
-		id, err := uuid.Parse(id.(string))
+	// For protectWithSlaId, verify the SLA domain still exists.
+	if assignType == gqlsla.ProtectWithSLA && domainIDStr != "" {
+		domainID, err := uuid.Parse(domainIDStr)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		idSet[id] = struct{}{}
+		if _, err := sla.Wrap(client).DomainByID(ctx, domainID); err != nil {
+			if errors.Is(err, graphql.ErrNotFound) {
+				d.SetId("")
+				return nil
+			}
+			return diag.FromErr(err)
+		}
 	}
 
-	objects, err := sla.Wrap(client).DomainObjects(ctx, domainID, "")
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	for _, object := range objects {
-		delete(idSet, object.ID)
+	// Query each object to check if it still has the expected SLA directly assigned.
+	objectIDs := d.Get(keyObjectIDs).(*schema.Set)
+	remainingIDs := &schema.Set{F: schema.HashString}
+
+	for _, idStr := range objectIDs.List() {
+		objectID, err := uuid.Parse(idStr.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		obj, err := sla.Wrap(client).HierarchyObjectByID(ctx, objectID)
+		if err != nil {
+			if errors.Is(err, graphql.ErrNotFound) {
+				// Object no longer exists, skip it.
+				continue
+			}
+			return diag.FromErr(err)
+		}
+
+		// Check if the object has the expected SLA directly assigned.
+		if obj.SLAAssignment != gqlsla.Direct {
+			// Not directly assigned, skip.
+			continue
+		}
+
+		switch assignType {
+		case gqlsla.DoNotProtect:
+			// For doNotProtect, check effectiveSlaDomain because with
+			// RETAIN_SNAPSHOTS, configuredSlaDomain keeps the previous SLA
+			// (converted to retention type) while effectiveSlaDomain becomes
+			// DO_NOT_PROTECT.
+			if obj.EffectiveSLADomain.ID == core.DoNotProtectSLAID {
+				remainingIDs.Add(idStr)
+			}
+		case gqlsla.ProtectWithSLA:
+			if obj.ConfiguredSLADomain.ID == domainIDStr {
+				remainingIDs.Add(idStr)
+			}
+		}
 	}
 
-	for id := range idSet {
-		objectIDs.Remove(id.String())
+	if remainingIDs.Len() == 0 {
+		d.SetId("")
+		return nil
 	}
-	if err := d.Set(keyObjectIDs, &objectIDs); err != nil {
+
+	if err := d.Set(keyObjectIDs, remainingIDs); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -192,37 +304,76 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		return diag.FromErr(err)
 	}
 
-	domainID, err := uuid.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
+	assignType := gqlsla.AssignmentType(d.Get(keyAssignmentType).(string))
+	domainIDStr := d.Get(keySLADomainID).(string)
+	snapshotRetention := d.Get(keyExistingSnapshotRetention).(string)
+	applyToExisting := d.Get(keyApplyChangesToExistingSnapshots).(bool)
+	applyToNonPolicy := d.Get(keyApplyChangesToNonPolicySnapshots).(bool)
+
+	// Validate based on assignment_type.
+	switch assignType {
+	case gqlsla.ProtectWithSLA:
+		if domainIDStr == "" {
+			return diag.Errorf("sla_domain_id is required when assignment_type is %q", gqlsla.ProtectWithSLA)
+		}
+		if snapshotRetention != "" {
+			return diag.Errorf("existing_snapshot_retention is only valid when assignment_type is %q", gqlsla.DoNotProtect)
+		}
+		if applyToNonPolicy && !applyToExisting {
+			return diag.Errorf("apply_changes_to_non_policy_snapshots requires apply_changes_to_existing_snapshots to be true")
+		}
+	case gqlsla.DoNotProtect:
+		if domainIDStr != "" {
+			return diag.Errorf("sla_domain_id must be empty when assignment_type is %q", gqlsla.DoNotProtect)
+		}
+		if !applyToExisting || applyToNonPolicy {
+			return diag.Errorf("apply_changes_to_existing_snapshots and apply_changes_to_non_policy_snapshots are only valid when assignment_type is %q", gqlsla.ProtectWithSLA)
+		}
 	}
 
-	newDomainID := domainID
-	if d.HasChange(keySLADomainID) {
-		newDomainID, err = uuid.Parse(d.Get(keySLADomainID).(string))
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		// If the SLA domain ID has changed, we need to move the new objects
-		// and the objects to keep.
+	// Handle assignment type changes.
+	if d.HasChange(keyAssignmentType) || d.HasChange(keySLADomainID) || d.HasChange(keyExistingSnapshotRetention) ||
+		d.HasChange(keyApplyChangesToExistingSnapshots) || d.HasChange(keyApplyChangesToNonPolicySnapshots) {
+		// When assignment type, domain ID, snapshot retention, or apply settings change, we need to reassign all objects.
 		addObjectIDs = totalObjectIDs
 	}
 
 	if len(addObjectIDs) > 0 {
-		if err := sla.Wrap(client).AssignDomain(ctx, gqlsla.AssignDomainParams{
-			DomainID:                  &newDomainID,
-			DomainAssignType:          gqlsla.ProtectWithSLA,
-			ObjectIDs:                 addObjectIDs,
-			ApplyToExistingSnapshots:  ptr(true),
-			ApplyToNonPolicySnapshots: ptr(false),
-		}); err != nil {
+		params := gqlsla.AssignDomainParams{
+			DomainAssignType: assignType,
+			ObjectIDs:        addObjectIDs,
+		}
+
+		// For protectWithSlaId, use apply settings from schema.
+		// For doNotProtect, existing_snapshot_retention is allowed.
+		var expectedAssignment string
+		switch assignType {
+		case gqlsla.ProtectWithSLA:
+			domainID, err := uuid.Parse(domainIDStr)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			params.DomainID = &domainID
+			params.ApplyToExistingSnapshots = ptr(applyToExisting)
+			params.ApplyToNonPolicySnapshots = ptr(applyToNonPolicy)
+			expectedAssignment = domainIDStr
+		case gqlsla.DoNotProtect:
+			if snapshotRetention != "" {
+				params.ExistingSnapshotRetention = gqlsla.ExistingSnapshotRetention(snapshotRetention)
+			}
+			expectedAssignment = core.DoNotProtectSLAID
+		}
+
+		if err := sla.Wrap(client).AssignDomain(ctx, params); err != nil {
 			return diag.FromErr(err)
 		}
-		if err := waitForAssignment(ctx, client, newDomainID, addObjectIDs); err != nil {
+
+		// Wait for the assignment to be applied.
+		if err := waitForAssignment(ctx, client, expectedAssignment, addObjectIDs); err != nil {
 			return diag.FromErr(err)
 		}
 	}
+
 	if len(removeObjectIDs) > 0 {
 		if err := sla.Wrap(client).AssignDomain(ctx, gqlsla.AssignDomainParams{
 			DomainAssignType:          gqlsla.NoAssignment,
@@ -232,12 +383,19 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		}); err != nil {
 			return diag.FromErr(err)
 		}
-		if err := waitForUnassignment(ctx, client, domainID, removeObjectIDs); err != nil {
-			return diag.FromErr(err)
-		}
 	}
 
-	d.SetId(newDomainID.String())
+	// Update the resource ID based on assignment type.
+	if assignType == gqlsla.DoNotProtect {
+		d.SetId(doNotProtectID)
+	} else {
+		domainID, err := uuid.Parse(d.Get(keySLADomainID).(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.SetId(domainID.String())
+	}
+
 	return nil
 }
 
@@ -245,11 +403,6 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	tflog.Trace(ctx, "deleteSLADomainAssignment")
 
 	client, err := m.(*client).polaris()
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	domainID, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -272,7 +425,9 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		}); err != nil {
 			return diag.FromErr(err)
 		}
-		if err := waitForUnassignment(ctx, client, domainID, objectIDs); err != nil {
+
+		// Wait for the assignment to be removed.
+		if err := waitForAssignment(ctx, client, core.UnprotectedSLAID, objectIDs); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -284,6 +439,9 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 // Note, the SLA domain assignment resource is designed to only manage SLA
 // domain assignments owned by the resource. An import on the other hand will
 // take ownership of all SLA domain assignments for a domain.
+//
+// Import format: <sla_domain_id> (for protectWithSlaId assignments)
+// Import does not support the DoNotProtect assignment type.
 func importSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
 	tflog.Trace(ctx, "importSLADomainAssignment")
 
@@ -306,72 +464,87 @@ func importSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m in
 	if err != nil {
 		return nil, err
 	}
-	objectIDs := &schema.Set{F: schema.HashString}
+
+	objectIDsSet := &schema.Set{F: schema.HashString}
 	for _, object := range objects {
-		objectIDs.Add(object.ID.String())
+		objectIDsSet.Add(object.ID.String())
 	}
-	if err := d.Set(keyObjectIDs, &objectIDs); err != nil {
+	if err := d.Set(keyObjectIDs, objectIDsSet); err != nil {
 		return nil, err
 	}
+	if err := d.Set(keySLADomainID, domainID.String()); err != nil {
+		return nil, err
+	}
+	if err := d.Set(keyAssignmentType, string(gqlsla.ProtectWithSLA)); err != nil {
+		return nil, err
+	}
+
+	// Keep the domain ID as the resource ID (already set from import input).
 
 	return []*schema.ResourceData{d}, nil
 }
 
-func waitForAssignment(ctx context.Context, client *polaris.Client, domainID uuid.UUID, objectIDs []uuid.UUID) error {
-	tflog.Debug(ctx, "waiting for SLA domain assignment")
+// waitForAssignment waits for all objects to have the expected SLA directly assigned.
+// For doNotProtect, expectedDomainID should be core.DoNotProtectSLAID.
+// For protectWithSlaId, expectedDomainID should be the SLA domain ID string.
+// For unassignment (noAssignment), expectedDomainID should be core.UnprotectedSLAID.
+func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDomainID string, objectIDs []uuid.UUID) error {
+	startTime := time.Now()
 
 	for {
-		idSet := make(map[uuid.UUID]struct{}, len(objectIDs))
-		for _, id := range objectIDs {
-			idSet[id] = struct{}{}
+		pending := make([]uuid.UUID, 0, len(objectIDs))
+
+		for _, objectID := range objectIDs {
+			obj, err := sla.Wrap(client).HierarchyObjectByID(ctx, objectID)
+			if err != nil {
+				return err
+			}
+
+			switch expectedDomainID {
+			case core.UnprotectedSLAID:
+				// For unprotected, we just need to wait until there's no direct assignment.
+				if obj.SLAAssignment == gqlsla.Direct || obj.ConfiguredSLADomain.ID != core.UnprotectedSLAID {
+					tflog.Debug(ctx, "waiting for assignment to be removed (sla_assignment != DIRECT)", map[string]any{
+						"object_id":      objectID.String(),
+						"configured_sla": obj.ConfiguredSLADomain.ID,
+						"effective_sla":  obj.EffectiveSLADomain.ID,
+						"elapsed":        time.Since(startTime).Truncate(time.Second).String(),
+					})
+					pending = append(pending, objectID)
+				}
+			case core.DoNotProtectSLAID:
+				// For doNotProtect, we check effectiveSlaDomain because with
+				// RETAIN_SNAPSHOTS, configuredSlaDomain keeps the previous SLA.
+				if obj.EffectiveSLADomain.ID != core.DoNotProtectSLAID {
+					tflog.Debug(ctx, "waiting for transition to DO_NOT_PROTECT", map[string]any{
+						"object_id":      objectID.String(),
+						"sla_assignment": string(obj.SLAAssignment),
+						"configured_sla": obj.ConfiguredSLADomain.ID,
+						"effective_sla":  obj.EffectiveSLADomain.ID,
+						"elapsed":        time.Since(startTime).Truncate(time.Second).String(),
+					})
+					pending = append(pending, objectID)
+				}
+			default:
+				// For other cases, check if the object has the expected SLA directly assigned.
+				if obj.SLAAssignment != gqlsla.Direct || obj.ConfiguredSLADomain.ID != expectedDomainID {
+					tflog.Debug(ctx, "waiting for SLA assignment", map[string]any{
+						"object_id":      objectID.String(),
+						"expected_sla":   expectedDomainID,
+						"sla_assignment": string(obj.SLAAssignment),
+						"configured_sla": obj.ConfiguredSLADomain.ID,
+						"effective_sla":  obj.EffectiveSLADomain.ID,
+						"elapsed":        time.Since(startTime).Truncate(time.Second).String(),
+					})
+					pending = append(pending, objectID)
+				}
+			}
 		}
 
-		objects, err := sla.Wrap(client).DomainObjects(ctx, domainID, "")
-		if err != nil {
-			return err
-		}
-		for _, object := range objects {
-			delete(idSet, object.ID)
-		}
-		if len(idSet) == 0 {
+		if len(pending) == 0 {
 			return nil
 		}
 
-		tflog.Debug(ctx, "waiting for SLA domain assignment", map[string]any{
-			"remaining_objects": len(idSet),
-		})
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(5 * time.Second):
-		}
-	}
-}
-
-func waitForUnassignment(ctx context.Context, client *polaris.Client, domainID uuid.UUID, objectIDs []uuid.UUID) error {
-	tflog.Debug(ctx, "waiting for SLA domain unassignment")
-
-	for {
-		idSet := make(map[uuid.UUID]struct{}, len(objectIDs))
-		for _, id := range objectIDs {
-			idSet[id] = struct{}{}
-		}
-
-		objects, err := sla.Wrap(client).DomainObjects(ctx, domainID, "")
-		if err != nil {
-			return err
-		}
-		for _, object := range objects {
-			delete(idSet, object.ID)
-		}
-		n := len(objectIDs) - len(idSet)
-		if len(idSet) == len(objectIDs) {
-			return nil
-		}
-
-		tflog.Debug(ctx, "waiting for SLA domain unassignment", map[string]any{
-			"remaining_objects": n,
-		})
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
