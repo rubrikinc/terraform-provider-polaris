@@ -11,7 +11,9 @@ description: |-
   Existing snapshots of the object will be retained according to the SLA Domain
   inherited from the parent object. If the parent object doesn't have an SLA
   Domain, the existing snapshots will be retained forever.
-  -> Note: As of now, it's not possible to assign objects as Do Not Protect.
+  The assignment_type attribute controls how the SLA domain is assigned:
+  protectWithSlaId - Protect objects with the specified SLA domain. Requires
+  sla_domain_id to be set.doNotProtect - Do not protect objects. Requires that sla_domain_id isn't set.
 ---
 
 # polaris_sla_domain_assignment (Resource)
@@ -26,7 +28,10 @@ Existing snapshots of the object will be retained according to the SLA Domain
 inherited from the parent object. If the parent object doesn't have an SLA
 Domain, the existing snapshots will be retained forever.
 
--> **Note:** As of now, it's not possible to assign objects as Do Not Protect.
+The `assignment_type` attribute controls how the SLA domain is assigned:
+  * `protectWithSlaId` - Protect objects with the specified SLA domain. Requires
+    `sla_domain_id` to be set.
+  * `doNotProtect` - Do not protect objects. Requires that `sla_domain_id` isn't set.
 
 ## Example Usage
 
@@ -68,7 +73,14 @@ resource "polaris_sla_domain_assignment" "bronze" {
 ### Required
 
 - `object_ids` (Set of String) Object IDs (UUID).
-- `sla_domain_id` (String) SLA domain ID (UUID).
+
+### Optional
+
+- `apply_changes_to_existing_snapshots` (Boolean) Apply SLA changes to existing snapshots. Only valid when `assignment_type` is `protectWithSlaId`. Defaults to `true`.
+- `apply_changes_to_non_policy_snapshots` (Boolean) Apply SLA changes to non-policy snapshots. Only valid when `assignment_type` is `protectWithSlaId`. Defaults to `false`.
+- `assignment_type` (String) SLA domain assignment type. Valid values are `protectWithSlaId` and `doNotProtect`. Defaults to `protectWithSlaId`.
+- `existing_snapshot_retention` (String) Existing snapshot retention policy. Only valid when `assignment_type` is `doNotProtect`. Valid values are `RETAIN_SNAPSHOTS`, `KEEP_FOREVER`, and `EXPIRE_IMMEDIATELY`.
+- `sla_domain_id` (String) SLA domain ID (UUID). Required when `assignment_type` is `protectWithSlaId`.
 
 ### Read-Only
 
