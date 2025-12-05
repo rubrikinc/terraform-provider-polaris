@@ -384,6 +384,14 @@ func awsUpdateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 	}
 
 	awsReadCnpAccount(ctx, d, m)
+
+	// When the AWS account name is updated, there can be a small delay before
+	// the updated name can be read through the GraphQL API. Avoid setting the
+	// old name in the Terraform state.
+	if err := d.Set(keyName, name); err != nil {
+		return diag.FromErr(err)
+	}
+
 	return nil
 }
 
