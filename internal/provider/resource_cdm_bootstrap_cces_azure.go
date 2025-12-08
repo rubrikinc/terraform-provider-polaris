@@ -93,7 +93,8 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 			},
 			keyConnectionString: {
 				Type:         schema.TypeString,
-				Required:     true,
+				Optional:     true,
+				ExactlyOneOf: []string{keyConnectionString, keyStorageAccountName},
 				Description:  "The connection string for the Azure storage account where CCES will store its data.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
@@ -212,11 +213,33 @@ func resourceCDMBootstrapCCESAzure() *schema.Resource {
 				Description:  "Symmetric key type for NTP server #2.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
+			keyStorageAccountEndpointSuffix: {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{keyConnectionString},
+				Description:   "The endpoint suffix of the storage account when using user assigned managed identity, e.g. core.windows.net",
+				ValidateFunc:  validation.StringIsNotWhiteSpace,
+			},
+			keyStorageAccountName: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: []string{keyConnectionString, keyStorageAccountName},
+				RequiredWith: []string{keyStorageAccountEndpointSuffix, keyUserAssignedManagedIdentityClientID},
+				Description:  "The storage account name where CCES will store its data. Use instead of connection_string to connect with a user assigned managed identity.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
 			keyTimeout: {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Description:  "The time to wait to establish a connection the Rubrik cluster before returning an error (defaults to `4m`).",
 				ValidateFunc: validateBackwardsCompatibleTimeout,
+			},
+			keyUserAssignedManagedIdentityClientID: {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{keyConnectionString},
+				Description:   "The client ID of the user assigned managed identity to use to connect to the storage account for CCES.",
+				ValidateFunc:  validation.StringIsNotWhiteSpace,
 			},
 			keyWaitForCompletion: {
 				Type:        schema.TypeBool,
@@ -244,9 +267,12 @@ func resourceCDMBootstrapCCESAzureCreate(ctx context.Context, d *schema.Resource
 
 	config := toClusterConfig(d)
 	config.StorageConfig = cdm.AzureStorageConfig{
-		ConnectionString:   d.Get(keyConnectionString).(string),
-		ContainerName:      d.Get(keyContainerName).(string),
-		EnableImmutability: d.Get(keyEnableImmutability).(bool),
+		ConnectionString:        d.Get(keyConnectionString).(string),
+		ContainerName:           d.Get(keyContainerName).(string),
+		EnableImmutability:      d.Get(keyEnableImmutability).(bool),
+		StorageAccountName:      d.Get(keyStorageAccountName).(string),
+		EndpointSuffix:          d.Get(keyStorageAccountEndpointSuffix).(string),
+		ManagedIdentityClientId: d.Get(keyUserAssignedManagedIdentityClientID).(string),
 	}
 	if len(config.ClusterNodes) == 0 {
 		return diag.Errorf("At least one cluster node is required")
