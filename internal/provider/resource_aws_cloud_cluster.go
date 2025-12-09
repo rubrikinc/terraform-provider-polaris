@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cloudcluster"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cluster"
 	gqlcloudcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
@@ -39,7 +40,7 @@ import (
 const resourceAWSCloudClusterDescription = `
 The ´polaris_aws_cloud_cluster´ resource creates an AWS cloud cluster using RSC.
 
-This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage 
+This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage
 in AWS using the specified configuration. The cluster will be deployed with the specified
 number of nodes, instance types, and network configuration.
 
@@ -50,8 +51,11 @@ number of nodes, instance types, and network configuration.
 ~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
 
-~> **Note:** Cloud Cluster Removal is not supported via terraform yet. The cluster
-   will be removed from state and you must remove the cluster through the RSC UI.
+~> **Note:** Cloud Cluster deletion is now supported. When destroying this resource,
+   the cluster will be removed from RSC. If the cluster has blocking conditions
+   (active SLAs, global SLAs, or RCV locations), the deletion will fail and you must
+   resolve these conditions first. Use the 'force_cluster_delete_on_destroy' option
+   to force removal when eligible.
 `
 
 // This resource uses a template for its documentation due to a bug in the TF
@@ -173,6 +177,13 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Required:    true,
 							ForceNew:    true,
 							Description: "Whether to keep the cluster on failure (can be useful for troubleshooting). Changing this forces a new resource to be created.",
+						},
+						keyForceClusterDeleteOnDestroy: {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							ForceNew:    true,
+							Default:     false,
+							Description: "Whether to force delete the cluster on destroy. Changing this forces a new resource to be created.",
 						},
 					},
 				},
@@ -441,10 +452,43 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 func awsDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsDeleteCloudCluster")
 
-	// Cluster Removal is not supported via terraform yet. The user must remove the
-	// cluster through the RSC UI. This will be implemented in the future.
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
-	tflog.Warn(ctx, "Cloud cluster deletion should be handled through RSC directly. Removing from Terraform state only.")
+	clusterID, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Get the force delete flag from the Terraform configuration
+	forceDelete := d.Get(keyForceClusterDeleteOnDestroy).(bool)
+
+	// Attempt cluster removal
+	// The RemoveCluster function will handle all prechecks and validations
+	// Note: expireInDays parameter was removed from the SDK API
+	info, success, err := cluster.Wrap(client).RemoveCluster(ctx, clusterID, forceDelete)
+	if err != nil {
+		tflog.Error(ctx, "Failed to remove cloud cluster", map[string]any{
+			"cluster_id": clusterID.String(),
+			"error":      err.Error(),
+		})
+		return diag.FromErr(err)
+	}
+
+	if !success {
+		tflog.Warn(ctx, "Cloud cluster removal was not successful", map[string]any{
+			"cluster_id":             clusterID.String(),
+			"blocking_conditions":    info.BlockingConditions,
+			"force_removal_eligible": info.ForceRemovalEligible,
+		})
+		return diag.Errorf("failed to remove cloud cluster %s: removal was not successful", clusterID.String())
+	}
+
+	tflog.Info(ctx, "Cloud cluster removal initiated successfully", map[string]any{
+		"cluster_id": clusterID.String(),
+	})
 
 	d.SetId("")
 	return nil

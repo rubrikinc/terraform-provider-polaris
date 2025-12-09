@@ -89,6 +89,7 @@ const (
 	keyExternalID                                   = "external_id"
 	keyFeature                                      = "feature"
 	keyFeatures                                     = "features"
+	keyForceClusterDeleteOnDestroy                  = "force_cluster_delete_on_destroy"
 	keyFQDN                                         = "fqdn"
 	keyHash                                         = "hash"
 	keyHierarchy                                    = "hierarchy"
