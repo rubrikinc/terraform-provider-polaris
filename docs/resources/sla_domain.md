@@ -140,8 +140,8 @@ Archival is not supported by OLVM.
 # - Snapshot window configuration (starts at 9 AM, 4-hour duration)
 # - First full snapshot scheduling (Tuesday at 7 PM, 5-hour duration)
 resource "polaris_sla_domain" "daily" {
-  name = "daily"
-  description = "Daily SLA Domain"
+  name         = "daily"
+  description  = "Daily SLA Domain"
   object_types = ["AWS_EC2_EBS_OBJECT_TYPE"]
   daily_schedule {
     frequency = 1
@@ -167,13 +167,13 @@ data "polaris_azure_archival_location" "archival_location" {
 }
 
 resource "polaris_sla_domain" "weekly" {
-  name = "weekly"
-  description = "Weekly SLA Domain"
+  name         = "weekly"
+  description  = "Weekly SLA Domain"
   object_types = ["AZURE_BLOB_OBJECT_TYPE"]
   weekly_schedule {
-    day_of_week = "MONDAY"
-    frequency = 1
-    retention = 4
+    day_of_week    = "MONDAY"
+    frequency      = 1
+    retention      = 4
     retention_unit = "WEEKS"
   }
   azure_blob_config {
@@ -202,22 +202,22 @@ data "polaris_data_center_archival_location" "myarchivallocation" {
 }
 
 resource "polaris_sla_domain" "with_cascading_archival" {
-  name = "with-cascading-archival"
-  description = "SLA Domain with replication and cascading archival"
+  name         = "with-cascading-archival"
+  description  = "SLA Domain with replication and cascading archival"
   object_types = ["VSPHERE_OBJECT_TYPE"]
 
   daily_schedule {
-    frequency = 1
-    retention = 7
+    frequency      = 1
+    retention      = 7
     retention_unit = "DAYS"
   }
 
   replication_spec {
-    retention = 7
+    retention      = 7
     retention_unit = "DAYS"
 
     local_retention {
-      retention = 7
+      retention      = 7
       retention_unit = "DAYS"
     }
 
@@ -227,16 +227,16 @@ resource "polaris_sla_domain" "with_cascading_archival" {
     }
 
     cascading_archival {
-      archival_location_id = data.polaris_data_center_archival_location.myarchivallocation.id
-      archival_threshold = 7
+      archival_location_id    = data.polaris_data_center_archival_location.myarchivallocation.id
+      archival_threshold      = 7
       archival_threshold_unit = "DAYS"
-      frequency = ["DAYS"]
+      frequency               = ["DAYS"]
 
       archival_tiering {
-        instant_tiering = true
-        cold_storage_class = "AZURE_ARCHIVE"
+        instant_tiering                    = true
+        cold_storage_class                 = "AZURE_ARCHIVE"
         min_accessible_duration_in_seconds = 86400
-        tier_existing_snapshots = false
+        tier_existing_snapshots            = false
       }
     }
   }

@@ -224,6 +224,7 @@ const (
 	keyPolarisGCPProject                            = "polaris_gcp_project"
 	keyPolarisGCPServiceAccount                     = "polaris_gcp_service_account"
 	keyPolarisManaged                               = "polaris_managed"
+	keyPolarisNCDArchivalLocation                   = "polaris_ncd_archival_location"
 	keyPolarisRole                                  = "polaris_role"
 	keyPolarisRoleAssignment                        = "polaris_role_assignment"
 	keyPolarisRoleTemplate                          = "polaris_role_template"
