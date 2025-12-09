@@ -10,11 +10,11 @@ description: "When reviewing code for a PR or acting as a reviewer for another d
 ### 1. Code Standards
 - [ ] All exported types/functions have documentation comments
 - [ ] Constants defined in `names.go` for schema field keys
-- [ ] Always use `secret.String` when adding sensitive fields
+- [ ] Always use `Sensitive: true` for schema fields that pertain sensitive information
 
 ### 2. Terraform Patterns
-- [ ] Resources: `polaris_<provider>_<resource>`
-- [ ] Files: `resource_<provider>_<resource>.go`
+- [ ] Resources: `polaris_<namespace/platform>_<resource>` (where namespace/platform is aws, azure, gcp, cdm, etc. Note: RSC resources omit the namespace, e.g., `polaris_custom_role`)
+- [ ] Files: `resource_<namespace/platform>_<resource>.go` (same naming convention as resources)
 - [ ] Description constants use `description()` helper
 - [ ] Schema uses constants from `names.go`
 - [ ] All schema fields have clear descriptions
@@ -38,7 +38,7 @@ description: "When reviewing code for a PR or acting as a reviewer for another d
 ### 5. Documentation
 - [ ] Description constants use proper formatting
 - [ ] Field descriptions specify UUID/ForceNew
-- [ ] Notes use `->`, warnings use `~>`
+- [ ] Notes use `->`, warnings use `~>`, critical notes (red box) use `!>`
 
 ### 6. Testing
 - [ ] Tests cover CRUD operations
@@ -73,4 +73,3 @@ description: "When reviewing code for a PR or acting as a reviewer for another d
 2. **Important** - Should be fixed (violates standards, potential bugs)
 3. **Minor** - Nice to have (style improvements)
 4. **Suggestion** - Optional (alternative approaches)
-

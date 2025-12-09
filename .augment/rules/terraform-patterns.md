@@ -39,6 +39,7 @@ func resourceExample() *schema.Resource {
 - Use appropriate validators
 - Mark computed fields appropriately
 - Use `ForceNew: true` for fields requiring resource recreation
+- Use `Sensitive: true` for fields pertaining sensitive information so it is not logged
 
 ## CRUD Operation Patterns
 
@@ -60,7 +61,8 @@ func resourceCreate(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
     }
 
     d.SetId(id.String())
-    return resourceRead(ctx, d, m)
+    resourceRead(ctx, d, m)
+    return nil
 }
 ```
 
@@ -129,6 +131,7 @@ func resourceDelete(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
         return diag.FromErr(err)
     }
 
+    d.SetId("")
     return nil
 }
 ```
@@ -248,5 +251,3 @@ When making breaking changes to a resource schema:
 1. Increment `SchemaVersion` field
 2. Add a `StateUpgrader` to migrate old state
 3. Keep old schema definitions (e.g., `resource_aws_account_v0.go`)
-
-

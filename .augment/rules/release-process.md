@@ -108,8 +108,6 @@ git tag v1.4.0
 git push --tags
 ```
 
-**Warning**: Only delete and recreate tags if the release hasn't been published yet. Never delete tags for published releases.
-
 ### Release Workflow Failed
 
 If the GitHub Actions workflow fails:
@@ -119,25 +117,6 @@ If the GitHub Actions workflow fails:
 3. Delete the tag (if release wasn't created)
 4. Fix the issue in the code
 5. Create a new tag with a patch version
-
-### Wrong Commit Tagged
-
-If you tagged the wrong commit:
-
-```bash
-# Delete the incorrect tag
-git tag -d v1.4.0
-git push origin :refs/tags/v1.4.0
-
-# Checkout the correct commit
-git checkout <correct-commit-hash>
-
-# Create the tag on the correct commit
-git tag v1.4.0
-
-# Push the corrected tag
-git push --tags
-```
 
 ## Best Practices
 
@@ -186,4 +165,3 @@ If a critical bug is found in a released version:
 2. **Create a patch release**: Fix the issue and release a new version
 3. **Update documentation**: Add notes about the problematic version
 4. **Communicate clearly**: Inform users to skip the problematic version
-

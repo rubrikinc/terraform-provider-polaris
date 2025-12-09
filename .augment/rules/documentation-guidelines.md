@@ -40,8 +40,9 @@ func resourceExample() *schema.Resource {
 
 ### 2. Resources/Data Sources WITH Template Files
 
-**❌ DO NOT update schema descriptions in code**
+**✅ DO update schema descriptions in code**
 **✅ DO update the template file in `templates/resources/` or `templates/data-sources/`**
+Both template and code documentation source should match.
 
 Add comment in resource code:
 ```go
@@ -69,7 +70,7 @@ All guides must be in `templates/guides/*.md.tmpl`
 ### Updating Documentation
 
 1. Check if template exists in `templates/`
-2. Edit template OR resource code (not both)
+2. Edit template AND resource code
 3. Run `go generate ./...`
 4. Verify changes in `docs/`
 

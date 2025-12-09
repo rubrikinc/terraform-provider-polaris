@@ -19,4 +19,4 @@ When writing test in GoLang, adhere to the following additional rules:
 - All test function names should follow camel case.
 - Prefer using fakes over mocks for dependencies.
 
-If there is uncertainty, refer back the effective go documentation from Golang directly i.e. https://go.dev/doc/effective_go
+If there is uncertainty, refer back the effective go documentation from go documetation directly i.e. https://go.dev/doc/effective_go

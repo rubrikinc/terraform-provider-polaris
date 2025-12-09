@@ -82,4 +82,3 @@ When you need specific guidelines, simply ask:
 - "Show me the release process" - For creating releases
 
 This keeps the context window small while giving you access to detailed guidelines when needed.
-
