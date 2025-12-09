@@ -5,7 +5,7 @@ description: |-
   
 The `polaris_aws_cloud_cluster` resource creates an AWS cloud cluster using RSC.
 
-This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage 
+This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage
 in AWS using the specified configuration. The cluster will be deployed with the specified
 number of nodes, instance types, and network configuration.
 
@@ -16,8 +16,11 @@ number of nodes, instance types, and network configuration.
 ~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
 
-~> **Note:** Cloud Cluster Removal is not supported via terraform yet. The cluster
-   will be removed from state and you must remove the cluster through the RSC UI.
+~> **Note:** Cloud Cluster deletion is now supported. When destroying this resource,
+   the cluster will be removed from RSC. If the cluster has blocking conditions
+   (active SLAs, global SLAs, or RCV locations), the deletion will fail and you must
+   resolve these conditions first. Use the 'force_cluster_delete_on_destroy' option
+   to force removal when eligible.
 
 ---
 
@@ -26,7 +29,7 @@ number of nodes, instance types, and network configuration.
 
 The `polaris_aws_cloud_cluster` resource creates an AWS cloud cluster using RSC.
 
-This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage 
+This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage
 in AWS using the specified configuration. The cluster will be deployed with the specified
 number of nodes, instance types, and network configuration.
 
@@ -37,8 +40,11 @@ number of nodes, instance types, and network configuration.
 ~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
 
-~> **Note:** Cloud Cluster Removal is not supported via terraform yet. The cluster
-   will be removed from state and you must remove the cluster through the RSC UI.
+~> **Note:** Cloud Cluster deletion is now supported. When destroying this resource,
+   the cluster will be removed from RSC. If the cluster has blocking conditions
+   (active SLAs, global SLAs, or RCV locations), the deletion will fail and you must
+   resolve these conditions first. Use the 'force_cluster_delete_on_destroy' option
+   to force removal when eligible.
 
 
 
