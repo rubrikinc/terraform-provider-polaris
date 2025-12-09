@@ -181,9 +181,8 @@ func resourceAwsCloudCluster() *schema.Resource {
 						keyForceClusterDeleteOnDestroy: {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							ForceNew:    true,
 							Default:     false,
-							Description: "Whether to force delete the cluster on destroy. Changing this forces a new resource to be created.",
+							Description: "Whether to force delete the cluster on destroy.",
 						},
 					},
 				},
