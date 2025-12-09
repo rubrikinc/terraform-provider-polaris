@@ -244,6 +244,415 @@ func dataSourceSLADomain() *schema.Resource {
 				Computed:    true,
 				Description: "VMware vSphere VM log backups.",
 			},
+			keySapHanaConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyIncrementalFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Incremental backup frequency.",
+						},
+						keyIncrementalFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Incremental frequency unit.",
+						},
+						keyLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyLogRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Log retention unit.",
+						},
+						keyDifferentialFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Differential backup frequency.",
+						},
+						keyDifferentialFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Differential frequency unit.",
+						},
+						keyStorageSnapshotConfig: {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyFrequency: {
+										Type:        schema.TypeInt,
+										Computed:    true,
+										Description: "Storage snapshot frequency.",
+									},
+									keyFrequencyUnit: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Frequency unit.",
+									},
+									keyRetention: {
+										Type:        schema.TypeInt,
+										Computed:    true,
+										Description: "Storage snapshot retention.",
+									},
+									keyRetentionUnit: {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: "Retention unit.",
+									},
+								},
+							},
+							Computed:    true,
+							Description: "SAP HANA storage snapshot configuration.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "SAP HANA database configuration.",
+			},
+			keyDB2Config: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyIncrementalFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Incremental backup frequency.",
+						},
+						keyIncrementalFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Incremental frequency unit.",
+						},
+						keyLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyLogRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Log retention unit.",
+						},
+						keyDifferentialFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Differential backup frequency.",
+						},
+						keyDifferentialFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Differential frequency unit.",
+						},
+						keyLogArchivalMethod: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Log archival method.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "Db2 database configuration.",
+			},
+			keyMSSQLConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log backup frequency.",
+						},
+						keyFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Frequency unit.",
+						},
+						keyLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyLogRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Log retention unit.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "SQL Server database configuration.",
+			},
+			keyOracleConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log backup frequency.",
+						},
+						keyFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Frequency unit.",
+						},
+						keyLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyLogRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Log retention unit.",
+						},
+						keyHostLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Host log retention duration for archived redo logs.",
+						},
+						keyHostLogRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Host log retention unit.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "Oracle database configuration.",
+			},
+			keyMongoConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log backup frequency.",
+						},
+						keyFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Frequency unit.",
+						},
+						keyRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Retention unit.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "MongoDB database configuration.",
+			},
+			keyManagedVolumeConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyLogRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Log retention unit.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "Managed Volume configuration.",
+			},
+			keyPostgresDBClusterConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration for Write-Ahead Logging (WAL) logs.",
+						},
+						keyLogRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Log retention unit.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "Postgres DB Cluster configuration.",
+			},
+			keyMySQLDBConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log backup frequency.",
+						},
+						keyFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Frequency unit.",
+						},
+						keyRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Retention unit.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "MySQL database configuration.",
+			},
+			keyInformixConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyIncrementalFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Incremental backup frequency.",
+						},
+						keyIncrementalFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Incremental frequency unit.",
+						},
+						keyIncrementalRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Incremental backup retention duration.",
+						},
+						keyIncrementalRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Incremental retention unit.",
+						},
+						keyFrequency: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log backup frequency.",
+						},
+						keyFrequencyUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Frequency unit.",
+						},
+						keyRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Retention unit.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "Informix database configuration.",
+			},
+			keyGCPCloudSQLConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyLogRetention: {
+							Type:        schema.TypeInt,
+							Computed:    true,
+							Description: "Log retention duration.",
+						},
+						keyLogRetentionUnit: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Log retention unit.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "GCP Cloud SQL configuration.",
+			},
+			keyNCDConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyMinutelyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Target location UUIDs for per-minute schedule backups.",
+						},
+						keyHourlyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Target location UUIDs for hourly schedule backups.",
+						},
+						keyDailyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Target location UUIDs for daily schedule backups.",
+						},
+						keyWeeklyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Target location UUIDs for weekly schedule backups.",
+						},
+						keyMonthlyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Target location UUIDs for monthly schedule backups.",
+						},
+						keyQuarterlyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Target location UUIDs for quarterly schedule backups.",
+						},
+						keyYearlyBackupLocations: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Target location UUIDs for yearly schedule backups.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "NAS Cloud Direct configuration.",
+			},
 			keyBackupLocation: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
