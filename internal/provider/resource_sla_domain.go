@@ -907,6 +907,7 @@ func resourceSLADomain() *schema.Resource {
 				Optional: true,
 				AtLeastOneOf: []string{
 					keyHourlySchedule,
+					keyMinuteSchedule,
 					keyMonthlySchedule,
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
@@ -966,6 +967,50 @@ func resourceSLADomain() *schema.Resource {
 							Optional: true,
 							Default:  string(gqlsla.Days),
 							Description: "Retention unit specifies the unit of the `retention` field. Possible " +
+								"values are `HOURS`, `DAYS`, `WEEKS` and `MONTHS`. Default value is `DAYS`.",
+							ValidateFunc: validation.StringInSlice([]string{
+								string(gqlsla.Hours),
+								string(gqlsla.Days),
+								string(gqlsla.Weeks),
+								string(gqlsla.Months),
+							}, false),
+						},
+					},
+				},
+				Optional: true,
+				AtLeastOneOf: []string{
+					keyDailySchedule,
+					keyMinuteSchedule,
+					keyMonthlySchedule,
+					keyQuarterlySchedule,
+					keyWeeklySchedule,
+					keyYearlySchedule,
+					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
+				},
+				MaxItems:    1,
+				Description: "Take snapshots with frequency specified in hours.",
+			},
+			keyMinuteSchedule: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyFrequency: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Frequency in minutes.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyRetention: {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Retention specifies for how long the snapshots are kept.",
+							ValidateFunc: validation.IntAtLeast(1),
+						},
+						keyRetentionUnit: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  string(gqlsla.Days),
+							Description: "Retention unit specifies the unit of the `retention` field. Possible " +
 								"values are `HOURS`, `DAYS` and `WEEKS`. Default value is `DAYS`.",
 							ValidateFunc: validation.StringInSlice([]string{
 								string(gqlsla.Hours),
@@ -978,6 +1023,7 @@ func resourceSLADomain() *schema.Resource {
 				Optional: true,
 				AtLeastOneOf: []string{
 					keyDailySchedule,
+					keyHourlySchedule,
 					keyMonthlySchedule,
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
@@ -985,7 +1031,7 @@ func resourceSLADomain() *schema.Resource {
 					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
 				},
 				MaxItems:    1,
-				Description: "Take snapshots with frequency specified in hours.",
+				Description: "Take snapshots with frequency specified in minutes.",
 			},
 			keyMonthlySchedule: {
 				Type: schema.TypeList,
@@ -1034,6 +1080,7 @@ func resourceSLADomain() *schema.Resource {
 				AtLeastOneOf: []string{
 					keyDailySchedule,
 					keyHourlySchedule,
+					keyMinuteSchedule,
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
@@ -1056,12 +1103,14 @@ func resourceSLADomain() *schema.Resource {
 				},
 				Required: true,
 				Description: "Object types which can be protected by the SLA Domain. Possible values are " +
-					"`ACTIVE_DIRECTORY_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
-					"`AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
-					"`CASSANDRA_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, " +
-					"`INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, " +
+					"`ACTIVE_DIRECTORY_OBJECT_TYPE`, `ATLASSIAN_JIRA_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
+					"`AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_DEVOPS_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
+					"`CASSANDRA_OBJECT_TYPE`, `D365_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, " +
+					"`GOOGLE_WORKSPACE_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `KUPR_OBJECT_TYPE`, " +
+					"`M365_BACKUP_STORAGE_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `MYSQLDB_OBJECT_TYPE`, " +
 					"`NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, " +
-					"`ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, `SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. " +
+					"`ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `PROXMOX_OBJECT_TYPE`, `SALESFORCE_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, " +
+					"`SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. " +
 					"Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.",
 			},
 			keyQuarterlySchedule: {
@@ -1131,6 +1180,7 @@ func resourceSLADomain() *schema.Resource {
 				AtLeastOneOf: []string{
 					keyDailySchedule,
 					keyHourlySchedule,
+					keyMinuteSchedule,
 					keyMonthlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
@@ -1414,9 +1464,10 @@ func resourceSLADomain() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						keyDayOfWeek: {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 							Description: "Day of week. Possible values are `MONDAY`, `TUESDAY`, `WEDNESDAY`, " +
-								"`THURSDAY`, `FRIDAY`, `SATURDAY` and `SUNDAY`.",
+								"`THURSDAY`, `FRIDAY`, `SATURDAY` and `SUNDAY`. " +
+								"Note: For M365 Backup Storage SLAs, this field should be omitted.",
 							ValidateFunc: validation.StringInSlice([]string{
 								string(gqlsla.Monday),
 								string(gqlsla.Tuesday),
@@ -1460,6 +1511,7 @@ func resourceSLADomain() *schema.Resource {
 				AtLeastOneOf: []string{
 					keyDailySchedule,
 					keyHourlySchedule,
+					keyMinuteSchedule,
 					keyMonthlySchedule,
 					keyQuarterlySchedule,
 					keyYearlySchedule,
@@ -1523,6 +1575,7 @@ func resourceSLADomain() *schema.Resource {
 				AtLeastOneOf: []string{
 					keyDailySchedule,
 					keyHourlySchedule,
+					keyMinuteSchedule,
 					keyMonthlySchedule,
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
@@ -2352,9 +2405,9 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 	if err := d.Set(keyHourlySchedule, toHourlySchedule(slaDomain)); err != nil {
 		return diag.FromErr(err)
 	}
-	//if err := d.Set(keyMinuteSchedule, toMinuteSchedule(slaDomain)); err != nil {
-	//	return diag.FromErr(err)
-	//}
+	if err := d.Set(keyMinuteSchedule, toMinuteSchedule(slaDomain)); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyMonthlySchedule, toMonthlySchedule(slaDomain)); err != nil {
 		return diag.FromErr(err)
 	}
@@ -3455,14 +3508,21 @@ func fromWeeklySchedule(d *schema.ResourceData) *gqlsla.WeeklySnapshotSchedule {
 	}
 
 	schedule := data.([]any)[0].(map[string]any)
-	return &gqlsla.WeeklySnapshotSchedule{
+	weeklySchedule := &gqlsla.WeeklySnapshotSchedule{
 		BasicSchedule: gqlsla.BasicSnapshotSchedule{
 			Frequency:     schedule[keyFrequency].(int),
 			Retention:     schedule[keyRetention].(int),
 			RetentionUnit: gqlsla.RetentionUnit(schedule[keyRetentionUnit].(string)),
 		},
-		DayOfWeek: gqlsla.Day(schedule[keyDayOfWeek].(string)),
 	}
+
+	// Only set DayOfWeek if it's provided. For M365 Backup Storage SLAs,
+	// the day_of_week field should be omitted.
+	if dayOfWeek, ok := schedule[keyDayOfWeek].(string); ok && dayOfWeek != "" {
+		weeklySchedule.DayOfWeek = gqlsla.Day(dayOfWeek)
+	}
+
+	return weeklySchedule
 }
 
 func toWeeklySchedule(slaDomain gqlsla.Domain) []any {
