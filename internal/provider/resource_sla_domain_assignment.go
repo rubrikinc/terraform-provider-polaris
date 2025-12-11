@@ -54,9 +54,14 @@ inherited from the parent object. If the parent object doesn't have an SLA
 Domain, the existing snapshots will be retained forever.
 
 The ´assignment_type´ attribute controls how the SLA domain is assigned:
-  * ´protectWithSlaId´ - Protect objects with the specified SLA domain. Requires
-    ´sla_domain_id´ to be set.
+
+  * ´protectWithSlaId´ - Protect objects with the specified SLA domain. Requires ´sla_domain_id´ to be set.
+
   * ´doNotProtect´ - Do not protect objects. Requires that ´sla_domain_id´ isn't set.
+
+~> **Note:** When importing, ´apply_changes_to_existing_snapshots´ and
+´apply_changes_to_non_policy_snapshots´ cannot be retrieved from the API.
+These attributes will use their default values after import.
 `
 
 // doNotProtectID is the sentinel resource ID used when the assignment type is
@@ -99,22 +104,25 @@ func resourceSLADomainAssignment() *schema.Resource {
 				Description: "Object IDs (UUID).",
 			},
 			keySLADomainID: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Description:  "SLA domain ID (UUID). Required when `assignment_type` is `protectWithSlaId`.",
-				ValidateFunc: validation.IsUUID,
+				Type:          schema.TypeString,
+				Optional:      true,
+				Description:   "SLA domain ID (UUID). Required when `assignment_type` is `protectWithSlaId`.",
+				ValidateFunc:  validation.IsUUID,
+				ConflictsWith: []string{keyExistingSnapshotRetention},
 			},
 			keyApplyChangesToExistingSnapshots: {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
-				Description: "Apply SLA changes to existing snapshots. Only valid when `assignment_type` is `protectWithSlaId`. Defaults to `true`.",
+				Type:          schema.TypeBool,
+				Optional:      true,
+				Default:       true,
+				Description:   "Apply SLA changes to existing snapshots. Only valid when `assignment_type` is `protectWithSlaId`. Defaults to `true`.",
+				ConflictsWith: []string{keyExistingSnapshotRetention},
 			},
 			keyApplyChangesToNonPolicySnapshots: {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
-				Description: "Apply SLA changes to non-policy snapshots. Only valid when `assignment_type` is `protectWithSlaId`. Defaults to `false`.",
+				Type:          schema.TypeBool,
+				Optional:      true,
+				Default:       false,
+				Description:   "Apply SLA changes to non-policy snapshots. Only valid when `assignment_type` is `protectWithSlaId`. Defaults to `false`.",
+				ConflictsWith: []string{keyExistingSnapshotRetention},
 			},
 			keyExistingSnapshotRetention: {
 				Type:     schema.TypeString,
@@ -126,6 +134,7 @@ func resourceSLADomainAssignment() *schema.Resource {
 				}, false),
 				Description: "Existing snapshot retention policy. Only valid when `assignment_type` is " +
 					"`doNotProtect`. Valid values are `RETAIN_SNAPSHOTS`, `KEEP_FOREVER`, and `EXPIRE_IMMEDIATELY`.",
+				ConflictsWith: []string{keySLADomainID, keyApplyChangesToExistingSnapshots, keyApplyChangesToNonPolicySnapshots},
 			},
 		},
 		Importer: &schema.ResourceImporter{
@@ -382,6 +391,11 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		}); err != nil {
 			return diag.FromErr(err)
 		}
+
+		// Wait for the unassignment to be applied.
+		if err := waitForAssignment(ctx, client, core.UnprotectedSLAID, removeObjectIDs); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	// Update the resource ID based on assignment type.
@@ -509,7 +523,7 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 	// Parse the object IDs from the import ID format: doNotProtect:<id1>,<id2>,...
 	objectIDsStr := strings.TrimPrefix(importID, "doNotProtect:")
 	if objectIDsStr == "" {
-		return nil, fmt.Errorf("import format for doNotProtect requires object IDs: doNotProtect:<object_id1>,<object_id2>,...")
+		return nil, fmt.Errorf("import format for doNotProtect requires object IDs: 'doNotProtect:<object_id1>,<object_id2>,...'")
 	}
 
 	objectIDStrs := strings.Split(objectIDsStr, ",")
@@ -527,7 +541,7 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 	}
 
 	if len(objectIDs) == 0 {
-		return nil, fmt.Errorf("import format for doNotProtect requires at least one object ID: doNotProtect:<object_id1>,<object_id2>,...")
+		return nil, fmt.Errorf("import format for doNotProtect requires at least one object ID: 'doNotProtect:<object_id1>,<object_id2>,...'")
 	}
 
 	// Verify each object has DO_NOT_PROTECT as its effective SLA.
