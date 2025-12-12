@@ -72,6 +72,7 @@ resource "polaris_azure_cloud_cluster" "example" {
     network_security_group          = "my-network-security-group"
     network_security_resource_group = "my-network-security-resource-group"
     vm_type                         = "EXTRA_DENSE"
+    availability_zone               = "1"
   }
 }
 ```
@@ -132,6 +133,7 @@ Required:
 
 Optional:
 
+- `availability_zone` (String) Availability zone for the cluster. If not specified, the cluster will be deployed in availability zone 1. Changing this forces a new resource to be created.
 - `vm_type` (String) VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`. `DENSE` is recommended for CCES.
 
 Read-Only:

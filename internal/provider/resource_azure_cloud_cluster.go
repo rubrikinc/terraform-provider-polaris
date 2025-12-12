@@ -283,6 +283,12 @@ func resourceAzureCloudCluster() *schema.Resource {
 								string(gqlcloudcluster.CCVmConfigExtraDense),
 							}, false),
 						},
+						keyAvailabilityZone: {
+							Type:        schema.TypeString,
+							Optional:    true,
+							ForceNew:    true,
+							Description: "Availability zone for the cluster, if this is not specified, the cluster will be deployed in availability zone 1. Changing this forces a new resource to be created.",
+						},
 					},
 				},
 			},
@@ -359,6 +365,7 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 		NetworkSecurityGroup:         vmConfigMap[keyNetworkSecurityGroup].(string),
 		NetworkSecurityResourceGroup: vmConfigMap[keyNetworkSecurityResourceGroup].(string),
 		VMType:                       vmType,
+		AvailabilityZone:             vmConfigMap[keyAvailabilityZone].(string),
 	}
 
 	azureEsConfig := gqlcloudcluster.AzureEsConfigInput{
