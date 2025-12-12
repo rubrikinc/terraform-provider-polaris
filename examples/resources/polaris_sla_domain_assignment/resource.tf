@@ -27,3 +27,21 @@ resource "polaris_sla_domain_assignment" "bronze" {
     polaris_tag_rule.azure_bronze.id,
   ]
 }
+
+# Create a tag rule for development instances that should not be protected.
+resource "polaris_tag_rule" "dev_instances" {
+  name        = "dev-instances"
+  object_type = "AWS_EC2_INSTANCE"
+  tag_key     = "environment"
+  tag_value   = "dev"
+}
+
+# Mark development instances as Do Not Protect.
+resource "polaris_sla_domain_assignment" "unprotected" {
+  assignment_type             = "doNotProtect"
+  existing_snapshot_retention = "RETAIN_SNAPSHOTS"
+
+  object_ids = [
+    polaris_tag_rule.dev_instances.id,
+  ]
+}
