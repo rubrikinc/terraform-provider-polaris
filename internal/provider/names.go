@@ -34,6 +34,7 @@ const (
 	keyArchivalProxySettings                        = "archival_proxy_settings"
 	keyARN                                          = "arn"
 	keyAssumeRole                                   = "assume_role"
+	keyAvailabilityZone                             = "availability_zone"
 	keyBucketLabels                                 = "bucket_labels"
 	keyBucketPrefix                                 = "bucket_prefix"
 	keyBucketName                                   = "bucket_name"

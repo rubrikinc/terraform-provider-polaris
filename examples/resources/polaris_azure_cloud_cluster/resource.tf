@@ -25,5 +25,6 @@ resource "polaris_azure_cloud_cluster" "example" {
     network_security_group          = "my-network-security-group"
     network_security_resource_group = "my-network-security-resource-group"
     vm_type                         = "EXTRA_DENSE"
+    availability_zone               = "1"
   }
 }
