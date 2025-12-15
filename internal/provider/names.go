@@ -39,6 +39,7 @@ const (
 	keyARN                                          = "arn"
 	keyAssignmentType                               = "assignment_type"
 	keyAssumeRole                                   = "assume_role"
+	keyAvailabilityZone                             = "availability_zone"
 	keyBucketLabels                                 = "bucket_labels"
 	keyAWSCrossAccount                              = "aws_cross_account"
 	keyAWSDynamoDBConfig                            = "aws_dynamodb_config"
