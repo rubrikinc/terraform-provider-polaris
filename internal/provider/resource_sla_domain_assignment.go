@@ -140,6 +140,12 @@ func resourceSLADomainAssignment() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: importSLADomainAssignment,
 		},
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceSLADomainAssignmentV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceSLADomainAssignmentStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
