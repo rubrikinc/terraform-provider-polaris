@@ -4,6 +4,32 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.4.0-beta.4
+* Add support for `DoNotProtect` SLA assignment to the `polaris_sla_domain_assignment` resource. This explicitly tells
+  RSC that a workload should not be protected, even if an inherited SLA would otherwise apply.
+* Add support for the following object types with specific configurations in SLA domains: vSphere Object, KUPR,
+  SAP HANA, Microsoft SQL Server, Db2, Oracle, Mongo, Managed Volume, PostgreSQL, MySQL, NCD, Informix and GCP Cloud SQL.
+* Add support for the following object types without specific configurations in SLA domains: Linux and
+  Windows Fileset, NAS, Active Directory, AWS EC2/EBS, Nutanix, HyperV, Exchange, VCD, Volume Group,
+  OLVM, Cassandra, MongoDB, Azure AD, Azure DevOps, K8S, SnapMirror Cloud, Atlassian Jira, Salesforce,
+  Google Workspace, D365, M365 Backup Storage, OpenStack, and Proxmox.
+* Add `polaris_ncd_archival_location` data source. The data source is used to look up NCD (Native Cloud Data) archival
+  locations in RSC. [[docs](../data-sources/ncd_archival_location.md)]
+* Add `polaris_dc_archival_location` data source. The data source is used to look up data center archival locations in
+  RSC. [[docs](../data-sources/dc_archival_location.md)]
+* Add `polaris_sla_source_cluster` data source. The data source is used to look up SLA source clusters in RSC.
+  [[docs](../data-sources/sla_source_cluster.md)]
+* Add support for retention lock in SLA domains. Retention lock ensures that backups cannot be deleted or modified
+  before the retention period expires.
+* Add support for replication pairs in the SLA replication specification. This allows configuring replication between
+  specific source and target clusters.
+* Add support for cascading archival in SLA domains. Cascading archival archives snapshots from a replicated cluster
+  instead of directly from the source.
+* Add support for cluster archival in SLA domains. This allows archiving snapshots to a CDM cluster archival location.
+* Add support for data center archival tiering in SLA domains. This allows configuring tiering settings for data center
+  archival locations including instant tiering and intelligent tiering.
+* Fix SLA schedule issues for certain object types.
+
 ## v1.3.2
 * Add `availability_zone` field to the `polaris_azure_cloud_cluster` resource. The `availability_zone` field can be used to specify the availability zone for the Azure cloud cluster. [[docs](../resources/azure_cloud_cluster.md)]
 * Add support for bootstrapping Azure CCES clusters using user assigned managed identity. The `polaris_cdm_bootstrap_cces_azure` resource now supports `storage_account_name`, `storage_account_endpoint_suffix`, and `user_assigned_managed_identity_client_id` fields as an alternative to `connection_string`. [[docs](../resources/cdm_bootstrap_cces_azure.md)]
