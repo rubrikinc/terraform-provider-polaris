@@ -24,7 +24,10 @@ description: |-
   feature.
   EXOCOMPUTE
   BASIC - Represents the basic set of permissions required to onboard the
-  feature.
+  feature.AUTOMATED_NETWORKING_SETUP - Represents the set of permissions required
+  for automated networking setup. When automated networking setup is enabled,
+  RSC is responsible for creating and maintaining the networking resources for
+  Exocompute. See the polaris_gcp_exocompute resource for more information.
 ---
 
 # polaris_gcp_project (Resource)
@@ -60,6 +63,10 @@ are used when specifying the feature.
 `EXOCOMPUTE`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
+  * `AUTOMATED_NETWORKING_SETUP` - Represents the set of permissions required
+    for automated networking setup. When automated networking setup is enabled,
+    RSC is responsible for creating and maintaining the networking resources for
+    Exocompute. See the `polaris_gcp_exocompute` resource for more information.
 
 ## Example Usage
 
