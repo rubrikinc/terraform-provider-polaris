@@ -4,6 +4,9 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.4.0-beta.5
+* Fix AWS archival location data source query. It is now possible to query existing AWS archival locations.
+
 ## v1.4.0-beta.4
 * Add support for `DoNotProtect` SLA assignment to the `polaris_sla_domain_assignment` resource. This explicitly tells
   RSC that a workload should not be protected, even if an inherited SLA would otherwise apply.
