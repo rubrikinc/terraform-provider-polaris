@@ -516,27 +516,22 @@ func azureDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 	}
 
 	// Get the force delete flag from the Terraform configuration
-	forceDelete := d.Get(keyForceClusterDeleteOnDestroy).(bool)
+	clusterConfigList := d.Get(keyClusterConfig).([]any)
+	clusterConfigMap := clusterConfigList[0].(map[string]any)
+	forceRemoval := clusterConfigMap[keyForceClusterDeleteOnDestroy].(bool)
 
 	// Attempt cluster removal
 	// The RemoveCluster function will handle all prechecks and validations
 	// Note: expireInDays parameter was removed from the SDK API
-	info, success, err := cluster.Wrap(client).RemoveCluster(ctx, clusterID, forceDelete)
+	info, err := cluster.Wrap(client).RemoveCluster(ctx, clusterID, forceRemoval, 0)
 	if err != nil {
 		tflog.Error(ctx, "Failed to remove cloud cluster", map[string]any{
-			"cluster_id": clusterID.String(),
-			"error":      err.Error(),
-		})
-		return diag.FromErr(err)
-	}
-
-	if !success {
-		tflog.Warn(ctx, "Cloud cluster removal was not successful", map[string]any{
 			"cluster_id":             clusterID.String(),
+			"error":                  err.Error(),
 			"blocking_conditions":    info.BlockingConditions,
 			"force_removal_eligible": info.ForceRemovalEligible,
 		})
-		return diag.Errorf("failed to remove cloud cluster %s: removal was not successful", clusterID.String())
+		return diag.FromErr(err)
 	}
 
 	tflog.Info(ctx, "Cloud cluster removal initiated successfully", map[string]any{
