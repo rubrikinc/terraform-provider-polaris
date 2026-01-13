@@ -5,6 +5,8 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.4.x
+* Add support for creating regional Exocompute configurations for GCP when using customer managed networking.
+  [[docs](../resources/gcp_exocompute.md)]
 * Add support for Azure Exocompute optional configuration. The optional configuration can be used to configure cluster
   tier, cluster access, etc. [[docs](../resources/azure_exocompute.md#nested-schema-for-optional_config)]
 
@@ -43,6 +45,8 @@ page_title: "Changelog"
 * Add support for bootstrapping Azure CCES clusters using user assigned managed identity. The
   `polaris_cdm_bootstrap_cces_azure` resource now supports `storage_account_name`, `storage_account_endpoint_suffix`,
   and `user_assigned_managed_identity_client_id` fields as an alternative to `connection_string`. [[docs](../resources/cdm_bootstrap_cces_azure.md)]
+  and `user_assigned_managed_identity_client_id` fields as an alternative to `connection_string`.
+  [[docs](../resources/cdm_bootstrap_cces_azure.md)]
 * Update Go version to 1.24.11.
 * Update Rubrik Polaris SDK for Go to v1.1.13.
 
