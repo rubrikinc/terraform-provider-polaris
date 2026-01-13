@@ -147,6 +147,7 @@ const (
 	keyFeature                                      = "feature"
 	keyFeatures                                     = "features"
 	keyFirstFullSnapshot                            = "first_full_snapshot"
+	keyForceClusterDeleteOnDestroy                  = "force_cluster_delete_on_destroy"
 	keyFQDN                                         = "fqdn"
 	keyFrequency                                    = "frequency"
 	keyFrequencyUnit                                = "frequency_unit"
