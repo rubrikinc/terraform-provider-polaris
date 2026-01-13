@@ -44,6 +44,8 @@ permission group. If the GCP project was onboarded with the
 and manage the networking resources for Exocompute.
 `
 
+// This resource uses a template for its documentation, remember to update the
+// template if the documentation for any field changes.
 func resourceGcpExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: gcpCreateExocompute,
