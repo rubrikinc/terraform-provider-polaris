@@ -468,7 +468,6 @@ func awsDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 
 	// Attempt cluster removal
 	// The RemoveCluster function will handle all prechecks and validations
-	// Note: expireInDays parameter was removed from the SDK API
 	info, err := cluster.Wrap(client).RemoveCluster(ctx, clusterID, forceRemoval, 0)
 	if err != nil {
 		tflog.Error(ctx, "Failed to remove cloud cluster", map[string]any{
