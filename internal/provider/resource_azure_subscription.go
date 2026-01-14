@@ -99,6 +99,16 @@ are used when specifying the feature set.
     file-level recovery operations.
   * ´SNAPSHOT_PRIVATE_ACCESS´ - Represents the set of permissions required for
     private access to disk snapshots.
+  * ´EXPORT_AND_RESTORE_POWER_OFF_VM´ - Represents the set of permissions
+    required for export and restore operations with VM power off capability.
+
+´SERVERS_AND_APPS´
+  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to
+    onboard the feature.
+  * ´SAP_HANA_SS_BASIC´ - Represents the basic set of permissions required for
+    SAP HANA snapshot support.
+  * ´SAP_HANA_SS_RECOVERY´ - Represents the set of permissions required for SAP
+    HANA recovery operations.
 
 ´EXOCOMPUTE´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
@@ -107,10 +117,10 @@ are used when specifying the feature set.
     of private endpoints.
   * ´CUSTOMER_MANAGED_BASIC´ - Represents the permissions required to enable
     customer-managed Exocompute feature.
-
-´SERVERS_AND_APPS´
-  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to onboard the
-    feature.
+  * ´AKS_CUSTOM_PRIVATE_DNS_ZONE´ - Represents the permissions required for AKS
+    custom private DNS zone configuration.
+  * ´SERVICE_ENDPOINT_AUTOMATION´ - Represents the permissions required for
+    service endpoint automation.
 
 ~> **Note:** Even though the ´resource_group_name´ and the
    ´resource_group_region´ fields are marked as optional you should always
@@ -404,13 +414,13 @@ func resourceAzureSubscription() *schema.Resource {
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
 									"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "CLOUD_CLUSTER_ES",
-									"SNAPSHOT_PRIVATE_ACCESS",
+									"SNAPSHOT_PRIVATE_ACCESS", "EXPORT_AND_RESTORE_POWER_OFF_VM",
 								}, false),
 							},
 							Optional: true,
 							Description: "Permission groups to assign to the Cloud Native Protection feature. " +
 								"Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, " +
-								"`CLOUD_CLUSTER_ES` and `SNAPSHOT_PRIVATE_ACCESS`.",
+								"`CLOUD_CLUSTER_ES`, `SNAPSHOT_PRIVATE_ACCESS` and `EXPORT_AND_RESTORE_POWER_OFF_VM`.",
 						},
 						keyPermissions: {
 							Type:     schema.TypeString,
@@ -501,11 +511,13 @@ func resourceAzureSubscription() *schema.Resource {
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
 									"BASIC", "PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC",
+									"AKS_CUSTOM_PRIVATE_DNS_ZONE", "SERVICE_ENDPOINT_AUTOMATION",
 								}, false),
 							},
 							Optional: true,
 							Description: "Permission groups to assign to the Exocompute feature. Possible values " +
-								"are `BASIC`, `PRIVATE_ENDPOINTS` and `CUSTOMER_MANAGED_BASIC`.",
+								"are `BASIC`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, " +
+								"`AKS_CUSTOM_PRIVATE_DNS_ZONE` and `SERVICE_ENDPOINT_AUTOMATION`.",
 						},
 						keyPermissions: {
 							Type:     schema.TypeString,
@@ -588,12 +600,12 @@ func resourceAzureSubscription() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice([]string{
-									"CLOUD_CLUSTER_ES",
+									"CLOUD_CLUSTER_ES", "SAP_HANA_SS_BASIC", "SAP_HANA_SS_RECOVERY",
 								}, false),
 							},
 							Optional: true,
-							Description: "Permission groups to assign to the Cloud Cluster feature. " +
-								"Possible values are `CLOUD_CLUSTER_ES`.",
+							Description: "Permission groups to assign to the Servers and Apps feature. " +
+								"Possible values are `CLOUD_CLUSTER_ES`, `SAP_HANA_SS_BASIC` and `SAP_HANA_SS_RECOVERY`.",
 						},
 						keyPermissions: {
 							Type:     schema.TypeString,
