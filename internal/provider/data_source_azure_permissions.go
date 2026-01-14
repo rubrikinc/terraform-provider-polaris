@@ -91,6 +91,16 @@ are used when specifying the feature.
     file-level recovery operations.
   * ´SNAPSHOT_PRIVATE_ACCESS´ - Represents the set of permissions required for
     private access to disk snapshots.
+  * ´EXPORT_AND_RESTORE_POWER_OFF_VM´ - Represents the set of permissions
+    required for export and restore operations with VM power off capability.
+
+´SERVERS_AND_APPS´
+  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to
+    onboard the feature.
+  * ´SAP_HANA_SS_BASIC´ - Represents the basic set of permissions required for
+    SAP HANA snapshot support.
+  * ´SAP_HANA_SS_RECOVERY´ - Represents the set of permissions required for SAP
+    HANA recovery operations.
 
 ´EXOCOMPUTE´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
@@ -99,10 +109,10 @@ are used when specifying the feature.
     of private endpoints.
   * ´CUSTOMER_MANAGED_BASIC´ - Represents the permissions required to enable
     customer-managed Exocompute feature.
-
-´SERVERS_AND_APPS´
-  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to onboard the
-    feature.
+  * ´AKS_CUSTOM_PRIVATE_DNS_ZONE´ - Represents the permissions required for AKS
+    custom private DNS zone configuration.
+  * ´SERVICE_ENDPOINT_AUTOMATION´ - Represents the permissions required for
+    service endpoint automation.
 
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
    is always required .
@@ -220,8 +230,9 @@ func dataSourceAzurePermissions() *schema.Resource {
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
 						"BASIC", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS",
-						"PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC", "ENCRYPTION", "SQL_ARCHIVAL", "RECOVERY",
-						"BACKUP_V2",
+						"EXPORT_AND_RESTORE_POWER_OFF_VM", "PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC",
+						"AKS_CUSTOM_PRIVATE_DNS_ZONE", "SERVICE_ENDPOINT_AUTOMATION", "ENCRYPTION", "SQL_ARCHIVAL",
+						"RECOVERY", "BACKUP_V2", "SAP_HANA_SS_BASIC", "SAP_HANA_SS_RECOVERY",
 						// The following permission group is no longer listed in the RSC UI when onboarding
 						// an Azure subscription. It was accepted in the past so we still silently allow it.
 						"CLOUD_CLUSTER_ES",
@@ -231,8 +242,10 @@ func dataSourceAzurePermissions() *schema.Resource {
 				ConflictsWith: []string{keyFeatures},
 				RequiredWith:  []string{keyFeature},
 				Description: "Permission groups for the RSC feature. Possible values are `BASIC`, " +
-					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, `PRIVATE_ENDPOINTS`, " +
-					"`CUSTOMER_MANAGED_BASIC`, `ENCRYPTION`, `SQL_ARCHIVAL`, `RECOVERY`, `CLOUD_CLUSTER_ES` and `BACKUP_V2`.",
+					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, " +
+					"`EXPORT_AND_RESTORE_POWER_OFF_VM`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, " +
+					"`AKS_CUSTOM_PRIVATE_DNS_ZONE`, `SERVICE_ENDPOINT_AUTOMATION`, `ENCRYPTION`, `SQL_ARCHIVAL`, " +
+					"`RECOVERY`, `BACKUP_V2`, `SAP_HANA_SS_BASIC`, `SAP_HANA_SS_RECOVERY` and `CLOUD_CLUSTER_ES`.",
 			},
 			keyResourceGroupActions: {
 				Type: schema.TypeList,

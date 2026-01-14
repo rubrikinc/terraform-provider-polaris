@@ -41,15 +41,20 @@ description: |-
   feature.EXPORT_AND_RESTORE - Represents the set of permissions required for export
   and restore operations.FILE_LEVEL_RECOVERY - Represents the set of permissions required for
   file-level recovery operations.SNAPSHOT_PRIVATE_ACCESS - Represents the set of permissions required for
-  private access to disk snapshots.
+  private access to disk snapshots.EXPORT_AND_RESTORE_POWER_OFF_VM - Represents the set of permissions
+  required for export and restore operations with VM power off capability.
+  SERVERS_AND_APPS
+  CLOUD_CLUSTER_ES - Represents the basic set of permissions required to
+  onboard the feature.SAP_HANA_SS_BASIC - Represents the basic set of permissions required for
+  SAP HANA snapshot support.SAP_HANA_SS_RECOVERY - Represents the set of permissions required for SAP
+  HANA recovery operations.
   EXOCOMPUTE
   BASIC - Represents the basic set of permissions required to onboard the
   feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage
   of private endpoints.CUSTOMER_MANAGED_BASIC - Represents the permissions required to enable
-  customer-managed Exocompute feature.
-  SERVERS_AND_APPS
-  CLOUD_CLUSTER_ES - Represents the basic set of permissions required to onboard the
-  feature.
+  customer-managed Exocompute feature.AKS_CUSTOM_PRIVATE_DNS_ZONE - Represents the permissions required for AKS
+  custom private DNS zone configuration.SERVICE_ENDPOINT_AUTOMATION - Represents the permissions required for
+  service endpoint automation.
   ~> Note: Even though the resource_group_name and the
   resource_group_region fields are marked as optional you should always
   specify them. They are marked as optional to simplify the migration of
@@ -125,6 +130,16 @@ are used when specifying the feature set.
     file-level recovery operations.
   * `SNAPSHOT_PRIVATE_ACCESS` - Represents the set of permissions required for
     private access to disk snapshots.
+  * `EXPORT_AND_RESTORE_POWER_OFF_VM` - Represents the set of permissions
+    required for export and restore operations with VM power off capability.
+
+`SERVERS_AND_APPS`
+  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to
+    onboard the feature.
+  * `SAP_HANA_SS_BASIC` - Represents the basic set of permissions required for
+    SAP HANA snapshot support.
+  * `SAP_HANA_SS_RECOVERY` - Represents the set of permissions required for SAP
+    HANA recovery operations.
 
 `EXOCOMPUTE`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -133,10 +148,10 @@ are used when specifying the feature set.
     of private endpoints.
   * `CUSTOMER_MANAGED_BASIC` - Represents the permissions required to enable
     customer-managed Exocompute feature.
-
-`SERVERS_AND_APPS`
-  * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
-    feature.
+  * `AKS_CUSTOM_PRIVATE_DNS_ZONE` - Represents the permissions required for AKS
+    custom private DNS zone configuration.
+  * `SERVICE_ENDPOINT_AUTOMATION` - Represents the permissions required for
+    service endpoint automation.
 
 ~> **Note:** Even though the `resource_group_name` and the
    `resource_group_region` fields are marked as optional you should always
@@ -297,7 +312,7 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `CLOUD_CLUSTER_ES` and `SNAPSHOT_PRIVATE_ACCESS`.
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature. Possible values are `BASIC`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `CLOUD_CLUSTER_ES`, `SNAPSHOT_PRIVATE_ACCESS` and `EXPORT_AND_RESTORE_POWER_OFF_VM`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -317,7 +332,7 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC`, `PRIVATE_ENDPOINTS` and `CUSTOMER_MANAGED_BASIC`.
+- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `AKS_CUSTOM_PRIVATE_DNS_ZONE` and `SERVICE_ENDPOINT_AUTOMATION`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
@@ -337,7 +352,7 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Cloud Cluster feature. Possible values are `CLOUD_CLUSTER_ES`.
+- `permission_groups` (Set of String) Permission groups to assign to the Servers and Apps feature. Possible values are `CLOUD_CLUSTER_ES`, `SAP_HANA_SS_BASIC` and `SAP_HANA_SS_RECOVERY`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
