@@ -749,3 +749,33 @@ Required:
 - `retention` (Number) Retention specifies for how long the snapshots are kept.
 - `retention_unit` (String) Retention unit specifies the unit of `retention`. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
 - `year_start_month` (String) Year start month. Possible values are `JANUARY`, `FEBRUARY`, `MARCH`, `APRIL`, `MAY`, `JUNE`, `JULY`, `AUGUST`, `SEPTEMBER`, `OCTOBER`, `NOVEMBER` and `DECEMBER`.
+
+## Import
+
+Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Using SLA domain ID (UUID).
+import {
+  to = polaris_sla_domain.foobar
+  id = "0e55e625-b78d-4e83-87f3-90313a980211"
+}
+
+# Using SLA domain name.
+import {
+  to = polaris_sla_domain.gold
+  id = "Gold"
+}
+```
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Using SLA domain ID (UUID):
+% terraform import polaris_sla_domain.foobar 0e55e625-b78d-4e83-87f3-90313a980211
+
+# Using SLA domain name:
+% terraform import polaris_sla_domain.gold "Gold"
+```
