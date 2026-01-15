@@ -125,6 +125,9 @@ func resourceSLADomain() *schema.Resource {
 		DeleteContext: deleteSLADomain,
 
 		Description: description(resourceSLADomainDescription),
+		Importer: &schema.ResourceImporter{
+			StateContext: importSLADomain,
+		},
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -2621,6 +2624,39 @@ func deleteSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 
 	d.SetId("")
 	return nil
+}
+
+// importSLADomain imports an SLA domain by ID (UUID) or name. If the import ID
+// is a valid UUID, the SLA domain is looked up by ID. Otherwise, the SLA domain
+// is looked up by name.
+func importSLADomain(ctx context.Context, d *schema.ResourceData, m any) ([]*schema.ResourceData, error) {
+	log.Print("[TRACE] importSLADomain")
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return nil, err
+	}
+
+	importID := d.Id()
+
+	// Try to parse the import ID as a UUID.
+	id, err := uuid.Parse(importID)
+	if err != nil {
+		// If it's not a UUID, treat it as a name and look up the SLA domain.
+		slaDomain, err := sla.Wrap(client).DomainByName(ctx, importID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find SLA domain by name %q: %w", importID, err)
+		}
+		d.SetId(slaDomain.ID.String())
+		return []*schema.ResourceData{d}, nil
+	}
+	// Verify the SLA domain exists.
+	if _, err := sla.Wrap(client).DomainByID(ctx, id); err != nil {
+		return nil, fmt.Errorf("failed to find SLA domain by ID %q: %w", importID, err)
+	}
+
+	d.SetId(id.String())
+	return []*schema.ResourceData{d}, nil
 }
 
 func fromAWSDynamoDBConfig(d *schema.ResourceData) (*gqlsla.AWSDynamoDBConfig, error) {
