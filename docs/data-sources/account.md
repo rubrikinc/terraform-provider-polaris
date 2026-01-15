@@ -42,7 +42,59 @@ resource "azuread_application" "app" {
 
 ### Read-Only
 
+- `aws` (List of Object) AWS cloud vendor information including supported features, and their permission groups. (see [below for nested schema](#nestedatt--aws))
+- `azure` (List of Object) Azure cloud vendor information including supported features, and their permission groups. (see [below for nested schema](#nestedatt--azure))
 - `features` (Set of String) Features enabled for the RSC account.
 - `fqdn` (String) Fully qualified domain name of the RSC account.
+- `gcp` (List of Object) GCP cloud vendor information including supported features, and their permission groups. (see [below for nested schema](#nestedatt--gcp))
 - `id` (String) SHA-256 hash of the features, the fully qualified domain name and the name.
 - `name` (String) RSC account name.
+
+<a id="nestedatt--aws"></a>
+### Nested Schema for `aws`
+
+Read-Only:
+
+- `features` (List of Object) (see [below for nested schema](#nestedobjatt--aws--features))
+
+<a id="nestedobjatt--aws--features"></a>
+### Nested Schema for `aws.features`
+
+Read-Only:
+
+- `name` (String)
+- `permission_groups` (List of String)
+
+
+
+<a id="nestedatt--azure"></a>
+### Nested Schema for `azure`
+
+Read-Only:
+
+- `features` (List of Object) (see [below for nested schema](#nestedobjatt--azure--features))
+
+<a id="nestedobjatt--azure--features"></a>
+### Nested Schema for `azure.features`
+
+Read-Only:
+
+- `name` (String)
+- `permission_groups` (List of String)
+
+
+
+<a id="nestedatt--gcp"></a>
+### Nested Schema for `gcp`
+
+Read-Only:
+
+- `features` (List of Object) (see [below for nested schema](#nestedobjatt--gcp--features))
+
+<a id="nestedobjatt--gcp--features"></a>
+### Nested Schema for `gcp.features`
+
+Read-Only:
+
+- `name` (String)
+- `permission_groups` (List of String)
