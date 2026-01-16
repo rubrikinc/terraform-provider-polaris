@@ -1,35 +1,19 @@
 ---
-page_title: "polaris_sla_domain Data Source - terraform-provider-polaris"
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
 subcategory: ""
 description: |-
-  
-The `polaris_sla_domain` data source is used to access information about RSC SLA
-domains. A SLA domain is looked up using either the ID or the name.
-
+  {{.Description}}
 ---
 
-# polaris_sla_domain (Data Source)
+# {{.Name}} ({{.Type}})
 
+{{.Description}}
 
-The `polaris_sla_domain` data source is used to access information about RSC SLA
-domains. A SLA domain is looked up using either the ID or the name.
-
-
-
+{{if .HasExample}}
 ## Example Usage
 
-```terraform
-# Using SLA domain ID.
-data "polaris_sla_domain" "sla_domain" {
-  id = "3c1a891a-340c-4b8a-a1ca-adec4d5914e4"
-}
-
-# Using SLA domain name.
-data "polaris_sla_domain" "sla_domain" {
-  name = "bronze"
-}
-```
-
+{{tffile .ExampleFile}}
+{{end}}
 
 
 ## Schema
