@@ -113,6 +113,8 @@ are used when specifying the feature.
     custom private DNS zone configuration.
   * ´SERVICE_ENDPOINT_AUTOMATION´ - Represents the permissions required for
     service endpoint automation.
+  * ´AUTOMATED_NETWORKING_SETUP´ - Represents the permissions required for
+    automated networking setup.
 
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
    is always required .
@@ -233,6 +235,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 						"EXPORT_AND_RESTORE_POWER_OFF_VM", "PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC",
 						"AKS_CUSTOM_PRIVATE_DNS_ZONE", "SERVICE_ENDPOINT_AUTOMATION", "ENCRYPTION", "SQL_ARCHIVAL",
 						"RECOVERY", "BACKUP_V2", "SAP_HANA_SS_BASIC", "SAP_HANA_SS_RECOVERY",
+						"AUTOMATED_NETWORKING_SETUP",
 						// The following permission group is no longer listed in the RSC UI when onboarding
 						// an Azure subscription. It was accepted in the past so we still silently allow it.
 						"CLOUD_CLUSTER_ES",
@@ -245,7 +248,8 @@ func dataSourceAzurePermissions() *schema.Resource {
 					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `SNAPSHOT_PRIVATE_ACCESS`, " +
 					"`EXPORT_AND_RESTORE_POWER_OFF_VM`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, " +
 					"`AKS_CUSTOM_PRIVATE_DNS_ZONE`, `SERVICE_ENDPOINT_AUTOMATION`, `ENCRYPTION`, `SQL_ARCHIVAL`, " +
-					"`RECOVERY`, `BACKUP_V2`, `SAP_HANA_SS_BASIC`, `SAP_HANA_SS_RECOVERY` and `CLOUD_CLUSTER_ES`.",
+					"`RECOVERY`, `BACKUP_V2`, `SAP_HANA_SS_BASIC`, `SAP_HANA_SS_RECOVERY`, " +
+					"`AUTOMATED_NETWORKING_SETUP` and `CLOUD_CLUSTER_ES`.",
 			},
 			keyResourceGroupActions: {
 				Type: schema.TypeList,
