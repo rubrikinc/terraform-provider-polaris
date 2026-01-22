@@ -56,6 +56,7 @@ const (
 	keyDB2Config                                    = "db2_config"
 	keyDifferentialFrequency                        = "differential_frequency"
 	keyDifferentialFrequencyUnit                    = "differential_frequency_unit"
+	keyDynamicScalingEnabled                        = "dynamic_scaling_enabled"
 	keyGCPCloudSQLConfig                            = "gcp_cloud_sql_config"
 	keyHostLogRetention                             = "host_log_retention"
 	keyHostLogRetentionUnit                         = "host_log_retention_unit"

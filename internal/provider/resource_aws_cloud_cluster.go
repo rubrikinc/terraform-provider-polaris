@@ -184,6 +184,13 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Default:     false,
 							Description: "Whether to force delete the cluster on destroy.",
 						},
+						keyDynamicScalingEnabled: {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Whether to enable dynamic scaling for the cluster. Requires CDM Version 9.5+. Changing this forces a new resource to be created.",
+							ForceNew:    true,
+						},
 					},
 				},
 			},
@@ -353,14 +360,15 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	clusterConfig := gqlcloudcluster.AwsClusterConfig{
-		ClusterName:      clusterConfigMap[keyClusterName].(string),
-		UserEmail:        clusterConfigMap[keyAdminEmail].(string),
-		AdminPassword:    secret.String(clusterConfigMap[keyAdminPassword].(string)),
-		DNSNameServers:   dnsNameServers,
-		DNSSearchDomains: dnsSearchDomains,
-		NTPServers:       ntpServers,
-		NumNodes:         clusterConfigMap[keyNumNodes].(int),
-		AwsEsConfig:      awsEsConfig,
+		ClusterName:           clusterConfigMap[keyClusterName].(string),
+		UserEmail:             clusterConfigMap[keyAdminEmail].(string),
+		AdminPassword:         secret.String(clusterConfigMap[keyAdminPassword].(string)),
+		DNSNameServers:        dnsNameServers,
+		DNSSearchDomains:      dnsSearchDomains,
+		NTPServers:            ntpServers,
+		NumNodes:              clusterConfigMap[keyNumNodes].(int),
+		AwsEsConfig:           awsEsConfig,
+		DynamicScalingEnabled: clusterConfigMap[keyDynamicScalingEnabled].(bool),
 	}
 
 	input := gqlcloudcluster.CreateAwsClusterInput{
