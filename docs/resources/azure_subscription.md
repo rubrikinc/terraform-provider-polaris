@@ -332,7 +332,7 @@ Required:
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `AKS_CUSTOM_PRIVATE_DNS_ZONE` and `SERVICE_ENDPOINT_AUTOMATION`.
+- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, `AKS_CUSTOM_PRIVATE_DNS_ZONE`, `SERVICE_ENDPOINT_AUTOMATION` and `AUTOMATED_NETWORKING_SETUP`.
 - `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.

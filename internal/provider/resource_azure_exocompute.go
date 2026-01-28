@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlexocompute "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
@@ -105,34 +106,159 @@ func resourceAzureExocompute() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
-				AtLeastOneOf: []string{keyRegion},
+				ExactlyOneOf: []string{keyRegion},
 				Description: "RSC cloud account ID of the shared exocompute host account. Changing this forces a new " +
 					"resource to be created.",
 				ValidateFunc: validation.IsUUID,
 			},
+			keyOptionalConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyAllowlistAdditionalIPs: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.IsIPAddress,
+							},
+							Optional: true,
+							ForceNew: true,
+							MinItems: 1,
+							Description: "Allowlist additional IP addresses for the API server on the Kubernetes " +
+								"cluster. Requires that the `allowlist_rubrik_ips` field is set to `true`. Changing " +
+								"this forces a new resource to be created.",
+							RequiredWith: []string{keyOptionalConfig + ".0." + keyAllowlistRubrikIPs},
+						},
+						keyAllowlistRubrikIPs: {
+							Type:     schema.TypeBool,
+							Optional: true,
+							ForceNew: true,
+							Description: "Allowlist Rubrik IPs for the API server on the Kubernetes cluster. " +
+								"Defaults to `false`. Changing this forces a new resource to be created.",
+						},
+						keyClusterAccess: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  string(gqlexocompute.AzureClusterAccessPrivate),
+							ForceNew: true,
+							Description: "Azure cluster access type. Possible values are " +
+								"`AKS_CLUSTER_ACCESS_TYPE_PUBLIC` and `AKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Defaults to " +
+								"`AKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringInSlice([]string{
+								string(gqlexocompute.AzureClusterAccessPrivate),
+								string(gqlexocompute.AzureClusterAccessPublic),
+							}, false),
+						},
+						keyClusterTier: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  string(gqlexocompute.AzureClusterTierFree),
+							ForceNew: true,
+							Description: "Azure cluster tier. Possible values are `AKS_CLUSTER_TIER_FREE` and " +
+								"`AKS_CLUSTER_TIER_STANDARD`. Defaults to `AKS_CLUSTER_TIER_FREE`. Changing this " +
+								"forces a new resource to be created.",
+							ValidateFunc: validation.StringInSlice([]string{
+								string(gqlexocompute.AzureClusterTierFree),
+								string(gqlexocompute.AzureClusterTierStandard),
+							}, false),
+						},
+						keyDiskEncryptionAtHost: {
+							Type:     schema.TypeBool,
+							Optional: true,
+							ForceNew: true,
+							Description: "Enable disk encryption at host. Defaults to `false`. Changing this forces " +
+								"a new resource to be created.",
+						},
+						keyMaxNodeCount: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  string(gqlexocompute.AzureClusterNodeCountMedium),
+							ForceNew: true,
+							Description: "The maximum number of nodes each cluster can use. Make sure you have " +
+								"enough IP addresses in the subnet or a node pool large enough to handle the number " +
+								"of nodes to avoid launch failure. Possible values are `AKS_NODE_COUNT_BUCKET_SMALL` " +
+								"(32 nodes), `AKS_NODE_COUNT_BUCKET_MEDIUM` (64 nodes), `AKS_NODE_COUNT_BUCKET_LARGE` " +
+								"(128 nodes) and `AKS_NODE_COUNT_BUCKET_XLARGE` (256 nodes). Defaults to " +
+								"`AKS_NODE_COUNT_BUCKET_MEDIUM`. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringInSlice([]string{
+								string(gqlexocompute.AzureClusterNodeCountSmall),
+								string(gqlexocompute.AzureClusterNodeCountMedium),
+								string(gqlexocompute.AzureClusterNodeCountLarge),
+								string(gqlexocompute.AzureClusterNodeCountXLarge),
+							}, false),
+						},
+						keyPrivateExocomputeDNSZoneID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the private DNS zone which will resolve the API " +
+								"server URL for a private cluster. If empty, Azure will automatically create a " +
+								"private DNS zone in the node resource group, and will delete it when the AKS " +
+								"cluster is deleted. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyResourceGroupPrefix: {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Description: "Prefix of resource groups associated with the cluster, such as cluster " +
+								"nodes. Changing this forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keySnapshotPrivateAccessDNSZoneID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the private DNS zone linked to the exocompute VNet, " +
+								"which will resolve private endpoints linked to snapshots. If empty, a new private " +
+								"DNS zone will be created in the Exocompute resource group. Changing this forces a " +
+								"new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyUserDefinedRouting: {
+							Type:     schema.TypeBool,
+							Optional: true,
+							ForceNew: true,
+							Description: "Enable user defined routing. This allows the route for the Exocompute " +
+								"egress traffic to be configured. Defaults to `false`. Changing this forces a new " +
+								"resource to be created.",
+						},
+					},
+				},
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyHostCloudAccountID},
+				MaxItems:      1,
+			},
 			keyPodOverlayNetworkCIDR: {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{keyHostCloudAccountID},
+				ForceNew:      true,
 				Description: "The CIDR range assigned to pods when launching Exocompute with the CNI overlay network " +
-					"plugin mode. Changing this forces a new resource to be created.",
+					"plugin mode. Rubrik recommends a size of /18 or larger. The pod CIDR must not overlap with the " +
+					"cluster subnet or any IP ranges used in on-premises networks and other peered VNets. The " +
+					"default space assigned by Azure is 10.244.0.0/16. Changing this forces a new resource to be " +
+					"created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyRegion: {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ExactlyOneOf: []string{keyHostCloudAccountID},
 				Description: "Azure region to run the exocompute service in. Should be specified in the standard " +
 					"Azure style, e.g. `eastus`. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringInSlice(gqlazure.AllRegionNames(), false),
 			},
 			keySubnet: {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{keyHostCloudAccountID},
+				ForceNew:      true,
 				Description: "Azure subnet ID of the cluster subnet corresponding to the Exocompute configuration. " +
-					"This subnet will be used to allocate IP addresses to the nodes of the cluster. Changing this forces " +
-					"a new resource to be created.",
+					"This subnet will be used to allocate IP addresses to the nodes of the cluster. Changing this " +
+					"forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keySubscriptionID: {
@@ -189,10 +315,28 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		var exoConfig exocompute.AzureConfigurationFunc
 		region := gqlazure.RegionFromName(d.Get(keyRegion).(string))
 		if podOverlayNetworkCIDR, ok := d.GetOk(keyPodOverlayNetworkCIDR); ok {
-			exoConfig = exocompute.AzureManagedWithOverlayNetwork(region, d.Get(keySubnet).(string),
-				podOverlayNetworkCIDR.(string), false)
+			// RSC managed host configuration with overlay network.
+			exoConfig = func(ctx context.Context, cloudAccountID uuid.UUID) (gqlexocompute.CreateAzureConfigurationParams, error) {
+				return gqlexocompute.CreateAzureConfigurationParams{
+					CloudAccountID:        cloudAccountID,
+					IsManagedByRubrik:     true,
+					Region:                region.ToCloudAccountRegionEnum(),
+					SubnetID:              d.Get(keySubnet).(string),
+					PodOverlayNetworkCIDR: podOverlayNetworkCIDR.(string),
+					OptionalConfig:        fromAzureOptionalConfig(d),
+				}, nil
+			}
 		} else if subnet, ok := d.GetOk(keySubnet); ok {
-			exoConfig = exocompute.AzureManaged(region, subnet.(string), false)
+			// RSC managed host configuration.
+			exoConfig = func(ctx context.Context, cloudAccountID uuid.UUID) (gqlexocompute.CreateAzureConfigurationParams, error) {
+				return gqlexocompute.CreateAzureConfigurationParams{
+					CloudAccountID:    cloudAccountID,
+					IsManagedByRubrik: true,
+					Region:            region.ToCloudAccountRegionEnum(),
+					SubnetID:          subnet.(string),
+					OptionalConfig:    fromAzureOptionalConfig(d),
+				}, nil
+			}
 		} else {
 			exoConfig = exocompute.AzureBYOKCluster(region)
 		}
@@ -274,6 +418,9 @@ func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		if err := d.Set(keyPodOverlayNetworkCIDR, exoConfig.PodOverlayNetworkCIDR); err != nil {
 			return diag.FromErr(err)
 		}
+		if err := d.Set(keyOptionalConfig, toAzureOptionalConfig(exoConfig.OptionalConfig)); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil
@@ -310,4 +457,54 @@ func azureDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interf
 
 	d.SetId("")
 	return nil
+}
+
+func fromAzureOptionalConfig(d *schema.ResourceData) *gqlexocompute.AzureOptionalConfig {
+	block, ok := d.GetOk(keyOptionalConfig)
+	if !ok || len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil
+	}
+	config := block.([]any)[0].(map[string]any)
+
+	var additionalIPs []string
+	for _, ip := range config[keyAllowlistAdditionalIPs].(*schema.Set).List() {
+		additionalIPs = append(additionalIPs, ip.(string))
+	}
+
+	return &gqlexocompute.AzureOptionalConfig{
+		AdditionalWhitelistIPs:     additionalIPs,
+		ClusterAccess:              gqlexocompute.AzureClusterAccess(config[keyClusterAccess].(string)),
+		ClusterTier:                gqlexocompute.AzureClusterTier(config[keyClusterTier].(string)),
+		DiskEncryptionAtHost:       config[keyDiskEncryptionAtHost].(bool),
+		ExocomputePrivateDnsZoneID: config[keyPrivateExocomputeDNSZoneID].(string),
+		NodeCount:                  gqlexocompute.AzureClusterNodeCount(config[keyMaxNodeCount].(string)),
+		NodeRGPrefix:               config[keyResourceGroupPrefix].(string),
+		SnapshotPrivateDnsZoneId:   config[keySnapshotPrivateAccessDNSZoneID].(string),
+		UserDefinedRouting:         config[keyUserDefinedRouting].(bool),
+		WhitelistRubrikIPs:         config[keyAllowlistRubrikIPs].(bool),
+	}
+}
+
+func toAzureOptionalConfig(config *gqlexocompute.AzureOptionalConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	additionalIPs := &schema.Set{F: schema.HashString}
+	for _, ip := range config.AdditionalWhitelistIPs {
+		additionalIPs.Add(ip)
+	}
+
+	return []any{map[string]any{
+		keyAllowlistAdditionalIPs:         additionalIPs,
+		keyAllowlistRubrikIPs:             config.WhitelistRubrikIPs,
+		keyClusterAccess:                  string(config.ClusterAccess),
+		keyClusterTier:                    string(config.ClusterTier),
+		keyDiskEncryptionAtHost:           config.DiskEncryptionAtHost,
+		keyMaxNodeCount:                   string(config.NodeCount),
+		keyPrivateExocomputeDNSZoneID:     config.ExocomputePrivateDnsZoneID,
+		keyResourceGroupPrefix:            config.NodeRGPrefix,
+		keySnapshotPrivateAccessDNSZoneID: config.SnapshotPrivateDnsZoneId,
+		keyUserDefinedRouting:             config.UserDefinedRouting,
+	}}
 }

@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.4.x
+* Add support for Azure Exocompute optional configuration. The optional configuration can be used to configure cluster
+  tier, cluster access, etc. [[docs](../resources/azure_exocompute.md#nested-schema-for-optional_config)]
+
 ## v1.4.0-beta.5
 * Fix AWS archival location data source query. It is now possible to query existing AWS archival locations.
 
@@ -34,8 +38,11 @@ page_title: "Changelog"
 * Fix SLA schedule issues for certain object types.
 
 ## v1.3.2
-* Add `availability_zone` field to the `polaris_azure_cloud_cluster` resource. The `availability_zone` field can be used to specify the availability zone for the Azure cloud cluster. [[docs](../resources/azure_cloud_cluster.md)]
-* Add support for bootstrapping Azure CCES clusters using user assigned managed identity. The `polaris_cdm_bootstrap_cces_azure` resource now supports `storage_account_name`, `storage_account_endpoint_suffix`, and `user_assigned_managed_identity_client_id` fields as an alternative to `connection_string`. [[docs](../resources/cdm_bootstrap_cces_azure.md)]
+* Add `availability_zone` field to the `polaris_azure_cloud_cluster` resource. The `availability_zone` field can be used
+  to specify the availability zone for the Azure cloud cluster. [[docs](../resources/azure_cloud_cluster.md)]
+* Add support for bootstrapping Azure CCES clusters using user assigned managed identity. The
+  `polaris_cdm_bootstrap_cces_azure` resource now supports `storage_account_name`, `storage_account_endpoint_suffix`,
+  and `user_assigned_managed_identity_client_id` fields as an alternative to `connection_string`. [[docs](../resources/cdm_bootstrap_cces_azure.md)]
 * Update Go version to 1.24.11.
 * Update Rubrik Polaris SDK for Go to v1.1.13.
 
