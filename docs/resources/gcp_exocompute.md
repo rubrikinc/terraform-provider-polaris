@@ -57,7 +57,7 @@ resource "polaris_gcp_exocompute" "exocompute" {
 
 ### Optional
 
-- `trigger_health_check` (Boolean) Trigger a health check for the Exocompute configuration.
+- `trigger_health_check` (Boolean) Trigger a health check for the Exocompute configuration. Defaults to `false`.
 
 ### Read-Only
 

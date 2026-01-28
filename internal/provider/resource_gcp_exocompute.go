@@ -77,7 +77,7 @@ func resourceGcpExocompute() *schema.Resource {
 			keyTriggerHealthCheck: {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				Description: "Trigger a health check for the Exocompute configuration.",
+				Description: "Trigger a health check for the Exocompute configuration. Defaults to `false`.",
 			},
 		},
 		Importer: &schema.ResourceImporter{
@@ -157,6 +157,9 @@ func gcpReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	if err := d.Set(keyCloudAccountID, cloudAccountID.String()); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyRegionalConfig, toRegionalConfig(exoConfigs)); err != nil {
 		return diag.FromErr(err)
 	}
@@ -187,7 +190,7 @@ func gcpUpdateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func gcpDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	tflog.Trace(ctx, "azureDeleteExocompute")
+	tflog.Trace(ctx, "gcpDeleteExocompute")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
