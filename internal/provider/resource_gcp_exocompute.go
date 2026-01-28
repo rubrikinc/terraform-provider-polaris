@@ -149,7 +149,7 @@ func gcpReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		return diag.FromErr(err)
 	}
 
-	exoConfigs, err := exocompute.Wrap(client).GCPConfigurationsByCloudAccountID(ctx, cloudAccountID)
+	exoConfigs, err := exocompute.Wrap(client).GCPConfigurationsByCloudAccountID(ctx, cloudAccountID, false)
 	if errors.Is(err, graphql.ErrNotFound) {
 		d.SetId("")
 		return nil
