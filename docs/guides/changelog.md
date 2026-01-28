@@ -4,11 +4,68 @@ page_title: "Changelog"
 
 # Changelog
 
-## v1.4.x
+## v1.4.0
+
+**SLA Domain Management:**
+* Add `polaris_sla_domain` resource for managing RSC global SLA Domains. The resource supports creating and updating
+  SLA domains with frequency, retention, archival, and replication configurations.
+  [[docs](../resources/sla_domain.md)]
+* Add support for the following object types with specific configurations in SLA domains: vSphere Object, KUPR,
+  SAP HANA, Microsoft SQL Server, Db2, Oracle, Mongo, Managed Volume, PostgreSQL, MySQL, NCD, Informix, GCP Cloud SQL,
+  Azure SQL Databases, Azure SQL Managed Instance, Azure Blob Storage, AWS RDS, AWS S3, AWS DynamoDB, GCE Instance/Disk,
+  Okta, and Microsoft 365.
+* Add support for the following object types without specific configurations in SLA domains: Linux and
+  Windows Fileset, NAS, Active Directory, AWS EC2/EBS, Nutanix, HyperV, Exchange, VCD, Volume Group,
+  OLVM, Cassandra, MongoDB, Azure AD, Azure DevOps, K8S, SnapMirror Cloud, Atlassian Jira, Salesforce,
+  Google Workspace, D365, M365 Backup Storage, OpenStack, and Proxmox.
+* Add support for `DoNotProtect` SLA assignment to the `polaris_sla_domain_assignment` resource. This explicitly tells
+  RSC that a workload should not be protected, even if an inherited SLA would otherwise apply.
+  [[docs](../resources/sla_domain_assignment.md)]
+* Add support for backup windows in SLA domains to control when snapshots are taken.
+* Add support for retention lock in SLA domains. Retention lock ensures that backups cannot be deleted or modified
+  before the retention period expires.
+* Update `polaris_sla_domain` data source with additional computed fields for archival specifications, and various
+  schedule types (daily, hourly, minute, monthly, quarterly, weekly, yearly).
+* Fix SLA schedule issues for certain object types.
+
+**Archival and Replication:**
+* Add support for replication pairs in the SLA replication specification. This allows configuring replication between
+  specific source and target clusters.
+* Add support for cascading archival in SLA domains. Cascading archival archives snapshots from a replicated cluster
+  instead of directly from the source.
+* Add support for cluster archival in SLA domains. This allows archiving snapshots to a CDM cluster archival location.
+* Add support for data center archival tiering in SLA domains. This allows configuring tiering settings for data center
+  archival locations including instant tiering and intelligent tiering.
+* Add `polaris_ncd_archival_location` data source. The data source is used to look up NCD (Native Cloud Data) archival
+  locations in RSC. [[docs](../data-sources/ncd_archival_location.md)]
+* Add `polaris_data_center_archival_location` data source. The data source is used to look up data center archival
+  locations in RSC. [[docs](../data-sources/data_center_archival_location.md)]
+* Add `polaris_sla_source_cluster` data source. The data source is used to look up SLA source clusters in RSC.
+  [[docs](../data-sources/sla_source_cluster.md)]
+* Fix AWS archival location data source query. It is now possible to query existing AWS archival locations by name.
+
+**Cloud Cluster Management:**
+* Add `dynamic_scaling` field to the `polaris_aws_cloud_cluster` resource. The `dynamic_scaling` field can be used to
+  enable dynamic scaling for the AWS cloud cluster. [[docs](../resources/aws_cloud_cluster.md)]
+* Add `delete_cluster` field to the `polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources. The
+  `delete_cluster` field can be used to control whether the cloud cluster is deleted when the resource is destroyed.
+  [[docs](../resources/aws_cloud_cluster.md)] [[docs](../resources/azure_cloud_cluster.md)]
+
+**Permissions and Account Management:**
+* Add `permission_groups` field to the `polaris_account` data source. The `permission_groups` field is used to look up
+  permission groups for RSC features. [[docs](../data-sources/account.md)]
+* Improve Azure permission groups for the `polaris_azure_subscription` resource and `polaris_azure_permissions` data
+  source to include additional permissions.
+
+**Cloud Exocompute**
 * Add support for creating regional Exocompute configurations for GCP when using customer managed networking.
   [[docs](../resources/gcp_exocompute.md)]
 * Add support for Azure Exocompute optional configuration. The optional configuration can be used to configure cluster
   tier, cluster access, etc. [[docs](../resources/azure_exocompute.md#nested-schema-for-optional_config)]
+
+**Maintenance:**
+* Update Go version to 1.25.6.
+* Update Rubrik Polaris SDK for Go to v1.1.14.
 
 ## v1.4.0-beta.5
 * Fix AWS archival location data source query. It is now possible to query existing AWS archival locations.
