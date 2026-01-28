@@ -130,8 +130,8 @@ Optional:
 
 Required:
 
-- `name` (String) RSC feature name.
-- `permission_groups` (Set of String) Permission groups for the RSC feature.
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST` and `EXOCOMPUTE`.
+- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and `AUTOMATED_NETWORKING_SETUP`.
 
 Optional:
 
