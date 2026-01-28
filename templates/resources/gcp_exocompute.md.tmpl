@@ -1,0 +1,59 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+  {{.Description}}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{.Description}}
+
+{{if .HasExample}}
+## Example Usage
+
+{{tffile .ExampleFile}}
+{{end}}
+
+## Schema
+
+### Required
+
+- `cloud_account_id` (String) RSC cloud account ID. This is the ID of the `polaris_gcp_project` resource for which the Exocompute service runs. Changing this forces a new resource to be created.
+- `regional_config` (Block Set, Min: 1) Regional configuration for the Exocompute service. (see [below for nested schema](#nestedblock--regional_config))
+
+### Optional
+
+- `trigger_health_check` (Boolean) Trigger a health check for the Exocompute configuration. Defaults to `false`.
+
+### Read-Only
+
+- `id` (String) RSC Cloud Account ID (UUID).
+
+<a id="nestedblock--regional_config"></a>
+### Nested Schema for `regional_config`
+
+Optional:
+
+- `region` (String) GCP region to run the exocompute service in. Should be specified in the standard GCP style, e.g. `us-east1`.
+- `subnet_name` (String) Name of the GCP subnet to run the exocompute service in.
+- `vpc_name` (String) Name of the GCP VPC to run the exocompute service in.
+
+## Import
+
+To import the resource, you need to provide the ID of the RSC cloud account for which the Exocompute service is
+configured.
+
+Import is supported using the following syntax:
+
+{{if .HasImportIDConfig}}
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+{{tffile .ImportIDConfigFile}}
+{{end}}
+
+{{if .HasImport}}
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{tffile .ImportFile}}
+{{end}}

@@ -69,6 +69,10 @@ are used when specifying the feature.
 ´EXOCOMPUTE´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
+  * ´AUTOMATED_NETWORKING_SETUP´ - Represents the set of permissions required
+    for automated networking setup. When automated networking setup is enabled,
+    RSC is responsible for creating and maintaining the networking resources for
+    Exocompute. See the ´polaris_gcp_exocompute´ resource for more information.
 
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
    is always required .
@@ -138,13 +142,14 @@ func dataSourceGcpPermissions() *schema.Resource {
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
 						"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY",
+						"AUTOMATED_NETWORKING_SETUP",
 					}, false),
 				},
 				Optional:      true,
 				ConflictsWith: []string{keyFeatures},
 				RequiredWith:  []string{keyFeature},
 				Description: "Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, " +
-					"`EXPORT_AND_RESTORE` and `FILE_LEVEL_RECOVERY`.",
+					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and `AUTOMATED_NETWORKING_SETUP`.",
 			},
 			keyPermissions: {
 				Type: schema.TypeList,
