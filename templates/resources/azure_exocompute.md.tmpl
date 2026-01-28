@@ -20,7 +20,7 @@ description: |-
 ### Optional
 
 - `cloud_account_id` (String) RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for which the Exocompute service runs. Changing this forces a new resource to be created.
-- `host_cloud_account_id` (String) RSC cloud account ID of the shared exocompute host account. Changing this forces a new resource to be created. Changing this forces a new resource to be created.
+- `host_cloud_account_id` (String) RSC cloud account ID of the shared exocompute host account. Changing this forces a new resource to be created.
 - `optional_config` (Block List, Max: 1) (see [below for nested schema](#nestedblock--optional_config))
 - `pod_overlay_network_cidr` (String) The CIDR range assigned to pods when launching Exocompute with the CNI overlay network plugin mode. Rubrik recommends a size of /18 or larger. The pod CIDR must not overlap with the cluster subnet or any IP ranges used in on-premises networks and other peered VNets. The default space assigned by Azure is 10.244.0.0/16. Changing this forces a new resource to be created.
 - `region` (String) Azure region to run the exocompute service in. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces a new resource to be created.

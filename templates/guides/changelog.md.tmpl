@@ -6,7 +6,7 @@ page_title: "Changelog"
 
 ## v1.4.x
 * Add support for Azure Exocompute optional configuration. The optional configuration can be used to configure cluster
-  tier, cluster access, etc. [[docs](../data-sources/azure_exocompute.md#nested-schema-for-optional_config)]
+  tier, cluster access, etc. [[docs](../resources/azure_exocompute.md#nested-schema-for-optional_config)]
 
 ## v1.4.0-beta.5
 * Fix AWS archival location data source query. It is now possible to query existing AWS archival locations.

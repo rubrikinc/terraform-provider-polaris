@@ -108,7 +108,7 @@ func resourceAzureExocompute() *schema.Resource {
 				ForceNew:     true,
 				ExactlyOneOf: []string{keyRegion},
 				Description: "RSC cloud account ID of the shared exocompute host account. Changing this forces a new " +
-					"resource to be created. Changing this forces a new resource to be created.",
+					"resource to be created.",
 				ValidateFunc: validation.IsUUID,
 			},
 			keyOptionalConfig: {
