@@ -277,6 +277,11 @@ type testGCPProject struct {
 	ProjectName      string `json:"projectName"`
 	ProjectNumber    int64  `json:"projectNumber"`
 	OrganizationName string `json:"organizationName"`
+	Exocompute       struct {
+		Region     string `json:"region"`
+		SubnetName string `json:"subnetName"`
+		VPCName    string `json:"vpcNetworkName"`
+	} `json:"exocompute"`
 }
 
 // loadGCPTestConfig loads a GCP test configuration using the default
