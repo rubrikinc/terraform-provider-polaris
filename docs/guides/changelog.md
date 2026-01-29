@@ -62,6 +62,8 @@ page_title: "Changelog"
   [[docs](../resources/gcp_exocompute.md)]
 * Add support for Azure Exocompute optional configuration. The optional configuration can be used to configure cluster
   tier, cluster access, etc. [[docs](../resources/azure_exocompute.md#nested-schema-for-optional_config)]
+* Add support for AWS Exocompute optional configuration. The optional configuration can be used to configure cluster
+  access including Private Exocompute. [[docs](../resources/aws_exocompute.md#optional)]
 
 **Maintenance:**
 * Update Go version to 1.25.6.
