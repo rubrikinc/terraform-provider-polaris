@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlexocompute "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
@@ -80,6 +81,7 @@ func resourceAwsExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateExocompute,
 		ReadContext:   awsReadExocompute,
+		UpdateContext: awsUpdateExocompute,
 		DeleteContext: awsDeleteExocompute,
 
 		Description: description(resourceAWSExocomputeDescription),
@@ -130,6 +132,20 @@ func resourceAwsExocompute() *schema.Resource {
 				Type:        schema.TypeBool,
 				Computed:    true,
 				Description: "If true the security groups are managed by RSC.",
+			},
+			keyClusterAccess: {
+				Type:          schema.TypeString,
+				Optional:      true,
+				Default:       string(gqlexocompute.EKSClusterAccessPublic),
+				ConflictsWith: []string{keyHostAccountID, keyClusterSecurityGroupID, keyNodeSecurityGroupID},
+				RequiredWith:  []string{keyVPCID},
+				Description: "EKS cluster access type. Possible values are " +
+					"`EKS_CLUSTER_ACCESS_TYPE_PUBLIC` and `EKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Defaults to " +
+					"`EKS_CLUSTER_ACCESS_TYPE_PUBLIC`. Can only be used with RSC managed configurations.",
+				ValidateFunc: validation.StringInSlice([]string{
+					string(gqlexocompute.EKSClusterAccessPrivate),
+					string(gqlexocompute.EKSClusterAccessPublic),
+				}, false),
 			},
 			keyRegion: {
 				Type:          schema.TypeString,
@@ -203,6 +219,7 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 			subnets = append(subnets, s.(string))
 		}
 		vpcID := d.Get(keyVPCID).(string)
+		clusterAccess := d.Get(keyClusterAccess).(string)
 
 		// Note that Managed and Unmanaged below refer to whether the security
 		// groups are managed by RSC or not, and not the cluster.
@@ -211,7 +228,7 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		case region != "" && vpcID != "" && len(subnets) > 0 && clusterSecurityGroupID != "" && nodeSecurityGroupID != "":
 			config = exocompute.AWSUnmanaged(gqlaws.RegionFromName(region), vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID, false)
 		case region != "" && vpcID != "" && len(subnets) > 0:
-			config = exocompute.AWSManaged(gqlaws.RegionFromName(region), vpcID, subnets, false)
+			config = awsManagedWithOptionalConfig(gqlaws.RegionFromName(region), vpcID, subnets, clusterAccess)
 		case region != "":
 			config = exocompute.AWSBYOKCluster(gqlaws.RegionFromName(region))
 		default:
@@ -224,6 +241,58 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 		d.SetId(id.String())
 	}
+
+	awsReadExocompute(ctx, d, m)
+	return nil
+}
+
+func awsUpdateExocompute(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
+	tflog.Trace(ctx, "awsUpdateExocompute")
+
+	// Only RSC Managed configurations support in-place updates. Unmanaged,
+	// BYOK, and Application configurations should force a new resource via
+	// ForceNew on their defining fields.
+	if _, ok := d.GetOk(keyHostAccountID); ok {
+		return diag.Errorf("application configurations do not support updates")
+	}
+	// Use GetRawConfig to check if security group IDs were explicitly set by
+	// the user, since these fields are also Computed (set by backend for
+	// managed configurations).
+	rawConfig := d.GetRawConfig()
+	clusterSGConfigured := !rawConfig.GetAttr(keyClusterSecurityGroupID).IsNull()
+	nodeSGConfigured := !rawConfig.GetAttr(keyNodeSecurityGroupID).IsNull()
+	if clusterSGConfigured || nodeSGConfigured {
+		return diag.Errorf("unmanaged configurations do not support updates")
+	}
+
+	region := d.Get(keyRegion).(string)
+	var subnets []string
+	for _, s := range d.Get(keySubnets).(*schema.Set).List() {
+		subnets = append(subnets, s.(string))
+	}
+	vpcID := d.Get(keyVPCID).(string)
+	if vpcID == "" || len(subnets) == 0 {
+		return diag.Errorf("BYOK configurations do not support updates")
+	}
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	accountID, err := uuid.Parse(d.Get(keyAccountID).(string))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	clusterAccess := d.Get(keyClusterAccess).(string)
+	config := awsManagedWithOptionalConfig(gqlaws.RegionFromName(region), vpcID, subnets, clusterAccess)
+
+	id, err := exocompute.Wrap(client).UpdateAWSConfiguration(ctx, accountID, config)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	d.SetId(id.String())
 
 	awsReadExocompute(ctx, d, m)
 	return nil
@@ -302,6 +371,9 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		if err := d.Set(keyVPCID, exoConfig.VPCID); err != nil {
 			return diag.FromErr(err)
 		}
+		if err := d.Set(keyClusterAccess, awsClusterAccess(exoConfig.OptionalConfig)); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil
@@ -335,4 +407,31 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	}
 
 	return nil
+}
+
+// awsManagedWithOptionalConfig returns an AWSConfigurationFunc which initializes
+// the CreateAWSConfigurationParams object with security groups managed by RSC
+// and optional configuration for cluster access type.
+func awsManagedWithOptionalConfig(region gqlaws.Region, vpcID string, subnetIDs []string, clusterAccess string) exocompute.AWSConfigurationFunc {
+	return func(ctx context.Context, gql *graphql.Client, cloudAccountID uuid.UUID) (gqlexocompute.CreateAWSConfigurationParams, error) {
+		params, err := exocompute.AWSManaged(region, vpcID, subnetIDs, false)(ctx, gql, cloudAccountID)
+		if err != nil {
+			return gqlexocompute.CreateAWSConfigurationParams{}, err
+		}
+
+		params.OptionalConfig = &gqlexocompute.AWSOptionalConfig{
+			AWSClusterAccess: gqlexocompute.AWSClusterAccess(clusterAccess),
+		}
+
+		return params, nil
+	}
+}
+
+// awsClusterAccess returns the cluster access type from the optional config.
+// Returns the default public access type if the config is nil.
+func awsClusterAccess(config *gqlexocompute.AWSOptionalConfig) string {
+	if config == nil {
+		return string(gqlexocompute.EKSClusterAccessPublic)
+	}
+	return string(config.AWSClusterAccess)
 }
