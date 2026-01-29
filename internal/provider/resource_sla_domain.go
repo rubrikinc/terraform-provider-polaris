@@ -24,12 +24,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -2072,8 +2072,8 @@ func frequenciesFromSchedule(schedule gqlsla.SnapshotSchedule) []gqlsla.Retentio
 // newSLADomainMutator returns a function that can be used to either create
 // or update SLA domain depending on the op parameter.
 func newSLADomainMutator(op string) func(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Printf("[TRACE] newSLADomainMutator op: %s", op)
 	return func(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
+		tflog.Trace(ctx, "newSLADomainMutator", map[string]any{"op": op})
 		client, err := m.(*client).polaris()
 		if err != nil {
 			return diag.FromErr(err)
@@ -2367,7 +2367,7 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 }
 
 func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] readSLADomain")
+	tflog.Trace(ctx, "readSLADomain")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -2606,7 +2606,7 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 }
 
 func deleteSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	log.Print("[TRACE] deleteSLADomain")
+	tflog.Trace(ctx, "deleteSLADomain")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -2630,7 +2630,7 @@ func deleteSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 // is a valid UUID, the SLA domain is looked up by ID. Otherwise, the SLA domain
 // is looked up by name.
 func importSLADomain(ctx context.Context, d *schema.ResourceData, m any) ([]*schema.ResourceData, error) {
-	log.Print("[TRACE] importSLADomain")
+	tflog.Trace(ctx, "importSLADomain")
 
 	client, err := m.(*client).polaris()
 	if err != nil {
