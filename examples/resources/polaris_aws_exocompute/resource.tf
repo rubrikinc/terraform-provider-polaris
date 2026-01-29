@@ -14,6 +14,19 @@ resource "polaris_aws_exocompute" "host" {
   ]
 }
 
+# RSC managed Exocompute with private cluster access.
+resource "polaris_aws_exocompute" "host_private" {
+  account_id     = data.polaris_aws_account.host.id
+  region         = "us-east-2"
+  vpc_id         = "vpc-4859acb9"
+  cluster_access = "EKS_CLUSTER_ACCESS_TYPE_PRIVATE"
+
+  subnets = [
+    "subnet-ea67b67b",
+    "subnet-ea43ec78"
+  ]
+}
+
 # RSC managed Exocompute and customer managed security groups.
 resource "polaris_aws_exocompute" "host" {
   account_id                = data.polaris_aws_account.host.id

@@ -103,6 +103,19 @@ resource "polaris_aws_exocompute" "host" {
   ]
 }
 
+# RSC managed Exocompute with private cluster access.
+resource "polaris_aws_exocompute" "host_private" {
+  account_id     = data.polaris_aws_account.host.id
+  region         = "us-east-2"
+  vpc_id         = "vpc-4859acb9"
+  cluster_access = "EKS_CLUSTER_ACCESS_TYPE_PRIVATE"
+
+  subnets = [
+    "subnet-ea67b67b",
+    "subnet-ea43ec78"
+  ]
+}
+
 # RSC managed Exocompute and customer managed security groups.
 resource "polaris_aws_exocompute" "host" {
   account_id                = data.polaris_aws_account.host.id
@@ -148,6 +161,7 @@ resource "polaris_aws_exocompute" "application" {
 
 ### Optional
 
+- `cluster_access` (String) EKS cluster access type. Possible values are `EKS_CLUSTER_ACCESS_TYPE_PUBLIC` and `EKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Defaults to `EKS_CLUSTER_ACCESS_TYPE_PUBLIC`. Can only be used with RSC managed configurations.
 - `cluster_security_group_id` (String) AWS security group ID for the cluster. Changing this forces a new resource to be created.
 - `host_account_id` (String) Exocompute host cloud account ID. Changing this forces a new resource to be created.
 - `node_security_group_id` (String) AWS security group ID for the nodes. Changing this forces a new resource to be created.
