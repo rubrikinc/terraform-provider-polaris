@@ -118,3 +118,78 @@ func TestAccPolarisGCPProject_basic(t *testing.T) {
 		}},
 	})
 }
+
+const gcpProjectUsingFeatureTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_gcp_project" "default" {
+	credentials    = "{{ .Resource.Credentials }}"
+	project        = "{{ .Resource.ProjectID }}"
+	project_name   = "{{ .Resource.ProjectName }}"
+	project_number = {{ .Resource.ProjectNumber }}
+
+	feature {
+		name = "CLOUD_NATIVE_PROTECTION"
+		permission_groups = [
+			"BASIC",
+			"EXPORT_AND_RESTORE",
+			"FILE_LEVEL_RECOVERY",
+		]
+	}
+
+	feature {
+		name = "GCP_SHARED_VPC_HOST"
+		permission_groups = [
+			"BASIC",
+		]
+	}
+}
+`
+
+func TestAccPolarisGCPProject_feature(t *testing.T) {
+	config, project, err := loadGCPTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projectUsingFeature, err := makeTerraformConfig(config, gcpProjectUsingFeatureTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: projectUsingFeature,
+			Check: resource.ComposeTestCheckFunc(
+				// Project resource.
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "credentials", project.Credentials),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_name", project.ProjectName),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_number", strconv.FormatInt(project.ProjectNumber, 10)),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "organization_name", project.OrganizationName),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "delete_snapshots_on_destroy", "false"),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "feature.#", "2"),
+				resource.TestCheckTypeSetElemAttr("polaris_gcp_project.default", "feature.*.permission_groups.*", "BASIC"),
+				resource.TestCheckTypeSetElemAttr("polaris_gcp_project.default", "feature.*.permission_groups.*", "EXPORT_AND_RESTORE"),
+				resource.TestCheckTypeSetElemAttr("polaris_gcp_project.default", "feature.*.permission_groups.*", "FILE_LEVEL_RECOVERY"),
+				resource.TestCheckTypeSetElemNestedAttrs("polaris_gcp_project.default", "feature.*", map[string]string{
+					"%":                   "4",
+					"name":                "CLOUD_NATIVE_PROTECTION",
+					"permissions":         "",
+					"permission_groups.#": "3",
+					"status":              "CONNECTED",
+				}),
+				resource.TestCheckTypeSetElemNestedAttrs("polaris_gcp_project.default", "feature.*", map[string]string{
+					"%":                   "4",
+					"name":                "GCP_SHARED_VPC_HOST",
+					"permissions":         "",
+					"permission_groups.#": "1",
+					"status":              "CONNECTED",
+				}),
+			),
+		}},
+	})
+}
