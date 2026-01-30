@@ -67,7 +67,7 @@ page_title: "Changelog"
 
 **Maintenance:**
 * Update Go version to 1.25.6.
-* Update Rubrik Polaris SDK for Go to v1.1.14.
+* Update Rubrik Polaris SDK for Go to v1.2.0.
 
 ## v1.4.0-beta.5
 * Fix AWS archival location data source query. It is now possible to query existing AWS archival locations.
