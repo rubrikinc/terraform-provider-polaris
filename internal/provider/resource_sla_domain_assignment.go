@@ -422,25 +422,67 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		return diag.FromErr(err)
 	}
 
-	var objectIDs []uuid.UUID
-	for _, objectID := range d.Get(keyObjectIDs).(*schema.Set).List() {
-		objectID, err := uuid.Parse(objectID.(string))
+	// Get the current SLA domain ID to track what we're removing.
+	currentSLADomainID := d.Id()
+	if currentSLADomainID == doNotProtectID {
+		currentSLADomainID = core.DoNotProtectSLAID
+	}
+
+	// Filter objects to only unassign those that are still assigned to this
+	// resource's SLA. This prevents a race condition where concurrent creates
+	// might have already reassigned the object to a different SLA.
+	//
+	// Note: There's still a small "time of check to time of use" window
+	// between the check and the AssignDomain call. This window is narrow
+	// enough that concurrent interference is unlikely in practice.
+	var objectsToUnassign []uuid.UUID
+	for _, objectIDStr := range d.Get(keyObjectIDs).(*schema.Set).List() {
+		objectID, err := uuid.Parse(objectIDStr.(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		objectIDs = append(objectIDs, objectID)
-	}
 
-	if len(objectIDs) > 0 {
-		// Get the current SLA domain ID to track what we're removing.
-		currentSLADomainID := d.Id()
-		if currentSLADomainID == doNotProtectID {
-			currentSLADomainID = core.DoNotProtectSLAID
+		obj, err := sla.Wrap(client).HierarchyObjectByID(ctx, objectID)
+		if err != nil {
+			if errors.Is(err, graphql.ErrNotFound) {
+				// Object no longer exists, skip.
+				continue
+			}
+			return diag.FromErr(err)
 		}
 
+		// Only unassign if the object still has our SLA directly assigned.
+		if obj.SLAAssignment != gqlsla.Direct {
+			// Object no longer has a direct assignment, skip.
+			continue
+		}
+
+		stillOurs := false
+		switch currentSLADomainID {
+		case core.DoNotProtectSLAID:
+			// For doNotProtect, check effective SLA.
+			stillOurs = obj.EffectiveSLADomain.ID == core.DoNotProtectSLAID
+		default:
+			// For regular SLAs, check configured SLA.
+			stillOurs = obj.ConfiguredSLADomain.ID == currentSLADomainID
+		}
+
+		if stillOurs {
+			objectsToUnassign = append(objectsToUnassign, objectID)
+		} else {
+			tflog.Debug(ctx, "skipping unassign for object already reassigned", map[string]any{
+				"object_id":      objectID.String(),
+				"our_sla":        currentSLADomainID,
+				"configured_sla": obj.ConfiguredSLADomain.ID,
+				"effective_sla":  obj.EffectiveSLADomain.ID,
+			})
+		}
+	}
+
+	if len(objectsToUnassign) > 0 {
 		if err := sla.Wrap(client).AssignDomain(ctx, gqlsla.AssignDomainParams{
 			DomainAssignType:          gqlsla.NoAssignment,
-			ObjectIDs:                 objectIDs,
+			ObjectIDs:                 objectsToUnassign,
 			ApplyToExistingSnapshots:  ptr(true),
 			ApplyToNonPolicySnapshots: ptr(false),
 		}); err != nil {
@@ -449,7 +491,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 
 		// Wait for the assignment to be removed. We pass the current SLA domain ID
 		// so the wait function knows what assignment we're removing.
-		if err := waitForAssignmentRemoval(ctx, client, currentSLADomainID, objectIDs); err != nil {
+		if err := waitForAssignmentRemoval(ctx, client, currentSLADomainID, objectsToUnassign); err != nil {
 			return diag.FromErr(err)
 		}
 	}
