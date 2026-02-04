@@ -136,12 +136,11 @@ func resourceAwsExocompute() *schema.Resource {
 			keyClusterAccess: {
 				Type:          schema.TypeString,
 				Optional:      true,
-				Default:       string(gqlexocompute.EKSClusterAccessPublic),
 				ConflictsWith: []string{keyHostAccountID, keyClusterSecurityGroupID, keyNodeSecurityGroupID},
 				RequiredWith:  []string{keyVPCID},
 				Description: "EKS cluster access type. Possible values are " +
-					"`EKS_CLUSTER_ACCESS_TYPE_PUBLIC` and `EKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Defaults to " +
-					"`EKS_CLUSTER_ACCESS_TYPE_PUBLIC`. Can only be used with RSC managed configurations.",
+					"`EKS_CLUSTER_ACCESS_TYPE_PUBLIC` and `EKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Can only be used with " +
+					"RSC managed configurations.",
 				ValidateFunc: validation.StringInSlice([]string{
 					string(gqlexocompute.EKSClusterAccessPrivate),
 					string(gqlexocompute.EKSClusterAccessPublic),
