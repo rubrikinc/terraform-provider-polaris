@@ -25,8 +25,9 @@ Items 1 and 2 above requires that the AWS account has been onboarded with the
 
 Since there are 3 types of Exocompute configurations, there are 3 ways to create
 a `polaris_aws_exocompute` resource:
- 1. Using the `account_id`, `region`, `vpc_id` and `subnets` fields creates an
-    RSC managed host configuration. The `cluster_security_group_id` and
+ 1. Using the `account_id`, `region`, `vpc_id` and `subnets` or `subnet` fields
+    creates an RSC managed host configuration. Use the `subnet` block when pod
+    subnets are needed. The `cluster_security_group_id` and
     `node_security_group_id` fields can be used to create an Exocompute
     configuration where the customer manage the security groups.
  2. Using the `account_id` and `region` fields creates a customer managed host
@@ -67,8 +68,9 @@ Items 1 and 2 above requires that the AWS account has been onboarded with the
 
 Since there are 3 types of Exocompute configurations, there are 3 ways to create
 a `polaris_aws_exocompute` resource:
- 1. Using the `account_id`, `region`, `vpc_id` and `subnets` fields creates an
-    RSC managed host configuration. The `cluster_security_group_id` and
+ 1. Using the `account_id`, `region`, `vpc_id` and `subnets` or `subnet` fields
+    creates an RSC managed host configuration. Use the `subnet` block when pod
+    subnets are needed. The `cluster_security_group_id` and
     `node_security_group_id` fields can be used to create an Exocompute
     configuration where the customer manage the security groups.
  2. Using the `account_id` and `region` fields creates a customer managed host
@@ -130,6 +132,22 @@ resource "polaris_aws_exocompute" "host" {
   ]
 }
 
+# RSC managed Exocompute with pod subnets.
+resource "polaris_aws_exocompute" "host_pods" {
+  account_id = data.polaris_aws_account.host.id
+  region     = "us-east-2"
+  vpc_id     = "vpc-4859acb9"
+
+  subnet {
+    subnet_id     = "subnet-ea67b67b"
+    pod_subnet_id = "subnet-pod-1a"
+  }
+  subnet {
+    subnet_id     = "subnet-ea43ec78"
+    pod_subnet_id = "subnet-pod-1b"
+  }
+}
+
 # Customer managed Exocompute.
 resource "polaris_aws_exocompute" "host" {
   account_id = data.polaris_aws_account.host.id
@@ -166,7 +184,12 @@ resource "polaris_aws_exocompute" "application" {
 - `host_account_id` (String) Exocompute host cloud account ID. Changing this forces a new resource to be created.
 - `node_security_group_id` (String) AWS security group ID for the nodes. Changing this forces a new resource to be created.
 - `region` (String) AWS region to run the Exocompute instance in. Changing this forces a new resource to be created.
-- `subnets` (Set of String) AWS subnet IDs for the cluster subnets. Changing this forces a new resource to be created.
+- `subnet` (Block Set, Max: 2) AWS subnet for the cluster. Each subnet block accepts a `subnet_id` (Required) and an
+  optional `pod_subnet_id`. Conflicts with `subnets`. Changing this forces a new resource to be created.
+  - `subnet_id` (String, Required) AWS subnet ID.
+  - `pod_subnet_id` (String, Optional) AWS subnet ID for the pods.
+- `subnets` (Set of String) AWS subnet IDs for the cluster subnets. Conflicts with `subnet`. Changing this forces a new
+  resource to be created.
 - `vpc_id` (String) AWS VPC ID for the cluster network. Changing this forces a new resource to be created.
 
 ### Read-Only

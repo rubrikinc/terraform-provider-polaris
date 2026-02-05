@@ -59,8 +59,9 @@ Items 1 and 2 above requires that the AWS account has been onboarded with the
 
 Since there are 3 types of Exocompute configurations, there are 3 ways to create
 a ´polaris_aws_exocompute´ resource:
- 1. Using the ´account_id´, ´region´, ´vpc_id´ and ´subnets´ fields creates an
-    RSC managed host configuration. The ´cluster_security_group_id´ and
+ 1. Using the ´account_id´, ´region´, ´vpc_id´ and ´subnets´ or ´subnet´ fields
+    creates an RSC managed host configuration. Use the ´subnet´ block when pod
+    subnets are needed. The ´cluster_security_group_id´ and
     ´node_security_group_id´ fields can be used to create an Exocompute
     configuration where the customer manage the security groups.
  2. Using the ´account_id´ and ´region´ fields creates a customer managed host
@@ -157,16 +158,31 @@ func resourceAwsExocompute() *schema.Resource {
 					"to be created.",
 				ValidateFunc: validation.StringInSlice(gqlaws.AllRegionNames(), false),
 			},
+			keySubnet: {
+				Type:          schema.TypeSet,
+				Elem:          awsSubnetResource(),
+				MinItems:      2,
+				MaxItems:      2,
+				Optional:      true,
+				Computed:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyHostAccountID, keySubnets},
+				RequiredWith:  []string{keyVPCID},
+				Description: "AWS subnet for the cluster. Each subnet block accepts a `subnet_id` and an optional " +
+					"`pod_subnet_id`. Changing this forces a new resource to be created.",
+			},
 			keySubnets: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
-					Type: schema.TypeString,
+					Type:         schema.TypeString,
+					ValidateFunc: validation.StringIsNotWhiteSpace,
 				},
 				MinItems:      2,
 				MaxItems:      2,
 				Optional:      true,
+				Computed:      true,
 				ForceNew:      true,
-				ConflictsWith: []string{keyHostAccountID},
+				ConflictsWith: []string{keyHostAccountID, keySubnet},
 				RequiredWith:  []string{keyVPCID},
 				Description: "AWS subnet IDs for the cluster subnets. Changing this forces a new resource to be " +
 					"created.",
@@ -176,10 +192,19 @@ func resourceAwsExocompute() *schema.Resource {
 				Optional:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{keyHostAccountID},
-				RequiredWith:  []string{keySubnets},
 				Description:   "AWS VPC ID for the cluster network. Changing this forces a new resource to be created.",
 				ValidateFunc:  validation.StringIsNotWhiteSpace,
 			},
+		},
+		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+			if _, ok := diff.GetOk(keyVPCID); ok {
+				subnet := diff.Get(keySubnet).(*schema.Set)
+				subnets := diff.Get(keySubnets).(*schema.Set)
+				if subnet.Len() == 0 && subnets.Len() == 0 {
+					return errors.New("vpc_id requires either subnet or subnets to be specified")
+				}
+			}
+			return nil
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -214,23 +239,39 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		clusterSecurityGroupID := d.Get(keyClusterSecurityGroupID).(string)
 		nodeSecurityGroupID := d.Get(keyNodeSecurityGroupID).(string)
 		region := d.Get(keyRegion).(string)
-		var subnets []string
-		for _, s := range d.Get(keySubnets).(*schema.Set).List() {
-			subnets = append(subnets, s.(string))
-		}
 		vpcID := d.Get(keyVPCID).(string)
 		clusterAccess := d.Get(keyClusterAccess).(string)
 
-		// Note that Managed and Unmanaged below refer to whether the security
-		// groups are managed by RSC or not, and not the cluster.
-		var config exocompute.AWSConfigurationFunc
+		// Read subnets from whichever field is set.
+		var subnets []gqlexocompute.AWSSubnet
+		if v := d.Get(keySubnet).(*schema.Set); v.Len() > 0 {
+			for _, s := range v.List() {
+				subnets = append(subnets, fromAWSSubnetResource(s.(map[string]any)))
+			}
+		} else {
+			for _, s := range d.Get(keySubnets).(*schema.Set).List() {
+				subnets = append(subnets, gqlexocompute.AWSSubnet{ID: s.(string)})
+			}
+		}
+
+		var config exocompute.AWSConfig
 		switch {
-		case region != "" && vpcID != "" && len(subnets) > 0 && clusterSecurityGroupID != "" && nodeSecurityGroupID != "":
-			config = exocompute.AWSUnmanaged(gqlaws.RegionFromName(region), vpcID, subnets, clusterSecurityGroupID, nodeSecurityGroupID, false)
 		case region != "" && vpcID != "" && len(subnets) > 0:
-			config = awsManagedWithOptionalConfig(gqlaws.RegionFromName(region), vpcID, subnets, clusterAccess)
+			cfg := exocompute.AWSConfigParams{
+				Region:                 gqlaws.RegionFromName(region),
+				VPCID:                  vpcID,
+				Subnets:                subnets,
+				ClusterSecurityGroupID: clusterSecurityGroupID,
+				NodeSecurityGroupID:    nodeSecurityGroupID,
+			}
+			if clusterAccess != "" {
+				cfg.OptionalConfig = &gqlexocompute.AWSOptionalConfig{
+					AWSClusterAccess: gqlexocompute.AWSClusterAccess(clusterAccess),
+				}
+			}
+			config = cfg
 		case region != "":
-			config = exocompute.AWSBYOKCluster(gqlaws.RegionFromName(region))
+			config = exocompute.AWSConfigParams{Region: gqlaws.RegionFromName(region)}
 		default:
 			return diag.Errorf("invalid exocompute configuration")
 		}
@@ -306,16 +347,31 @@ func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{
 		if err := d.Set(keyPolarisManaged, exoConfig.IsManagedByRubrik); err != nil {
 			return diag.FromErr(err)
 		}
-		subnets := schema.Set{F: schema.HashString}
+		// Populate keySubnets (string set of IDs).
+		stringSubnets := schema.Set{F: schema.HashString}
 		if exoConfig.Subnet1.ID != "" {
-			subnets.Add(exoConfig.Subnet1.ID)
+			stringSubnets.Add(exoConfig.Subnet1.ID)
 		}
 		if exoConfig.Subnet2.ID != "" {
-			subnets.Add(exoConfig.Subnet2.ID)
+			stringSubnets.Add(exoConfig.Subnet2.ID)
 		}
-		if err := d.Set(keySubnets, &subnets); err != nil {
+		if err := d.Set(keySubnets, &stringSubnets); err != nil {
 			return diag.FromErr(err)
 		}
+
+		// Populate keySubnet (block set with full details including
+		// pod_subnet_id).
+		subnetSet := schema.Set{F: schema.HashResource(awsSubnetResource())}
+		if exoConfig.Subnet1.ID != "" {
+			subnetSet.Add(toAWSSubnetResource(exoConfig.Subnet1))
+		}
+		if exoConfig.Subnet2.ID != "" {
+			subnetSet.Add(toAWSSubnetResource(exoConfig.Subnet2))
+		}
+		if err := d.Set(keySubnet, &subnetSet); err != nil {
+			return diag.FromErr(err)
+		}
+
 		if err := d.Set(keyVPCID, exoConfig.VPCID); err != nil {
 			return diag.FromErr(err)
 		}
@@ -357,24 +413,6 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 	return nil
 }
 
-// awsManagedWithOptionalConfig returns an AWSConfigurationFunc which initializes
-// the CreateAWSConfigurationParams object with security groups managed by RSC
-// and optional configuration for cluster access type.
-func awsManagedWithOptionalConfig(region gqlaws.Region, vpcID string, subnetIDs []string, clusterAccess string) exocompute.AWSConfigurationFunc {
-	return func(ctx context.Context, gql *graphql.Client, cloudAccountID uuid.UUID) (gqlexocompute.CreateAWSConfigurationParams, error) {
-		params, err := exocompute.AWSManaged(region, vpcID, subnetIDs, false)(ctx, gql, cloudAccountID)
-		if err != nil {
-			return gqlexocompute.CreateAWSConfigurationParams{}, err
-		}
-
-		params.OptionalConfig = &gqlexocompute.AWSOptionalConfig{
-			AWSClusterAccess: gqlexocompute.AWSClusterAccess(clusterAccess),
-		}
-
-		return params, nil
-	}
-}
-
 // awsClusterAccess returns the cluster access type from the optional config.
 // Returns the default public access type if the config is nil.
 func awsClusterAccess(config *gqlexocompute.AWSOptionalConfig) string {
@@ -382,4 +420,37 @@ func awsClusterAccess(config *gqlexocompute.AWSOptionalConfig) string {
 		return string(gqlexocompute.EKSClusterAccessPublic)
 	}
 	return string(config.AWSClusterAccess)
+}
+
+func awsSubnetResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			keySubnetID: {
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  "AWS subnet ID.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyPodSubnetID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "AWS subnet ID for the pods.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+		},
+	}
+}
+
+func fromAWSSubnetResource(block map[string]any) gqlexocompute.AWSSubnet {
+	return gqlexocompute.AWSSubnet{
+		ID:          block[keySubnetID].(string),
+		PodSubnetID: block[keyPodSubnetID].(string),
+	}
+}
+
+func toAWSSubnetResource(subnet gqlexocompute.AWSSubnet) map[string]any {
+	return map[string]any{
+		keySubnetID:    subnet.ID,
+		keyPodSubnetID: subnet.PodSubnetID,
+	}
 }
