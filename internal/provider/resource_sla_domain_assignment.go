@@ -34,7 +34,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/sla"
 )
@@ -206,7 +206,7 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		if snapshotRetention != "" {
 			params.ExistingSnapshotRetention = gqlsla.ExistingSnapshotRetention(snapshotRetention)
 		}
-		expectedDomainID = core.DoNotProtectSLAID
+		expectedDomainID = hierarchy.DoNotProtectSLAID
 	}
 
 	if err := sla.Wrap(client).AssignDomain(ctx, params); err != nil {
@@ -283,7 +283,7 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 			// RETAIN_SNAPSHOTS, configuredSlaDomain keeps the previous SLA
 			// (converted to retention type) while effectiveSlaDomain becomes
 			// DO_NOT_PROTECT.
-			if obj.EffectiveSLADomain.ID == core.DoNotProtectSLAID {
+			if obj.EffectiveSLADomain.ID == hierarchy.DoNotProtectSLAID {
 				remainingIDs.Add(idStr)
 			}
 		case gqlsla.ProtectWithSLA:
@@ -373,7 +373,7 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			if snapshotRetention != "" {
 				params.ExistingSnapshotRetention = gqlsla.ExistingSnapshotRetention(snapshotRetention)
 			}
-			expectedAssignment = core.DoNotProtectSLAID
+			expectedAssignment = hierarchy.DoNotProtectSLAID
 		}
 
 		if err := sla.Wrap(client).AssignDomain(ctx, params); err != nil {
@@ -397,7 +397,7 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		}
 
 		// Wait for the unassignment to be applied.
-		if err := waitForAssignment(ctx, client, core.UnprotectedSLAID, removeObjectIDs); err != nil {
+		if err := waitForAssignment(ctx, client, hierarchy.UnprotectedSLAID, removeObjectIDs); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -423,7 +423,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	// Get the current SLA domain ID to track what we're removing.
 	currentSLADomainID := d.Id()
 	if currentSLADomainID == doNotProtectID {
-		currentSLADomainID = core.DoNotProtectSLAID
+		currentSLADomainID = hierarchy.DoNotProtectSLAID
 	}
 
 	// Filter objects to only unassign those that are still assigned to this
@@ -451,14 +451,14 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		}
 
 		switch currentSLADomainID {
-		case core.DoNotProtectSLAID:
+		case hierarchy.DoNotProtectSLAID:
 			// For doNotProtect, check both effective and configured SLA.
 			// If configuredSlaDomain is a regular SLA (not DO_NOT_PROTECT or
 			// UNPROTECTED), it means a concurrent create has already assigned
 			// the object to a new SLA, so we should skip unassignment.
-			if obj.EffectiveSLADomain.ID == core.DoNotProtectSLAID {
+			if obj.EffectiveSLADomain.ID == hierarchy.DoNotProtectSLAID {
 				configuredID := obj.ConfiguredSLADomain.ID
-				if configuredID == core.DoNotProtectSLAID || configuredID == core.UnprotectedSLAID {
+				if configuredID == hierarchy.DoNotProtectSLAID || configuredID == hierarchy.UnprotectedSLAID {
 					objectsToUnassign = append(objectsToUnassign, objectID)
 				}
 			}
@@ -590,7 +590,7 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 			return nil, fmt.Errorf("failed to get object %s: %w", objectID, err)
 		}
 
-		if obj.EffectiveSLADomain.ID != core.DoNotProtectSLAID {
+		if obj.EffectiveSLADomain.ID != hierarchy.DoNotProtectSLAID {
 			return nil, fmt.Errorf("object %s does not have DO_NOT_PROTECT assigned (effective SLA: %s)", objectID, obj.EffectiveSLADomain.Name)
 		}
 
@@ -615,9 +615,9 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 }
 
 // waitForAssignment waits for all objects to have the expected SLA directly assigned.
-// For doNotProtect, expectedDomainID should be core.DoNotProtectSLAID.
+// For doNotProtect, expectedDomainID should be hierarchy.DoNotProtectSLAID.
 // For protectWithSlaId, expectedDomainID should be the SLA domain ID string.
-// For unassignment (noAssignment), expectedDomainID should be core.UnprotectedSLAID.
+// For unassignment (noAssignment), expectedDomainID should be hierarchy.UnprotectedSLAID.
 func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDomainID string, objectIDs []uuid.UUID) error {
 	startTime := time.Now()
 
@@ -631,9 +631,9 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDoma
 			}
 
 			switch expectedDomainID {
-			case core.UnprotectedSLAID:
+			case hierarchy.UnprotectedSLAID:
 				// For unprotected, we just need to wait until there's no direct assignment.
-				if obj.SLAAssignment == gqlsla.Direct || obj.ConfiguredSLADomain.ID != core.UnprotectedSLAID {
+				if obj.SLAAssignment == gqlsla.Direct || obj.ConfiguredSLADomain.ID != hierarchy.UnprotectedSLAID {
 					tflog.Debug(ctx, "waiting for assignment to be removed (sla_assignment != DIRECT)", map[string]any{
 						"object_id":      objectID.String(),
 						"configured_sla": obj.ConfiguredSLADomain.ID,
@@ -642,10 +642,10 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDoma
 					})
 					pending = append(pending, objectID)
 				}
-			case core.DoNotProtectSLAID:
+			case hierarchy.DoNotProtectSLAID:
 				// For doNotProtect, we check effectiveSlaDomain because with
 				// RETAIN_SNAPSHOTS, configuredSlaDomain keeps the previous SLA.
-				if obj.EffectiveSLADomain.ID != core.DoNotProtectSLAID {
+				if obj.EffectiveSLADomain.ID != hierarchy.DoNotProtectSLAID {
 					tflog.Debug(ctx, "waiting for transition to DO_NOT_PROTECT", map[string]any{
 						"object_id":      objectID.String(),
 						"sla_assignment": string(obj.SLAAssignment),
@@ -691,7 +691,7 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDoma
 //
 // Parameters:
 //   - currentSLADomainID: The SLA domain ID being removed (can be a UUID string,
-//     core.DoNotProtectSLAID, or core.UnprotectedSLAID)
+//     hierarchy.DoNotProtectSLAID, or hierarchy.UnprotectedSLAID)
 //   - objectIDs: The objects to check
 //
 // The function completes successfully when all objects either:
@@ -713,15 +713,15 @@ func waitForAssignmentRemoval(ctx context.Context, client *polaris.Client, curre
 			stillHasOldAssignment := false
 
 			switch currentSLADomainID {
-			case core.DoNotProtectSLAID:
+			case hierarchy.DoNotProtectSLAID:
 				// For doNotProtect, check if effective SLA is still DO_NOT_PROTECT with direct assignment.
-				if obj.SLAAssignment == gqlsla.Direct && obj.EffectiveSLADomain.ID == core.DoNotProtectSLAID {
+				if obj.SLAAssignment == gqlsla.Direct && obj.EffectiveSLADomain.ID == hierarchy.DoNotProtectSLAID {
 					stillHasOldAssignment = true
 				}
-			case core.UnprotectedSLAID:
+			case hierarchy.UnprotectedSLAID:
 				// For unprotected, check if it's still unprotected with direct assignment.
 				// Note: This case is unlikely in practice since unprotected means no direct assignment.
-				if obj.SLAAssignment == gqlsla.Direct && obj.ConfiguredSLADomain.ID == core.UnprotectedSLAID {
+				if obj.SLAAssignment == gqlsla.Direct && obj.ConfiguredSLADomain.ID == hierarchy.UnprotectedSLAID {
 					stillHasOldAssignment = true
 				}
 			default:
