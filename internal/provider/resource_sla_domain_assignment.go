@@ -175,6 +175,12 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	params := gqlsla.AssignDomainParams{
 		DomainAssignType: assignType,
 		ObjectIDs:        objectIDs,
+		// Always set AllSubHierarchyType for cloud account objects that support multiple
+		// workload hierarchies. The backend requires this field to be set (not blank) for
+		// these object types, despite the GraphQL documentation suggesting it can be left
+		// blank. Since we cannot read this value back from the API, we always use this
+		// default to ensure assignments work correctly for all object types.
+		ApplicableWorkloadType: "AllSubHierarchyType",
 	}
 
 	// For protectWithSlaId, sla_domain_id is required.
@@ -356,8 +362,9 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 
 	if len(addObjectIDs) > 0 {
 		params := gqlsla.AssignDomainParams{
-			DomainAssignType: assignType,
-			ObjectIDs:        addObjectIDs,
+			DomainAssignType:       assignType,
+			ObjectIDs:              addObjectIDs,
+			ApplicableWorkloadType: "AllSubHierarchyType",
 		}
 
 		// For protectWithSlaId, use apply settings from schema.
@@ -392,6 +399,7 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			ObjectIDs:                 removeObjectIDs,
 			ApplyToExistingSnapshots:  ptr(true),
 			ApplyToNonPolicySnapshots: ptr(false),
+			ApplicableWorkloadType:    "AllSubHierarchyType",
 		}); err != nil {
 			return diag.FromErr(err)
 		}
@@ -476,6 +484,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			ObjectIDs:                 objectsToUnassign,
 			ApplyToExistingSnapshots:  ptr(true),
 			ApplyToNonPolicySnapshots: ptr(false),
+			ApplicableWorkloadType:    "AllSubHierarchyType",
 		}); err != nil {
 			return diag.FromErr(err)
 		}
