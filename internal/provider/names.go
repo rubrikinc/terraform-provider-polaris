@@ -266,6 +266,7 @@ const (
 	keyPolarisGCPPermissions                        = "polaris_gcp_permissions"
 	keyPolarisGCPProject                            = "polaris_gcp_project"
 	keyPolarisGCPServiceAccount                     = "polaris_gcp_service_account"
+	keyPolarisObject                                = "polaris_object"
 	keyPolarisManaged                               = "polaris_managed"
 	keyPolarisNCDArchivalLocation                   = "polaris_ncd_archival_location"
 	keyPolarisRole                                  = "polaris_role"
