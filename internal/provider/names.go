@@ -403,6 +403,7 @@ const (
 	keyWaitForCompletion                            = "wait_for_completion"
 	keyWithConditions                               = "with_conditions"
 	keyWithoutConditions                            = "without_conditions"
+	keyWorkload                                     = "workload"
 	keyWeeklySchedule                               = "weekly_schedule"
 	keyYearlySchedule                               = "yearly_schedule"
 	keyYearStartMonth                               = "year_start_month"
