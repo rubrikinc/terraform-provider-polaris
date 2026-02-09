@@ -81,7 +81,6 @@ func resourceAwsExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateExocompute,
 		ReadContext:   awsReadExocompute,
-		UpdateContext: awsUpdateExocompute,
 		DeleteContext: awsDeleteExocompute,
 
 		Description: description(resourceAWSExocomputeDescription),
@@ -136,6 +135,7 @@ func resourceAwsExocompute() *schema.Resource {
 			keyClusterAccess: {
 				Type:          schema.TypeString,
 				Optional:      true,
+				ForceNew:      true,
 				ConflictsWith: []string{keyHostAccountID, keyClusterSecurityGroupID, keyNodeSecurityGroupID},
 				RequiredWith:  []string{keyVPCID},
 				Description: "EKS cluster access type. Possible values are " +
@@ -240,58 +240,6 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 		d.SetId(id.String())
 	}
-
-	awsReadExocompute(ctx, d, m)
-	return nil
-}
-
-func awsUpdateExocompute(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
-	tflog.Trace(ctx, "awsUpdateExocompute")
-
-	// Only RSC Managed configurations support in-place updates. Unmanaged,
-	// BYOK, and Application configurations should force a new resource via
-	// ForceNew on their defining fields.
-	if _, ok := d.GetOk(keyHostAccountID); ok {
-		return diag.Errorf("application configurations do not support updates")
-	}
-	// Use GetRawConfig to check if security group IDs were explicitly set by
-	// the user, since these fields are also Computed (set by backend for
-	// managed configurations).
-	rawConfig := d.GetRawConfig()
-	clusterSGConfigured := !rawConfig.GetAttr(keyClusterSecurityGroupID).IsNull()
-	nodeSGConfigured := !rawConfig.GetAttr(keyNodeSecurityGroupID).IsNull()
-	if clusterSGConfigured || nodeSGConfigured {
-		return diag.Errorf("unmanaged configurations do not support updates")
-	}
-
-	region := d.Get(keyRegion).(string)
-	var subnets []string
-	for _, s := range d.Get(keySubnets).(*schema.Set).List() {
-		subnets = append(subnets, s.(string))
-	}
-	vpcID := d.Get(keyVPCID).(string)
-	if vpcID == "" || len(subnets) == 0 {
-		return diag.Errorf("BYOK configurations do not support updates")
-	}
-
-	client, err := m.(*client).polaris()
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	accountID, err := uuid.Parse(d.Get(keyAccountID).(string))
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	clusterAccess := d.Get(keyClusterAccess).(string)
-	config := awsManagedWithOptionalConfig(gqlaws.RegionFromName(region), vpcID, subnets, clusterAccess)
-
-	id, err := exocompute.Wrap(client).UpdateAWSConfiguration(ctx, accountID, config)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	d.SetId(id.String())
 
 	awsReadExocompute(ctx, d, m)
 	return nil
