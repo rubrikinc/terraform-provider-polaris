@@ -9,3 +9,5 @@ import {
   to = polaris_sla_domain_assignment.unprotected
   id = "doNotProtect:0e55e625-b78d-4e83-87f3-90313a980211,1a2b3c4d-5e6f-7890-abcd-ef1234567890"
 }
+
+# Note: The workload attribute will be ALL_SUB_HIERARCHY_TYPE after import.

@@ -59,9 +59,10 @@ The ´assignment_type´ attribute controls how the SLA domain is assigned:
 
   * ´doNotProtect´ - Do not protect objects. Requires that ´sla_domain_id´ isn't set.
 
-~> **Note:** When importing, ´apply_changes_to_existing_snapshots´ and
-´apply_changes_to_non_policy_snapshots´ cannot be retrieved from the API.
-These attributes will use their default values after import.
+~> **Note:** When importing, ´apply_changes_to_existing_snapshots´,
+´apply_changes_to_non_policy_snapshots´, and ´workload´ cannot be retrieved
+from the API. These attributes will use their default values after import.
+For ´workload´, the default is ´ALL_SUB_HIERARCHY_TYPE´.
 `
 
 // doNotProtectID is the sentinel resource ID used when the assignment type is
@@ -136,6 +137,15 @@ func resourceSLADomainAssignment() *schema.Resource {
 					"`doNotProtect`. Valid values are `RETAIN_SNAPSHOTS`, `KEEP_FOREVER`, and `EXPIRE_IMMEDIATELY`.",
 				ConflictsWith: []string{keySLADomainID, keyApplyChangesToExistingSnapshots, keyApplyChangesToNonPolicySnapshots},
 			},
+			keyWorkload: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice(hierarchy.AllWorkloadsAsStrings(), false),
+				Description: "Workload hierarchy type for SLA Domain assignments. If not specified, " +
+					"`ALL_SUB_HIERARCHY_TYPE` is used. Valid values: `ALL_SUB_HIERARCHY_TYPE`, " +
+					"`AZURE_NATIVE_VIRTUAL_MACHINE`, `AZURE_NATIVE_MANAGED_DISK`, `AZURE_SQL_DATABASE_DB`, " +
+					"`AZURE_SQL_MANAGED_INSTANCE_DB`, `AZURE_STORAGE_ACCOUNT`.",
+			},
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: importSLADomainAssignment,
@@ -172,9 +182,20 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	applyToExisting := d.Get(keyApplyChangesToExistingSnapshots).(bool)
 	applyToNonPolicy := d.Get(keyApplyChangesToNonPolicySnapshots).(bool)
 
+	// Parse workload string, defaulting to AllSubHierarchyType if empty.
+	workload := hierarchy.WorkloadAllSubHierarchyType
+	if wl := d.Get(keyWorkload).(string); wl != "" {
+		var err error
+		workload, err = hierarchy.ToWorkload(wl)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	params := gqlsla.AssignDomainParams{
-		DomainAssignType: assignType,
-		ObjectIDs:        objectIDs,
+		DomainAssignType:       assignType,
+		ObjectIDs:              objectIDs,
+		ApplicableWorkloadType: workload.GraphQL(),
 	}
 
 	// For protectWithSlaId, sla_domain_id is required.
@@ -214,7 +235,7 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	}
 
 	// Wait for the assignment to be applied.
-	if err := waitForAssignment(ctx, client, expectedDomainID, objectIDs); err != nil {
+	if err := waitForAssignment(ctx, client, expectedDomainID, objectIDs, workload); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -230,7 +251,6 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 
 func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "readSLADomainAssignment")
-
 	client, err := m.(*client).polaris()
 	if err != nil {
 		return diag.FromErr(err)
@@ -238,6 +258,16 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 
 	assignType := gqlsla.AssignmentType(d.Get(keyAssignmentType).(string))
 	domainIDStr := d.Get(keySLADomainID).(string)
+
+	// Parse workload string, defaulting to AllSubHierarchyType if empty.
+	workload := hierarchy.WorkloadAllSubHierarchyType
+	if wl := d.Get(keyWorkload).(string); wl != "" {
+		var err error
+		workload, err = hierarchy.ToWorkload(wl)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	// For protectWithSlaId, verify the SLA domain still exists.
 	if assignType == gqlsla.ProtectWithSLA && domainIDStr != "" {
@@ -263,7 +293,7 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 			return diag.FromErr(err)
 		}
 
-		obj, err := sla.Wrap(client).HierarchyObjectByID(ctx, objectID)
+		obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
 		if err != nil {
 			if errors.Is(err, graphql.ErrNotFound) {
 				// Object no longer exists, skip it.
@@ -324,6 +354,15 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	applyToExisting := d.Get(keyApplyChangesToExistingSnapshots).(bool)
 	applyToNonPolicy := d.Get(keyApplyChangesToNonPolicySnapshots).(bool)
 
+	// Parse workload string, defaulting to AllSubHierarchyType if empty.
+	workload := hierarchy.WorkloadAllSubHierarchyType
+	if wl := d.Get(keyWorkload).(string); wl != "" {
+		workload, err = hierarchy.ToWorkload(wl)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	var domainID uuid.UUID
 	// Validate based on assignment_type.
 	switch assignType {
@@ -348,16 +387,16 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	}
 
 	// Handle assignment type changes.
-	if d.HasChange(keyAssignmentType) || d.HasChange(keySLADomainID) || d.HasChange(keyExistingSnapshotRetention) ||
-		d.HasChange(keyApplyChangesToExistingSnapshots) || d.HasChange(keyApplyChangesToNonPolicySnapshots) {
-		// When assignment type, domain ID, snapshot retention, or apply settings change, we need to reassign all objects.
+	if d.HasChanges(keyAssignmentType, keySLADomainID, keyExistingSnapshotRetention, keyApplyChangesToExistingSnapshots, keyApplyChangesToNonPolicySnapshots, keyWorkload) {
+		// When assignment type, domain ID, snapshot retention, apply settings, or workload change, we need to reassign all objects.
 		addObjectIDs = totalObjectIDs
 	}
 
 	if len(addObjectIDs) > 0 {
 		params := gqlsla.AssignDomainParams{
-			DomainAssignType: assignType,
-			ObjectIDs:        addObjectIDs,
+			DomainAssignType:       assignType,
+			ObjectIDs:              addObjectIDs,
+			ApplicableWorkloadType: workload.GraphQL(),
 		}
 
 		// For protectWithSlaId, use apply settings from schema.
@@ -381,7 +420,7 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		}
 
 		// Wait for the assignment to be applied.
-		if err := waitForAssignment(ctx, client, expectedAssignment, addObjectIDs); err != nil {
+		if err := waitForAssignment(ctx, client, expectedAssignment, addObjectIDs, workload); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -392,12 +431,13 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			ObjectIDs:                 removeObjectIDs,
 			ApplyToExistingSnapshots:  ptr(true),
 			ApplyToNonPolicySnapshots: ptr(false),
+			ApplicableWorkloadType:    workload.GraphQL(),
 		}); err != nil {
 			return diag.FromErr(err)
 		}
 
 		// Wait for the unassignment to be applied.
-		if err := waitForAssignment(ctx, client, hierarchy.UnprotectedSLAID, removeObjectIDs); err != nil {
+		if err := waitForAssignment(ctx, client, hierarchy.UnprotectedSLAID, removeObjectIDs, workload); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -425,6 +465,17 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	if currentSLADomainID == doNotProtectID {
 		currentSLADomainID = hierarchy.DoNotProtectSLAID
 	}
+	workloadStr := d.Get(keyWorkload).(string)
+
+	// Parse workload string, defaulting to AllSubHierarchyType if empty.
+	workload := hierarchy.WorkloadAllSubHierarchyType
+	if workloadStr != "" {
+		var err error
+		workload, err = hierarchy.ToWorkload(workloadStr)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	// Filter objects to only unassign those that are still assigned to this
 	// resource's SLA. This prevents issues where concurrent creates might have
@@ -436,7 +487,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			return diag.FromErr(err)
 		}
 
-		obj, err := sla.Wrap(client).HierarchyObjectByID(ctx, objectID)
+		obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
 		if err != nil {
 			if errors.Is(err, graphql.ErrNotFound) {
 				// Object no longer exists, skip.
@@ -476,12 +527,13 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			ObjectIDs:                 objectsToUnassign,
 			ApplyToExistingSnapshots:  ptr(true),
 			ApplyToNonPolicySnapshots: ptr(false),
+			ApplicableWorkloadType:    workload.GraphQL(),
 		}); err != nil {
 			return diag.FromErr(err)
 		}
 
 		// Wait for the assignment to be removed.
-		if err := waitForAssignmentRemoval(ctx, client, currentSLADomainID, objectsToUnassign); err != nil {
+		if err := waitForAssignmentRemoval(ctx, client, currentSLADomainID, objectsToUnassign, workload); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -583,9 +635,10 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 	}
 
 	// Verify each object has DO_NOT_PROTECT as its effective SLA.
+	// For import, we use AllSubHierarchyType as we don't know the workload type.
 	objectIDsSet := &schema.Set{F: schema.HashString}
 	for _, objectID := range objectIDs {
-		obj, err := sla.Wrap(client).HierarchyObjectByID(ctx, objectID)
+		obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, hierarchy.WorkloadAllSubHierarchyType)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get object %s: %w", objectID, err)
 		}
@@ -618,14 +671,14 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 // For doNotProtect, expectedDomainID should be hierarchy.DoNotProtectSLAID.
 // For protectWithSlaId, expectedDomainID should be the SLA domain ID string.
 // For unassignment (noAssignment), expectedDomainID should be hierarchy.UnprotectedSLAID.
-func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDomainID string, objectIDs []uuid.UUID) error {
+func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDomainID string, objectIDs []uuid.UUID, workload hierarchy.Workload) error {
 	startTime := time.Now()
 
 	for {
 		pending := make([]uuid.UUID, 0, len(objectIDs))
 
 		for _, objectID := range objectIDs {
-			obj, err := sla.Wrap(client).HierarchyObjectByID(ctx, objectID)
+			obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
 			if err != nil {
 				return err
 			}
@@ -697,14 +750,14 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDoma
 // The function completes successfully when all objects either:
 //  1. No longer have a direct assignment (inherited or unprotected), OR
 //  2. Have been directly assigned to a different SLA domain
-func waitForAssignmentRemoval(ctx context.Context, client *polaris.Client, currentSLADomainID string, objectIDs []uuid.UUID) error {
+func waitForAssignmentRemoval(ctx context.Context, client *polaris.Client, currentSLADomainID string, objectIDs []uuid.UUID, workload hierarchy.Workload) error {
 	startTime := time.Now()
 
 	for {
 		pending := make([]uuid.UUID, 0, len(objectIDs))
 
 		for _, objectID := range objectIDs {
-			obj, err := sla.Wrap(client).HierarchyObjectByID(ctx, objectID)
+			obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
 			if err != nil {
 				return err
 			}

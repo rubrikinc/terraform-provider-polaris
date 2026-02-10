@@ -15,9 +15,10 @@ description: |-
   
   protectWithSlaId - Protect objects with the specified SLA domain. Requires sla_domain_id to be set.
   doNotProtect - Do not protect objects. Requires that sla_domain_id isn't set.
-  ~> Note: When importing, apply_changes_to_existing_snapshots and
-  apply_changes_to_non_policy_snapshots cannot be retrieved from the API.
-  These attributes will use their default values after import.
+  ~> Note: When importing, apply_changes_to_existing_snapshots,
+  apply_changes_to_non_policy_snapshots, and workload cannot be retrieved
+  from the API. These attributes will use their default values after import.
+  For workload, the default is ALL_SUB_HIERARCHY_TYPE.
 ---
 
 # polaris_sla_domain_assignment (Resource)
@@ -38,9 +39,10 @@ The `assignment_type` attribute controls how the SLA domain is assigned:
 
   * `doNotProtect` - Do not protect objects. Requires that `sla_domain_id` isn't set.
 
-~> **Note:** When importing, `apply_changes_to_existing_snapshots` and
-`apply_changes_to_non_policy_snapshots` cannot be retrieved from the API.
-These attributes will use their default values after import.
+~> **Note:** When importing, `apply_changes_to_existing_snapshots`,
+`apply_changes_to_non_policy_snapshots`, and `workload` cannot be retrieved
+from the API. These attributes will use their default values after import.
+For `workload`, the default is `ALL_SUB_HIERARCHY_TYPE`.
 
 ## Example Usage
 
@@ -108,6 +110,7 @@ resource "polaris_sla_domain_assignment" "unprotected" {
 - `assignment_type` (String) SLA domain assignment type. Valid values are `protectWithSlaId` and `doNotProtect`. Defaults to `protectWithSlaId`.
 - `existing_snapshot_retention` (String) Existing snapshot retention policy. Only valid when `assignment_type` is `doNotProtect`. Valid values are `RETAIN_SNAPSHOTS`, `KEEP_FOREVER`, and `EXPIRE_IMMEDIATELY`.
 - `sla_domain_id` (String) SLA domain ID (UUID). Required when `assignment_type` is `protectWithSlaId`.
+- `workload` (String) Workload hierarchy type for SLA Domain assignments. If not specified, `ALL_SUB_HIERARCHY_TYPE` is used. Valid values: `ALL_SUB_HIERARCHY_TYPE`, `AZURE_NATIVE_VIRTUAL_MACHINE`, `AZURE_NATIVE_MANAGED_DISK`, `AZURE_SQL_DATABASE_DB`, `AZURE_SQL_MANAGED_INSTANCE_DB`, `AZURE_STORAGE_ACCOUNT`.
 
 ### Read-Only
 
@@ -131,6 +134,8 @@ import {
   to = polaris_sla_domain_assignment.unprotected
   id = "doNotProtect:0e55e625-b78d-4e83-87f3-90313a980211,1a2b3c4d-5e6f-7890-abcd-ef1234567890"
 }
+
+# Note: The workload attribute will be ALL_SUB_HIERARCHY_TYPE after import.
 ```
 
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
@@ -141,4 +146,6 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 # For doNotProtect assignments (using doNotProtect:<object_id1>,<object_id2>,...):
 % terraform import polaris_sla_domain_assignment.unprotected "doNotProtect:0e55e625-b78d-4e83-87f3-90313a980211"
+
+# Note: The workload attribute will be ALL_SUB_HIERARCHY_TYPE after import.
 ```
