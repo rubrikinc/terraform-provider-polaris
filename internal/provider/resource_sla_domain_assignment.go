@@ -195,7 +195,7 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	params := gqlsla.AssignDomainParams{
 		DomainAssignType:       assignType,
 		ObjectIDs:              objectIDs,
-		ApplicableWorkloadType: workload.GraphQL(),
+		ApplicableWorkloadType: workload,
 	}
 
 	// For protectWithSlaId, sla_domain_id is required.
@@ -227,7 +227,7 @@ func createSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		if snapshotRetention != "" {
 			params.ExistingSnapshotRetention = gqlsla.ExistingSnapshotRetention(snapshotRetention)
 		}
-		expectedDomainID = hierarchy.DoNotProtectSLAID
+		expectedDomainID = gqlsla.DoNotProtectSLAID
 	}
 
 	if err := sla.Wrap(client).AssignDomain(ctx, params); err != nil {
@@ -313,7 +313,7 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 			// RETAIN_SNAPSHOTS, configuredSlaDomain keeps the previous SLA
 			// (converted to retention type) while effectiveSlaDomain becomes
 			// DO_NOT_PROTECT.
-			if obj.EffectiveSLADomain.ID == hierarchy.DoNotProtectSLAID {
+			if obj.EffectiveSLADomain.ID == gqlsla.DoNotProtectSLAID {
 				remainingIDs.Add(idStr)
 			}
 		case gqlsla.ProtectWithSLA:
@@ -396,7 +396,7 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		params := gqlsla.AssignDomainParams{
 			DomainAssignType:       assignType,
 			ObjectIDs:              addObjectIDs,
-			ApplicableWorkloadType: workload.GraphQL(),
+			ApplicableWorkloadType: workload,
 		}
 
 		// For protectWithSlaId, use apply settings from schema.
@@ -412,7 +412,7 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			if snapshotRetention != "" {
 				params.ExistingSnapshotRetention = gqlsla.ExistingSnapshotRetention(snapshotRetention)
 			}
-			expectedAssignment = hierarchy.DoNotProtectSLAID
+			expectedAssignment = gqlsla.DoNotProtectSLAID
 		}
 
 		if err := sla.Wrap(client).AssignDomain(ctx, params); err != nil {
@@ -431,13 +431,13 @@ func updateSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			ObjectIDs:                 removeObjectIDs,
 			ApplyToExistingSnapshots:  ptr(true),
 			ApplyToNonPolicySnapshots: ptr(false),
-			ApplicableWorkloadType:    workload.GraphQL(),
+			ApplicableWorkloadType:    workload,
 		}); err != nil {
 			return diag.FromErr(err)
 		}
 
 		// Wait for the unassignment to be applied.
-		if err := waitForAssignment(ctx, client, hierarchy.UnprotectedSLAID, removeObjectIDs, workload); err != nil {
+		if err := waitForAssignment(ctx, client, gqlsla.UnprotectedSLAID, removeObjectIDs, workload); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -463,7 +463,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 	// Get the current SLA domain ID to track what we're removing.
 	currentSLADomainID := d.Id()
 	if currentSLADomainID == doNotProtectID {
-		currentSLADomainID = hierarchy.DoNotProtectSLAID
+		currentSLADomainID = gqlsla.DoNotProtectSLAID
 	}
 	workloadStr := d.Get(keyWorkload).(string)
 
@@ -502,14 +502,14 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 		}
 
 		switch currentSLADomainID {
-		case hierarchy.DoNotProtectSLAID:
+		case gqlsla.DoNotProtectSLAID:
 			// For doNotProtect, check both effective and configured SLA.
 			// If configuredSlaDomain is a regular SLA (not DO_NOT_PROTECT or
 			// UNPROTECTED), it means a concurrent create has already assigned
 			// the object to a new SLA, so we should skip unassignment.
-			if obj.EffectiveSLADomain.ID == hierarchy.DoNotProtectSLAID {
+			if obj.EffectiveSLADomain.ID == gqlsla.DoNotProtectSLAID {
 				configuredID := obj.ConfiguredSLADomain.ID
-				if configuredID == hierarchy.DoNotProtectSLAID || configuredID == hierarchy.UnprotectedSLAID {
+				if configuredID == gqlsla.DoNotProtectSLAID || configuredID == gqlsla.UnprotectedSLAID {
 					objectsToUnassign = append(objectsToUnassign, objectID)
 				}
 			}
@@ -527,7 +527,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			ObjectIDs:                 objectsToUnassign,
 			ApplyToExistingSnapshots:  ptr(true),
 			ApplyToNonPolicySnapshots: ptr(false),
-			ApplicableWorkloadType:    workload.GraphQL(),
+			ApplicableWorkloadType:    workload,
 		}); err != nil {
 			return diag.FromErr(err)
 		}
@@ -643,7 +643,7 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 			return nil, fmt.Errorf("failed to get object %s: %w", objectID, err)
 		}
 
-		if obj.EffectiveSLADomain.ID != hierarchy.DoNotProtectSLAID {
+		if obj.EffectiveSLADomain.ID != gqlsla.DoNotProtectSLAID {
 			return nil, fmt.Errorf("object %s does not have DO_NOT_PROTECT assigned (effective SLA: %s)", objectID, obj.EffectiveSLADomain.Name)
 		}
 
@@ -668,9 +668,9 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 }
 
 // waitForAssignment waits for all objects to have the expected SLA directly assigned.
-// For doNotProtect, expectedDomainID should be hierarchy.DoNotProtectSLAID.
+// For doNotProtect, expectedDomainID should be gqlsla.DoNotProtectSLAID.
 // For protectWithSlaId, expectedDomainID should be the SLA domain ID string.
-// For unassignment (noAssignment), expectedDomainID should be hierarchy.UnprotectedSLAID.
+// For unassignment (noAssignment), expectedDomainID should be gqlsla.UnprotectedSLAID.
 func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDomainID string, objectIDs []uuid.UUID, workload hierarchy.Workload) error {
 	startTime := time.Now()
 
@@ -684,9 +684,9 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDoma
 			}
 
 			switch expectedDomainID {
-			case hierarchy.UnprotectedSLAID:
+			case gqlsla.UnprotectedSLAID:
 				// For unprotected, we just need to wait until there's no direct assignment.
-				if obj.SLAAssignment == gqlsla.Direct || obj.ConfiguredSLADomain.ID != hierarchy.UnprotectedSLAID {
+				if obj.SLAAssignment == gqlsla.Direct || obj.ConfiguredSLADomain.ID != gqlsla.UnprotectedSLAID {
 					tflog.Debug(ctx, "waiting for assignment to be removed (sla_assignment != DIRECT)", map[string]any{
 						"object_id":      objectID.String(),
 						"configured_sla": obj.ConfiguredSLADomain.ID,
@@ -695,10 +695,10 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDoma
 					})
 					pending = append(pending, objectID)
 				}
-			case hierarchy.DoNotProtectSLAID:
+			case gqlsla.DoNotProtectSLAID:
 				// For doNotProtect, we check effectiveSlaDomain because with
 				// RETAIN_SNAPSHOTS, configuredSlaDomain keeps the previous SLA.
-				if obj.EffectiveSLADomain.ID != hierarchy.DoNotProtectSLAID {
+				if obj.EffectiveSLADomain.ID != gqlsla.DoNotProtectSLAID {
 					tflog.Debug(ctx, "waiting for transition to DO_NOT_PROTECT", map[string]any{
 						"object_id":      objectID.String(),
 						"sla_assignment": string(obj.SLAAssignment),
@@ -744,7 +744,7 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDoma
 //
 // Parameters:
 //   - currentSLADomainID: The SLA domain ID being removed (can be a UUID string,
-//     hierarchy.DoNotProtectSLAID, or hierarchy.UnprotectedSLAID)
+//     gqlsla.DoNotProtectSLAID, or gqlsla.UnprotectedSLAID)
 //   - objectIDs: The objects to check
 //
 // The function completes successfully when all objects either:
@@ -766,15 +766,15 @@ func waitForAssignmentRemoval(ctx context.Context, client *polaris.Client, curre
 			stillHasOldAssignment := false
 
 			switch currentSLADomainID {
-			case hierarchy.DoNotProtectSLAID:
+			case gqlsla.DoNotProtectSLAID:
 				// For doNotProtect, check if effective SLA is still DO_NOT_PROTECT with direct assignment.
-				if obj.SLAAssignment == gqlsla.Direct && obj.EffectiveSLADomain.ID == hierarchy.DoNotProtectSLAID {
+				if obj.SLAAssignment == gqlsla.Direct && obj.EffectiveSLADomain.ID == gqlsla.DoNotProtectSLAID {
 					stillHasOldAssignment = true
 				}
-			case hierarchy.UnprotectedSLAID:
+			case gqlsla.UnprotectedSLAID:
 				// For unprotected, check if it's still unprotected with direct assignment.
 				// Note: This case is unlikely in practice since unprotected means no direct assignment.
-				if obj.SLAAssignment == gqlsla.Direct && obj.ConfiguredSLADomain.ID == hierarchy.UnprotectedSLAID {
+				if obj.SLAAssignment == gqlsla.Direct && obj.ConfiguredSLADomain.ID == gqlsla.UnprotectedSLAID {
 					stillHasOldAssignment = true
 				}
 			default:
