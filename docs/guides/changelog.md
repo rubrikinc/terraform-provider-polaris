@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.4.1
+* Remove the default value from the `cluster_access` field of the `polaris_aws_exocompute` resource. The default value
+  would be set, but have no effect, when creating a shared Exocompute configuration.
+
 ## v1.4.0
 
 **SLA Domain Management:**
