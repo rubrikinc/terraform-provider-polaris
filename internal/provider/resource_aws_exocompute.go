@@ -135,6 +135,7 @@ func resourceAwsExocompute() *schema.Resource {
 			keyClusterAccess: {
 				Type:          schema.TypeString,
 				Optional:      true,
+				Computed:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{keyHostAccountID, keyClusterSecurityGroupID, keyNodeSecurityGroupID},
 				RequiredWith:  []string{keyVPCID},
