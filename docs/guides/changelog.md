@@ -12,6 +12,11 @@ page_title: "Changelog"
   `rds_protection`, and `servers_and_apps`. [[docs](../resources/aws_account.md)]
 * The `cloud_native_protection` feature block has changed from required to optional in the `polaris_aws_account`
   resource.
+* Add support for user-assigned managed identity in the `polaris_azure_subscription` resource for the SQL DB Protection
+  feature. The managed identity fields (`user_assigned_managed_identity_name`, `user_assigned_managed_identity_principal_id`,
+  `user_assigned_managed_identity_region`, and `user_assigned_managed_identity_resource_group_name`) can be specified
+  directly in the `sql_db_protection` block. This is required when using Transparent Data Encryption (TDE) with customer
+  managed keys. [[docs](../resources/azure_subscription.md#nested-schema-for-sql_db_protection)]
 * Remove the default value from the `cluster_access` field of the `polaris_aws_exocompute` resource. The default value
   would be set, but have no effect, when creating a shared Exocompute configuration.
 * Remove the in-place update functionality from the `polaris_aws_exocompute` resource due to API issues. The in-place
