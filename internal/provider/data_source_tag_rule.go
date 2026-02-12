@@ -69,18 +69,47 @@ func dataSourceTagRule() *schema.Resource {
 			keyTagKey: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Tag key to match.",
+				Description: "**Deprecated:** Use `tag` instead. Tag key to match.",
+				Deprecated:  "Use tag instead.",
 			},
 			keyTagValue: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Tag value to match. If the tag value is empty, it matches empty values.",
+				Description: "**Deprecated:** Use `tag` instead. Tag value to match. If the tag value is empty, it matches empty values.",
+				Deprecated:  "Use tag instead.",
 			},
 			keyTagAllValues: {
 				Type:        schema.TypeBool,
-				Optional:    true,
 				Computed:    true,
-				Description: "If true, all tag values are matched.",
+				Description: "**Deprecated:** Use `tag` instead. If true, all tag values are matched.",
+				Deprecated:  "Use tag instead.",
+			},
+			keyTag: {
+				Type:        schema.TypeList,
+				Computed:    true,
+				Description: "Tag conditions to match.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyKey: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Tag key to match.",
+						},
+						keyValues: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Tag values to match.",
+						},
+						keyTagMatchAll: {
+							Type:        schema.TypeBool,
+							Computed:    true,
+							Description: "If true, all tag values for this key are matched.",
+						},
+					},
+				},
 			},
 			keyCloudAccountIDs: {
 				Type: schema.TypeSet,
@@ -132,14 +161,36 @@ func tagRuleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set(keyTagKey, tagRule.Tag.Key); err != nil {
+	// Set tag from TagConditions. Always populate this field to reflect the
+	// current state from the API.
+	tags := make([]map[string]any, 0, len(tagRule.TagConditions.TagPairs))
+	for _, pair := range tagRule.TagConditions.TagPairs {
+		tags = append(tags, map[string]any{
+			keyKey:         pair.Key,
+			keyValues:      pair.Values,
+			keyTagMatchAll: pair.MatchAllTagValues,
+		})
+	}
+	if err := d.Set(keyTag, tags); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyTagValue, tagRule.Tag.Value); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keyTagAllValues, tagRule.Tag.AllValues); err != nil {
-		return diag.FromErr(err)
+
+	// For backward compatibility, also populate deprecated fields if the
+	// deprecated Tag field is set (single tag pair with ≤1 value).
+	//lint:ignore SA1019 using deprecated field for backward compatibility
+	if tagRule.Tag.Key != "" {
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		if err := d.Set(keyTagKey, tagRule.Tag.Key); err != nil {
+			return diag.FromErr(err)
+		}
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		if err := d.Set(keyTagValue, tagRule.Tag.Value); err != nil {
+			return diag.FromErr(err)
+		}
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		if err := d.Set(keyTagAllValues, tagRule.Tag.AllValues); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if !tagRule.AllACloudAccounts {
