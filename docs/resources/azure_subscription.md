@@ -377,6 +377,10 @@ Optional:
 - `resource_group_name` (String) Name of the Azure resource group where RSC places all resources created by the feature. RSC assumes the resource group already exists. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_region` (String) Region of the Azure resource group. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.
 - `resource_group_tags` (Map of String) Tags to add to the Azure resource group. Changing this forces the RSC feature to be re-onboarded.
+- `user_assigned_managed_identity_name` (String) User-assigned managed identity name. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.
+- `user_assigned_managed_identity_principal_id` (String) ID of the service principal object associated with the user-assigned managed identity. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.
+- `user_assigned_managed_identity_region` (String) User-assigned managed identity region. Should be specified in the standard Azure style, e.g. `eastus`. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.
+- `user_assigned_managed_identity_resource_group_name` (String) User-assigned managed identity resource group name. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.
 
 Read-Only:
 
