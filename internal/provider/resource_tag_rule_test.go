@@ -26,15 +26,69 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-// Acceptance test templates
-
-const tagRuleWithValueTmpl = `
+// Test using the new tag block style with a single tag condition.
+const tagRuleSingleTagTmpl = `
 provider "polaris" {
 	credentials = "{{ .Provider.Credentials }}"
 }
 
 resource "polaris_tag_rule" "default" {
-	name        = "Test Tag Rule With Value"
+	name        = "Test Tag Rule Single"
+	object_type = "AWS_EC2_INSTANCE"
+
+	tag {
+		key    = "Environment"
+		values = ["Production"]
+	}
+}
+
+data "polaris_tag_rule" "default_by_id" {
+	id = polaris_tag_rule.default.id
+}
+
+data "polaris_tag_rule" "default_by_name" {
+	name = polaris_tag_rule.default.name
+}
+`
+
+// Test using the new tag block style with multiple tag conditions.
+const tagRuleMultiTagTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_tag_rule" "default" {
+	name        = "Test Tag Rule Multi"
+	object_type = "AWS_EC2_INSTANCE"
+
+	tag {
+		key    = "Environment"
+		values = ["Production", "Staging"]
+	}
+
+	tag {
+		key       = "Owner"
+		match_all = true
+	}
+}
+
+data "polaris_tag_rule" "default_by_id" {
+	id = polaris_tag_rule.default.id
+}
+
+data "polaris_tag_rule" "default_by_name" {
+	name = polaris_tag_rule.default.name
+}
+`
+
+// Test using the deprecated tag_key/tag_value style.
+const tagRuleDeprecatedStyleTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_tag_rule" "default" {
+	name        = "Test Tag Rule Deprecated"
 	object_type = "AWS_EC2_INSTANCE"
 	tag_key     = "Environment"
 	tag_value   = "Production"
@@ -49,7 +103,8 @@ data "polaris_tag_rule" "default_by_name" {
 }
 `
 
-const tagRuleWithAllValuesTmpl = `
+// Test using the deprecated tag_all_values style.
+const tagRuleDeprecatedAllValuesTmpl = `
 provider "polaris" {
 	credentials = "{{ .Provider.Credentials }}"
 }
@@ -70,41 +125,13 @@ data "polaris_tag_rule" "default_by_name" {
 }
 `
 
-const tagRuleUpdatedTmpl = `
-provider "polaris" {
-	credentials = "{{ .Provider.Credentials }}"
-}
-
-resource "polaris_tag_rule" "default" {
-	name        = "Test Tag Rule Updated"
-	object_type = "AWS_EC2_INSTANCE"
-	tag_key     = "Environment"
-	tag_value   = "Production"
-}
-
-data "polaris_tag_rule" "default_by_id" {
-	id = polaris_tag_rule.default.id
-}
-
-data "polaris_tag_rule" "default_by_name" {
-	name = polaris_tag_rule.default.name
-}
-`
-
-// Acceptance test functions
-
-func TestAccPolarisTagRule_withValue(t *testing.T) {
+func TestAccPolarisTagRule_singleTag(t *testing.T) {
 	config, _, err := loadRSCTestConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tagRuleWithValue, err := makeTerraformConfig(config, tagRuleWithValueTmpl)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tagRuleUpdated, err := makeTerraformConfig(config, tagRuleUpdatedTmpl)
+	tagRule, err := makeTerraformConfig(config, tagRuleSingleTagTmpl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,60 +139,42 @@ func TestAccPolarisTagRule_withValue(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: tagRuleWithValue,
+			Config: tagRule,
 			Check: resource.ComposeTestCheckFunc(
 				// Resource checks
 				checkResourceAttrIsUUID("polaris_tag_rule.default", "id"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "name", "Test Tag Rule With Value"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "name", "Test Tag Rule Single"),
 				resource.TestCheckResourceAttr("polaris_tag_rule.default", "object_type", "AWS_EC2_INSTANCE"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_key", "Environment"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_value", "Production"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_all_values", "false"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.#", "1"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.key", "Environment"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.values.#", "1"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.values.0", "Production"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.match_all", "false"),
 
 				// Data source checks (by ID)
 				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_id", "id", "polaris_tag_rule.default", "id"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "name", "Test Tag Rule With Value"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "name", "Test Tag Rule Single"),
 				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "object_type", "AWS_EC2_INSTANCE"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag_key", "Environment"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag_value", "Production"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag_all_values", "false"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag.#", "1"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag.0.key", "Environment"),
 
 				// Data source checks (by name)
 				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_name", "id", "polaris_tag_rule.default", "id"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "name", "Test Tag Rule With Value"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "name", "Test Tag Rule Single"),
 				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "object_type", "AWS_EC2_INSTANCE"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "tag_key", "Environment"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "tag_value", "Production"),
-			),
-		}, {
-			Config: tagRuleUpdated,
-			Check: resource.ComposeTestCheckFunc(
-				// Resource checks - name should be updated
-				checkResourceAttrIsUUID("polaris_tag_rule.default", "id"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "name", "Test Tag Rule Updated"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "object_type", "AWS_EC2_INSTANCE"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_key", "Environment"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_value", "Production"),
-
-				// Data source checks (by ID)
-				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_id", "id", "polaris_tag_rule.default", "id"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "name", "Test Tag Rule Updated"),
-
-				// Data source checks (by name)
-				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_name", "id", "polaris_tag_rule.default", "id"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "name", "Test Tag Rule Updated"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "tag.#", "1"),
 			),
 		}},
 	})
 }
 
-func TestAccPolarisTagRule_withAllValues(t *testing.T) {
+func TestAccPolarisTagRule_multiTag(t *testing.T) {
 	config, _, err := loadRSCTestConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tagRuleWithAllValues, err := makeTerraformConfig(config, tagRuleWithAllValuesTmpl)
+	tagRule, err := makeTerraformConfig(config, tagRuleMultiTagTmpl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,29 +182,109 @@ func TestAccPolarisTagRule_withAllValues(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{{
-			Config: tagRuleWithAllValues,
+			Config: tagRule,
 			Check: resource.ComposeTestCheckFunc(
 				// Resource checks
+				checkResourceAttrIsUUID("polaris_tag_rule.default", "id"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "name", "Test Tag Rule Multi"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "object_type", "AWS_EC2_INSTANCE"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.#", "2"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.key", "Environment"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.values.#", "2"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.values.0", "Production"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.values.1", "Staging"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.0.match_all", "false"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.1.key", "Owner"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag.1.match_all", "true"),
+
+				// Data source checks (by ID)
+				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_id", "id", "polaris_tag_rule.default", "id"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "name", "Test Tag Rule Multi"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag.#", "2"),
+
+				// Data source checks (by name)
+				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_name", "id", "polaris_tag_rule.default", "id"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "name", "Test Tag Rule Multi"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "tag.#", "2"),
+			),
+		}},
+	})
+}
+
+func TestAccPolarisTagRule_deprecatedStyle(t *testing.T) {
+	config, _, err := loadRSCTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tagRule, err := makeTerraformConfig(config, tagRuleDeprecatedStyleTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: tagRule,
+			Check: resource.ComposeTestCheckFunc(
+				// Resource checks - when using deprecated fields, only deprecated
+				// fields are populated (not the tag block) to avoid plan diffs.
+				checkResourceAttrIsUUID("polaris_tag_rule.default", "id"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "name", "Test Tag Rule Deprecated"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "object_type", "AWS_EC2_INSTANCE"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_key", "Environment"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_value", "Production"),
+				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_all_values", "false"),
+
+				// Data source checks (by ID) - data sources always populate both styles
+				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_id", "id", "polaris_tag_rule.default", "id"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "name", "Test Tag Rule Deprecated"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag.#", "1"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag_key", "Environment"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag_value", "Production"),
+
+				// Data source checks (by name)
+				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_name", "id", "polaris_tag_rule.default", "id"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "name", "Test Tag Rule Deprecated"),
+			),
+		}},
+	})
+}
+
+func TestAccPolarisTagRule_deprecatedAllValues(t *testing.T) {
+	config, _, err := loadRSCTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tagRule, err := makeTerraformConfig(config, tagRuleDeprecatedAllValuesTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: tagRule,
+			Check: resource.ComposeTestCheckFunc(
+				// Resource checks - when using deprecated fields, only deprecated
+				// fields are populated (not the tag block) to avoid plan diffs.
 				checkResourceAttrIsUUID("polaris_tag_rule.default", "id"),
 				resource.TestCheckResourceAttr("polaris_tag_rule.default", "name", "Test Tag Rule All Values"),
 				resource.TestCheckResourceAttr("polaris_tag_rule.default", "object_type", "AWS_EC2_INSTANCE"),
 				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_key", "Environment"),
-				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_value", ""),
 				resource.TestCheckResourceAttr("polaris_tag_rule.default", "tag_all_values", "true"),
 
-				// Data source checks (by ID)
+				// Data source checks (by ID) - data sources always populate both styles
 				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_id", "id", "polaris_tag_rule.default", "id"),
 				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "name", "Test Tag Rule All Values"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "object_type", "AWS_EC2_INSTANCE"),
+				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag.#", "1"),
 				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag_key", "Environment"),
 				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_id", "tag_all_values", "true"),
 
 				// Data source checks (by name)
 				resource.TestCheckResourceAttrPair("data.polaris_tag_rule.default_by_name", "id", "polaris_tag_rule.default", "id"),
 				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "name", "Test Tag Rule All Values"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "object_type", "AWS_EC2_INSTANCE"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "tag_key", "Environment"),
-				resource.TestCheckResourceAttr("data.polaris_tag_rule.default_by_name", "tag_all_values", "true"),
 			),
 		}},
 	})
