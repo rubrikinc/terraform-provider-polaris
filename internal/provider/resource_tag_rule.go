@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
@@ -84,27 +85,63 @@ func resourceTagRule() *schema.Resource {
 				ValidateFunc: validation.StringInSlice(gqlsla.AllCloudNativeTagObjectTypesAsStrings(), false),
 			},
 			keyTagKey: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "Tag key to match. Changing this forces a new resource to be created.",
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyTag},
+				Description: "**Deprecated:** Use `tag` instead. Tag key to match. Changing this forces a " +
+					"new resource to be created.",
+				Deprecated:   "Use tag instead.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyTagValue: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				ExactlyOneOf: []string{keyTagAllValues},
-				Description: "Tag value to match. If the tag value is empty, it matches empty values. To match all " +
-					"tag values, use the `" + keyTagAllValues + "` field. Changing this forces a new resource to be " +
-					"created.",
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyTag, keyTagAllValues},
+				Description: "**Deprecated:** Use `tag` instead. Tag value to match. If the tag value is " +
+					"empty, it matches empty values. Changing this forces a new resource to be created.",
+				Deprecated: "Use tag instead.",
 			},
 			keyTagAllValues: {
-				Type:         schema.TypeBool,
-				Optional:     true,
-				ForceNew:     true,
-				ExactlyOneOf: []string{keyTagValue},
-				Description:  "If true, all tag values are matched. Changing this forces a new resource to be created.",
+				Type:          schema.TypeBool,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyTag, keyTagValue},
+				Description: "**Deprecated:** Use `tag` instead. If true, all tag values are matched. " +
+					"Changing this forces a new resource to be created.",
+				Deprecated: "Use tag instead.",
+			},
+			keyTag: {
+				Type:          schema.TypeList,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyTagKey, keyTagValue, keyTagAllValues},
+				Description:   "Tag conditions to match. Changing this forces a new resource to be created.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyKey: {
+							Type:         schema.TypeString,
+							Required:     true,
+							Description:  "Tag key to match.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyValues: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional:    true,
+							Description: "Tag values to match. If empty and `match_all` is false, matches empty values.",
+						},
+						keyTagMatchAll: {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "If true, all tag values for this key are matched. Default is false.",
+						},
+					},
+				},
 			},
 			keyCloudAccountIDs: {
 				Type: schema.TypeSet,
@@ -120,6 +157,22 @@ func resourceTagRule() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
+		CustomizeDiff: customdiff.All(
+			customdiff.ValidateValue(keyTag, func(ctx context.Context, value, meta any) error {
+				tags, ok := value.([]any)
+				if !ok || len(tags) > 0 {
+					return nil
+				}
+
+				// If tag block is empty, tag_key must be set.
+				d := meta.(*schema.ResourceDiff)
+				if _, ok := d.GetOk(keyTagKey); !ok {
+					return errors.New("one of `tag` or `tag_key` must be specified")
+				}
+
+				return nil
+			}),
+		),
 	}
 }
 
@@ -144,17 +197,41 @@ func createTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
-	tagRuleID, err := sla.Wrap(client).CreateTagRule(ctx, gqlsla.CreateTagRuleParams{
-		Name:       d.Get(keyName).(string),
-		ObjectType: gqlsla.CloudNativeTagObjectType(d.Get(keyObjectType).(string)),
-		Tag: gqlsla.Tag{
+	params := gqlsla.CreateTagRuleParams{
+		Name:             d.Get(keyName).(string),
+		ObjectType:       gqlsla.CloudNativeTagObjectType(d.Get(keyObjectType).(string)),
+		CloudAccounts:    cloudAccounts,
+		AllCloudAccounts: cloudAccounts == nil,
+	}
+
+	// Check if new style tag block is used.
+	if tags, ok := d.GetOk(keyTag); ok {
+		tagList := tags.([]any)
+		tagPairs := make([]gqlsla.TagPair, 0, len(tagList))
+		for _, t := range tagList {
+			tMap := t.(map[string]any)
+			values := make([]string, 0)
+			for _, v := range tMap[keyValues].([]any) {
+				values = append(values, v.(string))
+			}
+			tagPairs = append(tagPairs, gqlsla.TagPair{
+				Key:               tMap[keyKey].(string),
+				MatchAllTagValues: tMap[keyTagMatchAll].(bool),
+				Values:            values,
+			})
+		}
+		params.TagConditions = &gqlsla.TagConditions{TagPairs: tagPairs}
+	} else {
+		// Use deprecated tag fields for backward compatibility.
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		params.Tag = gqlsla.Tag{
 			Key:       d.Get(keyTagKey).(string),
 			Value:     d.Get(keyTagValue).(string),
 			AllValues: d.Get(keyTagAllValues).(bool),
-		},
-		CloudAccounts:    cloudAccounts,
-		AllCloudAccounts: cloudAccounts == nil,
-	})
+		}
+	}
+
+	tagRuleID, err := sla.Wrap(client).CreateTagRule(ctx, params)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -198,14 +275,36 @@ func readTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set(keyTagKey, tagRule.Tag.Key); err != nil {
+	// Set tag from TagConditions. Always populate this field to reflect the
+	// current state from the API.
+	tags := make([]map[string]any, 0, len(tagRule.TagConditions.TagPairs))
+	for _, pair := range tagRule.TagConditions.TagPairs {
+		tags = append(tags, map[string]any{
+			keyKey:         pair.Key,
+			keyValues:      pair.Values,
+			keyTagMatchAll: pair.MatchAllTagValues,
+		})
+	}
+	if err := d.Set(keyTag, tags); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyTagValue, tagRule.Tag.Value); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set(keyTagAllValues, tagRule.Tag.AllValues); err != nil {
-		return diag.FromErr(err)
+
+	// For backward compatibility, also populate deprecated fields if the
+	// deprecated Tag field is set (single tag pair with ≤1 value).
+	//lint:ignore SA1019 using deprecated field for backward compatibility
+	if tagRule.Tag.Key != "" {
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		if err := d.Set(keyTagKey, tagRule.Tag.Key); err != nil {
+			return diag.FromErr(err)
+		}
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		if err := d.Set(keyTagValue, tagRule.Tag.Value); err != nil {
+			return diag.FromErr(err)
+		}
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		if err := d.Set(keyTagAllValues, tagRule.Tag.AllValues); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if !tagRule.AllACloudAccounts {
