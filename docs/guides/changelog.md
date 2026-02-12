@@ -4,6 +4,15 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.5.0
+
+**Azure Subscription Management:**
+* Add support for user-assigned managed identity in the `polaris_azure_subscription` resource for the SQL DB Protection
+  feature. The managed identity fields (`user_assigned_managed_identity_name`, `user_assigned_managed_identity_principal_id`,
+  `user_assigned_managed_identity_region`, and `user_assigned_managed_identity_resource_group_name`) can be specified
+  directly in the `sql_db_protection` block. This is required when using Transparent Data Encryption (TDE) with customer
+  managed keys. [[docs](../resources/azure_subscription.md#nested-schema-for-sql_db_protection)]
+
 ## v1.4.1
 * Remove the default value from the `cluster_access` field of the `polaris_aws_exocompute` resource. The default value
   would be set, but have no effect, when creating a shared Exocompute configuration.
