@@ -754,6 +754,52 @@ func resourceAzureSubscription() *schema.Resource {
 							Computed:    true,
 							Description: "Status of the SQL DB Protection feature.",
 						},
+						keyUserAssignedManagedIdentityName: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "User-assigned managed identity name. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityPrincipalID,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityRegion,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityResourceGroupName,
+							},
+						},
+						keyUserAssignedManagedIdentityPrincipalID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "ID of the service principal object associated with the user-assigned managed " +
+								"identity. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityRegion,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityResourceGroupName,
+							},
+						},
+						keyUserAssignedManagedIdentityRegion: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "User-assigned managed identity region. Should be specified in the " +
+								"standard Azure style, e.g. `eastus`. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityPrincipalID,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityResourceGroupName,
+							},
+						},
+						keyUserAssignedManagedIdentityResourceGroupName: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "User-assigned managed identity resource group name. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityPrincipalID,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityRegion,
+							},
+						},
 					},
 				},
 				MaxItems: 1,
