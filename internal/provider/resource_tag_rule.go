@@ -21,9 +21,11 @@
 package provider
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -84,27 +86,63 @@ func resourceTagRule() *schema.Resource {
 				ValidateFunc: validation.StringInSlice(gqlsla.AllCloudNativeTagObjectTypesAsStrings(), false),
 			},
 			keyTagKey: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				Description:  "Tag key to match. Changing this forces a new resource to be created.",
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyTag},
+				Description: "Tag key to match. Changing this forces a new resource to be created. " +
+					"**Deprecated:** Use `tag` instead.",
+				Deprecated:   "Use tag instead.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyTagValue: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				ExactlyOneOf: []string{keyTagAllValues},
-				Description: "Tag value to match. If the tag value is empty, it matches empty values. To match all " +
-					"tag values, use the `" + keyTagAllValues + "` field. Changing this forces a new resource to be " +
-					"created.",
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyTag, keyTagAllValues},
+				Description: "Tag value to match. If the tag value is empty, it matches empty values. " +
+					"Changing this forces a new resource to be created. **Deprecated:** Use `tag` instead.",
+				Deprecated: "Use tag instead.",
 			},
 			keyTagAllValues: {
-				Type:         schema.TypeBool,
-				Optional:     true,
-				ForceNew:     true,
-				ExactlyOneOf: []string{keyTagValue},
-				Description:  "If true, all tag values are matched. Changing this forces a new resource to be created.",
+				Type:          schema.TypeBool,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyTag, keyTagValue},
+				Description: "If true, all tag values are matched. Changing this forces a new resource to be created. " +
+					"**Deprecated:** Use `tag` instead.",
+				Deprecated: "Use tag instead.",
+			},
+			keyTag: {
+				Type:          schema.TypeList,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{keyTagKey, keyTagValue, keyTagAllValues},
+				Description:   "Tag conditions to match. Changing this forces a new resource to be created.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyKey: {
+							Type:         schema.TypeString,
+							Required:     true,
+							Description:  "Tag key to match.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyValues: {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional:    true,
+							Description: "Tag values to match. If empty and `match_all` is false, matches empty values.",
+						},
+						keyTagMatchAll: {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "If true, all tag values for this key are matched. Default is false.",
+						},
+					},
+				},
 			},
 			keyCloudAccountIDs: {
 				Type: schema.TypeSet,
@@ -119,6 +157,38 @@ func resourceTagRule() *schema.Resource {
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
+		},
+		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+			tflog.Trace(ctx, "customizeDiffTagRule")
+
+			// Validate that at least one of tag or tag_key is specified.
+			tags := diff.Get(keyTag).([]any)
+			if len(tags) == 0 {
+				if _, ok := diff.GetOk(keyTagKey); !ok {
+					return errors.New("one of `tag` or `tag_key` must be specified")
+				}
+
+				// When using the deprecated tag_key field, require either tag_value
+				// or tag_all_values to preserve the original ExactlyOneOf validation.
+				_, tagValueSet := diff.GetOk(keyTagValue)
+				_, tagAllValuesSet := diff.GetOk(keyTagAllValues)
+				if !tagValueSet && !tagAllValuesSet {
+					return fmt.Errorf("one of `%s` or `%s` must be specified when using `%s`",
+						keyTagValue, keyTagAllValues, keyTagKey)
+				}
+			}
+
+			// Validate that values is empty when match_all is true.
+			for _, t := range tags {
+				tMap := t.(map[string]any)
+				if tMap[keyTagMatchAll].(bool) {
+					if values := tMap[keyValues].([]any); len(values) > 0 {
+						return fmt.Errorf("`%s` must be empty when `%s` is true", keyValues, keyTagMatchAll)
+					}
+				}
+			}
+
+			return nil
 		},
 	}
 }
@@ -144,23 +214,58 @@ func createTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
-	tagRuleID, err := sla.Wrap(client).CreateTagRule(ctx, gqlsla.CreateTagRuleParams{
-		Name:       d.Get(keyName).(string),
-		ObjectType: gqlsla.CloudNativeTagObjectType(d.Get(keyObjectType).(string)),
-		Tag: gqlsla.Tag{
+	params := gqlsla.CreateTagRuleParams{
+		Name:             d.Get(keyName).(string),
+		ObjectType:       gqlsla.CloudNativeTagObjectType(d.Get(keyObjectType).(string)),
+		CloudAccounts:    cloudAccounts,
+		AllCloudAccounts: cloudAccounts == nil,
+	}
+
+	// Check if new style tag block is used.
+	if tags, ok := d.GetOk(keyTag); ok {
+		tagList := tags.([]any)
+		tagPairs := make([]gqlsla.TagPair, 0, len(tagList))
+		for _, t := range tagList {
+			tMap := t.(map[string]any)
+			values := make([]string, 0)
+			for _, v := range tMap[keyValues].([]any) {
+				values = append(values, v.(string))
+			}
+			tagPairs = append(tagPairs, gqlsla.TagPair{
+				Key:               tMap[keyKey].(string),
+				MatchAllTagValues: tMap[keyTagMatchAll].(bool),
+				Values:            values,
+			})
+		}
+		params.TagConditions = &gqlsla.TagConditions{TagPairs: tagPairs}
+	} else {
+		// Use deprecated tag fields for backward compatibility.
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		params.Tag = gqlsla.Tag{
 			Key:       d.Get(keyTagKey).(string),
 			Value:     d.Get(keyTagValue).(string),
 			AllValues: d.Get(keyTagAllValues).(bool),
-		},
-		CloudAccounts:    cloudAccounts,
-		AllCloudAccounts: cloudAccounts == nil,
-	})
+		}
+	}
+
+	tagRuleID, err := sla.Wrap(client).CreateTagRule(ctx, params)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	d.SetId(tagRuleID.String())
-	readTagRule(ctx, d, m)
+	// Read back the created resource to populate computed fields. A failed
+	// readback must not be returned as an error: the resource was successfully
+	// created and returning an error here would leave Terraform unable to
+	// manage it. A plan diff on the next run is an acceptable outcome.
+	if diags := readTagRule(ctx, d, m); diags.HasError() {
+		for _, diagnostic := range diags {
+			tflog.Warn(ctx, "failed to read back tag rule after create", map[string]any{
+				"summary": diagnostic.Summary,
+				"detail":  diagnostic.Detail,
+			})
+		}
+	}
 	return nil
 }
 
@@ -186,6 +291,51 @@ func readTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 
+	// useLegacyFields is true when prior state exists (name is set, ruling
+	// out an import) and the state uses the deprecated tag_key/tag_value/
+	// tag_all_values fields. In that case we populate those fields and skip
+	// the new tag block to avoid spurious plan diffs for configurations that
+	// have not yet migrated. On import we always use the new tag block since
+	// there is no prior state to preserve.
+	_, nameSet := d.GetOk(keyName)
+	_, tagKeySet := d.GetOk(keyTagKey)
+	if useLegacyFields := nameSet && tagKeySet; useLegacyFields {
+		//lint:ignore SA1019 using deprecated field for backward compatibility
+		if tagRule.Tag.Key != "" {
+			//lint:ignore SA1019 using deprecated field for backward compatibility
+			if err := d.Set(keyTagKey, tagRule.Tag.Key); err != nil {
+				return diag.FromErr(err)
+			}
+			//lint:ignore SA1019 using deprecated field for backward compatibility
+			if err := d.Set(keyTagValue, tagRule.Tag.Value); err != nil {
+				return diag.FromErr(err)
+			}
+			//lint:ignore SA1019 using deprecated field for backward compatibility
+			if err := d.Set(keyTagAllValues, tagRule.Tag.AllValues); err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	} else {
+		// New tag block style (also used for imports). Sort by key and by values
+		// within each tag for deterministic state output regardless of API return
+		// order.
+		tags := make([]map[string]any, 0, len(tagRule.TagConditions.TagPairs))
+		for _, pair := range tagRule.TagConditions.TagPairs {
+			slices.Sort(pair.Values)
+			tags = append(tags, map[string]any{
+				keyKey:         pair.Key,
+				keyValues:      pair.Values,
+				keyTagMatchAll: pair.MatchAllTagValues,
+			})
+		}
+		slices.SortFunc(tags, func(a, b map[string]any) int {
+			return cmp.Compare(a[keyKey].(string), b[keyKey].(string))
+		})
+		if err := d.Set(keyTag, tags); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if err := d.Set(keyName, tagRule.Name); err != nil {
 		return diag.FromErr(err)
 	}
@@ -195,19 +345,6 @@ func readTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyObjectType, string(tagObjectType)); err != nil {
-		return diag.FromErr(err)
-	}
-
-	//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
-	if err := d.Set(keyTagKey, tagRule.Tag.Key); err != nil {
-		return diag.FromErr(err)
-	}
-	//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
-	if err := d.Set(keyTagValue, tagRule.Tag.Value); err != nil {
-		return diag.FromErr(err)
-	}
-	//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
-	if err := d.Set(keyTagAllValues, tagRule.Tag.AllValues); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -263,7 +400,18 @@ func updateTagRule(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
-	readTagRule(ctx, d, m)
+	// Read back the updated resource to populate computed fields. A failed
+	// readback must not be returned as an error: the resource was successfully
+	// updated and returning an error here would leave Terraform unable to
+	// manage it. A plan diff on the next run is an acceptable outcome.
+	if diags := readTagRule(ctx, d, m); diags.HasError() {
+		for _, diagnostic := range diags {
+			tflog.Warn(ctx, "failed to read back tag rule after update", map[string]any{
+				"summary": diagnostic.Summary,
+				"detail":  diagnostic.Detail,
+			})
+		}
+	}
 	return nil
 }
 

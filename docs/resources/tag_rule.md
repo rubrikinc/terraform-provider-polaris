@@ -30,10 +30,13 @@ appropriately, they derive protection automatically when they are instantiated.
 # Match all AWS EC2 instances which has a tag called my-key in all RSC cloud
 # accounts.
 resource "polaris_tag_rule" "rule" {
-  name           = "my-tag-rule"
-  object_type    = "AWS_EC2_INSTANCE"
-  tag_key        = "my-key"
-  tag_all_values = true
+  name        = "my-tag-rule"
+  object_type = "AWS_EC2_INSTANCE"
+
+  tag {
+    key       = "my-key"
+    match_all = true
+  }
 }
 
 # Match all Azure VMs which has a tag called my-key with the value my-value in
@@ -45,8 +48,11 @@ data "polaris_azure_subscription" "subscription" {
 resource "polaris_tag_rule" "rule" {
   name        = "my-tag-rule"
   object_type = "AZURE_VIRTUAL_MACHINE"
-  tag_key     = "my-key"
-  tag_value   = "my-value"
+
+  tag {
+    key    = "my-key"
+    values = ["my-value"]
+  }
 
   cloud_account_ids = [
     data.polaris_azure_subscription.subscription.id,
@@ -61,17 +67,30 @@ resource "polaris_tag_rule" "rule" {
 
 - `name` (String) Tag rule name.
 - `object_type` (String) Object type to which the tag rule will be applied. Possible values are `AWS_EBS_VOLUME`, `AWS_EC2_INSTANCE`, `AWS_RDS_INSTANCE`, `AWS_S3_BUCKET`, `AWS_DYNAMODB_TABLE`, `AZURE_MANAGED_DISK`, `AZURE_SQL_DATABASE_DB`, `AZURE_SQL_DATABASE_SERVER`, `AZURE_SQL_MANAGED_INSTANCE_SERVER`, `AZURE_STORAGE_ACCOUNT` and `AZURE_VIRTUAL_MACHINE`. Changing this forces a new resource to be created.
-- `tag_key` (String) Tag key to match. Changing this forces a new resource to be created.
 
 ### Optional
 
 - `cloud_account_ids` (Set of String) The RSC cloud account IDs (UUID) to which the tag rule should be applied. If empty, the tag rule will be applied to all RSC cloud accounts.
-- `tag_all_values` (Boolean) If true, all tag values are matched. Changing this forces a new resource to be created.
-- `tag_value` (String) Tag value to match. If the tag value is empty, it matches empty values. To match all tag values, use the `tag_all_values` field. Changing this forces a new resource to be created.
+- `tag` (Block List) Tag conditions to match. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--tag))
+- `tag_all_values` (Boolean, Deprecated) If true, all tag values are matched. Changing this forces a new resource to be created. **Deprecated:** Use `tag` instead.
+- `tag_key` (String, Deprecated) Tag key to match. Changing this forces a new resource to be created. **Deprecated:** Use `tag` instead.
+- `tag_value` (String, Deprecated) Tag value to match. If the tag value is empty, it matches empty values. Changing this forces a new resource to be created. **Deprecated:** Use `tag` instead.
 
 ### Read-Only
 
 - `id` (String) Tag rule ID (UUID).
+
+<a id="nestedblock--tag"></a>
+### Nested Schema for `tag`
+
+Required:
+
+- `key` (String) Tag key to match.
+
+Optional:
+
+- `match_all` (Boolean) If true, all tag values for this key are matched. Default is false.
+- `values` (List of String) Tag values to match. If empty and `match_all` is false, matches empty values.
 
 ## Import
 
