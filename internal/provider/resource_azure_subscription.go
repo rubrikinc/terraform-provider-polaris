@@ -755,9 +755,14 @@ func resourceAzureSubscription() *schema.Resource {
 							Description: "Status of the SQL DB Protection feature.",
 						},
 						keyUserAssignedManagedIdentityName: {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Description:  "User-assigned managed identity name. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.",
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "User-assigned managed identity name. Required once the RSC account has the " +
+								"´CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT´ feature flag enabled for TDE with customer managed keys. " +
+								"Specifying this field before the feature flag is enabled will result in an error. Once the " +
+								"feature flag is enabled, this field becomes required and omitting it will result in an error. " +
+								"Supports upgrade scenarios where the feature flag is enabled on existing configurations. " +
+								"Changing this forces the RSC feature to be re-onboarded.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 							RequiredWith: []string{
 								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityPrincipalID,
@@ -769,7 +774,12 @@ func resourceAzureSubscription() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							Description: "ID of the service principal object associated with the user-assigned managed " +
-								"identity. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.",
+								"identity. Required once the RSC account has the ´CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT´ feature " +
+								"flag enabled for TDE with customer managed keys. Specifying this field before the feature " +
+								"flag is enabled will result in an error. Once the feature flag is enabled, this field " +
+								"becomes required and omitting it will result in an error. Supports upgrade scenarios where " +
+								"the feature flag is enabled on existing configurations. Changing this forces the RSC " +
+								"feature to be re-onboarded.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 							RequiredWith: []string{
 								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
@@ -780,8 +790,13 @@ func resourceAzureSubscription() *schema.Resource {
 						keyUserAssignedManagedIdentityRegion: {
 							Type:     schema.TypeString,
 							Optional: true,
-							Description: "User-assigned managed identity region. Should be specified in the " +
-								"standard Azure style, e.g. `eastus`. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.",
+							Description: "User-assigned managed identity region. Should be specified in the standard Azure " +
+								"style, e.g. `eastus`. Required once the RSC account has the ´CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT´ " +
+								"feature flag enabled for TDE with customer managed keys. Specifying this field before the " +
+								"feature flag is enabled will result in an error. Once the feature flag is enabled, this " +
+								"field becomes required and omitting it will result in an error. Supports upgrade scenarios " +
+								"where the feature flag is enabled on existing configurations. Changing this forces the RSC " +
+								"feature to be re-onboarded.",
 							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
 							RequiredWith: []string{
 								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
@@ -790,9 +805,14 @@ func resourceAzureSubscription() *schema.Resource {
 							},
 						},
 						keyUserAssignedManagedIdentityResourceGroupName: {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Description:  "User-assigned managed identity resource group name. Required when using TDE with customer managed keys. Changing this forces the RSC feature to be re-onboarded.",
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "User-assigned managed identity resource group name. Required once the RSC account " +
+								"has the ´CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT´ feature flag enabled for TDE with customer " +
+								"managed keys. Specifying this field before the feature flag is enabled will result in an " +
+								"error. Once the feature flag is enabled, this field becomes required and omitting it will " +
+								"result in an error. Supports upgrade scenarios where the feature flag is enabled on " +
+								"existing configurations. Changing this forces the RSC feature to be re-onboarded.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 							RequiredWith: []string{
 								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
