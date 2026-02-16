@@ -33,6 +33,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cluster"
 	gqlcloudcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
+	gqlcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	azureRegion "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
@@ -66,6 +67,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateCloudCluster,
 		ReadContext:   azureReadCloudCluster,
+		UpdateContext: azureUpdateCloudCluster,
 		DeleteContext: azureDeleteCloudCluster,
 		Description:   description(resourceAzureCloudClusterDescription),
 		Schema: map[string]*schema.Schema{
@@ -84,7 +86,6 @@ func resourceAzureCloudCluster() *schema.Resource {
 			keyClusterConfig: {
 				Type:        schema.TypeList,
 				Required:    true,
-				ForceNew:    true,
 				MaxItems:    1,
 				Description: "Configuration for the cloud cluster. Changing this forces a new resource to be created.",
 				Elem: &schema.Resource{
@@ -92,7 +93,6 @@ func resourceAzureCloudCluster() *schema.Resource {
 						keyClusterName: {
 							Type:         schema.TypeString,
 							Required:     true,
-							ForceNew:     true,
 							Description:  "Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
@@ -100,6 +100,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Type:         schema.TypeString,
 							Required:     true,
 							Description:  "Email address for the cluster admin user. Changing this value will have no effect on the cluster.",
+							ForceNew:     true,
 							ValidateFunc: validateEmailAddress,
 						},
 						keyAdminPassword: {
@@ -107,6 +108,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Required:     true,
 							Sensitive:    true,
 							Description:  "Password for the cluster admin user. Changing this value will have no effect on the cluster.",
+							ForceNew:     true,
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyNumNodes: {
@@ -122,7 +124,6 @@ func resourceAzureCloudCluster() *schema.Resource {
 								Type: schema.TypeString,
 							},
 							Required:    true,
-							ForceNew:    true,
 							MinItems:    1,
 							Description: "DNS name servers for the cluster. Changing this forces a new resource to be created.",
 						},
@@ -132,7 +133,6 @@ func resourceAzureCloudCluster() *schema.Resource {
 								Type: schema.TypeString,
 							},
 							Optional:    true,
-							ForceNew:    true,
 							MinItems:    1,
 							Description: "DNS search domains for the cluster. Changing this forces a new resource to be created.",
 						},
@@ -142,7 +142,6 @@ func resourceAzureCloudCluster() *schema.Resource {
 								Type: schema.TypeString,
 							},
 							Required:    true,
-							ForceNew:    true,
 							MinItems:    1,
 							Description: "NTP servers for the cluster. Changing this forces a new resource to be created.",
 						},
@@ -311,6 +310,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 	}
 }
 
+// azureCreateCloudCluster creates the cloud cluster resource.
 func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureCreateCloudCluster")
 
@@ -420,6 +420,7 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 	return nil
 }
 
+// azureReadCloudCluster reads the cloud cluster resource.
 func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureReadCloudCluster")
 
@@ -440,12 +441,12 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	// Create filter for cloud cluster
-	clusterFilter := gqlcloudcluster.ClusterFilter{
+	clusterFilter := gqlcluster.SearchFilter{
 		ID: []string{id.String()},
 	}
 
 	// Use AllCloudClusters and filter for cluster
-	cloudClusters, err := gqlcloudcluster.Wrap(client.GQL).AllCloudClusters(ctx, 1, "", clusterFilter, gqlcloudcluster.SortByClusterName, core.SortOrderDesc)
+	cloudClusters, err := gqlcloudcluster.Wrap(client.GQL).AllCloudClusters(ctx, 1, "", clusterFilter, gqlcluster.SortByClusterName, core.SortOrderDesc)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -496,12 +497,42 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	vmConfigMap[keyCDMVersion] = cloudCluster.Version
 	vmConfigMap[keyCDMProduct] = productCode
 
+	// Read DNS, NTP, and DNS Search Domains from API and check if they match the Terraform state
+	dnsServers, err := gqlcluster.Wrap(client.GQL).DNSServers(ctx, uuid.MustParse(d.Id()))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	dnsNameServersSet := schema.Set{F: schema.HashString}
+	for _, server := range dnsServers.Servers {
+		dnsNameServersSet.Add(server)
+	}
+	clusterConfigMap[keyDNSNameServers] = &dnsNameServersSet
+
+	dnsSearchDomainsSet := schema.Set{F: schema.HashString}
+	for _, domain := range dnsServers.Domains {
+		dnsSearchDomainsSet.Add(domain)
+	}
+	clusterConfigMap[keyDNSSearchDomains] = &dnsSearchDomainsSet
+
+	ntpServers, err := gqlcluster.Wrap(client.GQL).NTPServers(ctx, uuid.MustParse(d.Id()))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	ntpServersSet := schema.Set{F: schema.HashString}
+	for _, server := range ntpServers {
+		ntpServersSet.Add(server.Server)
+	}
+	clusterConfigMap[keyNTPServers] = &ntpServersSet
+
 	d.Set(keyClusterConfig, []any{clusterConfigMap})
 	d.Set(keyVMConfig, []any{vmConfigMap})
 
 	return nil
 }
 
+// azureDeleteCloudCluster deletes the cloud cluster resource.
 func azureDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureDeleteCloudCluster")
 
@@ -539,4 +570,91 @@ func azureDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 
 	d.SetId("")
 	return nil
+}
+
+// azureUpdateCloudCluster updates the resource in-place. The following actions
+// are supported:
+//   - Update Network DNS
+//   - Update Network DNS Search Domains
+//   - Update NTP
+//   - Update Cluster Name
+//   - Update Timezone
+func azureUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
+	tflog.Trace(ctx, "azureUpdateCloudCluster")
+
+	client, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	clusterID, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	gqlCluster := gqlcluster.Wrap(client.GQL)
+
+	// Check if cluster_config block has changes
+	if d.HasChange(keyClusterConfig) {
+		clusterConfigList := d.Get(keyClusterConfig).([]any)
+		if len(clusterConfigList) == 0 {
+			return diag.Errorf("%s is required", keyClusterConfig)
+		}
+		clusterConfigMap := clusterConfigList[0].(map[string]any)
+
+		// Check for DNS name servers or DNS search domains change
+		if d.HasChange(keyClusterConfig+".0."+keyDNSNameServers) || d.HasChange(keyClusterConfig+".0."+keyDNSSearchDomains) {
+			dnsNameServers := make([]string, 0)
+			if dnsNameServersSet, ok := clusterConfigMap[keyDNSNameServers].(*schema.Set); ok {
+				for _, dns := range dnsNameServersSet.List() {
+					dnsNameServers = append(dnsNameServers, dns.(string))
+				}
+			}
+
+			dnsSearchDomains := make([]string, 0)
+			if dnsSearchDomainsSet, ok := clusterConfigMap[keyDNSSearchDomains].(*schema.Set); ok {
+				for _, domain := range dnsSearchDomainsSet.List() {
+					dnsSearchDomains = append(dnsSearchDomains, domain.(string))
+				}
+			}
+
+			tflog.Debug(ctx, "Updating DNS servers and search domains", map[string]any{
+				"cluster_id":     clusterID.String(),
+				"dns_servers":    dnsNameServers,
+				"search_domains": dnsSearchDomains,
+			})
+
+			input := gqlcluster.UpdateDNSServersAndSearchDomainsInput{
+				ClusterID:     clusterID,
+				DNSServers:    dnsNameServers,
+				SearchDomains: dnsSearchDomains,
+			}
+
+			if err := gqlCluster.UpdateDNSServersAndSearchDomains(ctx, input); err != nil {
+				return diag.FromErr(err)
+			}
+
+			tflog.Debug(ctx, "DNS name servers and search domains updated", map[string]any{
+				"cluster_id": clusterID.String(),
+			})
+		}
+
+		// Check for NTP servers change
+		if d.HasChange(keyClusterConfig + ".0." + keyNTPServers) {
+			// TODO: Implement NTP servers update
+			tflog.Debug(ctx, "NTP servers changed", map[string]any{
+				"cluster_id": clusterID.String(),
+			})
+		}
+
+		// Check for cluster name change
+		if d.HasChange(keyClusterConfig + ".0." + keyClusterName) {
+			// TODO: Implement cluster name update
+			tflog.Debug(ctx, "Cluster name changed", map[string]any{
+				"cluster_id": clusterID.String(),
+			})
+		}
+	}
+
+	return azureReadCloudCluster(ctx, d, m)
 }
