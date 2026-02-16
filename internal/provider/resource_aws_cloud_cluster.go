@@ -284,6 +284,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 	}
 }
 
+// awsCreateCloudCluster creates the cloud cluster resource.
 func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsCreateCloudCluster")
 
@@ -399,6 +400,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	return awsReadCloudCluster(ctx, d, m)
 }
 
+// awsReadCloudCluster reads the cloud cluster resource.
 func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsReadCloudCluster")
 
@@ -450,7 +452,7 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	vmConfigMap[keyCDMVersion] = cloudCluster.Version
 
 	// Read DNS, NTP, and DNS Search Domains from API and check if they match the Terraform state
-	dnsServers, err := gqlcluster.Wrap(client).ClusterDnsServers(ctx, uuid.MustParse(d.Id()))
+	dnsServers, err := gqlcluster.Wrap(client).DNSServers(ctx, uuid.MustParse(d.Id()))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -459,19 +461,15 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	for _, server := range dnsServers.Servers {
 		dnsNameServersSet.Add(server)
 	}
-	if currentSet, ok := clusterConfigMap[keyDNSNameServers].(*schema.Set); !ok || !currentSet.Equal(&dnsNameServersSet) {
-		clusterConfigMap[keyDNSNameServers] = &dnsNameServersSet
-	}
+	clusterConfigMap[keyDNSNameServers] = &dnsNameServersSet
 
 	dnsSearchDomainsSet := schema.Set{F: schema.HashString}
 	for _, domain := range dnsServers.Domains {
 		dnsSearchDomainsSet.Add(domain)
 	}
-	if currentSet, ok := clusterConfigMap[keyDNSSearchDomains].(*schema.Set); !ok || !currentSet.Equal(&dnsSearchDomainsSet) {
-		clusterConfigMap[keyDNSSearchDomains] = &dnsSearchDomainsSet
-	}
+	clusterConfigMap[keyDNSSearchDomains] = &dnsSearchDomainsSet
 
-	ntpServers, err := gqlcluster.Wrap(client).ClusterNtpServers(ctx, uuid.MustParse(d.Id()))
+	ntpServers, err := gqlcluster.Wrap(client).NTPServers(ctx, uuid.MustParse(d.Id()))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -480,9 +478,7 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	for _, server := range ntpServers {
 		ntpServersSet.Add(server.Server)
 	}
-	if currentSet, ok := clusterConfigMap[keyNTPServers].(*schema.Set); !ok || !currentSet.Equal(&ntpServersSet) {
-		clusterConfigMap[keyNTPServers] = &ntpServersSet
-	}
+	clusterConfigMap[keyNTPServers] = &ntpServersSet
 
 	d.Set(keyClusterConfig, []any{clusterConfigMap})
 	d.Set(keyVMConfig, []any{vmConfigMap})
@@ -490,6 +486,7 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	return nil
 }
 
+// awsDeleteCloudCluster deletes the cloud cluster resource.
 func awsDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsDeleteCloudCluster")
 
@@ -529,16 +526,15 @@ func awsDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	return nil
 }
 
+// awsUpdateCloudCluster updates the resource in-place. The following actions
+// are supported:
+//   - Update Network DNS
+//   - Update Network DNS Search Domains
+//   - Update NTP
+//   - Update Cluster Name
+//   - Update Timezone
 func awsUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsUpdateCloudCluster")
-	/*
-		The following actions are supported for update
-			- Update Network DNS
-			- Update Network DNS Search Domains
-			- Update NTP
-			- Update Cluster Name
-			- Update Num Nodes
-	*/
 
 	client, err := m.(*client).polaris()
 	if err != nil {
@@ -582,13 +578,13 @@ func awsUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 				"search_domains": dnsSearchDomains,
 			})
 
-			input := gqlcluster.UpdateClusterDnsServersAndSearchDomainsInput{
+			input := gqlcluster.UpdateDNSServersAndSearchDomainsInput{
 				ClusterID:     clusterID,
-				DnsServers:    dnsNameServers,
+				DNSServers:    dnsNameServers,
 				SearchDomains: dnsSearchDomains,
 			}
 
-			if err := gqlCluster.UpdateClusterDnsServersAndSearchDomains(ctx, input); err != nil {
+			if err := gqlCluster.UpdateDNSServersAndSearchDomains(ctx, input); err != nil {
 				return diag.FromErr(err)
 			}
 
