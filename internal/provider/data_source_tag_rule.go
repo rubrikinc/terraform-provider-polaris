@@ -132,12 +132,15 @@ func tagRuleRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 
+	//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
 	if err := d.Set(keyTagKey, tagRule.Tag.Key); err != nil {
 		return diag.FromErr(err)
 	}
+	//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
 	if err := d.Set(keyTagValue, tagRule.Tag.Value); err != nil {
 		return diag.FromErr(err)
 	}
+	//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
 	if err := d.Set(keyTagAllValues, tagRule.Tag.AllValues); err != nil {
 		return diag.FromErr(err)
 	}
