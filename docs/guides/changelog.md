@@ -5,6 +5,8 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.5.0
+* Add support for managing the AWS Outpost account as a separate `polaris_aws_account` resource. The
+  `outpost_account_id` and `outpost_account_profile` fields have been made optional.
 * Remove the default value from the `cluster_access` field of the `polaris_aws_exocompute` resource. The default value
   would be set, but have no effect, when creating a shared Exocompute configuration.
 * Remove the in-place update functionality from the `polaris_aws_exocompute` resource due to API issues. The in-place
