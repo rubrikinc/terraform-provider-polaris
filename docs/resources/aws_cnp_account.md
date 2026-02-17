@@ -3,13 +3,19 @@ page_title: "polaris_aws_cnp_account Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
   
-The `polaris_aws_cnp_account` resource adds an AWS account to RSC using the IAM
-roles / non-CFT (Cloud Formation Template) workflow. The `polaris_aws_account`
-resource can be used to add an AWS account to RSC using the CFT workflow.
+The `polaris_aws_cnp_account` resource adds an AWS account to RSC. To grant RSC
+permissions to perform certain operations on the account, IAM roles needs to be
+created and communicated to RSC using the `polaris_aws_cnp_attachment` resource.
+The roles and permissions needed by RSC can be looked up using the
+`polaris_aws_cnp_artifact` and `polaris_aws_cnp_permissions` data sources.
 
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature set.
+
+`CLOUD_DISCOVERY`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
 
 `CLOUD_NATIVE_ARCHIVAL`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -47,19 +53,28 @@ are used when specifying the feature set.
 
 -> **Note:** When permission groups are specified, the `BASIC` permission group
    is always required except for the `SERVERS_AND_APPS` feature.
+
+-> **Note:** To onboard an account using a CloudFormation stack instead of IAM
+   roles, use the `polaris_aws_account` resource.
 
 ---
 
 # polaris_aws_cnp_account (Resource)
 
 
-The `polaris_aws_cnp_account` resource adds an AWS account to RSC using the IAM
-roles / non-CFT (Cloud Formation Template) workflow. The `polaris_aws_account`
-resource can be used to add an AWS account to RSC using the CFT workflow.
+The `polaris_aws_cnp_account` resource adds an AWS account to RSC. To grant RSC
+permissions to perform certain operations on the account, IAM roles needs to be
+created and communicated to RSC using the `polaris_aws_cnp_attachment` resource.
+The roles and permissions needed by RSC can be looked up using the
+`polaris_aws_cnp_artifact` and `polaris_aws_cnp_permissions` data sources.
 
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature set.
+
+`CLOUD_DISCOVERY`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
 
 `CLOUD_NATIVE_ARCHIVAL`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -97,6 +112,9 @@ are used when specifying the feature set.
 
 -> **Note:** When permission groups are specified, the `BASIC` permission group
    is always required except for the `SERVERS_AND_APPS` feature.
+
+-> **Note:** To onboard an account using a CloudFormation stack instead of IAM
+   roles, use the `polaris_aws_account` resource.
 
 
 
