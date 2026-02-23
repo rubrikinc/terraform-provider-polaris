@@ -698,8 +698,6 @@ func azureUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 		// since these use the same API we need to update them together
 		if d.HasChange(keyClusterConfig+".0."+keyClusterName) || d.HasChange(keyClusterConfig+".0."+keyTimezone) || d.HasChange(keyClusterConfig+".0."+keyLocation) {
 
-			// cluster requires to set the clustername, timezone and　location at the same time
-			// since location changes based on the input, we will set and not read the location back.
 			clusterName := clusterConfigMap[keyClusterName].(string)
 			timezone := clusterConfigMap[keyTimezone].(string)
 			location := clusterConfigMap[keyLocation].(string)
