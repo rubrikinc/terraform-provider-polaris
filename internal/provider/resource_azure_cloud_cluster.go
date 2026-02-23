@@ -93,7 +93,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 						keyClusterName: {
 							Type:         schema.TypeString,
 							Required:     true,
-							Description:  "Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.",
+							Description:  "Unique name to assign to the cloud cluster.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyAdminEmail: {
@@ -125,7 +125,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							},
 							Required:    true,
 							MinItems:    1,
-							Description: "DNS name servers for the cluster. Changing this forces a new resource to be created.",
+							Description: "DNS name servers for the cluster.",
 						},
 						keyDNSSearchDomains: {
 							Type: schema.TypeSet,
@@ -134,7 +134,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							},
 							Optional:    true,
 							MinItems:    1,
-							Description: "DNS search domains for the cluster. Changing this forces a new resource to be created.",
+							Description: "DNS search domains for the cluster.",
 						},
 						keyNTPServers: {
 							Type: schema.TypeSet,
@@ -143,7 +143,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							},
 							Required:    true,
 							MinItems:    1,
-							Description: "NTP servers for the cluster. Changing this forces a new resource to be created.",
+							Description: "NTP servers for the cluster.",
 						},
 						keyKeepClusterOnFailure: {
 							Type:        schema.TypeBool,
@@ -160,12 +160,14 @@ func resourceAzureCloudCluster() *schema.Resource {
 						keyTimezone: {
 							Type:         schema.TypeString,
 							Optional:     true,
+							Computed:     true,
 							Description:  "Timezone for the cluster.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyLocation: {
 							Type:         schema.TypeString,
 							Optional:     true,
+							Computed:     true,
 							Description:  "Location for the cluster.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
@@ -501,7 +503,6 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	// Get and update cluster_config block
 	clusterConfigList := d.Get(keyClusterConfig).([]any)
 	clusterConfigMap := clusterConfigList[0].(map[string]any)
-	clusterConfigMap[keyClusterName] = cloudCluster.Name
 
 	// Check if the CDM version changed
 	vmConfigList := d.Get(keyVMConfig).([]any)
@@ -601,6 +602,7 @@ func azureDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 //   - Update NTP
 //   - Update Cluster Name
 //   - Update Timezone
+//   - Update Location
 func azureUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "azureUpdateCloudCluster")
 
@@ -702,9 +704,12 @@ func azureUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 			timezone := clusterConfigMap[keyTimezone].(string)
 			location := clusterConfigMap[keyLocation].(string)
 
-			parsedTimezone, err := gqlcluster.ParseTimeZone(timezone)
-			if err != nil {
-				return diag.FromErr(err)
+			var parsedTimezone gqlcluster.Timezone
+			if timezone != "" {
+				parsedTimezone, err = gqlcluster.ParseTimeZone(timezone)
+				if err != nil {
+					return diag.FromErr(err)
+				}
 			}
 
 			input := gqlcluster.UpdateClusterSettings{
