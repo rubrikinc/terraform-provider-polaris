@@ -190,6 +190,18 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Description: "Whether to enable dynamic scaling for the cluster. Requires CDM Version 9.5+. Changing this forces a new resource to be created.",
 							ForceNew:    true,
 						},
+						keyTimezone: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "Timezone for the cluster.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyLocation: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "Location for the cluster.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
 					},
 				},
 			},
@@ -480,6 +492,16 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	}
 	clusterConfigMap[keyNTPServers] = &ntpServersSet
 
+	// Read cluster settings
+	clusterSettings, err := gqlcluster.Wrap(client).ClusterSettings(ctx, uuid.MustParse(d.Id()))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	clusterConfigMap[keyClusterName] = clusterSettings.Name
+	clusterConfigMap[keyTimezone] = clusterSettings.Timezone
+	clusterConfigMap[keyLocation] = clusterSettings.RawAddress
+
 	d.Set(keyClusterConfig, []any{clusterConfigMap})
 	d.Set(keyVMConfig, []any{vmConfigMap})
 
@@ -595,17 +617,65 @@ func awsUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 
 		// Check for NTP servers change
 		if d.HasChange(keyClusterConfig + ".0." + keyNTPServers) {
-			// TODO: Implement NTP servers update
-			tflog.Debug(ctx, "NTP servers changed", map[string]any{
+			input := gqlcluster.UpdateClusterNTPServersInput{
+				ClusterID: clusterID,
+			}
+
+			if ntpServersSet, ok := clusterConfigMap[keyNTPServers].(*schema.Set); ok {
+				for _, ntp := range ntpServersSet.List() {
+					input.Servers = append(input.Servers, struct {
+						Server       string                      `json:"server"`
+						SymmetricKey *gqlcluster.NTPSymmetricKey `json:"symmetricKey,omitempty"`
+					}{
+						Server: ntp.(string),
+						// SymmetricKey is nil, so it will be omitted from JSON
+					})
+				}
+			}
+
+			tflog.Debug(ctx, "Updating NTP servers", map[string]any{
+				"cluster_id":  clusterID.String(),
+				"ntp_servers": input.Servers,
+			})
+
+			if err := gqlCluster.UpdateNTPServers(ctx, input); err != nil {
+				return diag.FromErr(err)
+			}
+
+			tflog.Debug(ctx, "NTP servers updated", map[string]any{
 				"cluster_id": clusterID.String(),
 			})
+
 		}
 
-		// Check for cluster name change
-		if d.HasChange(keyClusterConfig + ".0." + keyClusterName) {
-			// TODO: Implement cluster name update
-			tflog.Debug(ctx, "Cluster name changed", map[string]any{
+		// Check for cluster name change, timezone change or location change
+		// since these use the same API we need to update them together
+		if d.HasChange(keyClusterConfig+".0."+keyClusterName) || d.HasChange(keyClusterConfig+".0."+keyTimezone) || d.HasChange(keyClusterConfig+".0."+keyLocation) {
+
+			clusterName := clusterConfigMap[keyClusterName].(string)
+			timezone := clusterConfigMap[keyTimezone].(string)
+			location := clusterConfigMap[keyLocation].(string)
+
+			parsedTimezone, err := gqlcluster.ParseTimeZone(timezone)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+
+			input := gqlcluster.UpdateClusterSettingsInput{
+				ClusterID: clusterID,
+				Name:      clusterName,
+				Timezone:  parsedTimezone,
+				Address:   location,
+			}
+			if err := gqlCluster.UpdateClusterSettings(ctx, input); err != nil {
+				return diag.FromErr(err)
+			}
+
+			tflog.Debug(ctx, "Cluster settings updated", map[string]any{
 				"cluster_id": clusterID.String(),
+				"name":       clusterName,
+				"timezone":   parsedTimezone,
+				"address":    location,
 			})
 		}
 	}

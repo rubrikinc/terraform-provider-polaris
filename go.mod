@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/terraform-plugin-docs v0.22.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
-	github.com/rubrikinc/rubrik-polaris-sdk-for-go v1.2.1-0.20260223155553-42056dae3db3
+	github.com/rubrikinc/rubrik-polaris-sdk-for-go v1.2.1-0.20260223120758-054875f62ed6
 )
 
 require (
