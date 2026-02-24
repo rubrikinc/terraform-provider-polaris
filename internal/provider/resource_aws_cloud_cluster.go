@@ -106,7 +106,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 						keyClusterName: {
 							Type:         schema.TypeString,
 							Required:     true,
-							Description:  "Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.",
+							Description:  "Unique name to assign to the cloud cluster.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyAdminEmail: {
@@ -138,7 +138,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							},
 							Required:    true,
 							MinItems:    1,
-							Description: "DNS name servers for the cluster. Changing this forces a new resource to be created.",
+							Description: "DNS name servers for the cluster.",
 						},
 						keyDNSSearchDomains: {
 							Type: schema.TypeSet,
@@ -147,7 +147,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							},
 							Optional:    true,
 							MinItems:    1,
-							Description: "DNS search domains for the cluster. Changing this forces a new resource to be created.",
+							Description: "DNS search domains for the cluster.",
 						},
 						keyNTPServers: {
 							Type: schema.TypeSet,
@@ -156,7 +156,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 							},
 							Required:    true,
 							MinItems:    1,
-							Description: "NTP servers for the cluster. Changing this forces a new resource to be created.",
+							Description: "NTP servers for the cluster.",
 						},
 						keyBucketName: {
 							Type:         schema.TypeString,
@@ -189,6 +189,20 @@ func resourceAwsCloudCluster() *schema.Resource {
 							Default:     false,
 							Description: "Whether to enable dynamic scaling for the cluster. Requires CDM Version 9.5+. Changing this forces a new resource to be created.",
 							ForceNew:    true,
+						},
+						keyTimezone: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							Description:  "Timezone for the cluster using IANA standard format e.g. America/Los_Angeles, Europe/Paris, etc.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyLocation: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							Description:  "Location for the cluster. This is free text, RSC will map it to the closest possible location e.g. Palo Alto, CA.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 					},
 				},
@@ -397,7 +411,19 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 	d.Set(keyCloudAccountID, cloudcluster.CloudAccountID)
 
-	return awsReadCloudCluster(ctx, d, m)
+	// Read back the created resource to populate computed fields. A failed
+	// readback must not be returned as an error: the resource was successfully
+	// created and returning an error here would leave Terraform unable to
+	// manage it. A plan diff on the next run is an acceptable outcome.
+	if diags := awsReadCloudCluster(ctx, d, m); diags.HasError() {
+		for _, diagnostic := range diags {
+			tflog.Warn(ctx, "failed to read back aws cloud cluster after create", map[string]any{
+				"summary": diagnostic.Summary,
+				"detail":  diagnostic.Detail,
+			})
+		}
+	}
+	return nil
 }
 
 // awsReadCloudCluster reads the cloud cluster resource.
@@ -444,7 +470,6 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	// Get and update cluster_config block
 	clusterConfigList := d.Get(keyClusterConfig).([]any)
 	clusterConfigMap := clusterConfigList[0].(map[string]any)
-	clusterConfigMap[keyClusterName] = cloudCluster.Name
 
 	// Check if the CDM version changed
 	vmConfigList := d.Get(keyVMConfig).([]any)
@@ -479,6 +504,20 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 		ntpServersSet.Add(server.Server)
 	}
 	clusterConfigMap[keyNTPServers] = &ntpServersSet
+
+	// Read cluster settings
+	clusterID, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	clusterSettings, err := gqlcluster.Wrap(client).ClusterSettings(ctx, clusterID)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	clusterConfigMap[keyClusterName] = clusterSettings.Name
+	clusterConfigMap[keyTimezone] = clusterSettings.Timezone
+	clusterConfigMap[keyLocation] = clusterSettings.RawAddress
 
 	d.Set(keyClusterConfig, []any{clusterConfigMap})
 	d.Set(keyVMConfig, []any{vmConfigMap})
@@ -533,6 +572,7 @@ func awsDeleteCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 //   - Update NTP
 //   - Update Cluster Name
 //   - Update Timezone
+//   - Update Location
 func awsUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsUpdateCloudCluster")
 
@@ -595,17 +635,67 @@ func awsUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 
 		// Check for NTP servers change
 		if d.HasChange(keyClusterConfig + ".0." + keyNTPServers) {
-			// TODO: Implement NTP servers update
-			tflog.Debug(ctx, "NTP servers changed", map[string]any{
+			input := gqlcluster.UpdateClusterNTPServersInput{
+				ClusterID: clusterID,
+			}
+
+			if ntpServersSet, ok := clusterConfigMap[keyNTPServers].(*schema.Set); ok {
+				for _, ntp := range ntpServersSet.List() {
+					input.Servers = append(input.Servers, struct {
+						Server       string                      `json:"server"`
+						SymmetricKey *gqlcluster.NTPSymmetricKey `json:"symmetricKey,omitempty"`
+					}{
+						Server: ntp.(string),
+						// SymmetricKey is nil, so it will be omitted from JSON
+					})
+				}
+			}
+
+			tflog.Debug(ctx, "Updating NTP servers", map[string]any{
+				"cluster_id":  clusterID.String(),
+				"ntp_servers": input.Servers,
+			})
+
+			if err := gqlCluster.UpdateNTPServers(ctx, input); err != nil {
+				return diag.FromErr(err)
+			}
+
+			tflog.Debug(ctx, "NTP servers updated", map[string]any{
 				"cluster_id": clusterID.String(),
 			})
+
 		}
 
-		// Check for cluster name change
-		if d.HasChange(keyClusterConfig + ".0." + keyClusterName) {
-			// TODO: Implement cluster name update
-			tflog.Debug(ctx, "Cluster name changed", map[string]any{
+		// Check for cluster name change, timezone change or location change
+		// since these use the same API we need to update them together
+		if d.HasChanges(keyClusterConfig+".0."+keyClusterName, keyClusterConfig+".0."+keyTimezone, keyClusterConfig+".0."+keyLocation) {
+			clusterName := clusterConfigMap[keyClusterName].(string)
+			timezone := clusterConfigMap[keyTimezone].(string)
+			location := clusterConfigMap[keyLocation].(string)
+
+			var parsedTimezone gqlcluster.Timezone
+			if timezone != "" {
+				parsedTimezone, err = gqlcluster.ParseTimeZone(timezone)
+				if err != nil {
+					return diag.FromErr(err)
+				}
+			}
+
+			input := gqlcluster.UpdatedSettings{
+				ClusterID: clusterID,
+				Name:      clusterName,
+				Timezone:  parsedTimezone,
+				Address:   location,
+			}
+			if _, err := gqlCluster.UpdateSettings(ctx, input); err != nil {
+				return diag.FromErr(err)
+			}
+
+			tflog.Debug(ctx, "Cluster settings updated", map[string]any{
 				"cluster_id": clusterID.String(),
+				"name":       clusterName,
+				"timezone":   parsedTimezone,
+				"address":    location,
 			})
 		}
 	}

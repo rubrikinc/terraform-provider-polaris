@@ -107,17 +107,19 @@ Required:
 - `admin_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
 - `admin_password` (String, Sensitive) Password for the cluster admin user. Changing this value will have no effect on the cluster.
 - `bucket_name` (String) Name of the S3 bucket to use for the cluster. Changing this forces a new resource to be created.
-- `cluster_name` (String) Unique name to assign to the cloud cluster. Changing this forces a new resource to be created.
-- `dns_name_servers` (Set of String) DNS name servers for the cluster. Changing this forces a new resource to be created.
+- `cluster_name` (String) Unique name to assign to the cloud cluster.
+- `dns_name_servers` (Set of String) DNS name servers for the cluster.
 - `enable_immutability` (Boolean) Whether to enable immutability and object lock for the S3 bucket. Changing this forces a new resource to be created.
 - `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure (can be useful for troubleshooting). Changing this forces a new resource to be created.
-- `ntp_servers` (Set of String) NTP servers for the cluster. Changing this forces a new resource to be created.
+- `ntp_servers` (Set of String) NTP servers for the cluster.
 - `num_nodes` (Number) Number of nodes in the cluster. Changing this forces a new resource to be created.
 
 Optional:
 
-- `dns_search_domains` (Set of String) DNS search domains for the cluster. Changing this forces a new resource to be created.
+- `dns_search_domains` (Set of String) DNS search domains for the cluster.
 - `dynamic_scaling_enabled` (Boolean) Whether to enable dynamic scaling for the cluster. Requires CDM Version 9.5+. Changing this forces a new resource to be created.
+- `location` (String) Location for the cluster. This is free text, RSC will map it to the closest possible location e.g. Palo Alto, CA.
+- `timezone` (String) Timezone for the cluster using IANA standard format e.g. America/Los_Angeles, Europe/Paris, etc.
 
 
 <a id="nestedblock--vm_config"></a>
