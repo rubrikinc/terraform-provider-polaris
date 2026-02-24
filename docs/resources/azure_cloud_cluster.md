@@ -115,8 +115,8 @@ Required:
 Optional:
 
 - `dns_search_domains` (Set of String) DNS search domains for the cluster.
-- `location` (String) Location for the cluster.
-- `timezone` (String) Timezone for the cluster.
+- `location` (String) Location for the cluster. This is free text, RSC will map it to the closest possible location e.g. Palo Alto, CA.
+- `timezone` (String) Timezone for the cluster using IANA standard format e.g. America/Los_Angeles, Europe/Paris, etc.
 
 
 <a id="nestedblock--vm_config"></a>
