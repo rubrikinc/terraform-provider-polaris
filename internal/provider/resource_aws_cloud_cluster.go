@@ -667,13 +667,13 @@ func awsUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 				}
 			}
 
-			input := gqlcluster.UpdateClusterSettings{
+			input := gqlcluster.UpdatedSettings{
 				ClusterID: clusterID,
 				Name:      clusterName,
 				Timezone:  parsedTimezone,
 				Address:   location,
 			}
-			if _, err := gqlCluster.UpdateClusterSettings(ctx, input); err != nil {
+			if _, err := gqlCluster.UpdateSettings(ctx, input); err != nil {
 				return diag.FromErr(err)
 			}
 
