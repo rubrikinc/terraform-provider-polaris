@@ -161,14 +161,14 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Type:         schema.TypeString,
 							Optional:     true,
 							Computed:     true,
-							Description:  "Timezone for the cluster.",
+							Description:  "Timezone for the cluster using IANA standard format e.g. America/Los_Angeles, Europe/Paris, etc.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyLocation: {
 							Type:         schema.TypeString,
 							Optional:     true,
 							Computed:     true,
-							Description:  "Location for the cluster.",
+							Description:  "Location for the cluster. This is free text, RSC will map it to the closest possible location e.g. Palo Alto, CA.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 					},
@@ -430,7 +430,18 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 
 	d.SetId(azureCluster.ID.String())
 
-	azureReadCloudCluster(ctx, d, m)
+	// Read back the created resource to populate computed fields. A failed
+	// readback must not be returned as an error: the resource was successfully
+	// created and returning an error here would leave Terraform unable to
+	// manage it. A plan diff on the next run is an acceptable outcome.
+	if diags := azureReadCloudCluster(ctx, d, m); diags.HasError() {
+		for _, diagnostic := range diags {
+			tflog.Warn(ctx, "failed to read back azure cloud cluster after create", map[string]any{
+				"summary": diagnostic.Summary,
+				"detail":  diagnostic.Detail,
+			})
+		}
+	}
 	return nil
 }
 
@@ -540,7 +551,11 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	clusterConfigMap[keyNTPServers] = &ntpServersSet
 
 	// Read cluster settings
-	clusterSettings, err := gqlcluster.Wrap(client.GQL).ClusterSettings(ctx, uuid.MustParse(d.Id()))
+	clusterID, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	clusterSettings, err := gqlcluster.Wrap(client.GQL).ClusterSettings(ctx, clusterID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -698,8 +713,7 @@ func azureUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 
 		// Check for cluster name change, timezone change or location change
 		// since these use the same API we need to update them together
-		if d.HasChange(keyClusterConfig+".0."+keyClusterName) || d.HasChange(keyClusterConfig+".0."+keyTimezone) || d.HasChange(keyClusterConfig+".0."+keyLocation) {
-
+		if d.HasChanges(keyClusterConfig+".0."+keyClusterName, keyClusterConfig+".0."+keyTimezone, keyClusterConfig+".0."+keyLocation) {
 			clusterName := clusterConfigMap[keyClusterName].(string)
 			timezone := clusterConfigMap[keyTimezone].(string)
 			location := clusterConfigMap[keyLocation].(string)
