@@ -93,7 +93,7 @@ resource "polaris_aws_account" "account1" {
 }
 
 resource "polaris_aws_account" "account2" {
-  profile = "account1"
+  profile = "account2"
 
   dspm {
     permission_groups = [

@@ -73,6 +73,36 @@ Each `tag` block accepts the following arguments:
 * `match_all` — (Optional) If true, all tag values for the given key are matched. Cannot be combined with `values`.
   Defaults to `false`.
 
+### New Feature Blocks
+The following feature blocks have been added to the `polaris_aws_account` resource:
+* `cloud_discovery` - Cloud Discovery.
+* `cloud_native_archival` - Cloud Native Archival.
+* `cloud_native_dynamodb_protection` - Cloud Native DynamoDB Protection.
+* `cloud_native_s3_protection` - Cloud Native S3 Protection.
+* `kubernetes_protection` - Kubernetes Protection.
+* `rds_protection` - RDS Protection.
+* `servers_and_apps` - Servers and Apps.
+
+The following example shows how to use the `cloud_native_s3_protection` feature block to onboard an AWS account with
+Cloud Native S3 Protection:
+```terraform
+resource "polaris_aws_account" "example" {
+  cloud_native_s3_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-1",
+    ]
+  }
+}
+```
+
+### Optional Cloud Native Protection
+The `cloud_native_protection` feature block has changed from required to optional, allowing the `polaris_aws_account`
+resource to be used for onboarding accounts with any combination of the above features.
+
 ## Significant Changes
 
 ### polaris_tag_rule: deprecated fields
@@ -168,3 +198,45 @@ The `polaris_sla_domain_assignment` does not need to be imported or modified sin
 -> **Note:** The `tag_key`, `tag_value`, and `tag_all_values` fields of the `polaris_tag_rule` data source are also
 deprecated. The data source always populates both the `tag` block and the deprecated fields for backward compatibility,
 so no immediate action is required for data sources.
+
+### Permission Groups
+The `permission_groups` field is now `Required` for the `cloud_native_protection` and `exocompute` feature blocks in the
+`polaris_aws_account` resource. Previously, `permission_groups` was `Optional` and could be omitted. Not having
+`permission_groups` included in the Terraform configuration will result in an error similar to the following:
+```console
+╷
+│ Error: Missing required argument
+│
+│   on main.tf line 1, in resource "polaris_aws_account" "example":
+│    1: resource "polaris_aws_account" "example" {
+│
+│ The argument "permission_groups" is required, but no definition was found.
+╵
+```
+To resolve this error, add `permission_groups` to each `cloud_native_protection` and `exocompute` feature block. For
+example:
+```terraform
+resource "polaris_aws_account" "example" {
+  cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+      "EXPORT_AND_RESTORE",
+    ]
+
+    regions = [
+      "us-east-1",
+    ]
+  }
+
+  exocompute {
+    permission_groups = [
+      "BASIC",
+      "RSC_MANAGED_CLUSTER",
+    ]
+
+    regions = [
+      "us-east-1",
+    ]
+  }
+}
+```

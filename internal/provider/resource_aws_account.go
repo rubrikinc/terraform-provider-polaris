@@ -271,7 +271,7 @@ func resourceAwsAccount() *schema.Resource {
 				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
 				MaxItems:    1,
 				Optional:    true,
-				Description: "Enable the Cloud Discovery feature for the AWS account.",
+				Description: "Enable the Kubernetes Protection feature for the AWS account.",
 			},
 			keyName: {
 				Type:     schema.TypeString,
@@ -347,14 +347,14 @@ func resourceAwsAccount() *schema.Resource {
 				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
 				MaxItems:    1,
 				Optional:    true,
-				Description: "Enable the Cloud Discovery feature for the account.",
+				Description: "Enable the RDS Protection feature for the account.",
 			},
 			keyServersAndApps: {
 				Type:        schema.TypeList,
 				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupCCES}),
 				MaxItems:    1,
 				Optional:    true,
-				Description: "Enable the Cloud Discovery feature for the account.",
+				Description: "Enable the Servers and Apps feature for the account.",
 			},
 		},
 		Importer: &schema.ResourceImporter{
@@ -557,7 +557,7 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.D
 	return nil
 }
 
-func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsReadAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsReadAccount")
 
 	client, err := m.(*client).polaris()
@@ -658,7 +658,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	return nil
 }
 
-func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsUpdateAccount")
 
 	client, err := m.(*client).polaris()
@@ -807,7 +807,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
-func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsDeleteAccount")
 
 	client, err := m.(*client).polaris()
@@ -956,7 +956,7 @@ func awsCFTFeatureResource(permissionGroups []core.PermissionGroup) *schema.Reso
 
 	var groups, names []string
 	for _, group := range permissionGroups {
-		groups = append(groups, fmt.Sprintf("%s", group))
+		groups = append(groups, string(group))
 		if !slices.Contains(pgs, group) {
 			names = append(names, fmt.Sprintf("`%s`", group))
 		}
@@ -1288,7 +1288,9 @@ func awsUpdateCFTFeatureBlock(ctx context.Context, client *polaris.Client, accou
 	// Update feature.
 	if oldFeatureBlock != nil {
 		for _, feature := range newFeatureBlock.features {
-			return aws.Wrap(client).UpdateAccount(ctx, accountID, feature, opts...)
+			if err := aws.Wrap(client).UpdateAccount(ctx, accountID, feature, opts...); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1300,13 +1302,8 @@ func awsCFTFeatureBlockAdded(featureKey string, d *schema.ResourceData) bool {
 	if !d.HasChange(featureKey) {
 		return false
 	}
-
 	oldBlock, newBlock := d.GetChange(featureKey)
-	if len(oldBlock.([]any)) == 0 && len(newBlock.([]any)) > 0 {
-		return true
-	}
-
-	return false
+	return len(oldBlock.([]any)) == 0 && len(newBlock.([]any)) > 0
 }
 
 // awsCFTFeatureBlockRemoved returns true if the feature block has been removed.
@@ -1314,13 +1311,8 @@ func awsCFTFeatureBlockRemoved(featureKey string, d *schema.ResourceData) bool {
 	if !d.HasChange(featureKey) {
 		return false
 	}
-
 	oldBlock, newBlock := d.GetChange(featureKey)
-	if len(oldBlock.([]any)) > 0 && len(newBlock.([]any)) == 0 {
-		return true
-	}
-
-	return false
+	return len(oldBlock.([]any)) > 0 && len(newBlock.([]any)) == 0
 }
 
 // awsCheckOutpostMappedAccounts checks that the outpost account isn't used by

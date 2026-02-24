@@ -287,7 +287,7 @@ resource "polaris_aws_account" "account1" {
 }
 
 resource "polaris_aws_account" "account2" {
-  profile = "account1"
+  profile = "account2"
 
   dspm {
     permission_groups = [
@@ -321,13 +321,13 @@ resource "polaris_aws_account" "account2" {
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed.
 - `dspm` (Block List, Max: 1) Enable the DSPM feature for the account. The DSPM feature requires the Outpost feature to be enabled. (see [below for nested schema](#nestedblock--dspm))
 - `exocompute` (Block List, Max: 1) Enable the Exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
-- `kubernetes_protection` (Block List, Max: 1) Enable the Cloud Discovery feature for the AWS account. (see [below for nested schema](#nestedblock--kubernetes_protection))
+- `kubernetes_protection` (Block List, Max: 1) Enable the Kubernetes Protection feature for the AWS account. (see [below for nested schema](#nestedblock--kubernetes_protection))
 - `name` (String) Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.
 - `outpost` (Block List, Max: 1) Enable the Outpost feature for the account. To use the DSPM, Data Scanning and Cyber Recovery Data Scanning features, one account must have the Outpost feature enabled. (see [below for nested schema](#nestedblock--outpost))
 - `permissions` (String) When set to 'update' feature permissions can be updated by applying the configuration.
 - `profile` (String) AWS named profile.
-- `rds_protection` (Block List, Max: 1) Enable the Cloud Discovery feature for the account. (see [below for nested schema](#nestedblock--rds_protection))
-- `servers_and_apps` (Block List, Max: 1) Enable the Cloud Discovery feature for the account. (see [below for nested schema](#nestedblock--servers_and_apps))
+- `rds_protection` (Block List, Max: 1) Enable the RDS Protection feature for the account. (see [below for nested schema](#nestedblock--rds_protection))
+- `servers_and_apps` (Block List, Max: 1) Enable the Servers and Apps feature for the account. (see [below for nested schema](#nestedblock--servers_and_apps))
 
 ### Read-Only
 
