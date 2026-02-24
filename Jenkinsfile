@@ -79,7 +79,7 @@ pipeline {
                 sh 'go vet ./...'
                 sh 'go generate ./... >/dev/null'
                 sh 'git diff --exit-code || (echo "Generated files are out of sync. Please run go generate and commit the changes." && exit 1)'
-                sh 'GOTOOLCHAIN=$(go env GOVERSION) go run honnef.co/go/tools/cmd/staticcheck@v0.6.1 ./...'
+                sh 'GOTOOLCHAIN=$(go env GOVERSION) go run honnef.co/go/tools/cmd/staticcheck@v0.7.0 ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
