@@ -74,36 +74,48 @@ Each `tag` block accepts the following arguments:
   Defaults to `false`.
 
 ### New Feature Blocks
-The following feature blocks have been added to the `polaris_aws_account` resource:
-* `cloud_discovery` - Cloud Discovery.
-* `cloud_native_archival` - Cloud Native Archival.
-* `cloud_native_dynamodb_protection` - Cloud Native DynamoDB Protection.
-* `cloud_native_s3_protection` - Cloud Native S3 Protection.
-* `kubernetes_protection` - Kubernetes Protection.
-* `rds_protection` - RDS Protection.
-* `servers_and_apps` - Servers and Apps.
 
-The following example shows how to use the `cloud_native_s3_protection` feature block to onboard an AWS account with
-Cloud Native S3 Protection:
-```terraform
-resource "polaris_aws_account" "example" {
-  cloud_native_s3_protection {
-    permission_groups = [
-      "BASIC",
-    ]
+The `polaris_aws_account` resource has been updated to support additional feature blocks. The following new feature
+blocks have been added:
+* `cloud_discovery` — Cloud Discovery.
+* `cloud_native_archival` — Cloud Native Archival.
+* `cloud_native_dynamodb_protection` — Cloud Native DynamoDB Protection.
+* `cloud_native_s3_protection` — Cloud Native S3 Protection.
+* `kubernetes_protection` — Kubernetes Protection.
+* `rds_protection` — RDS Protection.
+* `servers_and_apps` — Servers and Apps.
 
-    regions = [
-      "us-east-1",
-    ]
-  }
-}
-```
+The full list of currently supported feature blocks is:
+* `cloud_discovery` — Cloud Discovery.
+* `cloud_native_archival` — Cloud Native Archival.
+* `cloud_native_dynamodb_protection` — Cloud Native DynamoDB Protection.
+* `cloud_native_protection` — Cloud Native Protection.
+* `cloud_native_s3_protection` — Cloud Native S3 Protection.
+* `cyber_recovery_data_scanning` — Cyber Recovery Data Scanning.
+* `data_scanning` — Data Scanning.
+* `dspm` — DSPM.
+* `exocompute` — Exocompute.
+* `kubernetes_protection` — Kubernetes Protection.
+* `outpost` — Outpost.
+* `rds_protection` — RDS Protection.
+* `servers_and_apps` — Servers and Apps.
 
-### Optional Cloud Native Protection
 The `cloud_native_protection` feature block has changed from required to optional, allowing the `polaris_aws_account`
-resource to be used for onboarding accounts with any combination of the above features.
+resource to be used for onboarding accounts with any combination of the supported features. The `outpost` feature block
+is still required whenever the `data_scanning`, `dspm`, or `cyber_recovery_data_scanning` feature is onboarded.
+
+The `cloud_discovery` feature block is currently optional but will become required whenever a protection feature is
+onboarded. It can be added to existing AWS accounts and new AWS accounts can be onboarded with it. Once the
+`cloud_discovery` feature has been onboarded, it cannot be removed unless all protection features are removed first.
 
 ## Significant Changes
+
+### polaris_aws_account: optional outpost fields
+
+The `outpost_account_id` and `outpost_account_profile` fields of the `outpost` feature block are now optional. It is
+now possible to manage the AWS Outpost account as a separate `polaris_aws_account` resource. When using a separate
+account, the outpost account must be onboarded first, using `depends_on` to enforce the ordering. Using the
+`outpost_account_id` and `outpost_account_profile` fields for new accounts is not recommended.
 
 ### polaris_tag_rule: deprecated fields
 
@@ -198,45 +210,3 @@ The `polaris_sla_domain_assignment` does not need to be imported or modified sin
 -> **Note:** The `tag_key`, `tag_value`, and `tag_all_values` fields of the `polaris_tag_rule` data source are also
 deprecated. The data source always populates both the `tag` block and the deprecated fields for backward compatibility,
 so no immediate action is required for data sources.
-
-### Permission Groups
-The `permission_groups` field is now `Required` for the `cloud_native_protection` and `exocompute` feature blocks in the
-`polaris_aws_account` resource. Previously, `permission_groups` was `Optional` and could be omitted. Not having
-`permission_groups` included in the Terraform configuration will result in an error similar to the following:
-```console
-╷
-│ Error: Missing required argument
-│
-│   on main.tf line 1, in resource "polaris_aws_account" "example":
-│    1: resource "polaris_aws_account" "example" {
-│
-│ The argument "permission_groups" is required, but no definition was found.
-╵
-```
-To resolve this error, add `permission_groups` to each `cloud_native_protection` and `exocompute` feature block. For
-example:
-```terraform
-resource "polaris_aws_account" "example" {
-  cloud_native_protection {
-    permission_groups = [
-      "BASIC",
-      "EXPORT_AND_RESTORE",
-    ]
-
-    regions = [
-      "us-east-1",
-    ]
-  }
-
-  exocompute {
-    permission_groups = [
-      "BASIC",
-      "RSC_MANAGED_CLUSTER",
-    ]
-
-    regions = [
-      "us-east-1",
-    ]
-  }
-}
-```

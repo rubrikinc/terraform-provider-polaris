@@ -12,8 +12,6 @@ page_title: "Changelog"
   `rds_protection`, and `servers_and_apps`. [[docs](../resources/aws_account.md)]
 * The `cloud_native_protection` feature block has changed from required to optional in the `polaris_aws_account`
   resource.
-* The `permission_groups` field has changed from optional to required for the `cloud_native_protection` and `exocompute`
-  feature blocks in the `polaris_aws_account` resource.
 * Remove the default value from the `cluster_access` field of the `polaris_aws_exocompute` resource. The default value
   would be set, but have no effect, when creating a shared Exocompute configuration.
 * Remove the in-place update functionality from the `polaris_aws_exocompute` resource due to API issues. The in-place
