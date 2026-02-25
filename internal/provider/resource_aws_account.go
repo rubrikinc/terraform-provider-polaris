@@ -912,8 +912,9 @@ func awsCustomizeDiffAccount(ctx context.Context, diff *schema.ResourceDiff, m a
 	tflog.Trace(ctx, "awsCustomizeDiffAccount")
 
 	// Prevent removal of cloud_discovery when protection features are
-	// enabled.
-	if diff.HasChange(keyCloudDiscovery) {
+	// enabled. The Cloud Discovery feature is currently not required when
+	// onboarding protection features for a new account.
+	if diff.Id() != "" && diff.HasChange(keyCloudDiscovery) {
 		if block := diff.Get(keyCloudDiscovery).([]any); len(block) == 0 {
 			protectionKeys := []string{
 				keyCloudNativeProtection,
