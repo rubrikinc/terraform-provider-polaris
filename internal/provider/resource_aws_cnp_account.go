@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -174,6 +175,39 @@ func resourceAwsCnpAccount() *schema.Resource {
 			if diff.HasChange(keyFeature) {
 				if err := diff.SetNewComputed(keyTrustPolicies); err != nil {
 					return err
+				}
+
+				// During update, prevent removing CLOUD_DISCOVERY while protection
+				// features are still onboarded.
+				if diff.Id() != "" {
+					oldAttr, newAttr := diff.GetChange(keyFeature)
+
+					oldHasCD := false
+					for _, block := range oldAttr.(*schema.Set).List() {
+						if block.(map[string]any)[keyName].(string) == "CLOUD_DISCOVERY" {
+							oldHasCD = true
+							break
+						}
+					}
+
+					newHasCD := false
+					var remaining []string
+					for _, block := range newAttr.(*schema.Set).List() {
+						name := block.(map[string]any)[keyName].(string)
+						if name == "CLOUD_DISCOVERY" {
+							newHasCD = true
+						} else {
+							remaining = append(remaining, name)
+						}
+					}
+
+					if oldHasCD && !newHasCD && len(remaining) > 0 {
+						return fmt.Errorf(
+							"cannot remove the CLOUD_DISCOVERY feature while protection features "+
+								"are still onboarded: %s",
+							strings.Join(remaining, ", "),
+						)
+					}
 				}
 			}
 			return nil
