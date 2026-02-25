@@ -5,6 +5,13 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.5.0
+* Add support for managing the AWS Outpost account as a separate `polaris_aws_account` resource. The
+  `outpost_account_id` and `outpost_account_profile` fields have been made optional.
+* Add support for the following feature blocks in the `polaris_aws_account` resource: `cloud_discovery`,
+  `cloud_native_archival`, `cloud_native_dynamodb_protection`, `cloud_native_s3_protection`, `kubernetes_protection`,
+  `rds_protection`, and `servers_and_apps`. [[docs](../resources/aws_account.md)]
+* The `cloud_native_protection` feature block has changed from required to optional in the `polaris_aws_account`
+  resource.
 * Remove the default value from the `cluster_access` field of the `polaris_aws_exocompute` resource. The default value
   would be set, but have no effect, when creating a shared Exocompute configuration.
 * Remove the in-place update functionality from the `polaris_aws_exocompute` resource due to API issues. The in-place

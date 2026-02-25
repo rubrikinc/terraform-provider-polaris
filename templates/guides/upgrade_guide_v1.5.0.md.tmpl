@@ -73,7 +73,49 @@ Each `tag` block accepts the following arguments:
 * `match_all` — (Optional) If true, all tag values for the given key are matched. Cannot be combined with `values`.
   Defaults to `false`.
 
+### New Feature Blocks
+
+The `polaris_aws_account` resource has been updated to support additional feature blocks. The following new feature
+blocks have been added:
+* `cloud_discovery` — Cloud Discovery.
+* `cloud_native_archival` — Cloud Native Archival.
+* `cloud_native_dynamodb_protection` — Cloud Native DynamoDB Protection.
+* `cloud_native_s3_protection` — Cloud Native S3 Protection.
+* `kubernetes_protection` — Kubernetes Protection.
+* `rds_protection` — RDS Protection.
+* `servers_and_apps` — Servers and Apps.
+
+The full list of currently supported feature blocks is:
+* `cloud_discovery` — Cloud Discovery.
+* `cloud_native_archival` — Cloud Native Archival.
+* `cloud_native_dynamodb_protection` — Cloud Native DynamoDB Protection.
+* `cloud_native_protection` — Cloud Native Protection.
+* `cloud_native_s3_protection` — Cloud Native S3 Protection.
+* `cyber_recovery_data_scanning` — Cyber Recovery Data Scanning.
+* `data_scanning` — Data Scanning.
+* `dspm` — DSPM.
+* `exocompute` — Exocompute.
+* `kubernetes_protection` — Kubernetes Protection.
+* `outpost` — Outpost.
+* `rds_protection` — RDS Protection.
+* `servers_and_apps` — Servers and Apps.
+
+The `cloud_native_protection` feature block has changed from required to optional, allowing the `polaris_aws_account`
+resource to be used for onboarding accounts with any combination of the supported features. The `outpost` feature block
+is still required whenever the `data_scanning`, `dspm`, or `cyber_recovery_data_scanning` feature is onboarded.
+
+The `cloud_discovery` feature block is currently optional but will become required whenever a protection feature is
+onboarded. It can be added to existing AWS accounts and new AWS accounts can be onboarded with it. Once the
+`cloud_discovery` feature has been onboarded, it cannot be removed unless all protection features are removed first.
+
 ## Significant Changes
+
+### polaris_aws_account: optional outpost fields
+
+The `outpost_account_id` and `outpost_account_profile` fields of the `outpost` feature block are now optional. It is
+now possible to manage the AWS Outpost account as a separate `polaris_aws_account` resource. When using a separate
+account, the outpost account must be onboarded first, using `depends_on` to enforce the ordering. Using the
+`outpost_account_id` and `outpost_account_profile` fields for new accounts is not recommended.
 
 ### polaris_tag_rule: deprecated fields
 

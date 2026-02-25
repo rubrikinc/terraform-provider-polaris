@@ -21,8 +21,13 @@
 package provider
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"fmt"
+	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -33,26 +38,111 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
 const resourceAWSAccountDescription = `
 The ´polaris_aws_account´ resource adds an AWS account to RSC. To grant RSC
-permissions to perform certain operations on the account, a Cloud Formation stack
-is created from a template provided by RSC.
+permissions to perform certain operations on the account, a Cloud Formation
+stack is created from a template provided by RSC.
 
 There are two ways to specify the AWS account to onboard:
  1. Using the ´profile´ field. The AWS profile is used to create the Cloud
     Formation stack and lookup the AWS account ID.
- 2. Using the ´assume_role´field with, or without, the ´profile´ field. If the
+ 2. Using the ´assume_role´ field with, or without, the ´profile´ field. If the
     ´profile´ field is omitted, the default profile is used. The profile is used
     to assume the role. The assumed role is then used and create the Cloud
     Formation stack and lookup the account ID.
 
-Any combination of different RSC features can be enabled for an account:
-  1. ´cloud_native_protection´ - Provides protection for AWS EC2 instances and
-     EBS volumes through the rules and policies of SLA Domains.
-  2. ´exocompute´ - Provides snapshot indexing, file recovery and application
-     protection of AWS objects.
+Any combination of different RSC features, except as noted below, can be enabled
+for an account:
+  * ´cloud_discovery´ - Enable the Cloud Discovery feature for the account.
+    Required when onboarding a new account with protection features. Optional
+    for existing accounts.
+  * ´cloud_native_archival´ - Enable the Cloud Native Archival feature for the
+    account.
+  * ´cloud_native_protection´ - Enable the Cloud Native Protection feature for
+    the account.
+  * ´cloud_native_dynamodb_protection´ - Enable the Cloud Native DynamoDB
+    Protection feature for the account.
+  * ´cloud_native_s3_protection´ - Enable the Cloud Native S3 Protection feature
+    for the account.
+  * ´cyber_recovery_data_scanning´ - Enable the Cyber Recovery Data Scanning
+    feature for the account. Requires the Outpost feature to be enabled, either
+    in the same account or in a separate account onboarded before this resource.
+  * ´data_scanning´ - Enable the Data Scanning feature for the account. Requires
+    the Outpost feature to be enabled, either in the same account or in a
+    separate account onboarded before this resource.
+  * ´dspm´ - Enable the DSPM feature for the account. Requires the Outpost
+    feature to be enabled, either in the same account or in a separate account
+    onboarded before this resource.
+  * ´exocompute´ - Enable the Exocompute feature for the account. Only required
+    for accounts hosting the Exocompute cluster.
+  * ´kubernetes_protection´ - Enable the Kubernetes Protection feature for the
+    account.
+  * ´outpost´ - Enable the Outpost feature for the account. Required for the
+    Cyber Recovery Data Scanning, Data Scanning and DSPM features. The outpost
+    account can be the same account as where the features are enabled, or it can
+    be a separate account. When using a separate account, the outpost account
+    must be onboarded first, using ´depends_on´ to enforce the ordering. The
+    ´outpost_account_id´ and ´outpost_account_profile´ fields are legacy and not
+    recommended.
+  * ´rds_protection´ - Enable the RDS Protection feature for the account.
+  * ´servers_and_apps´ - Enable the Servers and Apps feature for the account.
+    Required to run CCES clusters.
+
+## Outpost Account
+
+The Cyber Recovery Data Scanning, Data Scanning and DSPM features require an
+outpost account to be onboarded. The outpost account can be the same account as
+where the features are enabled, or it can be a separate account.
+
+When the outpost account is the same account:
+´´´terraform
+resource "polaris_aws_account" "main" {
+  profile = "main"
+
+  data_scanning {
+    permission_groups = ["BASIC"]
+    regions           = ["us-east-2"]
+  }
+
+  outpost {
+    permission_groups = ["BASIC"]
+  }
+}
+´´´
+
+When the outpost account is a separate account, the outpost account must be
+onboarded first. Use ´depends_on´ to enforce the ordering:
+´´´terraform
+resource "polaris_aws_account" "outpost" {
+  profile = "outpost"
+
+  outpost {
+    permission_groups = ["BASIC"]
+  }
+}
+
+resource "polaris_aws_account" "main" {
+  profile = "main"
+
+  data_scanning {
+    permission_groups = ["BASIC"]
+    regions           = ["us-east-2"]
+  }
+
+  depends_on = [
+    polaris_aws_account.outpost,
+  ]
+}
+´´´
+
+-> **Note:** To onboard an account using IAM roles instead of a CloudFormation
+   stack, use the ´polaris_aws_cnp_account´ resource.
+
+-> **Note:** When importing the ´polaris_aws_account´ resource, the
+   ´outpost_account_id´ and ´outpost_account_profile´ fields are not imported.
 `
 
 func resourceAwsAccount() *schema.Resource {
@@ -61,6 +151,7 @@ func resourceAwsAccount() *schema.Resource {
 		ReadContext:   awsReadAccount,
 		UpdateContext: awsUpdateAccount,
 		DeleteContext: awsDeleteAccount,
+		CustomizeDiff: awsCustomizeDiffAccount,
 
 		Description: description(resourceAWSAccountDescription),
 		Schema: map[string]*schema.Schema{
@@ -76,50 +167,69 @@ func resourceAwsAccount() *schema.Resource {
 				Description:      "Role ARN of role to assume.",
 				ValidateDiagFunc: validateRoleARN,
 			},
+			keyCloudDiscovery: {
+				Type:        schema.TypeList,
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Cloud Discovery feature for the account.",
+			},
+			keyCloudNativeArchival: {
+				Type:        schema.TypeList,
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Cloud Native Archival feature for the account.",
+			},
 			keyCloudNativeProtection: {
 				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						keyPermissionGroups: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC",
-									// The following permission groups cannot be used when onboarding an AWS account.
-									// They have been accepted in the past so we still silently allow them.
-									"EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS",
-								}, false),
-							},
-							Optional: true,
-							Description: "Permission groups to assign to the Cloud Native Protection feature. " +
-								"Possible values are `BASIC`.",
-						},
-						keyRegions: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type:         schema.TypeString,
-								ValidateFunc: validation.StringIsNotWhiteSpace,
-							},
-							MinItems:    1,
-							Required:    true,
-							Description: "Regions that RSC will monitor for instances to automatically protect.",
-						},
-						keyStatus: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Status of the Cloud Native Protection feature.",
-						},
-						keyStackARN: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Cloudformation stack ARN.",
-						},
-					},
+				Elem: awsCFTFeatureResource([]core.PermissionGroup{
+					core.PermissionGroupBasic,
+					// The following permission groups cannot be used when onboarding an AWS account.
+					// They have been accepted in the past so we still silently allow them.
+					core.PermissionGroupExportAndRestore,
+					core.PermissionGroupFileLevelRecovery,
+					core.PermissionGroupSnapshotPrivateAccess,
+				}, false),
+				MaxItems: 1,
+				Optional: true,
+				AtLeastOneOf: []string{
+					keyCloudDiscovery,
+					keyCloudNativeArchival,
+					keyCloudNativeDynamoDBProtection,
+					keyCloudNativeS3Protection,
+					keyCyberRecoveryDataScanning,
+					keyDataScanning,
+					keyDSPM,
+					keyExocompute,
+					keyKubernetesProtection,
+					keyOutpost,
+					keyRDSProtection,
+					keyServersAndApps,
 				},
+				Description: "Enable the Cloud Native Protection feature for the account.",
+			},
+			keyCloudNativeDynamoDBProtection: {
+				Type:        schema.TypeList,
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems:    1,
-				Required:    true,
-				Description: "Enable the Cloud Native Protection feature for the AWS account.",
+				Optional:    true,
+				Description: "Enable the Cloud Native DynamoDB Protection feature for the account.",
+			},
+			keyCloudNativeS3Protection: {
+				Type:        schema.TypeList,
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Cloud Native S3 Protection feature for the account.",
+			},
+			keyCyberRecoveryDataScanning: {
+				Type:     schema.TypeList,
+				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
+				MaxItems: 1,
+				Optional: true,
+				Description: "Enable the Cyber Recovery Data Scanning feature for the account. The Cyber Recovery " +
+					"Data Scanning feature requires the Outpost feature to be enabled.",
 			},
 			keyDeleteSnapshotsOnDestroy: {
 				Type:        schema.TypeBool,
@@ -127,50 +237,41 @@ func resourceAwsAccount() *schema.Resource {
 				Default:     false,
 				Description: "Should snapshots be deleted when the resource is destroyed.",
 			},
+			keyDataScanning: {
+				Type:     schema.TypeList,
+				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
+				MaxItems: 1,
+				Optional: true,
+				Description: "Enable the Data Scanning feature for the account. The Data Scanning feature requires " +
+					"the Outpost feature to be enabled.",
+			},
+			keyDSPM: {
+				Type:     schema.TypeList,
+				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
+				MaxItems: 1,
+				Optional: true,
+				Description: "Enable the DSPM feature for the account. The DSPM feature requires the Outpost " +
+					"feature to be enabled.",
+			},
 			keyExocompute: {
 				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						keyPermissionGroups: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC", "RSC_MANAGED_CLUSTER",
-									// The following permission groups cannot be used when onboarding an AWS account.
-									// They have been accepted in the past so we still silently allow them.
-									"PRIVATE_ENDPOINT",
-								}, false),
-							},
-							Optional: true,
-							Description: "Permission groups to assign to the Exocompute feature. Possible values " +
-								"are `BASIC` and `RSC_MANAGED_CLUSTER`.",
-						},
-						keyRegions: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type:         schema.TypeString,
-								ValidateFunc: validation.StringIsNotWhiteSpace,
-							},
-							MinItems:    1,
-							Required:    true,
-							Description: "Regions to enable the Exocompute feature in.",
-						},
-						keyStatus: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Status of the Exocompute feature.",
-						},
-						keyStackARN: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Cloudformation stack ARN.",
-						},
-					},
-				},
+				Elem: awsCFTFeatureResource([]core.PermissionGroup{
+					core.PermissionGroupBasic,
+					core.PermissionGroupRSCManagedCluster,
+					// The following permission groups cannot be used when onboarding an AWS account.
+					// They have been accepted in the past so we still silently allow them.
+					core.PermissionGroupPrivateEndpoints,
+				}, false),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Exocompute feature for the account.",
+			},
+			keyKubernetesProtection: {
+				Type:        schema.TypeList,
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Enable the Kubernetes Protection feature for the AWS account.",
 			},
 			keyName: {
 				Type:     schema.TypeString,
@@ -180,6 +281,51 @@ func resourceAwsAccount() *schema.Resource {
 					"or, if the required permissions are missing, is derived from the AWS account ID and the " +
 					"named profile.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
+			keyOutpost: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyOutpostAccountID: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Description:  "AWS account ID of the outpost account. Defaults to the current account.",
+							ValidateFunc: validateAwsAccountID,
+						},
+						keyOutpostAccountProfile: {
+							Type:         schema.TypeString,
+							Optional:     true,
+							RequiredWith: []string{keyOutpost + ".0." + keyOutpostAccountID},
+							Description: "AWS named profile for the outpost account. Defaults to the profile used " +
+								"for the current account.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{"BASIC"}, false),
+							},
+							Required: true,
+							Description: "Permission groups to assign to the Outpost feature. Possible values are " +
+								"`BASIC`.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Outpost feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "CloudFormation stack ARN.",
+						},
+					},
+				},
+				MaxItems: 1,
+				Optional: true,
+				Description: "Enable the Outpost feature for the account. To use the DSPM, Data Scanning and Cyber " +
+					"Recovery Data Scanning features, one account must have the Outpost feature enabled.",
 			},
 			keyPermissions: {
 				Type:     schema.TypeString,
@@ -196,178 +342,19 @@ func resourceAwsAccount() *schema.Resource {
 				Description:  "AWS named profile.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
-			keyDSPM: {
-				Type:         schema.TypeList,
-				RequiredWith: []string{keyOutpost},
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						keyRegions: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type:         schema.TypeString,
-								ValidateFunc: validation.StringIsNotWhiteSpace,
-							},
-							MinItems:    1,
-							Required:    true,
-							Description: "Regions to enable the DSPM feature in.",
-						},
-						keyStatus: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Status of the DSPM feature.",
-						},
-						keyStackARN: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Cloudformation stack ARN.",
-						},
-						keyPermissionGroups: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC",
-								}, false),
-							},
-							Required: true,
-							Description: "Permission groups to assign to the DSPM feature. " +
-								"Possible values are `BASIC`.",
-						},
-					},
-				},
+			keyRDSProtection: {
+				Type:        schema.TypeList,
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems:    1,
 				Optional:    true,
-				Description: "Enable the DSPM feature for the account.",
+				Description: "Enable the RDS Protection feature for the account.",
 			},
-			keyDataScanning: {
-				Type:         schema.TypeList,
-				RequiredWith: []string{keyOutpost},
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						keyRegions: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type:         schema.TypeString,
-								ValidateFunc: validation.StringIsNotWhiteSpace,
-							},
-							MinItems:    1,
-							Required:    true,
-							Description: "Regions to enable the Data Scanning feature in.",
-						},
-						keyStatus: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Status of the Data Scanning feature.",
-						},
-						keyStackARN: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Cloudformation stack ARN.",
-						},
-						keyPermissionGroups: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC",
-								}, false),
-							},
-							Required: true,
-							Description: "Permission groups to assign to the Data Scanning feature. " +
-								"Possible values are `BASIC`.",
-						},
-					},
-				},
+			keyServersAndApps: {
+				Type:        schema.TypeList,
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupCCES}, true),
 				MaxItems:    1,
 				Optional:    true,
-				Description: "Enable the Data Scanning feature for the account.",
-			},
-			keyCyberRecoveryDataScanning: {
-				Type:         schema.TypeList,
-				RequiredWith: []string{keyOutpost},
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						keyRegions: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type:         schema.TypeString,
-								ValidateFunc: validation.StringIsNotWhiteSpace,
-							},
-							MinItems:    1,
-							Required:    true,
-							Description: "Regions to enable the Cyber Recovery Data Scanning feature in.",
-						},
-						keyStatus: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Status of the Cyber Recovery Data Scanning feature.",
-						},
-						keyStackARN: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Cloudformation stack ARN.",
-						},
-						keyPermissionGroups: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC",
-								}, false),
-							},
-							Required: true,
-							Description: "Permission groups to assign to the Cyber Recovery Data Scanning feature. " +
-								"Possible values are `BASIC`.",
-						},
-					},
-				},
-				MaxItems:    1,
-				Optional:    true,
-				Description: "Enable the Cyber Recovery Data Scanning feature for the account.",
-			},
-			keyOutpost: {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						keyOutpostAccountID: {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "AWS account ID of the outpost account.",
-							ValidateFunc: validateAwsAccountID,
-						},
-						keyOutpostAccountProfile: {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Description:  "AWS named profile for the outpost account.",
-							ValidateFunc: validation.StringIsNotWhiteSpace,
-						},
-						keyStatus: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Status of the Outpost feature.",
-						},
-						keyStackARN: {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Cloudformation stack ARN.",
-						},
-						keyPermissionGroups: {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-								ValidateFunc: validation.StringInSlice([]string{
-									"BASIC",
-								}, false),
-							},
-							Required: true,
-							Description: "Permission groups to assign to the Outpost feature. " +
-								"Possible values are `BASIC`.",
-						},
-					},
-				},
-				MaxItems:    1,
-				Optional:    true,
-				Description: "Enable the Outpost feature for the account (Required for DSPM and Data Scanning features).",
+				Description: "Enable the Servers and Apps feature for the account.",
 			},
 		},
 		Importer: &schema.ResourceImporter{
@@ -387,7 +374,7 @@ func resourceAwsAccount() *schema.Resource {
 	}
 }
 
-func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsCreateAccount")
 
 	client, err := m.(*client).polaris()
@@ -395,170 +382,182 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 
-	// Initialize to empty string if missing from the configuration.
-	profile, _ := d.Get(keyProfile).(string)
-	roleARN, _ := d.Get(keyAssumeRole).(string)
+	profile := d.Get(keyProfile).(string)
+	roleARN := d.Get(keyAssumeRole).(string)
 
 	var account aws.AccountFunc
 	switch {
 	case profile != "" && roleARN == "":
 		account = aws.Profile(profile)
-	case profile != "" && roleARN != "":
+	case profile != "":
 		account = aws.ProfileWithRole(profile, roleARN)
 	default:
 		account = aws.DefaultWithRole(roleARN)
 	}
 
+	// Account name.
 	var opts []aws.OptionFunc
 	if name, ok := d.GetOk(keyName); ok {
 		opts = append(opts, aws.Name(name.(string)))
 	}
 
-	// Polaris Cloud Account id. Returned when the account is added for the
-	// cloud native protection feature.
+	// Collect features and regions from the resource data.
+	var featureBlocks []awsCFTFeatureBlock
+
+	featureBlock, err := awsFromCFTFeatureBlock(keyCloudDiscovery, d.Get(keyCloudDiscovery))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyCloudNativeArchival, d.Get(keyCloudNativeArchival))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyCloudNativeProtection, d.Get(keyCloudNativeProtection))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyCloudNativeDynamoDBProtection, d.Get(keyCloudNativeDynamoDBProtection))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyCloudNativeS3Protection, d.Get(keyCloudNativeS3Protection))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyCyberRecoveryDataScanning, d.Get(keyCyberRecoveryDataScanning))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyDataScanning, d.Get(keyDataScanning))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyDSPM, d.Get(keyDSPM))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyExocompute, d.Get(keyExocompute))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyKubernetesProtection, d.Get(keyKubernetesProtection))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyOutpost, d.Get(keyOutpost))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyRDSProtection, d.Get(keyRDSProtection))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	featureBlock, err = awsFromCFTFeatureBlock(keyServersAndApps, d.Get(keyServersAndApps))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
+	// Verify that outpost-dependent features have an outpost account available,
+	// either in this resource or already onboarded in RSC.
+	if outpostBlock := d.Get(keyOutpost).([]any); len(outpostBlock) == 0 {
+		outpostDependentKeys := []string{keyCyberRecoveryDataScanning, keyDataScanning, keyDSPM}
+		var hasOutpostDependentFeature bool
+		for _, key := range outpostDependentKeys {
+			if block := d.Get(key).([]any); len(block) > 0 {
+				hasOutpostDependentFeature = true
+				break
+			}
+		}
+		if hasOutpostDependentFeature {
+			outposts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "",
+				[]core.Status{core.StatusConnected, core.StatusMissingPermissions})
+			if err != nil {
+				return diag.Errorf("failed to check outpost account status: %s", err)
+			}
+			if len(outposts) == 0 {
+				return diag.Errorf("cyber_recovery_data_scanning, data_scanning, and dspm features require an outpost account")
+			}
+		}
+	}
+
+	// Add cloud account with features.
 	var id uuid.UUID
-
-	cnpBlock, ok := d.GetOk(keyCloudNativeProtection)
-	if ok {
-		block := cnpBlock.([]interface{})[0].(map[string]interface{})
-
-		feature := core.FeatureCloudNativeProtection
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+	for _, feature := range awsSquashCFTFeatureBlocks(featureBlocks) {
+		featureOpts := slices.Clone(opts)
+		for _, region := range feature.regions {
+			featureOpts = append(featureOpts, aws.Region(region.Name()))
 		}
-
-		var cnpOpts []aws.OptionFunc
-		for _, region := range block[keyRegions].(*schema.Set).List() {
-			cnpOpts = append(cnpOpts, aws.Region(region.(string)))
-		}
-
-		var err error
-		cnpOpts = append(cnpOpts, opts...)
-		id, err = aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, cnpOpts...)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	exoBlock, ok := d.GetOk(keyExocompute)
-	if ok {
-		block := exoBlock.([]interface{})[0].(map[string]interface{})
-
-		feature := core.FeatureExocompute
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
-		}
-
-		var exoOpts []aws.OptionFunc
-		for _, region := range block[keyRegions].(*schema.Set).List() {
-			exoOpts = append(exoOpts, aws.Region(region.(string)))
-		}
-
-		exoOpts = append(exoOpts, opts...)
-		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, exoOpts...)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	outpostBlock, ok := d.GetOk(keyOutpost)
-	if ok {
-		block := outpostBlock.([]any)[0].(map[string]interface{})
-
-		feature := core.FeatureOutpost
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
-		}
-
-		var outpostOpts []aws.OptionFunc
-		outpostAccountID := block[keyOutpostAccountID].(string)
-		if outpostProfile := block[keyOutpostAccountProfile].(string); outpostProfile != "" {
-			outpostOpts = append(outpostOpts, aws.OutpostAccountWithProfile(outpostAccountID, outpostProfile))
-		} else {
-			outpostOpts = append(outpostOpts, aws.OutpostAccount(outpostAccountID))
-		}
-
-		outpostOpts = append(outpostOpts, opts...)
-		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, outpostOpts...)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	dspmBlock, ok := d.GetOk(keyDSPM)
-	if ok {
-		block := dspmBlock.([]interface{})[0].(map[string]interface{})
-
-		features := []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			for i := range features {
-				features[i] = features[i].WithPermissionGroups(core.PermissionGroup(group.(string)))
+		if outpostID := feature.outpostID; outpostID != "" {
+			if outpostProfile := feature.outpostProfile; outpostProfile != "" {
+				featureOpts = append(featureOpts, aws.OutpostAccountWithProfile(outpostID, outpostProfile))
+			} else {
+				featureOpts = append(featureOpts, aws.OutpostAccount(outpostID))
 			}
 		}
 
-		var dspmOpts []aws.OptionFunc
-		for _, region := range block[keyRegions].(*schema.Set).List() {
-			dspmOpts = append(dspmOpts, aws.Region(region.(string)))
-		}
-
-		dspmOpts = append(dspmOpts, opts...)
-		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, features, dspmOpts...)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	dataScanningBlock, ok := d.GetOk(keyDataScanning)
-	if ok {
-		block := dataScanningBlock.([]interface{})[0].(map[string]interface{})
-
-		features := []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			for i := range features {
-				features[i] = features[i].WithPermissionGroups(core.PermissionGroup(group.(string)))
-			}
-		}
-
-		var dataScanningOpts []aws.OptionFunc
-		for _, region := range block[keyRegions].(*schema.Set).List() {
-			dataScanningOpts = append(dataScanningOpts, aws.Region(region.(string)))
-		}
-
-		dataScanningOpts = append(dataScanningOpts, opts...)
-		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, features, dataScanningOpts...)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	cyberRecoveryDataScanningBlock, ok := d.GetOk(keyCyberRecoveryDataScanning)
-	if ok {
-		block := cyberRecoveryDataScanningBlock.([]any)[0].(map[string]interface{})
-		features := []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			for i := range features {
-				features[i] = features[i].WithPermissionGroups(core.PermissionGroup(group.(string)))
-			}
-		}
-		var cyberRecoveryDataScanningOpts []aws.OptionFunc
-		for _, region := range block[keyRegions].(*schema.Set).List() {
-			cyberRecoveryDataScanningOpts = append(cyberRecoveryDataScanningOpts, aws.Region(region.(string)))
-		}
-
-		cyberRecoveryDataScanningOpts = append(cyberRecoveryDataScanningOpts, opts...)
-		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, features, cyberRecoveryDataScanningOpts...)
+		id, err = aws.Wrap(client).AddAccountWithCFT(ctx, account, feature.features, featureOpts...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	d.SetId(id.String())
-
 	awsReadAccount(ctx, d, m)
 	return nil
 }
 
-func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsReadAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsReadAccount")
 
 	client, err := m.(*client).polaris()
@@ -581,206 +580,67 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 		return diag.FromErr(err)
 	}
 
-	cnpFeature, ok := account.Feature(core.FeatureCloudNativeProtection)
-	if ok {
-		groups := schema.Set{F: schema.HashString}
-		for _, group := range cnpFeature.Feature.PermissionGroups {
-			groups.Add(string(group))
-		}
-
-		regions := schema.Set{F: schema.HashString}
-		for _, region := range cnpFeature.Regions {
-			regions.Add(region)
-		}
-
-		status := core.FormatStatus(cnpFeature.Status)
-		err := d.Set("cloud_native_protection", []interface{}{
-			map[string]interface{}{
-				keyPermissionGroups: &groups,
-				keyRegions:          &regions,
-				keyStatus:           &status,
-				keyStackARN:         &cnpFeature.StackArn,
-			},
-		})
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	} else {
-		if err := d.Set(keyCloudNativeProtection, nil); err != nil {
-			return diag.FromErr(err)
-		}
+	// Regular features.
+	if err := d.Set(keyCloudDiscovery, awsToCFTFeatureBlock(account, keyCloudDiscovery)); err != nil {
+		return diag.FromErr(err)
 	}
-
-	exoFeature, ok := account.Feature(core.FeatureExocompute)
-	if ok {
-		groups := schema.Set{F: schema.HashString}
-		for _, group := range exoFeature.Feature.PermissionGroups {
-			groups.Add(string(group))
-		}
-
-		regions := schema.Set{F: schema.HashString}
-		for _, region := range exoFeature.Regions {
-			regions.Add(region)
-		}
-
-		status := core.FormatStatus(exoFeature.Status)
-		err := d.Set("exocompute", []interface{}{
-			map[string]interface{}{
-				keyPermissionGroups: &groups,
-				keyRegions:          &regions,
-				keyStatus:           &status,
-				keyStackARN:         &exoFeature.StackArn,
-			},
-		})
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	} else {
-		if err := d.Set(keyExocompute, nil); err != nil {
-			return diag.FromErr(err)
-		}
+	if err := d.Set(keyCloudNativeArchival, awsToCFTFeatureBlock(account, keyCloudNativeArchival)); err != nil {
+		return diag.FromErr(err)
 	}
-
-	// Handle DSPM features
-	dspmDataFeature, hasDSPMData := account.Feature(core.FeatureDSPMData)
-	_, hasDSPMMetadata := account.Feature(core.FeatureDSPMMetadata)
-	if hasDSPMData && hasDSPMMetadata {
-		regions := schema.Set{F: schema.HashString}
-		for _, region := range dspmDataFeature.Regions {
-			regions.Add(region)
-		}
-
-		groups := schema.Set{F: schema.HashString}
-		for _, group := range dspmDataFeature.Feature.PermissionGroups {
-			groups.Add(string(group))
-		}
-
-		status := core.FormatStatus(dspmDataFeature.Status)
-
-		err := d.Set(keyDSPM, []interface{}{
-			map[string]interface{}{
-				keyPermissionGroups: &groups,
-				keyRegions:          &regions,
-				keyStatus:           &status,
-				keyStackARN:         &dspmDataFeature.StackArn,
-			},
-		})
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	} else {
-		if err := d.Set(keyDSPM, nil); err != nil {
-			return diag.FromErr(err)
-		}
+	if err := d.Set(keyCloudNativeProtection, awsToCFTFeatureBlock(account, keyCloudNativeProtection)); err != nil {
+		return diag.FromErr(err)
 	}
-
-	// Handle Data Scanning features (Laminar)
-	laminarCrossAccountFeature, hasLaminarCrossAccount := account.Feature(core.FeatureLaminarCrossAccount)
-	_, hasLaminarInternal := account.Feature(core.FeatureLaminarInternal)
-	if hasLaminarCrossAccount && hasLaminarInternal {
-
-		regions := schema.Set{F: schema.HashString}
-		for _, region := range laminarCrossAccountFeature.Regions {
-			regions.Add(region)
-		}
-
-		groups := schema.Set{F: schema.HashString}
-		for _, group := range laminarCrossAccountFeature.Feature.PermissionGroups {
-			groups.Add(string(group))
-		}
-
-		status := core.FormatStatus(laminarCrossAccountFeature.Status)
-
-		err := d.Set(keyDataScanning, []interface{}{
-			map[string]interface{}{
-				keyPermissionGroups: &groups,
-				keyRegions:          &regions,
-				keyStatus:           &status,
-				keyStackARN:         &laminarCrossAccountFeature.StackArn,
-			},
-		})
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	} else {
-		if err := d.Set(keyDataScanning, nil); err != nil {
-			return diag.FromErr(err)
-		}
+	if err := d.Set(keyCloudNativeDynamoDBProtection, awsToCFTFeatureBlock(account, keyCloudNativeDynamoDBProtection)); err != nil {
+		return diag.FromErr(err)
 	}
-
-	// Handle Cyber Recovery Data Scanning
-	cyberRecoveryDataScanningFeature, hasCyberRecoveryDataScanning := account.Feature(core.FeatureCyberRecoveryDataClassificationData)
-	_, hasCyberRecoveryDataScanningMetadata := account.Feature(core.FeatureCyberRecoveryDataClassificationMetadata)
-
-	if hasCyberRecoveryDataScanning && hasCyberRecoveryDataScanningMetadata {
-		regions := schema.Set{F: schema.HashString}
-		for _, region := range cyberRecoveryDataScanningFeature.Regions {
-			regions.Add(region)
-		}
-
-		groups := schema.Set{F: schema.HashString}
-		for _, group := range cyberRecoveryDataScanningFeature.Feature.PermissionGroups {
-			groups.Add(string(group))
-		}
-
-		status := core.FormatStatus(cyberRecoveryDataScanningFeature.Status)
-
-		err := d.Set(keyCyberRecoveryDataScanning, []interface{}{
-			map[string]interface{}{
-				keyPermissionGroups: &groups,
-				keyRegions:          &regions,
-				keyStatus:           &status,
-				keyStackARN:         &cyberRecoveryDataScanningFeature.StackArn,
-			},
-		})
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	} else {
-		if err := d.Set(keyCyberRecoveryDataScanning, nil); err != nil {
-			return diag.FromErr(err)
-		}
+	if err := d.Set(keyCloudNativeS3Protection, awsToCFTFeatureBlock(account, keyCloudNativeS3Protection)); err != nil {
+		return diag.FromErr(err)
 	}
-
-	outpostFeature, hasOutpost := account.Feature(core.FeatureOutpost)
-	if hasOutpost {
-		groups := schema.Set{F: schema.HashString}
-		for _, group := range outpostFeature.Feature.PermissionGroups {
-			groups.Add(string(group))
-		}
-
-		status := core.FormatStatus(outpostFeature.Status)
-
-		// Get outpost account details
-		statusFilters := []core.Status{core.StatusConnected, core.StatusMissingPermissions}
-		outpostAccounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "", statusFilters)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		outpostData := map[string]interface{}{
-			keyPermissionGroups:      &groups,
-			keyStatus:                &status,
-			keyStackARN:              &outpostFeature.StackArn,
-			keyOutpostAccountProfile: d.Get(keyOutpostAccountProfile),
-		}
-
-		// Add outpost account ID if available
-		if len(outpostAccounts) > 0 {
-			outpostData[keyOutpostAccountID] = outpostAccounts[0].NativeID
-		}
-
-		err = d.Set(keyOutpost, []interface{}{outpostData})
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	} else {
-		if err := d.Set(keyOutpost, nil); err != nil {
-			return diag.FromErr(err)
-		}
+	if err := d.Set(keyCyberRecoveryDataScanning, awsToCFTFeatureBlock(account, keyCyberRecoveryDataScanning)); err != nil {
+		return diag.FromErr(err)
 	}
-
+	if err := d.Set(keyDataScanning, awsToCFTFeatureBlock(account, keyDataScanning)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyDSPM, awsToCFTFeatureBlock(account, keyDSPM)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyExocompute, awsToCFTFeatureBlock(account, keyExocompute)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyKubernetesProtection, awsToCFTFeatureBlock(account, keyKubernetesProtection)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyRDSProtection, awsToCFTFeatureBlock(account, keyRDSProtection)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyServersAndApps, awsToCFTFeatureBlock(account, keyServersAndApps)); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyName, account.Name); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Outpost feature. Note the outpost account can be separate from the cloud
+	// account managed by the resource.
+	var outpostBlock []any
+	outpostFeatureBlock, err := awsFromCFTFeatureBlock(keyOutpost, d.Get(keyOutpost))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if outpostFeatureBlock != nil && outpostFeatureBlock.outpostID != "" {
+		outposts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "",
+			[]core.Status{core.StatusConnected, core.StatusMissingPermissions})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if len(outposts) > 0 {
+			outpostBlock = awsToCFTOutpostBlock(outposts[0], outpostFeatureBlock.outpostProfile, true)
+		}
+	} else {
+		outpostBlock = awsToCFTOutpostBlock(account, "", false)
+	}
+	if err := d.Set(keyOutpost, outpostBlock); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -798,7 +658,7 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m interface{}) 
 	return nil
 }
 
-func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsUpdateAccount")
 
 	client, err := m.(*client).polaris()
@@ -806,15 +666,14 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 
-	// Initialize to empty string if missing from the configuration.
-	profile, _ := d.Get(keyProfile).(string)
-	roleARN, _ := d.Get(keyAssumeRole).(string)
+	profile := d.Get(keyProfile).(string)
+	roleARN := d.Get(keyAssumeRole).(string)
 
 	var account aws.AccountFunc
 	switch {
 	case profile != "" && roleARN == "":
 		account = aws.Profile(profile)
-	case profile != "" && roleARN != "":
+	case profile != "":
 		account = aws.ProfileWithRole(profile, roleARN)
 	default:
 		account = aws.DefaultWithRole(roleARN)
@@ -825,8 +684,7 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 
-	// Make sure that the resource id and AWS profile refers to the same
-	// account.
+	// Check that the resource ID and AWS profile refers to the same account.
 	config, err := account(ctx)
 	if err != nil {
 		return diag.Errorf("failed to lookup native account id: %s", err)
@@ -842,43 +700,82 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.Errorf("resource id and profile/role refer to different accounts")
 	}
 
-	if d.HasChange(keyCloudNativeProtection) {
-		cnpBlock, ok := d.GetOk(keyCloudNativeProtection)
-		if ok {
-			block := cnpBlock.([]interface{})[0].(map[string]interface{})
-
-			feature := core.FeatureCloudNativeProtection
-			for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-				feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+	// Verify that outpost-dependent features have an outpost account available,
+	// either in this resource or already onboarded in RSC.
+	if outpostBlock := d.Get(keyOutpost).([]any); len(outpostBlock) == 0 {
+		outpostDependentKeys := []string{keyCyberRecoveryDataScanning, keyDataScanning, keyDSPM}
+		var addingOutpostDependentFeature bool
+		for _, key := range outpostDependentKeys {
+			if awsCFTFeatureBlockAdded(key, d) {
+				addingOutpostDependentFeature = true
+				break
 			}
-
-			var opts []aws.OptionFunc
-			for _, region := range block[keyRegions].(*schema.Set).List() {
-				opts = append(opts, aws.Region(region.(string)))
+		}
+		if addingOutpostDependentFeature {
+			outposts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "",
+				[]core.Status{core.StatusConnected, core.StatusMissingPermissions})
+			if err != nil {
+				return diag.Errorf("failed to check outpost account status: %s", err)
 			}
-
-			if err := aws.Wrap(client).UpdateAccount(ctx, id, feature, opts...); err != nil {
-				return diag.FromErr(err)
-			}
-		} else {
-			if _, ok := d.GetOk(keyExocompute); ok {
-				return diag.Errorf("cloud native protection is required by exocompute")
-			}
-
-			snapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
-			if err := aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, snapshots); err != nil {
-				return diag.FromErr(err)
+			if len(outposts) == 0 {
+				return diag.Errorf("cyber_recovery_data_scanning, data_scanning, and dspm features require an outpost account")
 			}
 		}
 	}
 
-	if d.HasChange(keyExocompute) {
-		oldExoBlock, newExoBlock := d.GetChange(keyExocompute)
-		oldExoList := oldExoBlock.([]interface{})
-		newExoList := newExoBlock.([]interface{})
+	// When the outpost feature is added, it needs to be added first since
+	// other features depends on it.
+	if awsCFTFeatureBlockAdded(keyOutpost, d) {
+		if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyOutpost, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
-		err := updateToNewBlock(ctx, d, m, client, id, oldExoList, newExoList, account, core.FeatureExocompute)
-		if err != nil {
+	// Update regular features.
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyCloudNativeArchival, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyCloudNativeProtection, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyCloudNativeDynamoDBProtection, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyCloudNativeS3Protection, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyCyberRecoveryDataScanning, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyDataScanning, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyDSPM, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyExocompute, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyKubernetesProtection, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyRDSProtection, d); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyServersAndApps, d); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// The Cloud Discovery feature needs to be updated after the protection
+	// features.
+	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyCloudDiscovery, d); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// When the outpost feature is removed, it needs to be removed last since
+	// other features depends on it.
+	if awsCFTFeatureBlockRemoved(keyOutpost, d) {
+		if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyOutpost, d); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -906,215 +803,11 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 	}
 
-	// Handle Outpost, DSPM, and Data Scanning features with proper ordering
-	if err := handleDspmFeatures(ctx, d, m, client, account, id); err != nil {
-		return diag.FromErr(err)
-	}
-
 	awsReadAccount(ctx, d, m)
 	return nil
 }
 
-// handleDspmFeatures handles Outpost, DSPM, and Data Scanning features with proper ordering.
-// When adding features: Outpost first, then DSPM and Data Scanning
-// When removing features: DSPM and Data Scanning first, then Outpost last (due to mapped account dependencies)
-func handleDspmFeatures(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, account aws.AccountFunc, id uuid.UUID) error {
-	// Check which features have changes
-	hasOutpostChange := d.HasChange(keyOutpost)
-	hasDSPMChange := d.HasChange(keyDSPM)
-	hasDataScanningChange := d.HasChange(keyDataScanning)
-	hasCyberRecoveryDataScanningChange := d.HasChange(keyCyberRecoveryDataScanning)
-
-	if !hasOutpostChange && !hasDSPMChange && !hasDataScanningChange && !hasCyberRecoveryDataScanningChange {
-		return nil
-	}
-
-	_, outpostExists := d.GetOk(keyOutpost)
-	_, dspmExists := d.GetOk(keyDSPM)
-	_, dataScanningExists := d.GetOk(keyDataScanning)
-	_, cyberRecoveryDataScanningExists := d.GetOk(keyCyberRecoveryDataScanning)
-
-	isAddingFeatures := (hasOutpostChange && outpostExists) ||
-		(hasDSPMChange && dspmExists) ||
-		(hasDataScanningChange && dataScanningExists) ||
-		(hasCyberRecoveryDataScanningChange && cyberRecoveryDataScanningExists)
-
-	isRemovingFeatures := (hasOutpostChange && !outpostExists) ||
-		(hasDSPMChange && !dspmExists) ||
-		(hasDataScanningChange && !dataScanningExists) ||
-		(hasCyberRecoveryDataScanningChange && !cyberRecoveryDataScanningExists)
-
-	if isAddingFeatures {
-		// When adding: Outpost first, then DSPM and Data Scanning
-		if hasOutpostChange && outpostExists {
-			if err := handleOutpostUpdate(ctx, d, client, account); err != nil {
-				return err
-			}
-		}
-		if hasDSPMChange && dspmExists {
-			if err := handleDSPMUpdate(ctx, d, m, client, id, account); err != nil {
-				return err
-			}
-		}
-		if hasDataScanningChange && dataScanningExists {
-			if err := handleDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
-				return err
-			}
-		}
-		if hasCyberRecoveryDataScanningChange && cyberRecoveryDataScanningExists {
-			if err := handleCyberRecoveryDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
-				return err
-			}
-		}
-	}
-
-	if isRemovingFeatures {
-		// When removing: DSPM and Data Scanning first, then Outpost last
-		if hasDSPMChange && !dspmExists {
-			if err := handleDSPMUpdate(ctx, d, m, client, id, account); err != nil {
-				return err
-			}
-		}
-		if hasDataScanningChange && !dataScanningExists {
-			if err := handleDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
-				return err
-			}
-		}
-		if hasCyberRecoveryDataScanningChange && !cyberRecoveryDataScanningExists {
-			if err := handleCyberRecoveryDataScanningUpdate(ctx, d, m, client, id, account); err != nil {
-				return err
-			}
-		}
-		if hasOutpostChange && !outpostExists {
-			if err := handleOutpostUpdate(ctx, d, client, account); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func handleCyberRecoveryDataScanningUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
-	features := []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}
-	oldCyberRecoveryDataScanningBlock, newCyberRecoveryDataScanningBlock := d.GetChange(keyCyberRecoveryDataScanning)
-	oldCyberRecoveryDataScanningList := oldCyberRecoveryDataScanningBlock.([]any)
-	newCyberRecoveryDataScanningList := newCyberRecoveryDataScanningBlock.([]any)
-	for _, feature := range features {
-		if err := updateToNewBlock(ctx, d, m, client, id, oldCyberRecoveryDataScanningList, newCyberRecoveryDataScanningList, account, feature); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func handleOutpostUpdate(ctx context.Context, d *schema.ResourceData, client *polaris.Client, account aws.AccountFunc) error {
-	outpostBlock, ok := d.GetOk(keyOutpost)
-	if ok {
-		block := outpostBlock.([]interface{})[0].(map[string]interface{})
-		feature := core.FeatureOutpost
-		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
-			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
-		}
-
-		var opts []aws.OptionFunc
-		if block[keyOutpostAccountProfile] != nil {
-			opts = append(opts, aws.OutpostAccountWithProfile(block[keyOutpostAccountID].(string), block[keyOutpostAccountProfile].(string)))
-		} else {
-			opts = append(opts, aws.OutpostAccount(block[keyOutpostAccountID].(string)))
-		}
-		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, opts...)
-		if err != nil {
-			return err
-		}
-	} else {
-		accounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "", []core.Status{core.StatusConnected, core.StatusMissingPermissions})
-		if err != nil {
-			return err
-		}
-
-		for _, account := range accounts {
-			for _, feature := range account.Features {
-				if len(feature.MappedAccounts) > 0 {
-					return errors.New("outpost feature is still enabled for other accounts")
-				}
-			}
-		}
-		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureOutpost}, false)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func handleDSPMUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
-	features := []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}
-	oldDspmBlock, newDspmBlock := d.GetChange(keyDSPM)
-	oldDspmList := oldDspmBlock.([]interface{})
-	newDspmList := newDspmBlock.([]interface{})
-
-	for _, feature := range features {
-		if err := updateToNewBlock(ctx, d, m, client, id, oldDspmList, newDspmList, account, feature); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func handleDataScanningUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, account aws.AccountFunc) error {
-	features := []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}
-	oldDataScanningBlock, newDataScanningBlock := d.GetChange(keyDataScanning)
-	oldDataScanningList := oldDataScanningBlock.([]interface{})
-	newDataScanningList := newDataScanningBlock.([]interface{})
-
-	for _, feature := range features {
-		if err := updateToNewBlock(ctx, d, m, client, id, oldDataScanningList, newDataScanningList, account, feature); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func updateToNewBlock(ctx context.Context, d *schema.ResourceData, m interface{}, client *polaris.Client, id uuid.UUID, oldBlock, newBlock []interface{}, account aws.AccountFunc, feature core.Feature) error {
-	switch {
-	case len(oldBlock) == 0:
-		for _, group := range newBlock[0].(map[string]interface{})[keyPermissionGroups].(*schema.Set).List() {
-			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
-		}
-
-		var opts []aws.OptionFunc
-		for _, region := range newBlock[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
-			opts = append(opts, aws.Region(region.(string)))
-		}
-
-		_, err := aws.Wrap(client).AddAccountWithCFT(ctx, account, []core.Feature{feature}, opts...)
-		if err != nil {
-			return err
-		}
-	case len(newBlock) == 0:
-		err := aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{feature}, false)
-		if err != nil {
-			return err
-		}
-	default:
-		var opts []aws.OptionFunc
-		for _, region := range newBlock[0].(map[string]interface{})[keyRegions].(*schema.Set).List() {
-			opts = append(opts, aws.Region(region.(string)))
-		}
-
-		err := aws.Wrap(client).UpdateAccount(ctx, id, feature, opts...)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnostics {
 	tflog.Trace(ctx, "awsDeleteAccount")
 
 	client, err := m.(*client).polaris()
@@ -1127,28 +820,21 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.FromErr(err)
 	}
 
-	// Get the old resource arguments. Initialize to empty string if missing
-	// from the configuration.
-	oldProfile, _ := d.GetChange(keyProfile)
-	oldRoleARN, _ := d.GetChange(keyAssumeRole)
-	profile, _ := oldProfile.(string)
-	roleARN, _ := oldRoleARN.(string)
+	profile := d.Get(keyProfile).(string)
+	roleARN := d.Get(keyAssumeRole).(string)
+	deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
 
 	var account aws.AccountFunc
 	switch {
 	case profile != "" && roleARN == "":
 		account = aws.Profile(profile)
-	case profile != "" && roleARN != "":
+	case profile != "":
 		account = aws.ProfileWithRole(profile, roleARN)
 	default:
 		account = aws.DefaultWithRole(roleARN)
 	}
 
-	oldSnapshots, _ := d.GetChange(keyDeleteSnapshotsOnDestroy)
-	deleteSnapshots := oldSnapshots.(bool)
-
-	// Make sure that the resource id and account profile refers to the same
-	// account.
+	// Check that the resource ID and account profile refer to the same account.
 	config, err := account(ctx)
 	if err != nil {
 		return diag.Errorf("failed to lookup native account id: %s", err)
@@ -1164,60 +850,506 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m interface{}
 		return diag.Errorf("resource id and profile/role refer to different accounts")
 	}
 
-	if _, ok := d.GetOk(keyExocompute); ok {
-		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureExocompute}, deleteSnapshots)
+	var features []core.Feature
+	for blockKey, blockFeatures := range awsCFTFeatureBlockMap {
+		if _, ok := d.GetOk(blockKey); ok {
+			features = append(features, blockFeatures...)
+		}
+	}
+	features = slices.DeleteFunc(features, func(f core.Feature) bool {
+		return f.Equal(core.FeatureCloudDiscovery) || f.Equal(core.FeatureOutpost)
+	})
+	if len(features) != 0 {
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, features, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	if _, ok := d.GetOk(keyCloudNativeProtection); ok {
-		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureCloudNativeProtection}, deleteSnapshots)
+	// Cloud discovery should always be deleted after all protection features
+	// have been deleted.
+	if _, ok := d.GetOk(keyCloudDiscovery); ok {
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureCloudDiscovery}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	if _, ok := d.GetOk(keyDSPM); ok {
-		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureDSPMData, core.FeatureDSPMMetadata}, deleteSnapshots)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	if _, ok := d.GetOk(keyDataScanning); ok {
-		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureLaminarCrossAccount, core.FeatureLaminarInternal}, deleteSnapshots)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-	if _, ok := d.GetOk(keyCyberRecoveryDataScanning); ok {
-		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureCyberRecoveryDataClassificationData, core.FeatureCyberRecoveryDataClassificationMetadata}, deleteSnapshots)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	// Outpost should always delete last due to its dependancy on mapped accounts
-	if _, ok := d.GetOk(keyOutpost); ok {
-		accounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "", []core.Status{core.StatusConnected, core.StatusMissingPermissions})
-		if err != nil {
+	// Outpost should always be deleted last due to its dependency on mapped
+	// cloud accounts
+	if block, ok := d.GetOk(keyOutpost); ok {
+		// Check that the outpost account isn't used by other accounts
+		// before removing.
+		if err := awsCheckOutpostMappedAccounts(ctx, client); err != nil {
 			return diag.FromErr(err)
 		}
 
-		for _, account := range accounts {
-			for _, feature := range account.Features {
-				if len(feature.MappedAccounts) > 0 {
-					return diag.Errorf("outpost feature is still enabled for other accounts")
-				}
+		// Create an AccountFunc from the information in the outpost feature
+		// block.
+		outpostAccount := account
+		feature, err := awsFromCFTFeatureBlock(keyOutpost, block)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if outpostID := feature.outpostID; outpostID != "" {
+			if outpostProfile := feature.outpostProfile; outpostProfile != "" {
+				outpostAccount = aws.Profile(outpostProfile)
+			} else {
+				outpostAccount = aws.ProfileWithAccountID(profile, outpostID)
 			}
 		}
-		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, account, []core.Feature{core.FeatureOutpost}, deleteSnapshots)
+		err = aws.Wrap(client).RemoveAccountWithCFT(ctx, outpostAccount, []core.Feature{core.FeatureOutpost}, deleteSnapshots)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	d.SetId("")
+	return nil
+}
+
+func awsCustomizeDiffAccount(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+	tflog.Trace(ctx, "awsCustomizeDiffAccount")
+
+	// Prevent removal of cloud_discovery when protection features are
+	// enabled.
+	if diff.HasChange(keyCloudDiscovery) {
+		if block := diff.Get(keyCloudDiscovery).([]any); len(block) == 0 {
+			protectionKeys := []string{
+				keyCloudNativeProtection,
+				keyCloudNativeDynamoDBProtection,
+				keyCloudNativeS3Protection,
+				keyKubernetesProtection,
+				keyRDSProtection,
+			}
+			for _, key := range protectionKeys {
+				if block := diff.Get(key).([]any); len(block) > 0 {
+					return errors.New("cloud_discovery cannot be removed while protection features are enabled")
+				}
+			}
+		}
+	}
+
+	// If the outpost feature is specified, check if the outpost account ID is
+	// specified too, if so we need at least one other feature.
+	//
+	// This is needed because if the outpost_account_id is specified, the
+	// outpost account could be a separate account, and we don't know this
+	// until we onboard the account, since we only have a profile. If it is
+	// a separate account, and it's the only feature, we don't get an RSC
+	// cloud account ID for the main account.
+	if outpostBlock := diff.Get(keyOutpost).([]any); len(outpostBlock) > 0 {
+		block := outpostBlock[0].(map[string]any)
+		if outpostAccountID := block[keyOutpostAccountID].(string); outpostAccountID != "" {
+			var nonOutpostFeatureCount int
+			for blockKey := range awsCFTFeatureBlockMap {
+				if blockKey == keyOutpost {
+					continue
+				}
+				if block := diff.Get(blockKey).([]any); len(block) > 0 {
+					nonOutpostFeatureCount++
+				}
+			}
+			if nonOutpostFeatureCount == 0 {
+				return errors.New("when outpost_account_id is specified for the outpost feature, at least one " +
+					"other feature must be enabled")
+			}
+		}
+	}
+
+	return nil
+}
+
+// awsCFTFeatureResource returns a schema resource for a CFT feature block.
+func awsCFTFeatureResource(permissionGroups []core.PermissionGroup, permGroupsRequired bool) *schema.Resource {
+	// The following permission groups cannot be used when onboarding an AWS
+	// account. They have been accepted in the past so we still silently allow
+	// them.
+	pgs := []core.PermissionGroup{
+		core.PermissionGroupExportAndRestore,
+		core.PermissionGroupFileLevelRecovery,
+		core.PermissionGroupSnapshotPrivateAccess,
+		core.PermissionGroupPrivateEndpoints,
+	}
+
+	var groups, names []string
+	for _, group := range permissionGroups {
+		groups = append(groups, string(group))
+		if !slices.Contains(pgs, group) {
+			names = append(names, fmt.Sprintf("`%s`", group))
+		}
+	}
+
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			keyPermissionGroups: {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type:         schema.TypeString,
+					ValidateFunc: validation.StringInSlice(groups, false),
+				},
+				Required: permGroupsRequired,
+				Optional: !permGroupsRequired,
+				Description: fmt.Sprintf("Permission groups to assign to the feature. Possible values are "+
+					"%s.", strings.Join(names, ", ")),
+			},
+			keyRegions: {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type:         schema.TypeString,
+					ValidateFunc: validation.StringIsNotWhiteSpace,
+				},
+				MinItems:    1,
+				Required:    true,
+				Description: "Regions the feature will be enabled in.",
+			},
+			keyStatus: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Status of the feature.",
+			},
+			keyStackARN: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "CloudFormation stack ARN.",
+			},
+		},
+	}
+}
+
+// awsCFTFeatureBlockMap maps feature block keys to the corresponding RSC
+// features. This map must be updated when support for new features are added
+// to the resource.
+// Note, if a feature block has more than one RSC feature, they must use the
+// same set of permission groups.
+var awsCFTFeatureBlockMap = map[string][]core.Feature{
+	keyCloudDiscovery: {
+		core.FeatureCloudDiscovery,
+	},
+	keyCloudNativeArchival: {
+		core.FeatureCloudNativeArchival,
+	},
+	keyCloudNativeProtection: {
+		core.FeatureCloudNativeProtection,
+	},
+	keyCloudNativeDynamoDBProtection: {
+		core.FeatureCloudNativeDynamoDBProtection,
+	},
+	keyCloudNativeS3Protection: {
+		core.FeatureCloudNativeS3Protection,
+	},
+	keyCyberRecoveryDataScanning: {
+		core.FeatureCyberRecoveryDataClassificationData,
+		core.FeatureCyberRecoveryDataClassificationMetadata,
+	},
+	keyDataScanning: {
+		core.FeatureLaminarInternal,
+		core.FeatureLaminarCrossAccount,
+	},
+	keyDSPM: {
+		core.FeatureDSPMData,
+		core.FeatureDSPMMetadata,
+	},
+	keyExocompute: {
+		core.FeatureExocompute,
+	},
+	keyKubernetesProtection: {
+		core.FeatureKubernetesProtection,
+	},
+	keyOutpost: {
+		core.FeatureOutpost,
+	},
+	keyRDSProtection: {
+		core.FeatureRDSProtection,
+	},
+	keyServersAndApps: {
+		core.FeatureServerAndApps,
+	},
+}
+
+// awsCFTFeatureBlock represents a feature block in the Terraform configuration.
+type awsCFTFeatureBlock struct {
+	features       []core.Feature
+	regions        []gqlaws.Region
+	outpostID      string
+	outpostProfile string
+}
+
+func (f *awsCFTFeatureBlock) mergeFeature(rhs awsCFTFeatureBlock) {
+	f.features = append(f.features, rhs.features...)
+
+	if rhs.outpostID != "" {
+		f.outpostID = rhs.outpostID
+		f.outpostProfile = rhs.outpostProfile
+	}
+}
+
+// awsFromCFTFeatureBlock returns the awsCFTFeatureBlock for the specified
+// configuration feature key. If the feature block isn't specified in the
+// configuration, nil is returned.
+func awsFromCFTFeatureBlock(featureKey string, featureBlock any) (*awsCFTFeatureBlock, error) {
+	if featureBlock == nil {
+		return nil, nil
+	}
+	if block, ok := featureBlock.([]any); !ok || len(block) == 0 {
+		return nil, nil
+	}
+	block := featureBlock.([]any)[0].(map[string]any)
+
+	features := slices.Clone(awsCFTFeatureBlockMap[featureKey])
+	for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+		for i, feature := range features {
+			features[i] = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+	}
+
+	var regions []gqlaws.Region
+	if regionSet, ok := block[keyRegions]; ok {
+		for _, regionName := range regionSet.(*schema.Set).List() {
+			region := gqlaws.RegionFromName(regionName.(string))
+			if region == gqlaws.RegionUnknown {
+				return nil, fmt.Errorf("unknown region %q", regionName)
+			}
+			regions = append(regions, region)
+		}
+	}
+
+	var outpostID string
+	if id, ok := block[keyOutpostAccountID]; ok {
+		outpostID = id.(string)
+	}
+	var outpostProfile string
+	if profile, ok := block[keyOutpostAccountProfile]; ok {
+		outpostProfile = profile.(string)
+	}
+
+	return &awsCFTFeatureBlock{
+		features:       features,
+		regions:        regions,
+		outpostID:      outpostID,
+		outpostProfile: outpostProfile,
+	}, nil
+}
+
+// awsToCFTFeatureBlock returns the feature block for the specified AWS cloud
+// account and feature key. If the feature is not onboarded, nil is returned.
+func awsToCFTFeatureBlock(account aws.CloudAccount, featureKey string) []any {
+	features := awsCFTFeatureBlockMap[featureKey]
+	if len(features) == 0 {
+		return nil
+	}
+
+	// Check that all RSC features for a feature block is onboarded. If not we
+	// return nil, which cause a diff to be generated so that the feature can be
+	// re-onboarded.
+	// Note, if a feature block has more than one RSC feature, they must use the
+	// same set of permission groups.
+	var feature aws.Feature
+	for _, f := range features {
+		var ok bool
+		feature, ok = account.Feature(f)
+		if !ok {
+			return nil
+		}
+	}
+
+	groups := schema.Set{F: schema.HashString}
+	for _, group := range feature.PermissionGroups {
+		groups.Add(string(group))
+	}
+
+	regions := schema.Set{F: schema.HashString}
+	for _, region := range feature.Regions {
+		regions.Add(region)
+	}
+
+	return []any{
+		map[string]any{
+			keyPermissionGroups: &groups,
+			keyRegions:          &regions,
+			keyStatus:           core.FormatStatus(feature.Status),
+			keyStackARN:         feature.StackArn,
+		},
+	}
+}
+
+// awsToCFTOutpostBlock returns the Outpost feature block for the specified AWS
+// cloud account. If the feature is not onboarded, nil is returned.
+func awsToCFTOutpostBlock(account aws.CloudAccount, outpostProfile string, outpostFields bool) []any {
+	feature, ok := account.Feature(core.FeatureOutpost)
+	if !ok {
+		return nil
+	}
+
+	groups := schema.Set{F: schema.HashString}
+	for _, group := range feature.PermissionGroups {
+		groups.Add(string(group))
+	}
+
+	block := map[string]any{
+		keyPermissionGroups: &groups,
+		keyStatus:           core.FormatStatus(feature.Status),
+		keyStackARN:         feature.StackArn,
+	}
+	if outpostFields {
+		block[keyOutpostAccountID] = account.NativeID
+		block[keyOutpostAccountProfile] = outpostProfile
+	}
+
+	return []any{block}
+}
+
+// awsSquashCFTFeatureBlocks squashes the feature blocks so that features with
+// the same regions are merged. This reduces the number of CloudFormation stack
+// updates needed.
+func awsSquashCFTFeatureBlocks(cftFeatures []awsCFTFeatureBlock) []awsCFTFeatureBlock {
+	featureSet := make(map[string]*awsCFTFeatureBlock)
+
+	for _, feature := range cftFeatures {
+		key := awsRegionsToKey(feature.regions)
+		if f, ok := featureSet[key]; ok {
+			f.mergeFeature(feature)
+		} else {
+			featureSet[key] = &feature
+		}
+	}
+
+	features := make([]awsCFTFeatureBlock, 0, len(featureSet))
+	for _, feature := range featureSet {
+		features = append(features, *feature)
+	}
+
+	// Sort the features on the number of regions, this cause the outpost
+	// feature to be first in the slice.
+	slices.SortFunc(features, func(i, j awsCFTFeatureBlock) int {
+		return cmp.Compare(len(i.regions), len(j.regions))
+	})
+
+	return features
+}
+
+// awsRegionsToKey returns a key for the set of regions.
+func awsRegionsToKey(regions []gqlaws.Region) string {
+	slices.Sort(regions)
+
+	var str strings.Builder
+	for _, region := range regions {
+		str.WriteString(strconv.Itoa(int(region)))
+	}
+
+	return str.String()
+}
+
+// awsUpdateCFTFeatureBlock updates the RSC feature according to changes made
+// to the feature block identified by the feature key.
+func awsUpdateCFTFeatureBlock(ctx context.Context, client *polaris.Client, account aws.AccountFunc, accountID uuid.UUID, featureKey string, d *schema.ResourceData) error {
+	tflog.Trace(ctx, "awsUpdateCFTFeatureBlock")
+
+	if !d.HasChange(featureKey) {
+		return nil
+	}
+
+	oldBlock, newBlock := d.GetChange(featureKey)
+	oldFeatureBlock, err := awsFromCFTFeatureBlock(featureKey, oldBlock)
+	if err != nil {
+		return err
+	}
+	newFeatureBlock, err := awsFromCFTFeatureBlock(featureKey, newBlock)
+	if err != nil {
+		return err
+	}
+
+	var opts []aws.OptionFunc
+	if newFeatureBlock != nil {
+		for _, region := range newFeatureBlock.regions {
+			opts = append(opts, aws.Region(region.Name()))
+		}
+	}
+
+	// Add feature.
+	if oldFeatureBlock == nil && newFeatureBlock != nil {
+		if outpostID := newFeatureBlock.outpostID; outpostID != "" {
+			if outpostProfile := newFeatureBlock.outpostProfile; outpostProfile != "" {
+				opts = append(opts, aws.OutpostAccountWithProfile(outpostID, outpostProfile))
+			} else {
+				opts = append(opts, aws.OutpostAccount(outpostID))
+			}
+		}
+
+		_, err = aws.Wrap(client).AddAccountWithCFT(ctx, account, newFeatureBlock.features, opts...)
+		return err
+	}
+
+	// Remove feature.
+	if oldFeatureBlock != nil && newFeatureBlock == nil {
+		if featureKey == keyOutpost {
+			// Check that the outpost account isn't used by other accounts
+			// before removing.
+			if err := awsCheckOutpostMappedAccounts(ctx, client); err != nil {
+				return err
+			}
+
+			// Create an AccountFunc from the information in the outpost feature
+			// block.
+			if outpostID := oldFeatureBlock.outpostID; outpostID != "" {
+				if outpostProfile := oldFeatureBlock.outpostProfile; outpostProfile != "" {
+					account = aws.Profile(outpostProfile)
+				} else {
+					account = aws.ProfileWithAccountID(d.Get(keyProfile).(string), outpostID)
+				}
+			}
+		}
+
+		deleteSnapshots := d.Get(keyDeleteSnapshotsOnDestroy).(bool)
+		return aws.Wrap(client).RemoveAccountWithCFT(ctx, account, awsCFTFeatureBlockMap[featureKey], deleteSnapshots)
+	}
+
+	// Update feature.
+	if oldFeatureBlock != nil {
+		for _, feature := range newFeatureBlock.features {
+			if err := aws.Wrap(client).UpdateAccount(ctx, accountID, feature, opts...); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// awsCFTFeatureBlockAdded returns true if the feature block has been added.
+func awsCFTFeatureBlockAdded(featureKey string, d *schema.ResourceData) bool {
+	if !d.HasChange(featureKey) {
+		return false
+	}
+	oldBlock, newBlock := d.GetChange(featureKey)
+	return len(oldBlock.([]any)) == 0 && len(newBlock.([]any)) > 0
+}
+
+// awsCFTFeatureBlockRemoved returns true if the feature block has been removed.
+func awsCFTFeatureBlockRemoved(featureKey string, d *schema.ResourceData) bool {
+	if !d.HasChange(featureKey) {
+		return false
+	}
+	oldBlock, newBlock := d.GetChange(featureKey)
+	return len(oldBlock.([]any)) > 0 && len(newBlock.([]any)) == 0
+}
+
+// awsCheckOutpostMappedAccounts checks that the outpost account isn't used by
+// other accounts.
+func awsCheckOutpostMappedAccounts(ctx context.Context, client *polaris.Client) error {
+	accounts, err := aws.Wrap(client).AccountsByFeatureStatus(ctx, core.FeatureOutpost, "",
+		[]core.Status{core.StatusConnected, core.StatusMissingPermissions})
+	if err != nil {
+		return err
+	}
+
+	for _, account := range accounts {
+		for _, feature := range account.Features {
+			if len(feature.MappedAccounts) > 0 {
+				return errors.New("outpost feature is still enabled for other accounts")
+			}
+		}
+	}
+
 	return nil
 }

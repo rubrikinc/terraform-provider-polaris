@@ -4,59 +4,195 @@ page_title: "polaris_aws_account Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
   The polaris_aws_account resource adds an AWS account to RSC. To grant RSC
-  permissions to perform certain operations on the account, a Cloud Formation stack
-  is created from a template provided by RSC.
+  permissions to perform certain operations on the account, a Cloud Formation
+  stack is created from a template provided by RSC.
   There are two ways to specify the AWS account to onboard:
   Using the profile field. The AWS profile is used to create the Cloud
-  Formation stack and lookup the AWS account ID.Using the assume_rolefield with, or without, the profile field. If the
+  Formation stack and lookup the AWS account ID.Using the assume_role field with, or without, the profile field. If the
   profile field is omitted, the default profile is used. The profile is used
   to assume the role. The assumed role is then used and create the Cloud
   Formation stack and lookup the account ID.
-  Any combination of different RSC features can be enabled for an account:
-  cloud_native_protection - Provides protection for AWS EC2 instances and
-  EBS volumes through the rules and policies of SLA Domains.exocompute - Provides snapshot indexing, file recovery and application
-  protection of AWS objects.
+  Any combination of different RSC features, except as noted below, can be enabled
+  for an account:
+  cloud_discovery - Enable the Cloud Discovery feature for the account.
+  Required when onboarding a new account with protection features. Optional
+  for existing accounts.cloud_native_archival - Enable the Cloud Native Archival feature for the
+  account.cloud_native_protection - Enable the Cloud Native Protection feature for
+  the account.cloud_native_dynamodb_protection - Enable the Cloud Native DynamoDB
+  Protection feature for the account.cloud_native_s3_protection - Enable the Cloud Native S3 Protection feature
+  for the account.cyber_recovery_data_scanning - Enable the Cyber Recovery Data Scanning
+  feature for the account. Requires the Outpost feature to be enabled, either
+  in the same account or in a separate account onboarded before this resource.data_scanning - Enable the Data Scanning feature for the account. Requires
+  the Outpost feature to be enabled, either in the same account or in a
+  separate account onboarded before this resource.dspm - Enable the DSPM feature for the account. Requires the Outpost
+  feature to be enabled, either in the same account or in a separate account
+  onboarded before this resource.exocompute - Enable the Exocompute feature for the account. Only required
+  for accounts hosting the Exocompute cluster.kubernetes_protection - Enable the Kubernetes Protection feature for the
+  account.outpost - Enable the Outpost feature for the account. Required for the
+  Cyber Recovery Data Scanning, Data Scanning and DSPM features. The outpost
+  account can be the same account as where the features are enabled, or it can
+  be a separate account. When using a separate account, the outpost account
+  must be onboarded first, using depends_on to enforce the ordering. The
+  outpost_account_id and outpost_account_profile fields are legacy and not
+  recommended.rds_protection - Enable the RDS Protection feature for the account.servers_and_apps - Enable the Servers and Apps feature for the account.
+  Required to run CCES clusters.
+  Outpost Account
+  The Cyber Recovery Data Scanning, Data Scanning and DSPM features require an
+  outpost account to be onboarded. The outpost account can be the same account as
+  where the features are enabled, or it can be a separate account.
+  When the outpost account is the same account:
+  
+  resource "polaris_aws_account" "main" {
+    profile = "main"
+  
+    data_scanning {
+      permission_groups = ["BASIC"]
+      regions           = ["us-east-2"]
+    }
+  
+    outpost {
+      permission_groups = ["BASIC"]
+    }
+  }
+  
+  When the outpost account is a separate account, the outpost account must be
+  onboarded first. Use depends_on to enforce the ordering:
+  
+  resource "polaris_aws_account" "outpost" {
+    profile = "outpost"
+  
+    outpost {
+      permission_groups = ["BASIC"]
+    }
+  }
+  
+  resource "polaris_aws_account" "main" {
+    profile = "main"
+  
+    data_scanning {
+      permission_groups = ["BASIC"]
+      regions           = ["us-east-2"]
+    }
+  
+    depends_on = [
+      polaris_aws_account.outpost,
+    ]
+  }
+  
+  -> Note: To onboard an account using IAM roles instead of a CloudFormation
+  stack, use the polaris_aws_cnp_account resource.
+  -> Note: When importing the polaris_aws_account resource, the
+  outpost_account_id and outpost_account_profile fields are not imported.
 ---
 
 # polaris_aws_account (Resource)
 
 The `polaris_aws_account` resource adds an AWS account to RSC. To grant RSC
-permissions to perform certain operations on the account, a Cloud Formation stack
-is created from a template provided by RSC.
+permissions to perform certain operations on the account, a Cloud Formation
+stack is created from a template provided by RSC.
 
 There are two ways to specify the AWS account to onboard:
  1. Using the `profile` field. The AWS profile is used to create the Cloud
     Formation stack and lookup the AWS account ID.
- 2. Using the `assume_role`field with, or without, the `profile` field. If the
+ 2. Using the `assume_role` field with, or without, the `profile` field. If the
     `profile` field is omitted, the default profile is used. The profile is used
     to assume the role. The assumed role is then used and create the Cloud
     Formation stack and lookup the account ID.
 
-Any combination of different RSC features can be enabled for an account:
-  1. `cloud_native_protection` - Provides protection for AWS EC2 instances and
-     EBS volumes through the rules and policies of SLA Domains.
-  2. `exocompute` - Provides snapshot indexing, file recovery and application
-     protection of AWS objects.
+Any combination of different RSC features, except as noted below, can be enabled
+for an account:
+  * `cloud_discovery` - Enable the Cloud Discovery feature for the account.
+    Required when onboarding a new account with protection features. Optional
+    for existing accounts.
+  * `cloud_native_archival` - Enable the Cloud Native Archival feature for the
+    account.
+  * `cloud_native_protection` - Enable the Cloud Native Protection feature for
+    the account.
+  * `cloud_native_dynamodb_protection` - Enable the Cloud Native DynamoDB
+    Protection feature for the account.
+  * `cloud_native_s3_protection` - Enable the Cloud Native S3 Protection feature
+    for the account.
+  * `cyber_recovery_data_scanning` - Enable the Cyber Recovery Data Scanning
+    feature for the account. Requires the Outpost feature to be enabled, either
+    in the same account or in a separate account onboarded before this resource.
+  * `data_scanning` - Enable the Data Scanning feature for the account. Requires
+    the Outpost feature to be enabled, either in the same account or in a
+    separate account onboarded before this resource.
+  * `dspm` - Enable the DSPM feature for the account. Requires the Outpost
+    feature to be enabled, either in the same account or in a separate account
+    onboarded before this resource.
+  * `exocompute` - Enable the Exocompute feature for the account. Only required
+    for accounts hosting the Exocompute cluster.
+  * `kubernetes_protection` - Enable the Kubernetes Protection feature for the
+    account.
+  * `outpost` - Enable the Outpost feature for the account. Required for the
+    Cyber Recovery Data Scanning, Data Scanning and DSPM features. The outpost
+    account can be the same account as where the features are enabled, or it can
+    be a separate account. When using a separate account, the outpost account
+    must be onboarded first, using `depends_on` to enforce the ordering. The
+    `outpost_account_id` and `outpost_account_profile` fields are legacy and not
+    recommended.
+  * `rds_protection` - Enable the RDS Protection feature for the account.
+  * `servers_and_apps` - Enable the Servers and Apps feature for the account.
+    Required to run CCES clusters.
+
+## Outpost Account
+
+The Cyber Recovery Data Scanning, Data Scanning and DSPM features require an
+outpost account to be onboarded. The outpost account can be the same account as
+where the features are enabled, or it can be a separate account.
+
+When the outpost account is the same account:
+```terraform
+resource "polaris_aws_account" "main" {
+  profile = "main"
+
+  data_scanning {
+    permission_groups = ["BASIC"]
+    regions           = ["us-east-2"]
+  }
+
+  outpost {
+    permission_groups = ["BASIC"]
+  }
+}
+```
+
+When the outpost account is a separate account, the outpost account must be
+onboarded first. Use `depends_on` to enforce the ordering:
+```terraform
+resource "polaris_aws_account" "outpost" {
+  profile = "outpost"
+
+  outpost {
+    permission_groups = ["BASIC"]
+  }
+}
+
+resource "polaris_aws_account" "main" {
+  profile = "main"
+
+  data_scanning {
+    permission_groups = ["BASIC"]
+    regions           = ["us-east-2"]
+  }
+
+  depends_on = [
+    polaris_aws_account.outpost,
+  ]
+}
+```
+
+-> **Note:** To onboard an account using IAM roles instead of a CloudFormation
+   stack, use the `polaris_aws_cnp_account` resource.
+
+-> **Note:** When importing the `polaris_aws_account` resource, the
+   `outpost_account_id` and `outpost_account_profile` fields are not imported.
 
 ## Example Usage
 
 ```terraform
-# Enable Cloud Native Protection in the us-east-2 region.
-resource "polaris_aws_account" "account" {
-  profile = "default"
-
-  cloud_native_protection {
-    permission_groups = [
-      "BASIC",
-    ]
-
-    regions = [
-      "us-east-2",
-    ]
-  }
-}
-
-# Enable Cloud Native Protection in teh us-east-2 and us-west-2 regions
+# Enable Cloud Native Protection in the us-east-2 and us-west-2 regions
 # and Exocompute in the us-west-2 region. The Exocompute cluster will be
 # managed by RSC.
 resource "polaris_aws_account" "account" {
@@ -84,56 +220,11 @@ resource "polaris_aws_account" "account" {
     ]
   }
 }
-# Enable Cloud Native Protection and DSPM with Outpost.
-resource "polaris_aws_account" "default" {
+
+# Enable Data Scanning and Outpost. Note, the Cyber Recovery Data
+# Scanning, Data Scanning and DSPM features require the Outpost feature.
+resource "polaris_aws_account" "account" {
   profile = "default"
-
-  cloud_native_protection {
-    permission_groups = [
-      "BASIC",
-    ]
-
-    regions = [
-      "us-east-2",
-      "us-west-2",
-    ]
-  }
-
-  dspm {
-    permission_groups = [
-      "BASIC",
-    ]
-
-    regions = [
-      "us-east-2",
-      "us-west-2",
-    ]
-  }
-
-  outpost {
-    outpost_account_id      = "123456789123"
-    outpost_account_profile = "outpost"
-
-    permission_groups = [
-      "BASIC",
-    ]
-  }
-}
-
-# Enable Cloud Native Protection and Data Scanning with Outpost.
-resource "polaris_aws_account" "default" {
-  profile = "default"
-
-  cloud_native_protection {
-    permission_groups = [
-      "BASIC",
-    ]
-
-    regions = [
-      "us-east-2",
-      "us-west-2",
-    ]
-  }
 
   data_scanning {
     permission_groups = [
@@ -147,29 +238,28 @@ resource "polaris_aws_account" "default" {
   }
 
   outpost {
-    outpost_account_id      = "123456789123"
-    outpost_account_profile = "outpost"
-
     permission_groups = [
       "BASIC",
     ]
   }
 }
 
-# Enable Cloud Native Protection and Cyber Recovery Data Scanning with Outpost.
-resource "polaris_aws_account" "default" {
-  profile = "default"
+# Enable the Outpost feature for one account, the Cyber Recovery Data
+# Scanning and Data Scanning features for another and DSPM for a third.
+# Note, the Outpost account must be onboarded first. Use depends_on to
+# enforce the ordering.
+resource "polaris_aws_account" "outpost" {
+  profile = "outpost"
 
-  cloud_native_protection {
+  outpost {
     permission_groups = [
       "BASIC",
     ]
-
-    regions = [
-      "us-east-2",
-      "us-west-2",
-    ]
   }
+}
+
+resource "polaris_aws_account" "account1" {
+  profile = "account1"
 
   cyber_recovery_data_scanning {
     permission_groups = [
@@ -178,67 +268,142 @@ resource "polaris_aws_account" "default" {
 
     regions = [
       "us-east-2",
-      "us-west-2",
     ]
   }
 
-  outpost {
-    outpost_account_id      = "123456789123"
-    outpost_account_profile = "outpost"
-
+  data_scanning {
     permission_groups = [
       "BASIC",
     ]
+
+    regions = [
+      "us-east-2",
+    ]
   }
+
+  depends_on = [
+    polaris_aws_account.outpost,
+  ]
 }
 
+resource "polaris_aws_account" "account2" {
+  profile = "account2"
 
+  dspm {
+    permission_groups = [
+      "BASIC",
+    ]
 
-# The Couldformation stack ARN is available after creation
-output "stack_arn" {
-  value = polaris_aws_account.default.exocompute[0].stack_arn
+    regions = [
+      "us-east-2",
+    ]
+  }
+
+  depends_on = [
+    polaris_aws_account.outpost,
+  ]
 }
 ```
 
 <!-- schema generated by tfplugindocs -->
 ## Schema
 
-### Required
-
-- `cloud_native_protection` (Block List, Min: 1, Max: 1) Enable the Cloud Native Protection feature for the AWS account. (see [below for nested schema](#nestedblock--cloud_native_protection))
-
 ### Optional
 
 - `assume_role` (String) Role ARN of role to assume.
-- `cyber_recovery_data_scanning` (Block List, Max: 1) Enable the Cyber Recovery Data Scanning feature for the account. (see [below for nested schema](#nestedblock--cyber_recovery_data_scanning))
-- `data_scanning` (Block List, Max: 1) Enable the Data Scanning feature for the account. (see [below for nested schema](#nestedblock--data_scanning))
+- `cloud_discovery` (Block List, Max: 1) Enable the Cloud Discovery feature for the account. (see [below for nested schema](#nestedblock--cloud_discovery))
+- `cloud_native_archival` (Block List, Max: 1) Enable the Cloud Native Archival feature for the account. (see [below for nested schema](#nestedblock--cloud_native_archival))
+- `cloud_native_dynamodb_protection` (Block List, Max: 1) Enable the Cloud Native DynamoDB Protection feature for the account. (see [below for nested schema](#nestedblock--cloud_native_dynamodb_protection))
+- `cloud_native_protection` (Block List, Max: 1) Enable the Cloud Native Protection feature for the account. (see [below for nested schema](#nestedblock--cloud_native_protection))
+- `cloud_native_s3_protection` (Block List, Max: 1) Enable the Cloud Native S3 Protection feature for the account. (see [below for nested schema](#nestedblock--cloud_native_s3_protection))
+- `cyber_recovery_data_scanning` (Block List, Max: 1) Enable the Cyber Recovery Data Scanning feature for the account. The Cyber Recovery Data Scanning feature requires the Outpost feature to be enabled. (see [below for nested schema](#nestedblock--cyber_recovery_data_scanning))
+- `data_scanning` (Block List, Max: 1) Enable the Data Scanning feature for the account. The Data Scanning feature requires the Outpost feature to be enabled. (see [below for nested schema](#nestedblock--data_scanning))
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed.
-- `dspm` (Block List, Max: 1) Enable the DSPM feature for the account. (see [below for nested schema](#nestedblock--dspm))
+- `dspm` (Block List, Max: 1) Enable the DSPM feature for the account. The DSPM feature requires the Outpost feature to be enabled. (see [below for nested schema](#nestedblock--dspm))
 - `exocompute` (Block List, Max: 1) Enable the Exocompute feature for the account. (see [below for nested schema](#nestedblock--exocompute))
+- `kubernetes_protection` (Block List, Max: 1) Enable the Kubernetes Protection feature for the AWS account. (see [below for nested schema](#nestedblock--kubernetes_protection))
 - `name` (String) Account name in Polaris. If not given the name is taken from AWS Organizations or, if the required permissions are missing, is derived from the AWS account ID and the named profile.
-- `outpost` (Block List, Max: 1) Enable the Outpost feature for the account (Required for DSPM and Data Scanning features). (see [below for nested schema](#nestedblock--outpost))
+- `outpost` (Block List, Max: 1) Enable the Outpost feature for the account. To use the DSPM, Data Scanning and Cyber Recovery Data Scanning features, one account must have the Outpost feature enabled. (see [below for nested schema](#nestedblock--outpost))
 - `permissions` (String) When set to 'update' feature permissions can be updated by applying the configuration.
 - `profile` (String) AWS named profile.
+- `rds_protection` (Block List, Max: 1) Enable the RDS Protection feature for the account. (see [below for nested schema](#nestedblock--rds_protection))
+- `servers_and_apps` (Block List, Max: 1) Enable the Servers and Apps feature for the account. (see [below for nested schema](#nestedblock--servers_and_apps))
 
 ### Read-Only
 
 - `id` (String) RSC cloud account ID (UUID).
+
+<a id="nestedblock--cloud_discovery"></a>
+### Nested Schema for `cloud_discovery`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
+
+Read-Only:
+
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
+
+
+<a id="nestedblock--cloud_native_archival"></a>
+### Nested Schema for `cloud_native_archival`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
+
+Read-Only:
+
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
+
+
+<a id="nestedblock--cloud_native_dynamodb_protection"></a>
+### Nested Schema for `cloud_native_dynamodb_protection`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
+
+Read-Only:
+
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
+
 
 <a id="nestedblock--cloud_native_protection"></a>
 ### Nested Schema for `cloud_native_protection`
 
 Required:
 
-- `regions` (Set of String) Regions that RSC will monitor for instances to automatically protect.
+- `regions` (Set of String) Regions the feature will be enabled in.
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Cloud Native Protection feature. Possible values are `BASIC`.
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
 
 Read-Only:
 
-- `stack_arn` (String) Cloudformation stack ARN.
-- `status` (String) Status of the Cloud Native Protection feature.
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
+
+
+<a id="nestedblock--cloud_native_s3_protection"></a>
+### Nested Schema for `cloud_native_s3_protection`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
+
+Read-Only:
+
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
 
 
 <a id="nestedblock--cyber_recovery_data_scanning"></a>
@@ -246,13 +411,13 @@ Read-Only:
 
 Required:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Cyber Recovery Data Scanning feature. Possible values are `BASIC`.
-- `regions` (Set of String) Regions to enable the Cyber Recovery Data Scanning feature in.
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
 
 Read-Only:
 
-- `stack_arn` (String) Cloudformation stack ARN.
-- `status` (String) Status of the Cyber Recovery Data Scanning feature.
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
 
 
 <a id="nestedblock--data_scanning"></a>
@@ -260,13 +425,13 @@ Read-Only:
 
 Required:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Data Scanning feature. Possible values are `BASIC`.
-- `regions` (Set of String) Regions to enable the Data Scanning feature in.
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
 
 Read-Only:
 
-- `stack_arn` (String) Cloudformation stack ARN.
-- `status` (String) Status of the Data Scanning feature.
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
 
 
 <a id="nestedblock--dspm"></a>
@@ -274,13 +439,13 @@ Read-Only:
 
 Required:
 
-- `permission_groups` (Set of String) Permission groups to assign to the DSPM feature. Possible values are `BASIC`.
-- `regions` (Set of String) Regions to enable the DSPM feature in.
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
 
 Read-Only:
 
-- `stack_arn` (String) Cloudformation stack ARN.
-- `status` (String) Status of the DSPM feature.
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
 
 
 <a id="nestedblock--exocompute"></a>
@@ -288,16 +453,30 @@ Read-Only:
 
 Required:
 
-- `regions` (Set of String) Regions to enable the Exocompute feature in.
+- `regions` (Set of String) Regions the feature will be enabled in.
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to assign to the Exocompute feature. Possible values are `BASIC` and `RSC_MANAGED_CLUSTER`.
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`, `RSC_MANAGED_CLUSTER`.
 
 Read-Only:
 
-- `stack_arn` (String) Cloudformation stack ARN.
-- `status` (String) Status of the Exocompute feature.
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
+
+
+<a id="nestedblock--kubernetes_protection"></a>
+### Nested Schema for `kubernetes_protection`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
+
+Read-Only:
+
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
 
 
 <a id="nestedblock--outpost"></a>
@@ -305,17 +484,45 @@ Read-Only:
 
 Required:
 
-- `outpost_account_id` (String) AWS account ID of the outpost account.
 - `permission_groups` (Set of String) Permission groups to assign to the Outpost feature. Possible values are `BASIC`.
 
 Optional:
 
-- `outpost_account_profile` (String) AWS named profile for the outpost account.
+- `outpost_account_id` (String) AWS account ID of the outpost account. Defaults to the current account.
+- `outpost_account_profile` (String) AWS named profile for the outpost account. Defaults to the profile used for the current account.
 
 Read-Only:
 
-- `stack_arn` (String) Cloudformation stack ARN.
+- `stack_arn` (String) CloudFormation stack ARN.
 - `status` (String) Status of the Outpost feature.
+
+
+<a id="nestedblock--rds_protection"></a>
+### Nested Schema for `rds_protection`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
+
+Read-Only:
+
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
+
+
+<a id="nestedblock--servers_and_apps"></a>
+### Nested Schema for `servers_and_apps`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `CLOUD_CLUSTER_ES`.
+- `regions` (Set of String) Regions the feature will be enabled in.
+
+Read-Only:
+
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the feature.
 
 ## Import
 
