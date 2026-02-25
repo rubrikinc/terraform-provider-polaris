@@ -45,6 +45,11 @@ created and communicated to RSC using the ´polaris_aws_cnp_attachment´ resourc
 The roles and permissions needed by RSC can be looked up using the
 ´polaris_aws_cnp_artifact´ and ´polaris_aws_cnp_permissions´ data sources.
 
+The ´CLOUD_DISCOVERY´ feature enables RSC to discover resources in the AWS
+account without enabling protection. It is currently optional but will become
+required when onboarding protection features. Once onboarded, it cannot be
+removed unless all protection features are removed first.
+
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature set.

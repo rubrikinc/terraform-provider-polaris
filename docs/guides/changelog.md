@@ -13,6 +13,9 @@ page_title: "Changelog"
 * Add support for the following feature blocks in the `polaris_aws_account` resource: `cloud_discovery`,
   `cloud_native_archival`, `cloud_native_dynamodb_protection`, `cloud_native_s3_protection`, `kubernetes_protection`,
   `rds_protection`, and `servers_and_apps`. [[docs](../resources/aws_account.md)]
+* Add support for the `CLOUD_DISCOVERY` feature in the `polaris_aws_cnp_account` and
+  `polaris_aws_cnp_account_attachments` resources, and in the `polaris_aws_cnp_artifacts` and
+  `polaris_aws_cnp_permissions` data sources.
 * The `cloud_native_protection` feature block has changed from required to optional in the `polaris_aws_account`
   resource.
 * Remove the default value from the `cluster_access` field of the `polaris_aws_exocompute` resource. The default value

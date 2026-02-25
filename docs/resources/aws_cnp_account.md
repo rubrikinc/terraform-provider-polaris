@@ -9,6 +9,11 @@ created and communicated to RSC using the `polaris_aws_cnp_attachment` resource.
 The roles and permissions needed by RSC can be looked up using the
 `polaris_aws_cnp_artifact` and `polaris_aws_cnp_permissions` data sources.
 
+The `CLOUD_DISCOVERY` feature enables RSC to discover resources in the AWS
+account without enabling protection. It is currently optional but will become
+required when onboarding protection features. Once onboarded, it cannot be
+removed unless all protection features are removed first.
+
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature set.
@@ -67,6 +72,11 @@ permissions to perform certain operations on the account, IAM roles needs to be
 created and communicated to RSC using the `polaris_aws_cnp_attachment` resource.
 The roles and permissions needed by RSC can be looked up using the
 `polaris_aws_cnp_artifact` and `polaris_aws_cnp_permissions` data sources.
+
+The `CLOUD_DISCOVERY` feature enables RSC to discover resources in the AWS
+account without enabling protection. It is currently optional but will become
+required when onboarding protection features. Once onboarded, it cannot be
+removed unless all protection features are removed first.
 
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
@@ -213,7 +223,7 @@ resource "polaris_aws_cnp_account" "account" {
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `name` (String) RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
 - `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `CLOUD_CLUSTER_ES` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
 
 <a id="nestedatt--trust_policies"></a>
