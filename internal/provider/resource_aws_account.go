@@ -911,27 +911,45 @@ func awsDeleteAccount(ctx context.Context, d *schema.ResourceData, m any) diag.D
 func awsCustomizeDiffAccount(ctx context.Context, diff *schema.ResourceDiff, m any) error {
 	tflog.Trace(ctx, "awsCustomizeDiffAccount")
 
-	var nonOutpostFeatureCount int
-	for blockKey := range awsCFTFeatureBlockMap {
-		if blockKey == keyOutpost {
-			continue
-		}
-		if block := diff.Get(blockKey).([]any); len(block) > 0 {
-			nonOutpostFeatureCount++
+	// Prevent removal of cloud_discovery when protection features are
+	// enabled.
+	if diff.HasChange(keyCloudDiscovery) {
+		if block := diff.Get(keyCloudDiscovery).([]any); len(block) == 0 {
+			protectionKeys := []string{
+				keyCloudNativeProtection,
+				keyCloudNativeDynamoDBProtection,
+				keyCloudNativeS3Protection,
+				keyKubernetesProtection,
+				keyRDSProtection,
+			}
+			for _, key := range protectionKeys {
+				if block := diff.Get(key).([]any); len(block) > 0 {
+					return errors.New("cloud_discovery cannot be removed while protection features are enabled")
+				}
+			}
 		}
 	}
 
+	// If the outpost feature is specified, check if the outpost account ID is
+	// specified too, if so we need at least one other feature.
+	//
+	// This is needed because if the outpost_account_id is specified, the
+	// outpost account could be a separate account, and we don't know this
+	// until we onboard the account, since we only have a profile. If it is
+	// a separate account, and it's the only feature, we don't get an RSC
+	// cloud account ID for the main account.
 	if outpostBlock := diff.Get(keyOutpost).([]any); len(outpostBlock) > 0 {
-		// The outpost feature is specified. Check if the outpost account ID is
-		// specified too, if so we need at least one other feature.
-		//
-		// This is needed because if the outpost_account_id is specified, the
-		// outpost account could be a separate account, and we don't know this
-		// until we onboard the account, since we only have a profile. If it is
-		// a separate account, and it's the only feature, we don't get an RSC
-		// cloud account ID for the main account.
 		block := outpostBlock[0].(map[string]any)
 		if outpostAccountID := block[keyOutpostAccountID].(string); outpostAccountID != "" {
+			var nonOutpostFeatureCount int
+			for blockKey := range awsCFTFeatureBlockMap {
+				if blockKey == keyOutpost {
+					continue
+				}
+				if block := diff.Get(blockKey).([]any); len(block) > 0 {
+					nonOutpostFeatureCount++
+				}
+			}
 			if nonOutpostFeatureCount == 0 {
 				return errors.New("when outpost_account_id is specified for the outpost feature, at least one " +
 					"other feature must be enabled")
