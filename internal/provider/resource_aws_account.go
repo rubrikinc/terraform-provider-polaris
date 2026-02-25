@@ -169,14 +169,14 @@ func resourceAwsAccount() *schema.Resource {
 			},
 			keyCloudDiscovery: {
 				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Cloud Discovery feature for the account.",
 			},
 			keyCloudNativeArchival: {
 				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Cloud Native Archival feature for the account.",
@@ -190,7 +190,7 @@ func resourceAwsAccount() *schema.Resource {
 					core.PermissionGroupExportAndRestore,
 					core.PermissionGroupFileLevelRecovery,
 					core.PermissionGroupSnapshotPrivateAccess,
-				}),
+				}, false),
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
@@ -211,21 +211,21 @@ func resourceAwsAccount() *schema.Resource {
 			},
 			keyCloudNativeDynamoDBProtection: {
 				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Cloud Native DynamoDB Protection feature for the account.",
 			},
 			keyCloudNativeS3Protection: {
 				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Cloud Native S3 Protection feature for the account.",
 			},
 			keyCyberRecoveryDataScanning: {
 				Type:     schema.TypeList,
-				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems: 1,
 				Optional: true,
 				Description: "Enable the Cyber Recovery Data Scanning feature for the account. The Cyber Recovery " +
@@ -239,7 +239,7 @@ func resourceAwsAccount() *schema.Resource {
 			},
 			keyDataScanning: {
 				Type:     schema.TypeList,
-				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems: 1,
 				Optional: true,
 				Description: "Enable the Data Scanning feature for the account. The Data Scanning feature requires " +
@@ -247,7 +247,7 @@ func resourceAwsAccount() *schema.Resource {
 			},
 			keyDSPM: {
 				Type:     schema.TypeList,
-				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:     awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems: 1,
 				Optional: true,
 				Description: "Enable the DSPM feature for the account. The DSPM feature requires the Outpost " +
@@ -261,14 +261,14 @@ func resourceAwsAccount() *schema.Resource {
 					// The following permission groups cannot be used when onboarding an AWS account.
 					// They have been accepted in the past so we still silently allow them.
 					core.PermissionGroupPrivateEndpoints,
-				}),
+				}, false),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Exocompute feature for the account.",
 			},
 			keyKubernetesProtection: {
 				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Kubernetes Protection feature for the AWS account.",
@@ -344,14 +344,14 @@ func resourceAwsAccount() *schema.Resource {
 			},
 			keyRDSProtection: {
 				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}, true),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the RDS Protection feature for the account.",
 			},
 			keyServersAndApps: {
 				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupCCES}),
+				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupCCES}, true),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Servers and Apps feature for the account.",
@@ -943,7 +943,7 @@ func awsCustomizeDiffAccount(ctx context.Context, diff *schema.ResourceDiff, m a
 }
 
 // awsCFTFeatureResource returns a schema resource for a CFT feature block.
-func awsCFTFeatureResource(permissionGroups []core.PermissionGroup) *schema.Resource {
+func awsCFTFeatureResource(permissionGroups []core.PermissionGroup, permGroupsRequired bool) *schema.Resource {
 	// The following permission groups cannot be used when onboarding an AWS
 	// account. They have been accepted in the past so we still silently allow
 	// them.
@@ -970,7 +970,8 @@ func awsCFTFeatureResource(permissionGroups []core.PermissionGroup) *schema.Reso
 					Type:         schema.TypeString,
 					ValidateFunc: validation.StringInSlice(groups, false),
 				},
-				Required: true,
+				Required: permGroupsRequired,
+				Optional: !permGroupsRequired,
 				Description: fmt.Sprintf("Permission groups to assign to the feature. Possible values are "+
 					"%s.", strings.Join(names, ", ")),
 			},
