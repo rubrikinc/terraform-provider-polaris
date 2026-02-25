@@ -758,7 +758,7 @@ func resourceAzureSubscription() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							Description: "User-assigned managed identity name. Required once the RSC account has the " +
-								"´CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT´ feature flag enabled for TDE with customer managed keys. " +
+								"CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT feature flag enabled for TDE with customer managed keys. " +
 								"Specifying this field before the feature flag is enabled will result in an error. Once the " +
 								"feature flag is enabled, this field becomes required and omitting it will result in an error. " +
 								"Supports upgrade scenarios where the feature flag is enabled on existing configurations. " +
@@ -774,7 +774,7 @@ func resourceAzureSubscription() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							Description: "ID of the service principal object associated with the user-assigned managed " +
-								"identity. Required once the RSC account has the ´CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT´ feature " +
+								"identity. Required once the RSC account has the CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT feature " +
 								"flag enabled for TDE with customer managed keys. Specifying this field before the feature " +
 								"flag is enabled will result in an error. Once the feature flag is enabled, this field " +
 								"becomes required and omitting it will result in an error. Supports upgrade scenarios where " +
@@ -791,7 +791,7 @@ func resourceAzureSubscription() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							Description: "User-assigned managed identity region. Should be specified in the standard Azure " +
-								"style, e.g. `eastus`. Required once the RSC account has the ´CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT´ " +
+								"style, e.g. `eastus`. Required once the RSC account has the CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT " +
 								"feature flag enabled for TDE with customer managed keys. Specifying this field before the " +
 								"feature flag is enabled will result in an error. Once the feature flag is enabled, this " +
 								"field becomes required and omitting it will result in an error. Supports upgrade scenarios " +
@@ -808,7 +808,7 @@ func resourceAzureSubscription() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							Description: "User-assigned managed identity resource group name. Required once the RSC account " +
-								"has the ´CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT´ feature flag enabled for TDE with customer " +
+								"has the CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT feature flag enabled for TDE with customer " +
 								"managed keys. Specifying this field before the feature flag is enabled will result in an " +
 								"error. Once the feature flag is enabled, this field becomes required and omitting it will " +
 								"result in an error. Supports upgrade scenarios where the feature flag is enabled on " +
