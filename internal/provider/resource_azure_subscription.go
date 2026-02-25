@@ -1679,7 +1679,7 @@ func upgradeFeatureToUseManagedIdentity(ctx context.Context, client *client, clo
 	tflog.Info(ctx, "upgrading feature to use managed identity", map[string]any{
 		"feature": feature,
 	})
-	//build feature specific info for the request by mapping mi to featureSpecificInfo type
+
 	featureSpecificInfo := &gqlazure.FeatureSpecificInfo{
 		UserAssignedManagedIdentity: &gqlazure.UserAssignedManagedIdentity{
 			Name:              name,
@@ -1689,7 +1689,11 @@ func upgradeFeatureToUseManagedIdentity(ctx context.Context, client *client, clo
 		},
 	}
 
-	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, cloudAccountID, feature, nil, featureSpecificInfo); err != nil {
+	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
+		CloudAccountID:      cloudAccountID,
+		Feature:             feature,
+		FeatureSpecificInfo: featureSpecificInfo,
+	}); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -1742,7 +1746,11 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 		"permission_groups": feature.PermissionGroups,
 		"resource_group":    rg.Name,
 	})
-	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, cloudAccountID, feature, rg, nil); err != nil {
+	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
+		CloudAccountID: cloudAccountID,
+		Feature:        feature,
+		ResourceGroup:  rg,
+	}); err != nil {
 		return false, err
 	}
 
