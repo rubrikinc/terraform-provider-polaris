@@ -146,6 +146,20 @@ func resourceAzureSubscription() *schema.Resource {
 		UpdateContext: azureUpdateSubscription,
 		DeleteContext: azureDeleteSubscription,
 
+		// Force a diff when the user's configured entra_group_id differs from
+		// the state value. Without this, the Optional+Computed combination
+		// causes Terraform SDK v2 to suppress user-initiated changes.
+		CustomizeDiff: func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+			if d.Id() == "" {
+				return nil
+			}
+			oldVal, newVal := d.GetChange(keyEntraGroupID)
+			if newVal.(string) != "" && oldVal.(string) != newVal.(string) {
+				return d.SetNew(keyEntraGroupID, newVal)
+			}
+			return nil
+		},
+
 		Description: description(resourceAzureSubscriptionDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
@@ -889,6 +903,15 @@ func resourceAzureSubscription() *schema.Resource {
 				Description: "Enable the RSC SQL MI Protection feature for the Azure subscription. Provides " +
 					"centralized database backup management and recovery for an Azure SQL Managed Instance deployment.",
 			},
+			keyEntraGroupID: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				Description: "Object ID of the Entra ID group used for Entra ID authentication in " +
+					"Exocompute AKS clusters. This is a tenant-level setting shared across all " +
+					"subscriptions in the same tenant.",
+				ValidateFunc: validation.IsUUID,
+			},
 			keySubscriptionID: {
 				Type:         schema.TypeString,
 				Required:     true,
@@ -1006,6 +1029,9 @@ func azureReadSubscription(ctx context.Context, d *schema.ResourceData, m any) d
 		}
 	}
 
+	if err := d.Set(keyEntraGroupID, account.EntraGroupID); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keySubscriptionID, account.NativeID.String()); err != nil {
 		return diag.FromErr(err)
 	}
@@ -1147,6 +1173,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			}
 		}
 	}
+
 	slices.SortFunc(updates, func(i, j updateOp) int {
 		return cmp.Compare(i.order, j.order)
 	})
@@ -1180,6 +1207,9 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			for _, region := range update.block[keyRegions].(*schema.Set).List() {
 				opts = append(opts, azure.Region(region.(string)))
 			}
+			if groupID, ok := d.GetOk(keyEntraGroupID); ok {
+				opts = append(opts, azure.EntraGroupID(groupID.(string)))
+			}
 			if err := azure.Wrap(polarisClient).UpdateSubscription(ctx, accountID, feature, opts...); err != nil {
 				return diag.FromErr(err)
 			}
@@ -1194,6 +1224,23 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		opts := []azure.OptionFunc{azure.Name(d.Get(keySubscriptionName).(string))}
 		if err = azure.Wrap(polarisClient).UpdateSubscription(ctx, accountID, core.FeatureAll, opts...); err != nil {
 			return diag.FromErr(err)
+		}
+	}
+
+	// Handle standalone entra_group_id changes. When a feature also changed,
+	// the opUpdateSubscription case above already carried the Entra update.
+	// UpgradeCloudAccountPermissionsWithoutOAuth requires a real feature, so
+	// we pick the first active one.
+	if d.HasChange(keyEntraGroupID) && !slices.ContainsFunc(updates, func(u updateOp) bool { return u.op == opUpdateSubscription }) {
+		if groupID, ok := d.GetOk(keyEntraGroupID); ok {
+			for key, featureDef := range azureKeyFeatureMap {
+				if block, ok := d.GetOk(key); ok && len(block.([]any)) > 0 {
+					if err = azure.Wrap(polarisClient).UpdateSubscription(ctx, accountID, featureDef.feature, azure.EntraGroupID(groupID.(string))); err != nil {
+						return diag.FromErr(err)
+					}
+					break
+				}
+			}
 		}
 	}
 
@@ -1340,6 +1387,9 @@ func addAzureFeature(ctx context.Context, d *schema.ResourceData, client *polari
 	var opts []azure.OptionFunc
 	if name, ok := d.GetOk(keySubscriptionName); ok {
 		opts = append(opts, azure.Name(name.(string)))
+	}
+	if groupID, ok := d.GetOk(keyEntraGroupID); ok {
+		opts = append(opts, azure.EntraGroupID(groupID.(string)))
 	}
 
 	if regions, ok := block[keyRegions]; ok {

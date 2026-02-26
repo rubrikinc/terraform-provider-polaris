@@ -83,6 +83,100 @@ resource "polaris_azure_subscription" "default" {
 }
 `
 
+const azureSubscriptionEntraID1Tmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_azure_service_principal" "default" {
+	credentials   = "{{ .Resource.Credentials }}"
+	tenant_domain = "{{ .Resource.TenantDomain }}"
+}
+
+resource "polaris_azure_subscription" "default" {
+	subscription_id   = "{{ .Resource.SubscriptionID }}"
+	subscription_name = "{{ .Resource.SubscriptionName }}"
+	tenant_domain     = "{{ .Resource.TenantDomain }}"
+	entra_group_id    = "00000000-0000-0000-0000-000000000001"
+
+	cloud_native_protection {
+		resource_group_name   = "{{ .Resource.CloudNativeProtection.ResourceGroupName }}"
+		resource_group_region = "{{ .Resource.CloudNativeProtection.ResourceGroupRegion }}"
+
+		regions = [
+			"eastus2",
+		]
+	}
+
+	depends_on = [polaris_azure_service_principal.default]
+}
+`
+
+const azureSubscriptionEntraID2Tmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_azure_service_principal" "default" {
+	credentials   = "{{ .Resource.Credentials }}"
+	tenant_domain = "{{ .Resource.TenantDomain }}"
+}
+
+resource "polaris_azure_subscription" "default" {
+	subscription_id   = "{{ .Resource.SubscriptionID }}"
+	subscription_name = "{{ .Resource.SubscriptionName }}"
+	tenant_domain     = "{{ .Resource.TenantDomain }}"
+	entra_group_id    = "00000000-0000-0000-0000-000000000002"
+
+	cloud_native_protection {
+		resource_group_name   = "{{ .Resource.CloudNativeProtection.ResourceGroupName }}"
+		resource_group_region = "{{ .Resource.CloudNativeProtection.ResourceGroupRegion }}"
+
+		regions = [
+			"eastus2",
+		]
+	}
+
+	depends_on = [polaris_azure_service_principal.default]
+}
+`
+
+func TestAccPolarisAzureSubscription_entraGroupID(t *testing.T) {
+	config, subscription, err := loadAzureTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entraID1Config, err := makeTerraformConfig(config, azureSubscriptionEntraID1Tmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entraID2Config, err := makeTerraformConfig(config, azureSubscriptionEntraID2Tmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: entraID1Config,
+			Check: resource.ComposeTestCheckFunc(
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "entra_group_id", "00000000-0000-0000-0000-000000000001"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "CONNECTED"),
+			),
+		}, {
+			Config: entraID2Config,
+			Check: resource.ComposeTestCheckFunc(
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "entra_group_id", "00000000-0000-0000-0000-000000000002"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "CONNECTED"),
+			),
+		}},
+	})
+}
+
 func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 	config, subscription, err := loadAzureTestConfig()
 	if err != nil {
