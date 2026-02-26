@@ -754,6 +754,72 @@ func resourceAzureSubscription() *schema.Resource {
 							Computed:    true,
 							Description: "Status of the SQL DB Protection feature.",
 						},
+						keyUserAssignedManagedIdentityName: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "User-assigned managed identity name. Required once the RSC account has the " +
+								"CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT feature flag enabled for TDE with customer managed keys. " +
+								"Specifying this field before the feature flag is enabled will result in an error. Once the " +
+								"feature flag is enabled, this field becomes required and omitting it will result in an error. " +
+								"Supports upgrade scenarios where the feature flag is enabled on existing configurations. " +
+								"Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityPrincipalID,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityRegion,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityResourceGroupName,
+							},
+						},
+						keyUserAssignedManagedIdentityPrincipalID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "ID of the service principal object associated with the user-assigned managed " +
+								"identity. Required once the RSC account has the CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT feature " +
+								"flag enabled for TDE with customer managed keys. Specifying this field before the feature " +
+								"flag is enabled will result in an error. Once the feature flag is enabled, this field " +
+								"becomes required and omitting it will result in an error. Supports upgrade scenarios where " +
+								"the feature flag is enabled on existing configurations. Changing this forces the RSC " +
+								"feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityRegion,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityResourceGroupName,
+							},
+						},
+						keyUserAssignedManagedIdentityRegion: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "User-assigned managed identity region. Should be specified in the standard Azure " +
+								"style, e.g. `eastus`. Required once the RSC account has the CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT " +
+								"feature flag enabled for TDE with customer managed keys. Specifying this field before the " +
+								"feature flag is enabled will result in an error. Once the feature flag is enabled, this " +
+								"field becomes required and omitting it will result in an error. Supports upgrade scenarios " +
+								"where the feature flag is enabled on existing configurations. Changing this forces the RSC " +
+								"feature to be re-onboarded.",
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityPrincipalID,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityResourceGroupName,
+							},
+						},
+						keyUserAssignedManagedIdentityResourceGroupName: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "User-assigned managed identity resource group name. Required once the RSC account " +
+								"has the CNP_AZURE_SQL_DB_TDE_CMK_SUPPORT feature flag enabled for TDE with customer " +
+								"managed keys. Specifying this field before the feature flag is enabled will result in an " +
+								"error. Once the feature flag is enabled, this field becomes required and omitting it will " +
+								"result in an error. Supports upgrade scenarios where the feature flag is enabled on " +
+								"existing configurations. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+							RequiredWith: []string{
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityName,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityPrincipalID,
+								keySQLDBProtection + ".0." + keyUserAssignedManagedIdentityRegion,
+							},
+						},
 					},
 				},
 				MaxItems: 1,
@@ -985,6 +1051,10 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 		order   int
 	}
 	var updates []updateOp
+	featuresAllowedToUpgradeMI := []core.Feature{
+		core.FeatureAzureSQLDBProtection,
+	}
+
 	for key, feature := range azureKeyFeatureMap {
 		if !d.HasChange(key) {
 			continue
@@ -1022,10 +1092,33 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 				}
 			}
 
-			// Changes in resource group or managed identity requires the
+			// Check if the feature is allowed to upgrade the managed identity.
+			allowedToUpgradeMI := false
+			for _, allowedFeature := range featuresAllowedToUpgradeMI {
+				if feature.feature.Equal(allowedFeature) {
+					allowedToUpgradeMI = true
+					break
+				}
+			}
+			if diffAzureUserAssignedManagedIdentity(oldBlock, newBlock) && allowedToUpgradeMI {
+				tflog.Info(ctx, "allowed to upgrade managed identity", map[string]any{
+					"feature": feature.feature,
+				})
+				ok, err := upgradeFeatureToUseManagedIdentity(ctx, client, accountID, feature.feature, newBlock)
+				if err != nil {
+					return diag.FromErr(err)
+				}
+				if ok {
+					continue
+				}
+			}
+
+			// Changes in resource group requires the
 			// feature to be re-onboarded, any other changes to the feature will
 			// be updated when the feature is re-onboarded.
-			if diffAzureFeatureResourceGroup(oldBlock, newBlock) || diffAzureUserAssignedManagedIdentity(oldBlock, newBlock) {
+			// MI changes for features not allowed to upgrade the MI also requires
+			// the feature to be re-onboarded.
+			if diffAzureFeatureResourceGroup(oldBlock, newBlock) || (diffAzureUserAssignedManagedIdentity(oldBlock, newBlock) && !allowedToUpgradeMI) {
 				updates = append(updates, updateOp{
 					op:      opAddFeature,
 					feature: feature.feature,
@@ -1561,6 +1654,51 @@ func azureFeatureResourceGroup(block map[string]any) (*gqlazure.ResourceGroup, b
 	}, true
 }
 
+// upgradeFeatureToUseManagedIdentity upgrades the feature to add or update a managed identity.
+func upgradeFeatureToUseManagedIdentity(ctx context.Context, client *client, cloudAccountID uuid.UUID, feature core.Feature, block map[string]any) (bool, error) {
+	polarisClient, err := client.polaris()
+	if err != nil {
+		return false, err
+	}
+	var name string
+	if v, ok := block[keyUserAssignedManagedIdentityName]; ok {
+		name = v.(string)
+	}
+	var principalID string
+	if v, ok := block[keyUserAssignedManagedIdentityPrincipalID]; ok {
+		principalID = v.(string)
+	}
+	var region gqlregion.Region
+	if v, ok := block[keyUserAssignedManagedIdentityRegion]; ok {
+		region = gqlregion.RegionFromName(v.(string))
+	}
+	var rgName string
+	if v, ok := block[keyUserAssignedManagedIdentityResourceGroupName]; ok {
+		rgName = v.(string)
+	}
+	tflog.Info(ctx, "upgrading feature to use managed identity", map[string]any{
+		"feature": feature,
+	})
+
+	featureSpecificInfo := &gqlazure.FeatureSpecificInfo{
+		UserAssignedManagedIdentity: &gqlazure.UserAssignedManagedIdentity{
+			Name:              name,
+			PrincipalID:       principalID,
+			Region:            region.ToCloudAccountRegionEnum(),
+			ResourceGroupName: rgName,
+		},
+	}
+
+	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
+		CloudAccountID:      cloudAccountID,
+		Feature:             feature,
+		FeatureSpecificInfo: featureSpecificInfo,
+	}); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // upgradeSQLDBFeatureToUseResourceGroup upgrades the Azure SQL DB Protection
 // feature to use a resource group.
 func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, cloudAccountID uuid.UUID, block map[string]any) (bool, error) {
@@ -1608,7 +1746,11 @@ func upgradeSQLDBFeatureToUseResourceGroup(ctx context.Context, client *client, 
 		"permission_groups": feature.PermissionGroups,
 		"resource_group":    rg.Name,
 	})
-	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, cloudAccountID, feature, rg); err != nil {
+	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
+		CloudAccountID: cloudAccountID,
+		Feature:        feature,
+		ResourceGroup:  rg,
+	}); err != nil {
 		return false, err
 	}
 
