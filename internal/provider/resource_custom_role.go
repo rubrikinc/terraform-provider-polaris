@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -46,7 +47,8 @@ func resourceCustomRole() *schema.Resource {
 		UpdateContext: updateCustomRole,
 		DeleteContext: deleteCustomRole,
 
-		Description: description(resourceCustomRoleDescription),
+		Description:   description(resourceCustomRoleDescription),
+		CustomizeDiff: customizeDiffCustomRole,
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -220,6 +222,30 @@ func deleteCustomRole(ctx context.Context, d *schema.ResourceData, m any) diag.D
 	}
 
 	d.SetId("")
+	return nil
+}
+
+// customizeDiffCustomRole validates that no two permission blocks share the
+// same operation. Because the permission set is hashed by operation, duplicate
+// operations would cause one block to silently overwrite the other. Users
+// should instead use multiple hierarchy blocks within a single permission
+// block.
+func customizeDiffCustomRole(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+	tflog.Trace(ctx, "customizeDiffCustomRole")
+
+	permissions := diff.Get(keyPermission).(*schema.Set).List()
+	seen := make(map[string]struct{}, len(permissions))
+	for _, p := range permissions {
+		operation := p.(map[string]any)[keyOperation].(string)
+		if _, ok := seen[operation]; ok {
+			return fmt.Errorf(
+				"duplicate permission blocks with operation %q: use multiple hierarchy blocks inside a single permission block instead",
+				operation,
+			)
+		}
+		seen[operation] = struct{}{}
+	}
+
 	return nil
 }
 

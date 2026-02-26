@@ -54,6 +54,37 @@ resource "polaris_custom_role" "compliance_auditor" {
 }
 ```
 
+### Multiple snappable types per operation
+When a single operation applies to multiple snappable types, use multiple `hierarchy` blocks within the
+same `permission` block. Each `hierarchy` block specifies a different `snappable_type` and its associated
+`object_ids`.
+
+~> **Note:** Each operation must appear in only one `permission` block. Do not create multiple `permission`
+blocks with the same operation.
+
+```terraform
+resource "polaris_custom_role" "restore_role" {
+  name        = "Restore Role"
+  description = "Role with restore permissions for multiple workload types"
+
+  permission {
+    operation = "RESTORE_TO_ORIGIN"
+    hierarchy {
+      snappable_type = "AwsNativeRdsInstance"
+      object_ids = [
+        "AWSNATIVE_ROOT"
+      ]
+    }
+    hierarchy {
+      snappable_type = "AllSubHierarchyType"
+      object_ids = [
+        "ORACLE_ROOT"
+      ]
+    }
+  }
+}
+```
+
 ### From a role template
 Here we make use of the `polaris_role_template` data source to refer to an RSC role template by name. The role templates
 available in RSC can be found in the UI, under _Settings / Users and Access / Roles / Create Role_.
