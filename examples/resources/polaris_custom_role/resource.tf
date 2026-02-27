@@ -22,6 +22,25 @@ resource "polaris_custom_role" "auditor" {
       ]
     }
   }
+
+  # Permission with multiple snappable types. When a single operation applies
+  # to multiple snappable types, use multiple hierarchy blocks within the same
+  # permission block.
+  permission {
+    operation = "RESTORE_TO_ORIGIN"
+    hierarchy {
+      snappable_type = "AwsNativeRdsInstance"
+      object_ids = [
+        "AWSNATIVE_ROOT"
+      ]
+    }
+    hierarchy {
+      snappable_type = "AllSubHierarchyType"
+      object_ids = [
+        "ORACLE_ROOT"
+      ]
+    }
+  }
 }
 
 # From role template.
