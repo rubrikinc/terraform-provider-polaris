@@ -190,7 +190,7 @@ func newClient(ctx context.Context, credentials string, cacheParams polaris.Cach
 
 func (c *client) flag(ctx context.Context, name core.FeatureFlagName) bool {
 	ff, err := core.Wrap(c.polarisClient.GQL).FeatureFlag(ctx, name)
-	return err != nil && ff.Enabled
+	return err == nil && ff.Enabled
 }
 
 func (c *client) polaris() (*polaris.Client, error) {
