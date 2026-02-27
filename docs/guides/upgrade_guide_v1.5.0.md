@@ -42,6 +42,33 @@ This will read the remote state of the resources and migrate the local Terraform
 
 ## New Features
 
+### Pod Subnet Support for AWS Exocompute
+
+The `polaris_aws_exocompute` resource now supports a `subnet` block that allows specifying a `pod_subnet_id` for each
+cluster subnet. This is useful when pods need to run in a different subnet than the cluster nodes.
+
+The following example shows how to create an Exocompute configuration with pod subnets:
+```terraform
+resource "polaris_aws_exocompute" "host" {
+  account_id = data.polaris_aws_account.host.id
+  region     = "us-east-2"
+  vpc_id     = "vpc-4859acb9"
+
+  subnet {
+    subnet_id     = "subnet-ea67b67b"
+    pod_subnet_id = "subnet-pod-1a"
+  }
+  subnet {
+    subnet_id     = "subnet-ea43ec78"
+    pod_subnet_id = "subnet-pod-1b"
+  }
+}
+```
+
+The `subnet` block conflicts with the existing `subnets` field. Use `subnet` blocks when you need to specify pod
+subnets, and `subnets` when you do not. Both fields are read back on every refresh, so switching between them requires
+a resource replacement.
+
 ### Multi-Tag Rules
 
 The `polaris_tag_rule` resource and `polaris_tag_rule` data source now support multiple tag conditions via the new `tag`

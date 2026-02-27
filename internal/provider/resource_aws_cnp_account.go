@@ -478,9 +478,9 @@ func featureResource() *schema.Resource {
 					}, false),
 				},
 				Required: true,
-				Description: "RSC permission groups for the feature. Possible values are `BASIC` and " +
-					"`RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable " +
-					"permission groups.",
+				Description: "RSC permission groups for the feature. Possible values are `BASIC`, " +
+					"`CLOUD_CLUSTER_ES` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is " +
+					"interpreted as all applicable permission groups.",
 			},
 		},
 	}

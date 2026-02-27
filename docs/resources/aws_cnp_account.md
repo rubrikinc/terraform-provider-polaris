@@ -188,7 +188,7 @@ resource "polaris_aws_cnp_account" "account" {
 ### Read-Only
 
 - `id` (String) RSC cloud account ID (UUID).
-- `trust_policies` (Set of Object) AWS IAM trust policies. (see [below for nested schema](#nestedatt--trust_policies))
+- `trust_policies` (Set of Object) AWS IAM trust policies required by RSC. The `policy` field should be used with the `assume_role_policy` of the `aws_iam_role` resource. (see [below for nested schema](#nestedatt--trust_policies))
 
 <a id="nestedblock--feature"></a>
 ### Nested Schema for `feature`

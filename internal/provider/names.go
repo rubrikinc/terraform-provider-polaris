@@ -232,6 +232,7 @@ const (
 	keyPermissions                                  = "permissions"
 	keyPermissionsHash                              = "permissions_hash"
 	keyPodOverlayNetworkCIDR                        = "pod_overlay_network_cidr"
+	keyPodSubnetID                                  = "pod_subnet_id"
 	keyPolarisAccount                               = "polaris_account"
 	keyPolarisAWSAccount                            = "polaris_aws_account"
 	keyPolarisAWSArchivalLocation                   = "polaris_aws_archival_location"

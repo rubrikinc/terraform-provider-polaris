@@ -5,7 +5,9 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.5.0
-
+* Add `subnet` block to the `polaris_aws_exocompute` resource. The `subnet` block allows specifying a `pod_subnet_id`
+  for each cluster subnet. The existing `subnets` field continues to work for configurations that do not require pod
+  subnets. [[docs](../resources/aws_exocompute.md)]
 * Add support for managing the AWS Outpost account as a separate `polaris_aws_account` resource. The
   `outpost_account_id` and `outpost_account_profile` fields have been made optional.
 * Add support for the following feature blocks in the `polaris_aws_account` resource: `cloud_discovery`,

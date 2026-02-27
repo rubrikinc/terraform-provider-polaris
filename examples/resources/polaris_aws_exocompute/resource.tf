@@ -41,6 +41,22 @@ resource "polaris_aws_exocompute" "host" {
   ]
 }
 
+# RSC managed Exocompute with pod subnets.
+resource "polaris_aws_exocompute" "host_pods" {
+  account_id = data.polaris_aws_account.host.id
+  region     = "us-east-2"
+  vpc_id     = "vpc-4859acb9"
+
+  subnet {
+    subnet_id     = "subnet-ea67b67b"
+    pod_subnet_id = "subnet-pod-1a"
+  }
+  subnet {
+    subnet_id     = "subnet-ea43ec78"
+    pod_subnet_id = "subnet-pod-1b"
+  }
+}
+
 # Customer managed Exocompute.
 resource "polaris_aws_exocompute" "host" {
   account_id = data.polaris_aws_account.host.id
