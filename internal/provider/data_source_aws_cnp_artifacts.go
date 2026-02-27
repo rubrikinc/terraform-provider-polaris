@@ -41,6 +41,10 @@ about instance profiles and roles required by RSC for a specified feature set.
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature set.
 
+´CLOUD_DISCOVERY´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´CLOUD_NATIVE_ARCHIVAL´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.

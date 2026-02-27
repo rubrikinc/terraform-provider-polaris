@@ -99,13 +99,13 @@ func resourceAwsCnpAccountTrustPolicy() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_NATIVE_DYNAMODB_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION",
-						"EXOCOMPUTE", "RDS_PROTECTION", "SERVERS_AND_APPS", "KUBERNETES_PROTECTION",
+						"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_NATIVE_DYNAMODB_PROTECTION",
+						"CLOUD_NATIVE_S3_PROTECTION", "EXOCOMPUTE", "RDS_PROTECTION", "SERVERS_AND_APPS", "KUBERNETES_PROTECTION",
 					}, false),
 				},
 				MinItems: 1,
 				Optional: true,
-				Description: "RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
+				Description: "RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
 					"`CLOUD_NATIVE_DYNAMODB_PROTECTION`, `KUBERNETES_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`. " +
 					"**Deprecated:** no longer used by the provider, any value set is ignored.",
 				Deprecated: "No longer used by the provider, any value set is ignored.",

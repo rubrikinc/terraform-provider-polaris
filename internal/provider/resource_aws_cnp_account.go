@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -38,13 +39,24 @@ import (
 )
 
 const resourceAWSCNPAccount = `
-The ´polaris_aws_cnp_account´ resource adds an AWS account to RSC using the IAM
-roles / non-CFT (Cloud Formation Template) workflow. The ´polaris_aws_account´
-resource can be used to add an AWS account to RSC using the CFT workflow.
+The ´polaris_aws_cnp_account´ resource adds an AWS account to RSC. To grant RSC
+permissions to perform certain operations on the account, IAM roles needs to be
+created and communicated to RSC using the ´polaris_aws_cnp_attachment´ resource.
+The roles and permissions needed by RSC can be looked up using the
+´polaris_aws_cnp_artifact´ and ´polaris_aws_cnp_permissions´ data sources.
+
+The ´CLOUD_DISCOVERY´ feature enables RSC to discover resources in the AWS
+account without enabling protection. It is currently optional but will become
+required when onboarding protection features. Once onboarded, it cannot be
+removed unless all protection features are removed first.
 
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature set.
+
+´CLOUD_DISCOVERY´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
 
 ´CLOUD_NATIVE_ARCHIVAL´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
@@ -82,6 +94,9 @@ are used when specifying the feature set.
 
 -> **Note:** When permission groups are specified, the ´BASIC´ permission group
    is always required except for the ´SERVERS_AND_APPS´ feature.
+
+-> **Note:** To onboard an account using a CloudFormation stack instead of IAM
+   roles, use the ´polaris_aws_account´ resource.
 `
 
 // This resource uses a template for its documentation, remember to update the
@@ -159,16 +174,7 @@ func resourceAwsCnpAccount() *schema.Resource {
 					"´assume_role_policy´ of the ´aws_iam_role´ resource.",
 			},
 		},
-		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, m any) error {
-			tflog.Trace(ctx, "awsCustomizeDiffCnpAccount")
-
-			if diff.HasChange(keyFeature) {
-				if err := diff.SetNewComputed(keyTrustPolicies); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		CustomizeDiff: awsCustomizeDiffCnpAccount,
 		Importer: &schema.ResourceImporter{
 			StateContext: awsImportCnpAccount,
 		},
@@ -413,6 +419,44 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 	return nil
 }
 
+func awsCustomizeDiffCnpAccount(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+	tflog.Trace(ctx, "awsCustomizeDiffCnpAccount")
+
+	if diff.HasChange(keyFeature) {
+		if err := diff.SetNewComputed(keyTrustPolicies); err != nil {
+			return err
+		}
+
+		// During update, prevent removing CLOUD_DISCOVERY while protection
+		// features are still onboarded. The Cloud Discovery feature is
+		// currently not required when onboarding protection features for a new
+		// account.
+		if diff.Id() != "" {
+			features := diff.Get(keyFeature).(*schema.Set).List()
+
+			if !slices.ContainsFunc(features, func(feature any) bool {
+				return feature.(map[string]any)[keyName].(string) == core.FeatureCloudDiscovery.Name
+			}) {
+				protectionFeatures := []core.Feature{
+					core.FeatureCloudNativeProtection,
+					core.FeatureCloudNativeDynamoDBProtection,
+					core.FeatureCloudNativeS3Protection,
+					core.FeatureKubernetesProtection,
+					core.FeatureRDSProtection,
+				}
+				for _, feature := range protectionFeatures {
+					if slices.ContainsFunc(features, func(f any) bool {
+						return f.(map[string]any)[keyName].(string) == feature.Name
+					}) {
+						return errors.New("CLOUD_DISCOVERY cannot be removed while protection features are enabled")
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func awsImportCnpAccount(ctx context.Context, d *schema.ResourceData, m any) ([]*schema.ResourceData, error) {
 	tflog.Trace(ctx, "awsImportCnpAccount")
 
@@ -458,12 +502,13 @@ func featureResource() *schema.Resource {
 			keyName: {
 				Type:     schema.TypeString,
 				Required: true,
-				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
+				Description: "RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
 					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
 					"`KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.",
 				ValidateFunc: validation.StringInSlice([]string{
-					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", `CLOUD_NATIVE_DYNAMODB_PROTECTION`, "CLOUD_NATIVE_S3_PROTECTION",
-					"KUBERNETES_PROTECTION", "EXOCOMPUTE", "RDS_PROTECTION", "SERVERS_AND_APPS",
+					"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION",
+					"CLOUD_NATIVE_DYNAMODB_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION", "KUBERNETES_PROTECTION",
+					"EXOCOMPUTE", "RDS_PROTECTION", "SERVERS_AND_APPS",
 				}, false),
 			},
 			keyPermissionGroups: {

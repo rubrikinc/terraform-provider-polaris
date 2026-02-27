@@ -8,6 +8,9 @@ description: |-
   Permission Groups
   Following is a list of features and their applicable permission groups. These
   are used when specifying the feature set.
+  CLOUD_DISCOVERY
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   CLOUD_NATIVE_ARCHIVAL
   BASIC - Represents the basic set of permissions required to onboard the
   feature.
@@ -45,6 +48,10 @@ about instance profiles and roles required by RSC for a specified feature set.
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature set.
+
+`CLOUD_DISCOVERY`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
 
 `CLOUD_NATIVE_ARCHIVAL`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -149,5 +156,5 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
+- `name` (String) RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
 - `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `CLOUD_CLUSTER_ES` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.

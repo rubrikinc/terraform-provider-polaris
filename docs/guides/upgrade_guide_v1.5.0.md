@@ -131,9 +131,16 @@ The `cloud_native_protection` feature block has changed from required to optiona
 resource to be used for onboarding accounts with any combination of the supported features. The `outpost` feature block
 is still required whenever the `data_scanning`, `dspm`, or `cyber_recovery_data_scanning` feature is onboarded.
 
+### Cloud Discovery
+
 The `cloud_discovery` feature block is currently optional but will become required whenever a protection feature is
 onboarded. It can be added to existing AWS accounts and new AWS accounts can be onboarded with it. Once the
 `cloud_discovery` feature has been onboarded, it cannot be removed unless all protection features are removed first.
+
+The `CLOUD_DISCOVERY` feature is also now supported in the `polaris_aws_cnp_account` and
+`polaris_aws_cnp_account_attachments` resources, and in the `polaris_aws_cnp_artifacts` and
+`polaris_aws_cnp_permissions` data sources. As with the `polaris_aws_account` resource, once
+onboarded, it cannot be removed unless all protection features are removed first.
 
 ## Significant Changes
 
