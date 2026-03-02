@@ -63,7 +63,8 @@ a ´polaris_aws_exocompute´ resource:
     creates an RSC managed host configuration. Use the ´subnet´ block when pod
     subnets are needed. The ´cluster_security_group_id´ and
     ´node_security_group_id´ fields can be used to create an Exocompute
-    configuration where the customer manage the security groups.
+    configuration where the customer manage the security groups. The
+    ´cluster_access´ field can be used to configure private EKS cluster access.
  2. Using the ´account_id´ and ´region´ fields creates a customer managed host
     configuration. Note, the ´polaris_aws_exocompute_cluster_attachment´
     resource must be used to attach an AWS EKS cluster to the Exocompute
