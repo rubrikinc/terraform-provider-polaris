@@ -142,11 +142,11 @@ resource "polaris_aws_exocompute" "host_pods" {
 
   subnet {
     subnet_id     = "subnet-ea67b67b"
-    pod_subnet_id = "subnet-pod-1a"
+    pod_subnet_id = "subnet-0cf281be"
   }
   subnet {
     subnet_id     = "subnet-ea43ec78"
-    pod_subnet_id = "subnet-pod-1b"
+    pod_subnet_id = "subnet-0f6b8efa"
   }
 }
 
