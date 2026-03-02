@@ -139,7 +139,7 @@ func resourceAwsExocompute() *schema.Resource {
 				Optional:      true,
 				Computed:      true,
 				ForceNew:      true,
-				ConflictsWith: []string{keyHostAccountID, keyClusterSecurityGroupID, keyNodeSecurityGroupID},
+				ConflictsWith: []string{keyHostAccountID},
 				RequiredWith:  []string{keyVPCID},
 				Description: "EKS cluster access type. Possible values are " +
 					"`EKS_CLUSTER_ACCESS_TYPE_PUBLIC` and `EKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Can only be used with " +
@@ -418,7 +418,7 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 // Returns the default public access type if the config is nil.
 func awsClusterAccess(config *gqlexocompute.AWSOptionalConfig) string {
 	if config == nil {
-		return string(gqlexocompute.EKSClusterAccessPublic)
+		return ""
 	}
 	return string(config.AWSClusterAccess)
 }
