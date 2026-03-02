@@ -35,6 +35,9 @@ import (
 const dataSourceWorkloadsDescription = `
 The ´polaris_workloads´ data source is used to access information about the
 valid workload hierarchy types (snappable types) that can be used in the RSC account.
+
+This data source is useful for finding the valid snappable types for a specific
+operation in conjunction with the ´polaris_operations´ data source.
 `
 
 func dataSourceWorkloads() *schema.Resource {

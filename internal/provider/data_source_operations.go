@@ -35,6 +35,9 @@ import (
 const dataSourceOperationsDescription = `
 The ´polaris_operations´ data source is used to access information about the
 valid operations that can be performed by the RSC account.
+
+This data source is useful for finding the valid operations for a specific
+permission in conjunction with the ´polaris_workloads´ data source.
 `
 
 func dataSourceOperations() *schema.Resource {
