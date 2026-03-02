@@ -432,11 +432,14 @@ func awsCustomizeDiffCnpAccount(ctx context.Context, diff *schema.ResourceDiff, 
 		// currently not required when onboarding protection features for a new
 		// account.
 		if diff.Id() != "" {
-			features := diff.Get(keyFeature).(*schema.Set).List()
+			oldBlock, newBlock := diff.GetChange(keyFeature)
+			oldFeatures := oldBlock.(*schema.Set).List()
+			newFeatures := newBlock.(*schema.Set).List()
 
-			if !slices.ContainsFunc(features, func(feature any) bool {
+			cloudDiscovery := func(feature any) bool {
 				return feature.(map[string]any)[keyName].(string) == core.FeatureCloudDiscovery.Name
-			}) {
+			}
+			if slices.ContainsFunc(oldFeatures, cloudDiscovery) && !slices.ContainsFunc(newFeatures, cloudDiscovery) {
 				protectionFeatures := []core.Feature{
 					core.FeatureCloudNativeProtection,
 					core.FeatureCloudNativeDynamoDBProtection,
@@ -445,7 +448,7 @@ func awsCustomizeDiffCnpAccount(ctx context.Context, diff *schema.ResourceDiff, 
 					core.FeatureRDSProtection,
 				}
 				for _, feature := range protectionFeatures {
-					if slices.ContainsFunc(features, func(f any) bool {
+					if slices.ContainsFunc(newFeatures, func(f any) bool {
 						return f.(map[string]any)[keyName].(string) == feature.Name
 					}) {
 						return errors.New("CLOUD_DISCOVERY cannot be removed while protection features are enabled")
