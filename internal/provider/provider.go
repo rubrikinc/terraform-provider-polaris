@@ -128,7 +128,6 @@ func Provider() *schema.Provider {
 			keyPolarisGCPPermissions:              dataSourceGcpPermissions(),
 			keyPolarisGCPProject:                  dataSourceGcpProject(),
 			keyPolarisObject:                      dataSourceObject(),
-			keyPolarisOperations:                  dataSourceOperations(),
 			keyPolarisNCDArchivalLocation:         dataSourceNCDArchivalLocation(),
 			keyPolarisRole:                        dataSourceRole(),
 			keyPolarisRoleTemplate:                dataSourceRoleTemplate(),
@@ -137,7 +136,6 @@ func Provider() *schema.Provider {
 			keyPolarisSSOGroup:                    dataSourceSSOGroup(),
 			keyPolarisTagRule:                     dataSourceTagRule(),
 			keyPolarisUser:                        dataSourceUser(),
-			keyPolarisWorkloads:                   dataSourceWorkloads(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
