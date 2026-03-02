@@ -429,12 +429,14 @@ func awsSubnetResource() *schema.Resource {
 			keySubnetID: {
 				Type:         schema.TypeString,
 				Required:     true,
+				ForceNew:     true,
 				Description:  "AWS subnet ID.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyPodSubnetID: {
 				Type:         schema.TypeString,
 				Optional:     true,
+				ForceNew:     true,
 				Description:  "AWS subnet ID for the pods.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
