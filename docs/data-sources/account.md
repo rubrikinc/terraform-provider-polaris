@@ -18,21 +18,82 @@ The `polaris_account` data source is used to access information about the RSC ac
 ## Example Usage
 
 ```terraform
-# Output the features enabled for the RSC account.
-data "polaris_account" "account" {}
+data "polaris_account" "current" {}
 
-output "features" {
-  value = data.polaris_account.account.features
+# Account name and fully qualified domain name.
+output "name" {
+  value = data.polaris_account.current.name
 }
 
-# Using the fqdn field from the deployment data source to create an Azure
-# AD application.
-data "polaris_deployment" "deployment" {}
+output "fqdn" {
+  value = data.polaris_account.current.fqdn
+}
 
+# Features enabled for the RSC account.
+output "features" {
+  value = data.polaris_account.current.features
+}
+
+# Cloud vendor features and their permission groups.
+output "aws" {
+  value = data.polaris_account.current.aws
+}
+
+output "azure" {
+  value = data.polaris_account.current.azure
+}
+
+output "gcp" {
+  value = data.polaris_account.current.gcp
+}
+
+# Create maps of operations and workloads for easy lookup.
+locals {
+  operations = {
+    for op in data.polaris_account.current.operations : op => op
+  }
+  workloads = {
+    for w in data.polaris_account.current.workloads : w => w
+  }
+}
+
+resource "polaris_custom_role" "azure_admin" {
+  name        = "RSC Azure Admin"
+  description = "Custom role for Azure admin."
+
+  permission {
+    operation = local.operations.VIEW_INVENTORY
+    hierarchy {
+      snappable_type = local.workloads.AllSubHierarchyType
+      object_ids = [
+        "GlobalResource"
+      ]
+    }
+  }
+
+  permission {
+    operation = local.operations.RESTORE_TO_ORIGIN
+    hierarchy {
+      snappable_type = local.workloads.AwsNativeRdsInstance
+      object_ids = [
+        "AWSNATIVE_ROOT"
+      ]
+    }
+    hierarchy {
+      snappable_type = local.workloads.AllSubHierarchyType
+      object_ids = [
+        "ORACLE_ROOT"
+      ]
+    }
+  }
+}
+
+# Using the fqdn field from the account data source to create an Azure
+# AD application.
 resource "azuread_application" "app" {
   display_name = "Rubrik Security Cloud Integration"
   web {
-    homepage_url = "https://${data.polaris_account.account.fqdn}/setup_azure"
+    homepage_url = "https://${data.polaris_account.current.fqdn}/setup_azure"
   }
 }
 ```
@@ -49,6 +110,8 @@ resource "azuread_application" "app" {
 - `gcp` (List of Object) GCP cloud vendor information including supported features, and their permission groups. (see [below for nested schema](#nestedatt--gcp))
 - `id` (String) SHA-256 hash of the features, the fully qualified domain name and the name.
 - `name` (String) RSC account name.
+- `operations` (List of String) Valid operations that can be performed by the RSC account.
+- `workloads` (List of String) Valid workload hierarchy types (snappable types) that can be used in the RSC account.
 
 <a id="nestedatt--aws"></a>
 ### Nested Schema for `aws`

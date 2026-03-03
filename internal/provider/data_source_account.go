@@ -24,6 +24,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -93,6 +94,22 @@ func dataSourceAccount() *schema.Resource {
 				Computed:    true,
 				Description: "RSC account name.",
 			},
+			keyOperations: {
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Computed:    true,
+				Description: "Valid operations that can be performed by the RSC account.",
+			},
+			keyWorkloads: {
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Computed:    true,
+				Description: "Valid workload hierarchy types (snappable types) that can be used in the RSC account.",
+			},
 		},
 	}
 }
@@ -135,7 +152,9 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 
-	accountFeatures, err := core.Wrap(client.GQL).EnabledFeaturesForAccount(ctx)
+	coreClient := core.Wrap(client.GQL)
+
+	accountFeatures, err := coreClient.EnabledFeaturesForAccount(ctx)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -153,6 +172,34 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyName, accountName); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Populate the operations attribute.
+	operations, err := coreClient.ValuesByEnum(ctx, "Operation")
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	slices.Sort(operations)
+	var operationsAttr []string
+	for _, operation := range operations {
+		operationsAttr = append(operationsAttr, string(operation))
+	}
+	if err := d.Set(keyOperations, operationsAttr); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Populate the workloads attribute.
+	workloads, err := coreClient.ValuesByEnum(ctx, "WorkloadLevelHierarchy")
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	slices.Sort(workloads)
+	var workloadsAttr []string
+	for _, workload := range workloads {
+		workloadsAttr = append(workloadsAttr, string(workload))
+	}
+	if err := d.Set(keyWorkloads, workloadsAttr); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -192,6 +239,12 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 	}
 	hash.Write([]byte(accountFQDN))
 	hash.Write([]byte(accountName))
+	for _, operation := range operations {
+		hash.Write([]byte(operation))
+	}
+	for _, workload := range workloads {
+		hash.Write([]byte(workload))
+	}
 	d.SetId(fmt.Sprintf("%x", hash.Sum(nil)))
 
 	return nil
