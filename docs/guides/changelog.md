@@ -33,6 +33,10 @@ page_title: "Changelog"
   Specifying these fields before the feature flag is enabled will result in an error. Supports upgrade scenarios where the
   feature flag is enabled on existing SQL DB Protection configurations.
   [[docs](../resources/azure_subscription.md#nested-schema-for-sql_db_protection)]
+* Add `workload` and `operation` fields to the `polaris_account` data source. These fields can be used to look up
+  operations and workloads for RSC RBAC permissions in custom roles. [[docs](../data-sources/account.md)]
+* Update Documentation for `polaris_custom_role` resource to reflect that multiple `hierarchy` blocks are supported
+  within a single `permission` block. [[docs](../resources/custom_role.md)]
 
 ## v1.4.0
 
