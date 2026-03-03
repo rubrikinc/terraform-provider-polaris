@@ -37,6 +37,8 @@ page_title: "Changelog"
   operations and workloads for RSC RBAC permissions in custom roles. [[docs](../data-sources/account.md)]
 * Update Documentation for `polaris_custom_role` resource to reflect that multiple `hierarchy` blocks are supported
   within a single `permission` block. [[docs](../resources/custom_role.md)]
+* Add support for updating the following fields of the `polaris_azure_cloud_cluster` and `polaris_aws_cloud_cluster` resource: 
+  `dns_name_servers`,`dns_search_domains`, `ntp_servers`, `cluster_name`, `timezone`, and `location`.
 
 ## v1.4.0
 
