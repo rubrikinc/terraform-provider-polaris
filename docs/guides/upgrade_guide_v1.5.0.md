@@ -45,7 +45,9 @@ This will read the remote state of the resources and migrate the local Terraform
 ### Pod Subnet Support for AWS Exocompute
 
 The `polaris_aws_exocompute` resource now supports a `subnet` block that allows specifying a `pod_subnet_id` for each
-cluster subnet. This is useful when pods need to run in a different subnet than the cluster nodes.
+cluster subnet. This can be used to address the issue where pods do not receive an IP address due to exhaustion of the
+existing IP address space by other resources. Nodes will launch in the existing subnets, while pods will launch in the 
+pod subnets.
 
 The following example shows how to create an Exocompute configuration with pod subnets:
 ```terraform
@@ -56,11 +58,11 @@ resource "polaris_aws_exocompute" "host" {
 
   subnet {
     subnet_id     = "subnet-ea67b67b"
-    pod_subnet_id = "subnet-pod-1a"
+    pod_subnet_id = "subnet-0cf281be"
   }
   subnet {
     subnet_id     = "subnet-ea43ec78"
-    pod_subnet_id = "subnet-pod-1b"
+    pod_subnet_id = "subnet-0f6b8efa"
   }
 }
 ```
@@ -144,12 +146,184 @@ onboarded, it cannot be removed unless all protection features are removed first
 
 ## Significant Changes
 
-### polaris_aws_account: optional outpost fields
+### polaris_aws_account: separate outpost account resource
 
-The `outpost_account_id` and `outpost_account_profile` fields of the `outpost` feature block are now optional. It is
-now possible to manage the AWS Outpost account as a separate `polaris_aws_account` resource. When using a separate
-account, the outpost account must be onboarded first, using `depends_on` to enforce the ordering. Using the
-`outpost_account_id` and `outpost_account_profile` fields for new accounts is not recommended.
+It's now possible to manage the AWS outpost account as a separate `polaris_aws_account` resource. When using a separate
+account, the outpost account must be onboarded first, using `depends_on` to ensure it is created before and destroyed
+after the main account. In addition to this, the `outpost_account_id` and `outpost_account_profile` fields of the
+`outpost` feature block are now optional. Using the `outpost_account_id` and `outpost_account_profile` fields for new
+accounts is not recommended.
+
+It's possible to migrate an existing `polaris_aws_account` resource that uses the `outpost_account_id` field to two
+separate resources by removing the account from the local state and importing it back as two `polaris_aws_account`
+resources, one for the outpost account and one for the account with the data scanning and protection features. Note, if
+the outpost account is the same as the account with the data scanning and protection features, it should not be split
+into two resources.
+
+If the Terraform configuration looks something like this:
+```terraform
+resource "polaris_aws_account" "account" {
+  profile = "account"
+
+  cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2"
+    ]
+  }
+
+  data_scanning {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2",
+    ]
+  }
+
+  outpost {
+    outpost_account_id      = "456789012345"
+    outpost_account_profile = "outpost"
+
+    permission_groups = [
+      "BASIC",
+    ]
+  }
+}
+```
+
+Start by looking up the RSC Cloud account ID for the account. This can be found in the local state for the
+`polaris_aws_account` resource. Run `terraform state show polaris_aws_account.account` to find the RSC Cloud account
+ID. The output should look something like this:
+```shell
+resource "polaris_aws_account" "account" {
+    id   = "a695fe0f-1b6e-4e9f-974a-b6bec322a535"
+    name = "123456789012 : account"
+
+    ...
+}
+```
+The RSC Cloud account ID is the `id` field in the output.
+
+Next, look up the RSC Cloud account ID for the outpost account. This can be done using the AWS account ID and the
+RSC API Playground. The following query can be used to find the RSC Cloud account for the outpost account:
+```graphql
+{
+  allAwsCloudAccountsWithFeatures(
+    awsCloudAccountsArg: {
+      feature: OUTPOST,
+      columnSearchFilter: "456789012345",
+      statusFilters: [],
+    }
+  ) {
+    awsCloudAccount {
+      id
+      nativeId
+      accountName
+    }
+  }
+}
+```
+Replace `456789012345` with your outpost account's AWS account ID. The RSC cloud account ID is the `id` field in the
+response.
+
+After collecting the RSC cloud account IDs, update the configuration to have two `polaris_aws_account` resources, one
+for the outpost account and one for the account with the data scanning and protection features:
+```terraform
+resource "polaris_aws_account" "outpost" {
+  profile = "outpost"
+
+  outpost {
+    permission_groups = [
+      "BASIC",
+    ]
+  }
+}
+
+resource "polaris_aws_account" "account" {
+  profile = "account"
+
+  cloud_native_protection {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2"
+    ]
+  }
+
+  data_scanning {
+    permission_groups = [
+      "BASIC",
+    ]
+
+    regions = [
+      "us-east-2",
+    ]
+  }
+
+  depends_on = [
+    polaris_aws_account.outpost,
+  ]
+}
+```
+
+-> **Note:** The `depends_on` ensures the outpost account is created before and destroyed after the account with the
+   data scanning and protection features.
+
+Now the local state needs to be updated to match the new configuration. Remove the resource from the local state without
+destroying the remote object:
+```shell
+% terraform state rm polaris_aws_account.account
+```
+
+Import the outpost account using the RSC Cloud account ID looked up using the AWS account ID and RSC API Playground:
+```shell
+% terraform import polaris_aws_account.outpost <outpost-rsc-cloud-account-id>
+```
+
+Import the account with the data scanning and protection features using the RSC Cloud account ID looked up in the
+local state:
+```shell
+% terraform import polaris_aws_account.account <account-rsc-cloud-account-id>
+```
+
+Run `terraform apply` to complete the migration. The following in-place updates are expected since `profile` and
+`delete_snapshots_on_destroy` are only stored in the local state. The `outpost_account_id` defaults to the AWS account
+ID of the `polaris_aws_account` resource.
+```shell
+Terraform will perform the following actions:
+
+  # polaris_aws_account.account will be updated in-place
+  ~ resource "polaris_aws_account" "account" {
+      + delete_snapshots_on_destroy = false
+        id                          = "a695fe0f-1b6e-4e9f-974a-b6bec322a535"
+        name                        = "123456789012 : account"
+      + profile                     = "account"
+
+        # (2 unchanged blocks hidden)
+    }
+
+  # polaris_aws_account.outpost will be updated in-place
+  ~ resource "polaris_aws_account" "outpost" {
+      + delete_snapshots_on_destroy = false
+        id                          = "3d2abe21-b5f8-4ed4-a11c-f9f13bf1de51"
+        name                        = "456789012345 : outpost"
+      + profile                     = "outpost"
+
+      ~ outpost {
+          - outpost_account_id      = "456789012345" -> null
+            # (4 unchanged attributes hidden)
+        }
+    }
+
+Plan: 0 to add, 2 to change, 0 to destroy.
+```
 
 ### polaris_tag_rule: deprecated fields
 
