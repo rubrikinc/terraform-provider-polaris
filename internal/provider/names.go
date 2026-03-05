@@ -146,6 +146,7 @@ const (
 	keyEmail                                        = "email"
 	keyEnableEncryption                             = "enable_encryption"
 	keyEnableImmutability                           = "enable_immutability"
+	keyEntraGroupID                                 = "entra_group_id"
 	keyEncryptionPassword                           = "encryption_password"
 	keyEndpointSettings                             = "endpoint_settings"
 	keyExistingSnapshotRetention                    = "existing_snapshot_retention"

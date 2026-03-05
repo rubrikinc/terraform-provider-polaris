@@ -190,8 +190,9 @@ data "polaris_azure_permissions" "exocompute" {
 }
 
 resource "polaris_azure_subscription" "subscription" {
-  subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
-  tenant_domain   = "my-domain.onmicrosoft.com"
+  subscription_id   = "31be1bb0-c76c-11eb-9217-afdffe83a002"
+  tenant_domain     = "my-domain.onmicrosoft.com"
+  entra_group_id    = "a3bb1234-0000-0000-0000-000000000001"
 
   cloud_native_protection {
     permissions           = data.polaris_azure_permissions.cloud_native_protection.id
@@ -232,6 +233,7 @@ resource "polaris_azure_subscription" "subscription" {
 - `cloud_native_blob_protection` (Block List, Max: 1) Enable the RSC Cloud Native Protection feature for Azure Blob Storage. Provides protection for Azure Blob Storage through the rules and policies of SLA Domains. (see [below for nested schema](#nestedblock--cloud_native_blob_protection))
 - `cloud_native_protection` (Block List, Max: 1) Enable the RSC Cloud Native Protection feature for the Azure subscription. Provides protection for Azure virtual machines and managed disks through the rules and policies of SLA Domains. (see [below for nested schema](#nestedblock--cloud_native_protection))
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed. Default value is `false`.
+- `entra_group_id` (String) Object ID of the Entra ID group used for Entra ID authentication in Exocompute AKS clusters. This is a tenant-level setting shared across all subscriptions in the same tenant.
 - `exocompute` (Block List, Max: 1) Enable the RSC Exocompute feature for the Azure subscription. Provides snapshot indexing, file recovery, storage tiering, and application-consistent protection of Azure objects. (see [below for nested schema](#nestedblock--exocompute))
 - `servers_and_apps` (Block List, Max: 1) Enable the RSC Cloud Cluster feature for the Azure subscription. Provides ability to deploy Rubrik Cloud Data Management (CDM) clusters in Azure. (see [below for nested schema](#nestedblock--servers_and_apps))
 - `sql_db_protection` (Block List, Max: 1) Enable the RSC SQL DB Protection feature for the Azure subscription. Provides centralized database backup management and recovery in an Azure SQL Database deployment. (see [below for nested schema](#nestedblock--sql_db_protection))
