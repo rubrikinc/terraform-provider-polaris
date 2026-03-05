@@ -110,6 +110,10 @@ are used when specifying the feature set.
   * ´SAP_HANA_SS_RECOVERY´ - Represents the set of permissions required for SAP
     HANA recovery operations.
 
+´CLOUD_DISCOVERY´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´EXOCOMPUTE´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
@@ -145,27 +149,67 @@ func resourceAzureSubscription() *schema.Resource {
 		ReadContext:   azureReadSubscription,
 		UpdateContext: azureUpdateSubscription,
 		DeleteContext: azureDeleteSubscription,
-
-		// Force a diff when the user's configured entra_group_id differs from
-		// the state value. Without this, the Optional+Computed combination
-		// causes Terraform SDK v2 to suppress user-initiated changes.
-		CustomizeDiff: func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
-			if d.Id() == "" {
-				return nil
-			}
-			oldVal, newVal := d.GetChange(keyEntraGroupID)
-			if newVal.(string) != "" && oldVal.(string) != newVal.(string) {
-				return d.SetNew(keyEntraGroupID, newVal)
-			}
-			return nil
-		},
-
-		Description: description(resourceAzureSubscriptionDescription),
+		CustomizeDiff: azureCustomizeDiffSubscription,
+		Description:   description(resourceAzureSubscriptionDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "RSC cloud account ID (UUID).",
+			},
+			keyCloudDiscovery: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC",
+								}, false),
+							},
+							Optional:    true,
+							Description: "Permission groups to assign to the Cloud Discovery feature. Possible values are `BASIC`.",
+						},
+						keyPermissions: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "Permissions updated signal. When this field changes, the provider will notify " +
+								"RSC that the permissions for the feature has been updated. Use this field with the " +
+								"`polaris_azure_permissions` data source.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							MinItems: 1,
+							Required: true,
+							Description: "Azure regions to enable the Cloud Discovery feature in. Should be " +
+								"specified in the standard Azure style, e.g. `eastus`.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Cloud Discovery feature.",
+						},
+					},
+				},
+				MaxItems: 1,
+				Optional: true,
+				AtLeastOneOf: []string{
+					keyCloudNativeArchival,
+					keyCloudNativeBlobProtection,
+					keyCloudNativeProtection,
+					keyExocompute,
+					keySQLDBProtection,
+					keySQLMIProtection,
+					keyServersAndApps,
+				},
+				Description: "Enable the RSC Cloud Discovery feature for the Azure subscription. Cloud Discovery " +
+					"provides visibility into cloud resources across the subscription.",
 			},
 			keyCloudNativeArchival: {
 				Type: schema.TypeList,
@@ -245,6 +289,7 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
+					keyCloudDiscovery,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
@@ -408,6 +453,7 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
+					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeProtection,
 					keyExocompute,
@@ -498,6 +544,7 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
+					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyExocompute,
@@ -597,6 +644,7 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
+					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
@@ -685,6 +733,7 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
+					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
@@ -839,6 +888,7 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
+					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
@@ -893,6 +943,7 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
+					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
@@ -948,6 +999,46 @@ func resourceAzureSubscription() *schema.Resource {
 			Version: 1,
 		}},
 	}
+}
+
+// azureCustomizeDiffSubscription validates changes to the Azure subscription
+// resource.
+func azureCustomizeDiffSubscription(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+	tflog.Trace(ctx, "azureCustomizeDiffSubscription")
+
+	if d.Id() != "" && diff.HasChange(keyEntraGroupID) {
+		// Force a diff when the user's configured entra_group_id differs from
+		// the state value. Without this, the Optional+Computed combination
+		// causes Terraform SDK v2 to suppress user-initiated changes.
+			oldVal, newVal := d.GetChange(keyEntraGroupID)
+			if newVal.(string) != "" && oldVal.(string) != newVal.(string) {
+				return d.SetNew(keyEntraGroupID, newVal)
+			}
+			return nil
+		}
+	}
+
+
+	// Prevent removal of cloud_discovery when protection features are
+	// enabled. The Cloud Discovery feature is currently not required when
+	// onboarding protection features for a new account.
+	if diff.Id() != "" && diff.HasChange(keyCloudDiscovery) {
+		if block := diff.Get(keyCloudDiscovery).([]any); len(block) == 0 {
+			protectionKeys := []string{
+				keyCloudNativeProtection,
+				keyCloudNativeBlobProtection,
+				keySQLDBProtection,
+				keySQLMIProtection,
+			}
+			for _, key := range protectionKeys {
+				if block := diff.Get(key).([]any); len(block) > 0 {
+					return errors.New("cloud_discovery cannot be removed while protection features are enabled")
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // azureCreateSubscription run the Create operation for the Azure subscription
@@ -1319,6 +1410,13 @@ type orderedFeature struct {
 // implicit relationship between CLOUD_NATIVE_ARCHIVAL and
 // CLOUD_NATIVE_ARCHIVAL_ENCRYPTION.
 var azureKeyFeatureMap = map[string]orderedFeature{
+	keyCloudDiscovery: {
+		feature:          core.FeatureCloudDiscovery,
+		orderAdd:         99,
+		orderRemove:      308,
+		orderSplitAdd:    217,
+		orderSplitRemove: 216,
+	},
 	keyCloudNativeArchival: {
 		feature:          core.FeatureCloudNativeArchival,
 		orderAdd:         100,
@@ -1435,14 +1533,19 @@ func updateAzureFeatureState(d *schema.ResourceData, key string, feature azure.F
 	block[keyRegions] = &regions
 	block[keyStatus] = string(feature.Status)
 
+	// Only set resource group fields if the schema for this feature defines
+	// them. Features like cloud_discovery and sql_mi_protection do not have
+	// resource group fields in their schema.
 	if feature.SupportResourceGroup() {
-		tags := make(map[string]any, len(feature.ResourceGroup.Tags))
-		for key, value := range feature.ResourceGroup.Tags {
-			tags[key] = value
+		if _, ok := block[keyResourceGroupName]; ok {
+			tags := make(map[string]any, len(feature.ResourceGroup.Tags))
+			for key, value := range feature.ResourceGroup.Tags {
+				tags[key] = value
+			}
+			block[keyResourceGroupName] = feature.ResourceGroup.Name
+			block[keyResourceGroupRegion] = feature.ResourceGroup.Region
+			block[keyResourceGroupTags] = tags
 		}
-		block[keyResourceGroupName] = feature.ResourceGroup.Name
-		block[keyResourceGroupRegion] = feature.ResourceGroup.Region
-		block[keyResourceGroupTags] = tags
 	}
 
 	if err := d.Set(key, []any{block}); err != nil {
