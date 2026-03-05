@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.5.1
+* Add `entra_group_id` field to the `polaris_azure_subscription` resource. The `entra_group_id` field can be used to
+  configure the Entra ID group used for AKS cluster authentication. The field is tenant-scoped and shared across all
+  subscriptions in the same tenant. [[docs](../resources/azure_subscription.md)]
+
 ## v1.5.0
 * Add `subnet` block to the `polaris_aws_exocompute` resource. The `subnet` block allows specifying a `pod_subnet_id`
   for each cluster subnet. The existing `subnets` field continues to work for configurations that do not require pod
