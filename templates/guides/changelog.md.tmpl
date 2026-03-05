@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.6.0
+* Migrate the `polaris_custom_role` resource and the `polaris_role` and `polaris_role_template` data sources to the
+  Terraform Plugin Framework.
+
 ## v1.5.2
 * Add `network_access_type` field to the `polaris_azure_archival_location` resource and data source. The field
   controls the Azure storage account network access type. Possible values are `PRIVATE`, `PUBLIC` and

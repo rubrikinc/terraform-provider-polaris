@@ -21,13 +21,47 @@
 package main
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
+	"context"
+	"flag"
+	"log"
+
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
+	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
+	"github.com/hashicorp/terraform-plugin-mux/tf6muxserver"
 	"github.com/rubrikinc/terraform-provider-polaris/internal/provider"
 )
 
 //go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name terraform-provider-polaris
 func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: provider.Provider,
-	})
+	ctx := context.Background()
+
+	var debug bool
+	flag.BoolVar(&debug, "debug", false, "Start provider in debug mode.")
+	flag.Parse()
+
+	sdkProviderV6, err := tf5to6server.UpgradeServer(ctx, provider.Provider().GRPCProvider)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	providers := []func() tfprotov6.ProviderServer{
+		providerserver.NewProtocol6(&provider.FrameworkProvider{Version: "dev"}),
+		func() tfprotov6.ProviderServer {
+			return sdkProviderV6
+		},
+	}
+	muxServer, err := tf6muxserver.NewMuxServer(ctx, providers...)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var serveOpts []tf6server.ServeOpt
+	if debug {
+		serveOpts = append(serveOpts, tf6server.WithManagedDebug())
+	}
+	if err := tf6server.Serve(provider.Name, muxServer.ProviderServer, serveOpts...); err != nil {
+		log.Fatal(err)
+	}
 }
