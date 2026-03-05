@@ -62,6 +62,10 @@ are used when specifying the feature.
   * ´BACKUP_V2´ - Represents the set of permissions required for immutable
     backup V2 operations.
 
+´CLOUD_DISCOVERY´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´CLOUD_NATIVE_ARCHIVAL´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
@@ -172,12 +176,13 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Optional:     true,
 				ExactlyOneOf: []string{keyFeature, keyFeatures},
 				Description: "RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` " +
-					"style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`,  " +
-					"`CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, " +
-					"`CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS` and `EXOCOMPUTE`.",
+					"style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`, " +
+					"`CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, " +
+					"`CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS` and `EXOCOMPUTE`.",
 				ValidateFunc: validation.StringInSlice([]string{
-					"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_NATIVE_ARCHIVAL",
-					"CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_BLOB_PROTECTION", "CLOUD_NATIVE_PROTECTION",
+					"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_DISCOVERY",
+					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION",
+					"CLOUD_NATIVE_BLOB_PROTECTION", "CLOUD_NATIVE_PROTECTION",
 					"EXOCOMPUTE", "SERVERS_AND_APPS",
 				}, false),
 			},
@@ -186,16 +191,18 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_NATIVE_ARCHIVAL",
-						"CLOUD_NATIVE_ARCHIVAL_ENCRYPTION", "CLOUD_NATIVE_BLOB_PROTECTION", "CLOUD_NATIVE_PROTECTION",
+						"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_DISCOVERY",
+						"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION",
+						"CLOUD_NATIVE_BLOB_PROTECTION", "CLOUD_NATIVE_PROTECTION",
 						"EXOCOMPUTE", "SERVERS_AND_APPS",
 					}, false),
 				},
 				MinItems: 1,
 				Optional: true,
 				Description: "RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, " +
-					"`AZURE_SQL_MI_PROTECTION`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, " +
-					"`CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS`  and `EXOCOMPUTE`. **Deprecated:** " +
+					"`AZURE_SQL_MI_PROTECTION`, `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
+					"`CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, " +
+					"`CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS` and `EXOCOMPUTE`. **Deprecated:** " +
 					"use `feature` instead.",
 				Deprecated: "Use `feature` instead",
 			},
