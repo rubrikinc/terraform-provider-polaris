@@ -16,9 +16,9 @@ data "polaris_azure_permissions" "exocompute" {
 }
 
 resource "polaris_azure_subscription" "subscription" {
-  subscription_id   = "31be1bb0-c76c-11eb-9217-afdffe83a002"
-  tenant_domain     = "my-domain.onmicrosoft.com"
-  entra_group_id    = "a3bb1234-0000-0000-0000-000000000001"
+  subscription_id = "31be1bb0-c76c-11eb-9217-afdffe83a002"
+  tenant_domain   = "my-domain.onmicrosoft.com"
+  entra_group_id  = "a3bb1234-0000-0000-0000-000000000001"
 
   cloud_native_protection {
     permissions           = data.polaris_azure_permissions.cloud_native_protection.id

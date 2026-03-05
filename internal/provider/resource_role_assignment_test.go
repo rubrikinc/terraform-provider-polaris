@@ -23,7 +23,7 @@ package provider
 import (
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 const roleAssignmentTmpl = `
@@ -62,7 +62,7 @@ func TestAccPolarisRoleAssignment_basic(t *testing.T) {
 	}
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: protoV6ProviderFactories,
 		Steps: []resource.TestStep{{
 			Config: roleAssignment,
 			Check: resource.ComposeTestCheckFunc(

@@ -29,15 +29,15 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-var provider *schema.Provider = Provider()
+var sdkProvider *schema.Provider = Provider()
 
 var providerFactories = map[string]func() (*schema.Provider, error){
 	"polaris": func() (*schema.Provider, error) {
-		return provider, nil
+		return sdkProvider, nil
 	},
 }
 

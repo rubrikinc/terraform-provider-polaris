@@ -92,11 +92,11 @@ resource "polaris_custom_role" "auditor" {
 ### Required
 
 - `name` (String) Role name.
-- `permission` (Block Set, Min: 1) Role permission. (see [below for nested schema](#nestedblock--permission))
 
 ### Optional
 
 - `description` (String) Role description.
+- `permission` (Block Set) Role permission. (see [below for nested schema](#nestedblock--permission))
 
 ### Read-Only
 
@@ -107,8 +107,11 @@ resource "polaris_custom_role" "auditor" {
 
 Required:
 
-- `hierarchy` (Block Set, Min: 1) Snappable hierarchy. (see [below for nested schema](#nestedblock--permission--hierarchy))
 - `operation` (String) Operation to allow on object IDs under the snappable hierarchy.
+
+Optional:
+
+- `hierarchy` (Block Set) Snappable hierarchy. (see [below for nested schema](#nestedblock--permission--hierarchy))
 
 <a id="nestedblock--permission--hierarchy"></a>
 ### Nested Schema for `permission.hierarchy`
