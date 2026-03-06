@@ -102,6 +102,11 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 				Description:  "Cloud native archival location name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
+			keyNetworkAccessType: {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Azure storage account network access type. Possible values are `PRIVATE`, `PUBLIC` and `SELECTED_NETWORKS`.",
+			},
 			keyRedundancy: {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -189,6 +194,9 @@ func azureArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m in
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyName, targetMapping.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyNetworkAccessType, cloudNativeCompanion.NetworkAccessType); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyRedundancy, cloudNativeCompanion.Redundancy); err != nil {
