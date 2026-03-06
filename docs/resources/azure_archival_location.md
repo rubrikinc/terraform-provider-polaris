@@ -92,6 +92,7 @@ resource "polaris_azure_archival_location" "archival_location" {
 ### Optional
 
 - `customer_managed_key` (Block Set) Customer managed storage encryption. For `SPECIFIC_REGION`, a customer managed key block for the specific region must be specified. For `SOURCE_REGION`, a customer managed key block for each source region should be specified, source regions not having a customer managed key block will have its data encrypted with platform managed keys. (see [below for nested schema](#nestedblock--customer_managed_key))
+- `network_access_type` (String) Azure storage account network access type. Possible values are `PRIVATE`, `PUBLIC` and `SELECTED_NETWORKS`.
 - `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`. Changing this forces a new resource to be created.
 - `storage_account_region` (String) Azure region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload. Changing this forces a new resource to be created.
 - `storage_account_tags` (Map of String) Azure storage account tags. Each tag will be added to the storage account created by RSC.

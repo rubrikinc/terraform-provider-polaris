@@ -112,6 +112,14 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Description:  "Cloud native archival location name.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
+			keyNetworkAccessType: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				Description: "Azure storage account network access type. Possible values are `PRIVATE`, `PUBLIC` and " +
+					"`SELECTED_NETWORKS`.",
+				ValidateFunc: validation.StringInSlice([]string{"PRIVATE", "PUBLIC", "SELECTED_NETWORKS"}, false),
+			},
 			keyRedundancy: {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -185,6 +193,7 @@ func azureCreateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	targetMappingID, err := archival.Wrap(client).CreateAzureStorageSetting(ctx, gqlarchival.CreateAzureStorageSettingParams{
 		CloudAccountID:       cloudAccountID,
 		Name:                 d.Get(keyName).(string),
+		NetworkAccessType:    d.Get(keyNetworkAccessType).(string),
 		Redundancy:           d.Get(keyRedundancy).(string),
 		StorageTier:          d.Get(keyStorageTier).(string),
 		StorageAccountName:   d.Get(keyStorageAccountNamePrefix).(string),
@@ -245,6 +254,9 @@ func azureReadArchivalLocation(ctx context.Context, d *schema.ResourceData, m an
 	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
+	if err := d.Set(keyNetworkAccessType, cloudNativeCompanion.NetworkAccessType); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyRedundancy, cloudNativeCompanion.Redundancy); err != nil {
 		return diag.FromErr(err)
 	}
@@ -281,6 +293,7 @@ func azureUpdateArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	// support updating all fields.
 	err = archival.Wrap(client).UpdateAzureStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAzureStorageSettingParams{
 		Name:               d.Get(keyName).(string),
+		NetworkAccessType:  d.Get(keyNetworkAccessType).(string),
 		StorageTier:        d.Get(keyStorageTier).(string),
 		StorageAccountTags: toAzureStorageAccountTags(d.Get(keyStorageAccountTags).(map[string]any)),
 		CMKInfo:            toAzureCustomerManagedKeys(d.Get(keyCustomerManagedKey).(*schema.Set)),

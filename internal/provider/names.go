@@ -198,6 +198,7 @@ const (
 	keyMode                                         = "mode"
 	keyMonthlySchedule                              = "monthly_schedule"
 	keyName                                         = "name"
+	keyNetworkAccessType                            = "network_access_type"
 	keyNetworkResourceGroup                         = "network_resource_group"
 	keyNetworkSecurityGroup                         = "network_security_group"
 	keyNetworkSecurityResourceGroup                 = "network_security_resource_group"
