@@ -4,6 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.5.2
+* Add `network_access_type` field to the `polaris_azure_archival_location` resource and data source. The field
+  controls the Azure storage account network access type. Possible values are `PRIVATE`, `PUBLIC` and
+  `SELECTED_NETWORKS`. When omitted, RSC decides the default. [[docs](../resources/azure_archival_location.md)]
+  [[docs](../data-sources/azure_archival_location.md)]
+
 ## v1.5.1
 * Add `entra_group_id` field to the `polaris_azure_subscription` resource. The `entra_group_id` field can be used to
   configure the Entra ID group used for AKS cluster authentication. The field is tenant-scoped and shared across all
