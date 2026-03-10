@@ -199,15 +199,6 @@ func resourceAzureSubscription() *schema.Resource {
 				},
 				MaxItems: 1,
 				Optional: true,
-				AtLeastOneOf: []string{
-					keyCloudNativeArchival,
-					keyCloudNativeBlobProtection,
-					keyCloudNativeProtection,
-					keyExocompute,
-					keySQLDBProtection,
-					keySQLMIProtection,
-					keyServersAndApps,
-				},
 				Description: "Enable the RSC Cloud Discovery feature for the Azure subscription. Cloud Discovery " +
 					"provides visibility into cloud resources across the subscription.",
 			},
@@ -289,7 +280,6 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
-					keyCloudDiscovery,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
@@ -453,7 +443,6 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
-					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeProtection,
 					keyExocompute,
@@ -544,7 +533,6 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
-					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyExocompute,
@@ -644,7 +632,6 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
-					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
@@ -733,7 +720,6 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
-					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
@@ -888,7 +874,6 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
-					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
@@ -943,7 +928,6 @@ func resourceAzureSubscription() *schema.Resource {
 				MaxItems: 1,
 				Optional: true,
 				AtLeastOneOf: []string{
-					keyCloudDiscovery,
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
@@ -1533,19 +1517,14 @@ func updateAzureFeatureState(d *schema.ResourceData, key string, feature azure.F
 	block[keyRegions] = &regions
 	block[keyStatus] = string(feature.Status)
 
-	// Only set resource group fields if the schema for this feature defines
-	// them. Features like cloud_discovery and sql_mi_protection do not have
-	// resource group fields in their schema.
 	if feature.SupportResourceGroup() {
-		if _, ok := block[keyResourceGroupName]; ok {
-			tags := make(map[string]any, len(feature.ResourceGroup.Tags))
-			for key, value := range feature.ResourceGroup.Tags {
-				tags[key] = value
-			}
-			block[keyResourceGroupName] = feature.ResourceGroup.Name
-			block[keyResourceGroupRegion] = feature.ResourceGroup.Region
-			block[keyResourceGroupTags] = tags
+		tags := make(map[string]any, len(feature.ResourceGroup.Tags))
+		for key, value := range feature.ResourceGroup.Tags {
+			tags[key] = value
 		}
+		block[keyResourceGroupName] = feature.ResourceGroup.Name
+		block[keyResourceGroupRegion] = feature.ResourceGroup.Region
+		block[keyResourceGroupTags] = tags
 	}
 
 	if err := d.Set(key, []any{block}); err != nil {
