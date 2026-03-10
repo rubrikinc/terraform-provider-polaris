@@ -99,6 +99,7 @@ func Provider() *schema.Provider {
 			keyPolarisDataCenterAzureSubscription:        resourceDataCenterAzureSubscription(),
 			keyPolarisDataCenterArchivalLocationAmazonS3: resourceDataCenterArchivalLocationAmazonS3(),
 			keyPolarisGCPArchivalLocation:                resourceGcpArchivalLocation(),
+			keyPolarisGCPCloudCluster:                    resourceGcpCloudCluster(),
 			keyPolarisGCPCustomLabels:                    resourceGcpCustomLabels(),
 			keyPolarisGCPExocompute:                      resourceGcpExocompute(),
 			keyPolarisGCPProject:                         resourceGcpProject(),
