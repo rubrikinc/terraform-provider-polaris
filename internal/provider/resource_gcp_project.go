@@ -72,6 +72,10 @@ are used when specifying the feature.
     for automated networking setup. When automated networking setup is enabled,
     RSC is responsible for creating and maintaining the networking resources for
     Exocompute. See the ´polaris_gcp_exocompute´ resource for more information.
+
+´SERVERS_AND_APPS´
+  * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to
+    onboard the feature.
 `
 
 func resourceGcpProject() *schema.Resource {
@@ -414,9 +418,10 @@ func gcpFeatureResourceWithPermissionsAndStatus() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST` and `EXOCOMPUTE`.",
+					"`CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "GCP_SHARED_VPC_HOST", "EXOCOMPUTE",
+					"SERVERS_AND_APPS",
 				}, false),
 			},
 			keyPermissionGroups: {
@@ -425,12 +430,12 @@ func gcpFeatureResourceWithPermissionsAndStatus() *schema.Resource {
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
 						"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY",
-						"AUTOMATED_NETWORKING_SETUP",
+						"AUTOMATED_NETWORKING_SETUP", "CLOUD_CLUSTER_ES",
 					}, false),
 				},
 				Required: true,
 				Description: "Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, " +
-					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and `AUTOMATED_NETWORKING_SETUP`.",
+					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `AUTOMATED_NETWORKING_SETUP` and `CLOUD_CLUSTER_ES`.",
 			},
 			keyPermissions: {
 				Type:     schema.TypeString,
