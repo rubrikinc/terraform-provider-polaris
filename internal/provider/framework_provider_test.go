@@ -17,6 +17,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
+//
+//lint:ignore U1000 Files unused during Framework migration
 
 package provider
 
@@ -25,9 +27,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
-	"testing"
-	"text/template"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -70,29 +69,10 @@ var protoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, erro
 	},
 }
 
-// terraformConfig returns a Terraform configuration given a test configuration
-// and a Terraform template. Fails fatally if the template cannot be parsed or
-// executed.
-func terraformConfig(t *testing.T, config any, terraformTemplate string) string {
-	tmpl, err := template.New("config").Parse(terraformTemplate)
-	if err != nil {
-		t.Fatalf("failed to parse terraform template: %s", err)
-	}
-
-	out := &strings.Builder{}
-	if err := tmpl.Execute(out, config); err != nil {
-		t.Fatalf("failed to execute terraform template: %s", err)
-	}
-
-	return out.String()
-}
-
 // testClient returns a Polaris client for testing outside the Terraform
 // provider. E.g. checking if resources has been destroyed in a check destroy
 // function.
-func testClient() (*polaris.Client, error) {
-	ctx := context.Background()
-
+func testClient(ctx context.Context) (*polaris.Client, error) {
 	// Looks for RSC credentials in standard environment variables. CacheParams
 	// have sane default values.
 	client, err := newClient(ctx, "", polaris.CacheParams{})
@@ -101,63 +81,6 @@ func testClient() (*polaris.Client, error) {
 	}
 
 	return client.polaris()
-}
-
-// testConfig2 holds the configuration for a test, i.e. the actual values to
-// give to a Terraform template.
-type testFullConfig struct {
-	RSC   testRSCConfig
-	AWS   testAWSAccount
-	Azure testAzureSubscription
-	GCP   testGCPProject
-}
-
-// testConf returns the full test configuration loaded by loadTestConf. Fails
-// fatally if it can't be loaded.
-func testConf(t *testing.T) testFullConfig {
-	conf, err := loadTestConf()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return conf
-}
-
-// loadTestConf loads the full test configuration using the filenames pointed
-// to by the individual test configuration environment variables.
-func loadTestConf() (testFullConfig, error) {
-	rsc, err := loadRSCTestConf()
-	if err != nil {
-		return testFullConfig{}, err
-	}
-
-	aws, err := loadAWSTestConf()
-	if err != nil {
-		return testFullConfig{}, err
-	}
-
-	azure, err := loadAzureTestConf()
-	if err != nil {
-		return testFullConfig{}, err
-	}
-
-	gcp, err := loadGCPTestConf()
-	if err != nil {
-		return testFullConfig{}, err
-	}
-
-	return testFullConfig{RSC: rsc, AWS: aws, Azure: azure, GCP: gcp}, nil
-}
-
-// rscTestConf returns the test configuration loaded by loadRSCTestConf. Fails
-// fatally if it can't be loaded.
-func rscTestConf(t *testing.T) testRSCConfig {
-	rsc, err := loadRSCTestConf()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return rsc
 }
 
 // loadRSCTestConf loads the RSC test configuration using the filename pointed
@@ -174,17 +97,6 @@ func loadRSCTestConf() (testRSCConfig, error) {
 	}
 
 	return rsc, nil
-}
-
-// awsTestConf returns the test configuration loaded by loadAWSTestConf. Fails
-// fatally if it can't be loaded.
-func awsTestConf(t *testing.T) testAWSAccount {
-	account, err := loadAWSTestConf()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return account
 }
 
 // loadAWSTestConf loads the AWS test configuration using the filename pointed
@@ -206,17 +118,6 @@ func loadAWSTestConf() (testAWSAccount, error) {
 	return account, nil
 }
 
-// azureTestConf returns the test configuration loaded by loadAzureTestConf.
-// Fails fatally if it can't be loaded.
-func azureTestConf(t *testing.T) testAzureSubscription {
-	subscription, err := loadAzureTestConf()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return subscription
-}
-
 // loadAzureTestConf loads the Azure test configuration using the filename
 // pointed to by the AzureSubscriptionFileEnv environment variables.
 func loadAzureTestConf() (testAzureSubscription, error) {
@@ -234,17 +135,6 @@ func loadAzureTestConf() (testAzureSubscription, error) {
 	}
 
 	return subscription, nil
-}
-
-// gcpTestConf returns the test configuration loaded by loadGCPTestConf. Fails
-// fatally if it can't be loaded.
-func gcpTestConf(t *testing.T) testGCPProject {
-	project, err := loadGCPTestConf()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return project
 }
 
 // loadGCPTestConf loads the GCP test configuration using the filename pointed

@@ -329,6 +329,7 @@ const (
 	keyRetrievalTier                                = "retrieval_tier"
 	keyRingName                                     = "ring_name"
 	keyRole                                         = "role"
+	keyRoleAssignment                               = "role_assignment"
 	keyRoleID                                       = "role_id"
 	keyRoleIDs                                      = "role_ids"
 	keyRoleKey                                      = "role_key"
