@@ -91,7 +91,10 @@ func (d *roleTemplateDataSource) Schema(ctx context.Context, _ datasource.Schema
 			},
 			keyRoleTemplateID: schema.StringAttribute{
 				Optional:    true,
-				Description: "Role template ID.",
+				Description: "Role template ID (UUID).",
+				Validators: []validator.String{
+					isUUID(),
+				},
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -146,7 +149,7 @@ func (d *roleTemplateDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	client, err := d.client.polaris()
+	polarisClient, err := d.client.polaris()
 	if err != nil {
 		res.Diagnostics.AddError("Client error", err.Error())
 		return
@@ -159,13 +162,13 @@ func (d *roleTemplateDataSource) Read(ctx context.Context, req datasource.ReadRe
 			res.Diagnostics.AddError("Invalid role template ID", err.Error())
 			return
 		}
-		roleTemplate, err = access.Wrap(client).RoleTemplateByID(ctx, roleTemplateID)
+		roleTemplate, err = access.Wrap(polarisClient).RoleTemplateByID(ctx, roleTemplateID)
 		if err != nil {
 			res.Diagnostics.AddError("Failed to read role template", err.Error())
 			return
 		}
 	} else {
-		roleTemplate, err = access.Wrap(client).RoleTemplateByName(ctx, config.Name.ValueString())
+		roleTemplate, err = access.Wrap(polarisClient).RoleTemplateByName(ctx, config.Name.ValueString())
 		if err != nil {
 			res.Diagnostics.AddError("Failed to read role template", err.Error())
 			return

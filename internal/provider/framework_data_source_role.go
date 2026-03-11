@@ -96,7 +96,10 @@ func (d *roleDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest,
 			},
 			keyRoleID: schema.StringAttribute{
 				Optional:    true,
-				Description: "Role ID.",
+				Description: "Role ID (UUID).",
+				Validators: []validator.String{
+					isUUID(),
+				},
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -151,7 +154,7 @@ func (d *roleDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		return
 	}
 
-	client, err := d.client.polaris()
+	polarisClient, err := d.client.polaris()
 	if err != nil {
 		res.Diagnostics.AddError("Client error", err.Error())
 		return
@@ -164,13 +167,13 @@ func (d *roleDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 			res.Diagnostics.AddError("Invalid role ID", err.Error())
 			return
 		}
-		role, err = access.Wrap(client).RoleByID(ctx, roleID)
+		role, err = access.Wrap(polarisClient).RoleByID(ctx, roleID)
 		if err != nil {
 			res.Diagnostics.AddError("Failed to read role", err.Error())
 			return
 		}
 	} else {
-		role, err = access.Wrap(client).RoleByName(ctx, config.Name.ValueString())
+		role, err = access.Wrap(polarisClient).RoleByName(ctx, config.Name.ValueString())
 		if err != nil {
 			res.Diagnostics.AddError("Failed to read role", err.Error())
 			return

@@ -1,4 +1,4 @@
-// Copyright 2025 Rubrik, Inc.
+// Copyright 2026 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -28,19 +28,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 )
 
 const Name = "registry.terraform.io/rubrikinc/polaris"
 
-// FrameworkProvider implements the Terraform Plugin Framework provider
-// interface. It mirrors the SDK provider's configuration and shares the same
-// client type.
 type FrameworkProvider struct {
 	Version string
 }
 
-// frameworkProviderModel maps the provider schema to a Go struct.
 type frameworkProviderModel struct {
 	Credentials      types.String `tfsdk:"credentials"`
 	TokenCache       types.Bool   `tfsdk:"token_cache"`
@@ -48,12 +45,16 @@ type frameworkProviderModel struct {
 	TokenCacheSecret types.String `tfsdk:"token_cache_secret"`
 }
 
-func (p *FrameworkProvider) Metadata(_ context.Context, _ provider.MetadataRequest, res *provider.MetadataResponse) {
+func (p *FrameworkProvider) Metadata(ctx context.Context, _ provider.MetadataRequest, res *provider.MetadataResponse) {
+	tflog.Trace(ctx, "FrameworkProvider.Metadata")
+
 	res.TypeName = keyPolaris
 	res.Version = p.Version
 }
 
-func (p *FrameworkProvider) Schema(_ context.Context, _ provider.SchemaRequest, res *provider.SchemaResponse) {
+func (p *FrameworkProvider) Schema(ctx context.Context, _ provider.SchemaRequest, res *provider.SchemaResponse) {
+	tflog.Trace(ctx, "FrameworkProvider.Schema")
+
 	res.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			keyCredentials: schema.StringAttribute{
@@ -81,6 +82,8 @@ func (p *FrameworkProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 }
 
 func (p *FrameworkProvider) Configure(ctx context.Context, req provider.ConfigureRequest, res *provider.ConfigureResponse) {
+	tflog.Trace(ctx, "FrameworkProvider.Configure")
+
 	var config frameworkProviderModel
 	res.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if res.Diagnostics.HasError() {
@@ -112,13 +115,18 @@ func (p *FrameworkProvider) Configure(ctx context.Context, req provider.Configur
 	res.DataSourceData = c
 }
 
-func (p *FrameworkProvider) Resources(_ context.Context) []func() resource.Resource {
+func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Resource {
+	tflog.Trace(ctx, "FrameworkProvider.Resources")
+
 	return []func() resource.Resource{
 		NewCustomRoleResource,
+		NewRoleAssignmentResource,
 	}
 }
 
-func (p *FrameworkProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	tflog.Trace(ctx, "FrameworkProvider.DataSources")
+
 	return []func() datasource.DataSource{
 		NewRoleDataSource,
 		NewRoleTemplateDataSource,

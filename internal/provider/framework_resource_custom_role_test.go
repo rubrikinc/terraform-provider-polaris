@@ -32,13 +32,13 @@ import (
 func TestAccPolarisCustomRole(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
-		CheckDestroy:             customRoleCheckDestroy,
+		CheckDestroy:             customRoleCheckDestroy(t.Context()),
 		Steps: []resource.TestStep{{
 			// Verify that the resource can be created.
 			Config: `
 				resource "polaris_custom_role" "role" {
-					name        = "Terraform Test Role"
-					description = "Terraform Integration Test Role"
+					name        = "Test Auditor"
+					description = "Test Role: Delete Me!"
 
 					permission {
 						operation = "EXPORT_DATA_CLASS_GLOBAL"
@@ -53,9 +53,9 @@ func TestAccPolarisCustomRole(t *testing.T) {
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyID),
 					NonNullUUID()),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyName),
-					knownvalue.StringExact("Terraform Test Role")),
+					knownvalue.StringExact("Test Auditor")),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyDescription),
-					knownvalue.StringExact("Terraform Integration Test Role")),
+					knownvalue.StringExact("Test Role: Delete Me!")),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyPermission),
 					knownvalue.SetExact([]knownvalue.Check{
 						knownvalue.ObjectExact(map[string]knownvalue.Check{
@@ -72,8 +72,8 @@ func TestAccPolarisCustomRole(t *testing.T) {
 			// Verify that the resource can be updated.
 			Config: `
 				resource "polaris_custom_role" "role" {
-					name        = "Terraform Test Role Update"
-					description = "Terraform Integration Test Role Update"
+					name        = "Test Auditor Update"
+					description = "Test Role: Delete Me! Update"
 
 					permission {
 						operation = "EXPORT_DATA_CLASS_GLOBAL"
@@ -95,9 +95,9 @@ func TestAccPolarisCustomRole(t *testing.T) {
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyID),
 					NonNullUUID()),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyName),
-					knownvalue.StringExact("Terraform Test Role Update")),
+					knownvalue.StringExact("Test Auditor Update")),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyDescription),
-					knownvalue.StringExact("Terraform Integration Test Role Update")),
+					knownvalue.StringExact("Test Role: Delete Me! Update")),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyPermission),
 					knownvalue.SetExact([]knownvalue.Check{
 						knownvalue.ObjectExact(map[string]knownvalue.Check{
@@ -131,7 +131,7 @@ func TestAccPolarisCustomRole(t *testing.T) {
 func TestAccPolarisCustomRole_FromTemplate(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
-		CheckDestroy:             customRoleCheckDestroy,
+		CheckDestroy:             customRoleCheckDestroy(t.Context()),
 		Steps: []resource.TestStep{{
 			// Verify that the resource can be created from a role template.
 			Config: `
@@ -140,8 +140,8 @@ func TestAccPolarisCustomRole_FromTemplate(t *testing.T) {
 				}
 				
 				resource "polaris_custom_role" "role" {
-					name        = "Terraform Test Role"
-					description = "Based on the ${data.polaris_role_template.auditor.name} template"
+					name        = "Test Auditor"
+					description = "Based on the ${data.polaris_role_template.auditor.name} template: Delete Me!"
 					
 					dynamic "permission" {
 						for_each = data.polaris_role_template.auditor.permission
@@ -163,9 +163,9 @@ func TestAccPolarisCustomRole_FromTemplate(t *testing.T) {
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyID),
 					NonNullUUID()),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyName),
-					knownvalue.StringExact("Terraform Test Role")),
+					knownvalue.StringExact("Test Auditor")),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyDescription),
-					knownvalue.StringExact("Based on the Compliance Auditor template")),
+					knownvalue.StringExact("Based on the Compliance Auditor template: Delete Me!")),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyPermission),
 					knownvalue.SetExact([]knownvalue.Check{
 						knownvalue.ObjectExact(map[string]knownvalue.Check{
@@ -199,8 +199,8 @@ func TestAccPolarisCustomRole_FromTemplate(t *testing.T) {
 func TestAccPolarisCustomRole_FrameworkMigration(t *testing.T) {
 	config := `
 		resource "polaris_custom_role" "role" {
-			name        = "Terraform Migration Role"
-			description = "Terraform Integration Migration Role"
+			name        = "Test Auditor"
+			description = "Test Role: Delete Me!"
 
 			permission {
 				operation = "EXPORT_DATA_CLASS_GLOBAL"
@@ -220,7 +220,7 @@ func TestAccPolarisCustomRole_FrameworkMigration(t *testing.T) {
 	`
 
 	resource.Test(t, resource.TestCase{
-		CheckDestroy: customRoleCheckDestroy,
+		CheckDestroy: customRoleCheckDestroy(t.Context()),
 		Steps: []resource.TestStep{{
 			ExternalProviders: map[string]resource.ExternalProvider{
 				"polaris": {
@@ -233,9 +233,9 @@ func TestAccPolarisCustomRole_FrameworkMigration(t *testing.T) {
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyID),
 					NonNullUUID()),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyName),
-					knownvalue.StringExact("Terraform Migration Role")),
+					knownvalue.StringExact("Test Auditor")),
 				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyDescription),
-					knownvalue.StringExact("Terraform Integration Migration Role")),
+					knownvalue.StringExact("Test Role: Delete Me!")),
 			},
 		}, {
 			ProtoV6ProviderFactories: protoV6ProviderFactories,

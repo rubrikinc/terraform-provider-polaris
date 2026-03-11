@@ -33,7 +33,7 @@ import (
 func TestAccPolarisRole(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
-		CheckDestroy:             customRoleCheckDestroy,
+		CheckDestroy:             customRoleCheckDestroy(t.Context()),
 		Steps: []resource.TestStep{{
 			// Verify that the data source can look up the role by ID and name.
 			Config: `
@@ -131,7 +131,7 @@ func TestAccPolarisRole_FrameworkMigration(t *testing.T) {
 			},
 		},
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
-		CheckDestroy:             customRoleCheckDestroy,
+		CheckDestroy:             customRoleCheckDestroy(t.Context()),
 		Steps: []resource.TestStep{{
 			// Verify that the two data sources are equal.
 			Config: `

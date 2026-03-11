@@ -136,7 +136,7 @@ func (r *customRoleResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	client, err := r.client.polaris()
+	polarisClient, err := r.client.polaris()
 	if err != nil {
 		res.Diagnostics.AddError("Client error", err.Error())
 		return
@@ -148,7 +148,7 @@ func (r *customRoleResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	id, err := access.Wrap(client).CreateRole(ctx, plan.Name.ValueString(), plan.Description.ValueString(), permissions)
+	id, err := access.Wrap(polarisClient).CreateRole(ctx, plan.Name.ValueString(), plan.Description.ValueString(), permissions)
 	if err != nil {
 		res.Diagnostics.AddError("Failed to create custom role", err.Error())
 		return
@@ -167,7 +167,7 @@ func (r *customRoleResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	client, err := r.client.polaris()
+	polarisClient, err := r.client.polaris()
 	if err != nil {
 		res.Diagnostics.AddError("Client error", err.Error())
 		return
@@ -179,7 +179,7 @@ func (r *customRoleResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	role, err := access.Wrap(client).RoleByID(ctx, id)
+	role, err := access.Wrap(polarisClient).RoleByID(ctx, id)
 	if errors.Is(err, graphql.ErrNotFound) {
 		res.State.RemoveResource(ctx)
 		return
@@ -217,7 +217,7 @@ func (r *customRoleResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	client, err := r.client.polaris()
+	polarisClient, err := r.client.polaris()
 	if err != nil {
 		res.Diagnostics.AddError("Client error", err.Error())
 		return
@@ -235,7 +235,7 @@ func (r *customRoleResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	if err = access.Wrap(client).UpdateRole(ctx, id, plan.Name.ValueString(), plan.Description.ValueString(), permissions); err != nil {
+	if err = access.Wrap(polarisClient).UpdateRole(ctx, id, plan.Name.ValueString(), plan.Description.ValueString(), permissions); err != nil {
 		res.Diagnostics.AddError("Failed to update custom role", err.Error())
 		return
 	}
@@ -253,7 +253,7 @@ func (r *customRoleResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	client, err := r.client.polaris()
+	polarisClient, err := r.client.polaris()
 	if err != nil {
 		res.Diagnostics.AddError("Client error", err.Error())
 		return
@@ -265,12 +265,14 @@ func (r *customRoleResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	if err := access.Wrap(client).DeleteRole(ctx, id); err != nil {
+	if err := access.Wrap(polarisClient).DeleteRole(ctx, id); err != nil {
 		res.Diagnostics.AddError("Failed to delete custom role", err.Error())
 		return
 	}
 }
 
 func (r *customRoleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, res *resource.ImportStateResponse) {
+	tflog.Trace(ctx, "customRoleResource.ImportState")
+
 	resource.ImportStatePassthroughID(ctx, path.Root(keyID), req, res)
 }
