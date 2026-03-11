@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.6.0
+* Add `polaris_snapshot` data source. The data source is used to look up snapshots for RSC workloads using a timestamp
+  filter. [[docs](../data-sources/snapshot.md)]
+
 ## v1.5.2
 * Add `network_access_type` field to the `polaris_azure_archival_location` resource and data source. The field
   controls the Azure storage account network access type. Possible values are `PRIVATE`, `PUBLIC` and
