@@ -100,6 +100,7 @@ func loadRSCTestConf() (testRSCConfig, error) {
 
 // loadAWSTestConf loads the AWS test configuration using the filename pointed
 // to by the TEST_AWSACCOUNT_FILE environment variables.
+//
 //lint:ignore U1000 Will be used by AWS Framework acceptance tests.
 func loadAWSTestConf() (testAWSAccount, error) {
 	buf, err := os.ReadFile(os.Getenv(awsAccountFileEnv))
@@ -120,6 +121,7 @@ func loadAWSTestConf() (testAWSAccount, error) {
 
 // loadAzureTestConf loads the Azure test configuration using the filename
 // pointed to by the AzureSubscriptionFileEnv environment variables.
+//
 //lint:ignore U1000 Will be used by Azure Framework acceptance tests.
 func loadAzureTestConf() (testAzureSubscription, error) {
 	buf, err := os.ReadFile(os.Getenv(azureSubscriptionFileEnv))
@@ -140,6 +142,7 @@ func loadAzureTestConf() (testAzureSubscription, error) {
 
 // loadGCPTestConf loads the GCP test configuration using the filename pointed
 // to by the GCPProjectFileEnv environment variables.
+//
 //lint:ignore U1000 Will be used by GCP Framework acceptance tests.
 func loadGCPTestConf() (testGCPProject, error) {
 	buf, err := os.ReadFile(os.Getenv(gcpProjectFileEnv))
