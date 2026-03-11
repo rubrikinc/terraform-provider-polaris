@@ -18,7 +18,6 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-//lint:ignore U1000 Files unused during Framework migration
 
 package provider
 
@@ -101,6 +100,7 @@ func loadRSCTestConf() (testRSCConfig, error) {
 
 // loadAWSTestConf loads the AWS test configuration using the filename pointed
 // to by the TEST_AWSACCOUNT_FILE environment variables.
+//lint:ignore U1000 Will be used by AWS Framework acceptance tests.
 func loadAWSTestConf() (testAWSAccount, error) {
 	buf, err := os.ReadFile(os.Getenv(awsAccountFileEnv))
 	if err != nil {
@@ -120,6 +120,7 @@ func loadAWSTestConf() (testAWSAccount, error) {
 
 // loadAzureTestConf loads the Azure test configuration using the filename
 // pointed to by the AzureSubscriptionFileEnv environment variables.
+//lint:ignore U1000 Will be used by Azure Framework acceptance tests.
 func loadAzureTestConf() (testAzureSubscription, error) {
 	buf, err := os.ReadFile(os.Getenv(azureSubscriptionFileEnv))
 	if err != nil {
@@ -139,6 +140,7 @@ func loadAzureTestConf() (testAzureSubscription, error) {
 
 // loadGCPTestConf loads the GCP test configuration using the filename pointed
 // to by the GCPProjectFileEnv environment variables.
+//lint:ignore U1000 Will be used by GCP Framework acceptance tests.
 func loadGCPTestConf() (testGCPProject, error) {
 	buf, err := os.ReadFile(os.Getenv(gcpProjectFileEnv))
 	if err != nil {
