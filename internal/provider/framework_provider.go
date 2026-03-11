@@ -119,8 +119,8 @@ func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Res
 	tflog.Trace(ctx, "FrameworkProvider.Resources")
 
 	return []func() resource.Resource{
-		NewCustomRoleResource,
-		NewRoleAssignmentResource,
+		newCustomRoleResource,
+		newRoleAssignmentResource,
 	}
 }
 
@@ -128,7 +128,9 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 	tflog.Trace(ctx, "FrameworkProvider.DataSources")
 
 	return []func() datasource.DataSource{
-		NewRoleDataSource,
-		NewRoleTemplateDataSource,
+		newRoleDataSource,
+		newRoleTemplateDataSource,
+		newSSOGroupDataSource,
+		newUserDataSource,
 	}
 }

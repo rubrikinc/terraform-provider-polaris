@@ -30,7 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 )
 
-func TestAccPolarisRoleTemplate(t *testing.T) {
+func TestAccRoleTemplateDataSource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
 		Steps: []resource.TestStep{{
@@ -103,9 +103,9 @@ func TestAccPolarisRoleTemplate(t *testing.T) {
 	})
 }
 
-// TestAccPolarisRoleTemplate_FrameworkMigration verifies that the migrated role
-// template data source is backwards compatible with the SDKv2 provider.
-func TestAccPolarisRoleTemplate_FrameworkMigration(t *testing.T) {
+// TestAccRoleTemplateDataSource_FrameworkMigration verifies that the migrated
+// role template data source is backwards compatible with the SDKv2 provider.
+func TestAccRoleTemplateDataSource_FrameworkMigration(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ExternalProviders: map[string]resource.ExternalProvider{
 			"polaris-sdkv2": {

@@ -29,7 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 )
 
-func TestAccPolarisCustomRole(t *testing.T) {
+func TestAccCustomRoleResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
 		CheckDestroy:             customRoleCheckDestroy(t.Context()),
@@ -128,7 +128,7 @@ func TestAccPolarisCustomRole(t *testing.T) {
 	})
 }
 
-func TestAccPolarisCustomRole_FromTemplate(t *testing.T) {
+func TestAccCustomRoleResource_FromTemplate(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
 		CheckDestroy:             customRoleCheckDestroy(t.Context()),
@@ -196,7 +196,7 @@ func TestAccPolarisCustomRole_FromTemplate(t *testing.T) {
 // provider without drift. Step 1 creates the resource using the published
 // SDKv2 provider; step 2 refreshes state using the local Framework provider
 // and asserts the plan is empty.
-func TestAccPolarisCustomRole_FrameworkMigration(t *testing.T) {
+func TestAccCustomRoleResource_FrameworkMigration(t *testing.T) {
 	config := `
 		resource "polaris_custom_role" "role" {
 			name        = "Test Auditor"

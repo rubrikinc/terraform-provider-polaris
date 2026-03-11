@@ -22,11 +22,13 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
@@ -42,19 +44,50 @@ func testUserEmail(t *testing.T) string {
 	return rsc.NewUserEmail
 }
 
+// testSSOGroupName returns the SSO group name from the RSC test configuration.
+func testSSOGroupName(t *testing.T) string {
+	t.Helper()
+
+	rsc, err := loadRSCTestConf()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return rsc.SSOGroupName
+}
+
+// checkTestSSOGroup checks if the SSO group with the specified name exists. If
+// it does not, the test is skipped.
+func checkTestSSOGroup(t *testing.T, name string) {
+	t.Helper()
+
+	polarisClient, err := testClient(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = access.Wrap(polarisClient).SSOGroupByName(t.Context(), name)
+	if errors.Is(err, graphql.ErrNotFound) {
+		t.Skip("SSO group not available")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // createTestRole creates a custom role via the SDK and registers a cleanup
 // function to delete it. The role will have the VIEW_CLUSTER permission on the
 // CLUSTER_ROOT. Returns the role ID.
 func createTestRole(t *testing.T, name string) uuid.UUID {
 	t.Helper()
 
-	client, err := testClient(t.Context())
+	polarisClient, err := testClient(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	desc := "Test Role: Delete Me!"
-	roleID, err := access.Wrap(client).CreateRole(t.Context(), name, desc, []gqlaccess.Permission{{
+	roleID, err := access.Wrap(polarisClient).CreateRole(t.Context(), name, desc, []gqlaccess.Permission{{
 		Operation: "VIEW_CLUSTER",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
@@ -66,7 +99,7 @@ func createTestRole(t *testing.T, name string) uuid.UUID {
 	}
 
 	t.Cleanup(func() {
-		if err := access.Wrap(client).DeleteRole(context.Background(), roleID); err != nil {
+		if err := access.Wrap(polarisClient).DeleteRole(context.Background(), roleID); err != nil {
 			t.Logf("failed to delete test role %q: %s", roleID, err)
 		}
 	})
@@ -93,18 +126,18 @@ func createTestRoleWithUniqueName(t *testing.T) uuid.UUID {
 func createTestUser(t *testing.T, email string, roleID uuid.UUID) string {
 	t.Helper()
 
-	client, err := testClient(t.Context())
+	polarisClient, err := testClient(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	userID, err := access.Wrap(client).CreateUser(t.Context(), email, []uuid.UUID{roleID})
+	userID, err := access.Wrap(polarisClient).CreateUser(t.Context(), email, []uuid.UUID{roleID})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Cleanup(func() {
-		if err := access.Wrap(client).DeleteUser(context.Background(), userID); err != nil {
+		if err := access.Wrap(polarisClient).DeleteUser(context.Background(), userID); err != nil {
 			t.Logf("failed to delete test user %q: %s", userID, err)
 		}
 	})

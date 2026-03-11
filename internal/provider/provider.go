@@ -130,9 +130,7 @@ func Provider() *schema.Provider {
 			keyPolarisSnapshot:                    dataSourceSnapshot(),
 			keyPolarisSLADomain:                   dataSourceSLADomain(),
 			keyPolarisSLASourceCluster:            dataSourceSLASourceCluster(),
-			keyPolarisSSOGroup:                    dataSourceSSOGroup(),
 			keyPolarisTagRule:                     dataSourceTagRule(),
-			keyPolarisUser:                        dataSourceUser(),
 		},
 
 		ConfigureContextFunc: providerConfigure,

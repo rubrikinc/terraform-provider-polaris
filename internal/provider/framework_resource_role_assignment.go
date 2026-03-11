@@ -74,7 +74,7 @@ type roleAssignmentModel struct {
 	UserID     types.String `tfsdk:"user_id"`
 }
 
-func NewRoleAssignmentResource() resource.Resource {
+func newRoleAssignmentResource() resource.Resource {
 	return &roleAssignmentResource{}
 }
 

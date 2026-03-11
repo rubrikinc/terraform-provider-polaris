@@ -31,7 +31,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 )
 
-func TestAccPolarisRoleAssignment(t *testing.T) {
+func TestAccRoleAssignmentResource(t *testing.T) {
 	createTestUser(t, testUserEmail(t), createTestRoleWithUniqueName(t))
 
 	resource.Test(t, resource.TestCase{
@@ -184,10 +184,10 @@ func TestAccPolarisRoleAssignment(t *testing.T) {
 	})
 }
 
-// TestAccPolarisRoleAssignment_FrameworkMigration verifies that existing state
+// TestAccRoleAssignmentResource_FrameworkMigration verifies that existing state
 // created by the SDKv2 provider (v1.5.0) can be read by the Framework
 // provider without drift.
-func TestAccPolarisRoleAssignment_FrameworkMigration(t *testing.T) {
+func TestAccRoleAssignmentResource_FrameworkMigration(t *testing.T) {
 	createTestUser(t, testUserEmail(t), createTestRoleWithUniqueName(t))
 
 	// Test 1: Modern fields (user_id + role_ids).

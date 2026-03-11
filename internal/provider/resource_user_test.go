@@ -91,7 +91,7 @@ func TestAccPolarisUser_basic(t *testing.T) {
 	}
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: protoV6ProviderFactories,
 		Steps: []resource.TestStep{{
 			Config: adminUser,
 			Check: resource.ComposeTestCheckFunc(

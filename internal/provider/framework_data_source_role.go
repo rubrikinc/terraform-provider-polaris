@@ -42,13 +42,10 @@ A role is looked up using either the ID or the name.
 
 var _ datasource.DataSource = &roleDataSource{}
 
-// roleDataSource implements the polaris_role data source using the Terraform
-// Plugin Framework.
 type roleDataSource struct {
 	client *client
 }
 
-// roleModel maps the data source schema to a Go struct.
 type roleModel struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
@@ -58,8 +55,7 @@ type roleModel struct {
 	RoleID      types.String `tfsdk:"role_id"`
 }
 
-// NewRoleDataSource returns a new role data source instance.
-func NewRoleDataSource() datasource.DataSource {
+func newRoleDataSource() datasource.DataSource {
 	return &roleDataSource{}
 }
 

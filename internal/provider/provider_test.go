@@ -303,6 +303,7 @@ func loadGCPTestConfig() (testConfig, testGCPProject, error) {
 type testRSCConfig struct {
 	ExistingUserEmail string `json:"existingUserEmail"`
 	NewUserEmail      string `json:"newUserEmail"`
+	SSOGroupName      string `json:"ssoGroupName"`
 }
 
 // loadRSCTestConfig loads an RSC test configuration using the default

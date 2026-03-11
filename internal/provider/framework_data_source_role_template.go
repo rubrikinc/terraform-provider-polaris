@@ -42,13 +42,10 @@ RSC role template. A role template is looked up using either the ID or the name.
 
 var _ datasource.DataSource = &roleTemplateDataSource{}
 
-// roleTemplateDataSource implements the polaris_role_template data source using
-// the Terraform Plugin Framework.
 type roleTemplateDataSource struct {
 	client *client
 }
 
-// roleTemplateModel maps the data source schema to a Go struct.
 type roleTemplateModel struct {
 	ID             types.String `tfsdk:"id"`
 	Name           types.String `tfsdk:"name"`
@@ -57,8 +54,7 @@ type roleTemplateModel struct {
 	RoleTemplateID types.String `tfsdk:"role_template_id"`
 }
 
-// NewRoleTemplateDataSource returns a new role template data source instance.
-func NewRoleTemplateDataSource() datasource.DataSource {
+func newRoleTemplateDataSource() datasource.DataSource {
 	return &roleTemplateDataSource{}
 }
 

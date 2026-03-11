@@ -55,7 +55,7 @@ type customRoleModel struct {
 	Permission  types.Set    `tfsdk:"permission"`
 }
 
-func NewCustomRoleResource() resource.Resource {
+func newCustomRoleResource() resource.Resource {
 	return &customRoleResource{}
 }
 
