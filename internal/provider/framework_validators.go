@@ -1,4 +1,4 @@
-// Copyright 2025 Rubrik, Inc.
+// Copyright 2026 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -21,37 +21,35 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-func checkResourceAttrIsUUID(name string, key string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		rm := s.RootModule()
+// isUUID returns a validator that checks if a string value is a valid UUID.
+func isUUID() validator.String {
+	return isUUIDValidator{}
+}
 
-		rs, ok := rm.Resources[name]
-		if !ok {
-			return fmt.Errorf("resource %q not found in %s", name, rm.Path)
-		}
+type isUUIDValidator struct{}
 
-		is := rs.Primary
-		if is == nil {
-			return fmt.Errorf("no primary instance for resource %q in %s", name, rm.Path)
-		}
+func (v isUUIDValidator) Description(_ context.Context) string {
+	return "value must be a valid UUID"
+}
 
-		v, ok := is.Attributes[key]
-		if !ok {
-			return fmt.Errorf("attribute %q not found in %s", key, name)
-		}
+func (v isUUIDValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
 
-		_, err := uuid.Parse(v)
-		if err != nil {
-			return fmt.Errorf("attribute %q is not a valid UUID: %s", key, err)
-		}
+func (v isUUIDValidator) ValidateString(_ context.Context, req validator.StringRequest, res *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
 
-		return nil
+	if _, err := uuid.Parse(req.ConfigValue.ValueString()); err != nil {
+		res.Diagnostics.AddAttributeError(req.Path, "Invalid UUID",
+			fmt.Sprintf("%q is not a valid UUID: %s", req.ConfigValue.ValueString(), err))
 	}
 }
