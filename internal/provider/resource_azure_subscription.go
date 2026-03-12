@@ -990,10 +990,13 @@ func resourceAzureSubscription() *schema.Resource {
 func azureCustomizeDiffSubscription(ctx context.Context, diff *schema.ResourceDiff, m any) error {
 	tflog.Trace(ctx, "azureCustomizeDiffSubscription")
 
-	if diff.Id() != "" && diff.HasChange(keyEntraGroupID) {
-		// Force a diff when the user's configured entra_group_id differs from
-		// the state value. Without this, the Optional+Computed combination
-		// causes Terraform SDK v2 to suppress user-initiated changes.
+	// Force a diff when the user's configured entra_group_id differs from
+	// the state value. Without this, the Optional+Computed combination
+	// causes Terraform SDK v2 to suppress user-initiated changes.
+	if diff.HasChange(keyEntraGroupID) {
+		if diff.Id() == "" {
+			return nil
+		}
 		oldVal, newVal := diff.GetChange(keyEntraGroupID)
 		if newVal.(string) != "" && oldVal.(string) != newVal.(string) {
 			if err := diff.SetNew(keyEntraGroupID, newVal); err != nil {
@@ -1005,7 +1008,10 @@ func azureCustomizeDiffSubscription(ctx context.Context, diff *schema.ResourceDi
 	// Prevent removal of cloud_discovery when protection features are
 	// enabled. The Cloud Discovery feature is currently not required when
 	// onboarding protection features for a new account.
-	if diff.Id() != "" && diff.HasChange(keyCloudDiscovery) {
+	if diff.HasChange(keyCloudDiscovery) {
+		if diff.Id() == "" {
+			return nil
+		}
 		if block := diff.Get(keyCloudDiscovery).([]any); len(block) == 0 {
 			protectionKeys := []string{
 				keyCloudNativeProtection,
