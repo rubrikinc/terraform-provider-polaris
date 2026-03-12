@@ -990,18 +990,17 @@ func resourceAzureSubscription() *schema.Resource {
 func azureCustomizeDiffSubscription(ctx context.Context, diff *schema.ResourceDiff, m any) error {
 	tflog.Trace(ctx, "azureCustomizeDiffSubscription")
 
-	if d.Id() != "" && diff.HasChange(keyEntraGroupID) {
+	if diff.Id() != "" && diff.HasChange(keyEntraGroupID) {
 		// Force a diff when the user's configured entra_group_id differs from
 		// the state value. Without this, the Optional+Computed combination
 		// causes Terraform SDK v2 to suppress user-initiated changes.
-			oldVal, newVal := d.GetChange(keyEntraGroupID)
-			if newVal.(string) != "" && oldVal.(string) != newVal.(string) {
-				return d.SetNew(keyEntraGroupID, newVal)
+		oldVal, newVal := diff.GetChange(keyEntraGroupID)
+		if newVal.(string) != "" && oldVal.(string) != newVal.(string) {
+			if err := diff.SetNew(keyEntraGroupID, newVal); err != nil {
+				return err
 			}
-			return nil
 		}
 	}
-
 
 	// Prevent removal of cloud_discovery when protection features are
 	// enabled. The Cloud Discovery feature is currently not required when
