@@ -374,11 +374,10 @@ func gcpCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 
 	vmConfig := gqlcloudcluster.GcpVmConfig{
 		CDMVersion:       vmConfigMap[keyCDMVersion].(string),
-		InstanceType:     vmConfigMap[keyInstanceType].(string),
+		InstanceType:     gqlcloudcluster.GcpCCInstanceType(vmConfigMap[keyInstanceType].(string)),
 		NetworkConfig:    networkConfig,
 		ServiceAccounts:  serviceAccounts,
 		VMType:           vmType,
-		Zone:             zone,
 		DeleteProtection: vmConfigMap[keyDeleteProtection].(bool),
 	}
 
@@ -389,9 +388,10 @@ func gcpCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		KeepClusterOnFailure: clusterConfigMap[keyKeepClusterOnFailure].(bool),
 		Validations:          validations,
 		VMConfig:             vmConfig,
+		Zone:                 zone,
 	}
 
-	gcpCluster, err := cloudcluster.Wrap(client).CreateGcpCloudCluster(ctx, input)
+	gcpCluster, err := cloudcluster.Wrap(client).CreateGcpCloudCluster(ctx, input, true)
 	if err != nil {
 		return diag.FromErr(err)
 	}
