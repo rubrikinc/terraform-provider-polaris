@@ -48,6 +48,9 @@ description: |-
   onboard the feature.SAP_HANA_SS_BASIC - Represents the basic set of permissions required for
   SAP HANA snapshot support.SAP_HANA_SS_RECOVERY - Represents the set of permissions required for SAP
   HANA recovery operations.
+  CLOUD_DISCOVERY
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   EXOCOMPUTE
   BASIC - Represents the basic set of permissions required to onboard the
   feature.PRIVATE_ENDPOINTS - Represents the set of permissions required for usage
@@ -141,6 +144,10 @@ are used when specifying the feature set.
   * `SAP_HANA_SS_RECOVERY` - Represents the set of permissions required for SAP
     HANA recovery operations.
 
+`CLOUD_DISCOVERY`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+
 `EXOCOMPUTE`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
@@ -228,6 +235,7 @@ resource "polaris_azure_subscription" "subscription" {
 
 ### Optional
 
+- `cloud_discovery` (Block List, Max: 1) Enable the RSC Cloud Discovery feature for the Azure subscription. Cloud Discovery provides visibility into cloud resources across the subscription. (see [below for nested schema](#nestedblock--cloud_discovery))
 - `cloud_native_archival` (Block List, Max: 1) Enable the RSC Cloud Native Archival feature for the Azure subscription. Provides archival of data from workloads for disaster recovery and long-term retention. (see [below for nested schema](#nestedblock--cloud_native_archival))
 - `cloud_native_archival_encryption` (Block List, Max: 1) Enable the RSC Cloud Native Archival Encryption feature for the Azure subscription. Allows cloud archival locations to be encrypted with customer managed keys. (see [below for nested schema](#nestedblock--cloud_native_archival_encryption))
 - `cloud_native_blob_protection` (Block List, Max: 1) Enable the RSC Cloud Native Protection feature for Azure Blob Storage. Provides protection for Azure Blob Storage through the rules and policies of SLA Domains. (see [below for nested schema](#nestedblock--cloud_native_blob_protection))
@@ -243,6 +251,23 @@ resource "polaris_azure_subscription" "subscription" {
 ### Read-Only
 
 - `id` (String) RSC cloud account ID (UUID).
+
+<a id="nestedblock--cloud_discovery"></a>
+### Nested Schema for `cloud_discovery`
+
+Required:
+
+- `regions` (Set of String) Azure regions to enable the Cloud Discovery feature in. Should be specified in the standard Azure style, e.g. `eastus`.
+
+Optional:
+
+- `permission_groups` (Set of String) Permission groups to assign to the Cloud Discovery feature. Possible values are `BASIC`.
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature has been updated. Use this field with the `polaris_azure_permissions` data source.
+
+Read-Only:
+
+- `status` (String) Status of the Cloud Discovery feature.
+
 
 <a id="nestedblock--cloud_native_archival"></a>
 ### Nested Schema for `cloud_native_archival`
