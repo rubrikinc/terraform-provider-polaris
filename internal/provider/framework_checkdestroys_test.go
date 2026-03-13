@@ -31,7 +31,7 @@ func customRoleCheckDestroy(ctx context.Context) func(*terraform.State) error {
 				return err
 			}
 
-			_, err = access.Wrap(client).RoleByID(context.Background(), id)
+			_, err = access.Wrap(client).RoleByID(ctx, id)
 			if err == nil {
 				return fmt.Errorf("custom role %s still exists", id)
 			}
@@ -84,7 +84,7 @@ func roleAssignmentCheckDestroy(ctx context.Context) func(*terraform.State) erro
 			}
 
 			// Try as user.
-			user, err := access.Wrap(client).UserByID(context.Background(), rs.Primary.ID)
+			user, err := access.Wrap(client).UserByID(ctx, rs.Primary.ID)
 			if err == nil {
 				for _, role := range user.Roles {
 					if _, ok := managedRoleIDs[role.ID]; ok {
@@ -98,7 +98,7 @@ func roleAssignmentCheckDestroy(ctx context.Context) func(*terraform.State) erro
 			}
 
 			// Try as SSO group.
-			group, err := access.Wrap(client).SSOGroupByID(context.Background(), rs.Primary.ID)
+			group, err := access.Wrap(client).SSOGroupByID(ctx, rs.Primary.ID)
 			if err == nil {
 				for _, role := range group.Roles {
 					if _, ok := managedRoleIDs[role.ID]; ok {
@@ -106,6 +106,32 @@ func roleAssignmentCheckDestroy(ctx context.Context) func(*terraform.State) erro
 					}
 				}
 				continue
+			}
+			if !errors.Is(err, graphql.ErrNotFound) {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+// userCheckDestroy verifies that all polaris_user resources have been deleted.
+func userCheckDestroy(ctx context.Context) func(*terraform.State) error {
+	return func(s *terraform.State) error {
+		client, err := testClient(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, rs := range s.RootModule().Resources {
+			if rs.Type != "polaris_user" {
+				continue
+			}
+
+			_, err := access.Wrap(client).UserByID(ctx, rs.Primary.ID)
+			if err == nil {
+				return fmt.Errorf("user %s still exists", rs.Primary.ID)
 			}
 			if !errors.Is(err, graphql.ErrNotFound) {
 				return err

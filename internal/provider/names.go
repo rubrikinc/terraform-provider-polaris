@@ -288,7 +288,6 @@ const (
 	keyPolarisSLADomainAssignment                   = "polaris_sla_domain_assignment"
 	keyPolarisSLASourceCluster                      = "polaris_sla_source_cluster"
 	keyPolarisTagRule                               = "polaris_tag_rule"
-	keyPolarisUser                                  = "polaris_user"
 	keyPolicy                                       = "policy"
 	keyPortNumber                                   = "port_number"
 	keyPrivateExocomputeDNSZoneID                   = "private_exocompute_dns_zone_id"

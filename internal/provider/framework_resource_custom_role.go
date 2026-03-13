@@ -28,6 +28,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
@@ -74,6 +76,9 @@ func (r *customRoleResource) Schema(ctx context.Context, _ resource.SchemaReques
 			keyID: schema.StringAttribute{
 				Computed:    true,
 				Description: "Role ID (UUID).",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			keyName: schema.StringAttribute{
 				Required:    true,
@@ -265,7 +270,11 @@ func (r *customRoleResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	if err := access.Wrap(polarisClient).DeleteRole(ctx, id); err != nil {
+	err = access.Wrap(polarisClient).DeleteRole(ctx, id)
+	if errors.Is(err, graphql.ErrNotFound) {
+		return
+	}
+	if err != nil {
 		res.Diagnostics.AddError("Failed to delete custom role", err.Error())
 		return
 	}

@@ -93,6 +93,9 @@ func (r *roleAssignmentResource) Schema(ctx context.Context, _ resource.SchemaRe
 			keyID: schema.StringAttribute{
 				Computed:    true,
 				Description: "User or SSO group ID.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			keyRoleID: schema.StringAttribute{
 				Optional:           true,

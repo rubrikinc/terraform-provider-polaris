@@ -105,7 +105,6 @@ func Provider() *schema.Provider {
 			keyPolarisSLADomain:                          resourceSLADomain(),
 			keyPolarisSLADomainAssignment:                resourceSLADomainAssignment(),
 			keyPolarisTagRule:                            resourceTagRule(),
-			keyPolarisUser:                               resourceUser(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
