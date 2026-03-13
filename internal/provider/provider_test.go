@@ -60,7 +60,8 @@ type testConfig struct {
 	Provider struct {
 		Credentials string
 	}
-	Resource interface{}
+	Resource  interface{}
+	Timestamp string
 }
 
 // loadTestConfig returns a new testConfig initialized from the file pointed
