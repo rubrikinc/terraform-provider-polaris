@@ -91,7 +91,7 @@ func (r *roleAssignmentResource) upgradeStateV0() resource.StateUpgrader {
 
 			polarisClient, err := r.client.polaris()
 			if err != nil {
-				res.Diagnostics.AddError("Client error", err.Error())
+				res.Diagnostics.AddError("RSC client error", err.Error())
 				return
 			}
 

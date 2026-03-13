@@ -32,6 +32,18 @@ import (
 	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
+// testCredentials returns the RSC credentials from the environment.
+func testCredentials(t *testing.T) string {
+	t.Helper()
+
+	credentials, err := loadTestCredentials("RUBRIK_POLARIS_SERVICEACCOUNT_FILE")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return credentials
+}
+
 // testUserEmail returns the new user email from the RSC test configuration.
 func testUserEmail(t *testing.T) string {
 	t.Helper()

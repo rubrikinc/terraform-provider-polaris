@@ -150,7 +150,7 @@ func (d *userDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 	polarisClient, err := d.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 

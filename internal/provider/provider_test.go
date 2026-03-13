@@ -24,13 +24,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
-	"testing"
 	"text/template"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 var sdkProvider *schema.Provider = Provider()
@@ -39,92 +36,6 @@ var providerFactories = map[string]func() (*schema.Provider, error){
 	"polaris": func() (*schema.Provider, error) {
 		return sdkProvider, nil
 	},
-}
-
-const credentialsFromEnv = `
-provider "polaris" {
-}
-
-data "polaris_role" "admin" {
-  name = "Administrator"
-}
-`
-
-func TestAccProviderCredentialsInEnv_basic(t *testing.T) {
-	credentials, err := loadTestCredentials("RUBRIK_POLARIS_SERVICEACCOUNT_FILE")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Valid service account in RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{{
-			Config: credentialsFromEnv,
-			Check: resource.ComposeTestCheckFunc(
-				resource.TestCheckResourceAttr("data.polaris_role.admin", "id", "00000000-0000-0000-0000-000000000000"),
-				resource.TestCheckResourceAttr("data.polaris_role.admin", "name", "Administrator"),
-			),
-		}},
-	})
-
-	// Non-existing service account in RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "03147711-359c-40fd-b635-69619fcf374d")
-	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{{
-			Config:      credentialsFromEnv,
-			ExpectError: regexp.MustCompile("RSC functionality has not been configured: account not found, searched: default service account file and env"),
-		}},
-	})
-
-	// Valid service account in RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS.
-	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE", "")
-	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS", credentials)
-	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{{
-			Config: credentialsFromEnv,
-			Check: resource.ComposeTestCheckFunc(
-				resource.TestCheckResourceAttr("data.polaris_role.admin", "id", "00000000-0000-0000-0000-000000000000"),
-				resource.TestCheckResourceAttr("data.polaris_role.admin", "name", "Administrator"),
-			),
-		}},
-	})
-
-	// Invalid service account in RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS.
-	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS", "invalid")
-	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{{
-			Config:      credentialsFromEnv,
-			ExpectError: regexp.MustCompile("RSC functionality has not been configured: account not found, searched: default service account file and env"),
-		}},
-	})
-
-	// Partial service account in env. This could happen if the service account
-	// is given in parts and one of the parts is missing.
-	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS", "")
-	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME", "name")
-	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{{
-			Config:      credentialsFromEnv,
-			ExpectError: regexp.MustCompile("invalid service account client id"),
-		}},
-	})
-
-	// No service account in env. This could happen if the provider is used to
-	// bootstrap a CDM cluster without RSC credentials, but an RSC resource is
-	// used.
-	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME", "")
-	resource.Test(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		Steps: []resource.TestStep{{
-			Config:      credentialsFromEnv,
-			ExpectError: regexp.MustCompile("RSC functionality has not been configured: account not found, searched: default service account file and env"),
-		}},
-	})
 }
 
 // loadTestCredentials returns the content of the file pointed to by the
@@ -301,9 +212,8 @@ func loadGCPTestConfig() (testConfig, testGCPProject, error) {
 // testRSCConfig holds RSC configuration information used in one or more
 // acceptance tests.
 type testRSCConfig struct {
-	ExistingUserEmail string `json:"existingUserEmail"`
-	NewUserEmail      string `json:"newUserEmail"`
-	SSOGroupName      string `json:"ssoGroupName"`
+	NewUserEmail string `json:"newUserEmail"`
+	SSOGroupName string `json:"ssoGroupName"`
 }
 
 // loadRSCTestConfig loads an RSC test configuration using the default

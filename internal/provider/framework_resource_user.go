@@ -154,7 +154,7 @@ func (r *userResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 
@@ -200,7 +200,7 @@ func (r *userResource) Read(ctx context.Context, req resource.ReadRequest, res *
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 
@@ -250,7 +250,7 @@ func (r *userResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 
@@ -294,7 +294,7 @@ func (r *userResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 

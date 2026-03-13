@@ -167,7 +167,7 @@ func (r *roleAssignmentResource) Create(ctx context.Context, req resource.Create
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 
@@ -229,7 +229,7 @@ func (r *roleAssignmentResource) Read(ctx context.Context, req resource.ReadRequ
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 
@@ -314,7 +314,7 @@ func (r *roleAssignmentResource) Update(ctx context.Context, req resource.Update
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 
@@ -408,7 +408,7 @@ func (r *roleAssignmentResource) Delete(ctx context.Context, req resource.Delete
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 
@@ -470,7 +470,7 @@ func (r *roleAssignmentResource) ImportState(ctx context.Context, req resource.I
 
 	polarisClient, err := r.client.polaris()
 	if err != nil {
-		res.Diagnostics.AddError("Client error", err.Error())
+		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 
