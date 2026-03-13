@@ -102,6 +102,7 @@ func Provider() *schema.Provider {
 			keyPolarisGCPExocompute:                      resourceGcpExocompute(),
 			keyPolarisGCPProject:                         resourceGcpProject(),
 			keyPolarisGCPServiceAccount:                  resourceGcpServiceAccount(),
+			keyPolarisRefresh:                            resourceRefresh(),
 			keyPolarisSLADomain:                          resourceSLADomain(),
 			keyPolarisSLADomainAssignment:                resourceSLADomainAssignment(),
 			keyPolarisTagRule:                            resourceTagRule(),

@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -47,6 +48,13 @@ Supported object types:
 func dataSourceObject() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: objectRead,
+
+		// The read timeout is used by the AwsNativeAccount retry loop which
+		// polls the hierarchy until an active account appears. Other object
+		// types return immediately and are unaffected by this timeout.
+		Timeouts: &schema.ResourceTimeout{
+			Read: schema.DefaultTimeout(5 * time.Minute),
+		},
 
 		Description: description(dataSourceObjectDescription),
 		Schema: map[string]*schema.Schema{
@@ -109,27 +117,50 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 		// same account name (e.g. an account added to RSC more than once).
 		// Activity is determined by inspecting the RSC feature status on each
 		// result rather than using server-side filters.
-		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeAccount](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType)
-		if err != nil {
-			return diag.FromErr(err)
-		}
+		//
+		// A newly onboarded AWS account may not appear in the hierarchy
+		// immediately after creation because the polaris_aws_cnp_account
+		// resource only registers the account while the hierarchy object is
+		// created asynchronously after the polaris_aws_cnp_account_attachments
+		// resource finalizes the account setup. When polaris_object depends on
+		// the account, it can run before the hierarchy has caught up. We retry
+		// until an active account is found or the read timeout is reached.
+		for {
+			results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeAccount](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType)
+			if err != nil {
+				return diag.FromErr(err)
+			}
 
-		for _, r := range results {
-			var active bool
-			for _, feature := range r.Features {
-				switch feature.Status {
-				case hierarchy.StatusAdded, hierarchy.StatusRefreshed, hierarchy.StatusRefreshing:
-					active = true
-				default:
-					tflog.Debug(ctx, "skipping account because it is not active", map[string]any{
-						"account": r.Object.Name,
-						"status":  feature.Status,
-					})
+			for _, r := range results {
+				var active bool
+				for _, feature := range r.Features {
+					switch feature.Status {
+					case hierarchy.StatusAdded, hierarchy.StatusRefreshed, hierarchy.StatusRefreshing:
+						active = true
+					default:
+						tflog.Debug(ctx, "skipping account because it is not active", map[string]any{
+							"account": r.Object.Name,
+							"status":  feature.Status,
+						})
+					}
+					if active {
+						objects = append(objects, r.Object)
+						break
+					}
 				}
-				if active {
-					objects = append(objects, r.Object)
-					break
-				}
+			}
+			if len(objects) > 0 {
+				break
+			}
+
+			tflog.Debug(ctx, "no active account found in hierarchy, retrying", map[string]any{
+				"name": name,
+			})
+
+			select {
+			case <-ctx.Done():
+				return diag.Errorf("timed out waiting for active object with name %q and type %q: %d result(s) returned, none active", name, objectType, len(results))
+			case <-time.After(10 * time.Second):
 			}
 		}
 	case hierarchy.ObjectType("AwsNativeEbsVolume"):

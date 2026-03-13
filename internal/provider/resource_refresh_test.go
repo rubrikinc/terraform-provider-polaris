@@ -1,0 +1,196 @@
+// Copyright 2026 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
+package provider
+
+import (
+	"testing"
+	"time"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+)
+
+// refreshAzureSubscriptionTmpl onboards an Azure subscription, looks it up
+// via polaris_object, then waits for the subscription to be refreshed using
+// polaris_refresh. The TIMESTAMP placeholder is replaced with time.Now at
+// test time. After that, a VM lookup is attempted to verify that leaf objects
+// are discoverable.
+const refreshAzureSubscriptionTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_azure_service_principal" "default" {
+	credentials   = "{{ .Resource.Credentials }}"
+	tenant_domain = "{{ .Resource.TenantDomain }}"
+}
+
+resource "polaris_azure_subscription" "default" {
+	subscription_id   = "{{ .Resource.SubscriptionID }}"
+	subscription_name = "{{ .Resource.SubscriptionName }}"
+	tenant_domain     = "{{ .Resource.TenantDomain }}"
+
+	cloud_native_protection {
+		resource_group_name   = "{{ .Resource.CloudNativeProtection.ResourceGroupName }}"
+		resource_group_region = "{{ .Resource.CloudNativeProtection.ResourceGroupRegion }}"
+
+		regions = [
+			"westus2",
+		]
+	}
+
+	depends_on = [polaris_azure_service_principal.default]
+}
+
+data "polaris_object" "sub" {
+	name        = "{{ .Resource.SubscriptionName }}"
+	object_type = "AzureNativeSubscription"
+
+	depends_on = [polaris_azure_subscription.default]
+}
+
+resource "polaris_refresh" "sub" {
+	object_id   = data.polaris_object.sub.id
+	object_type = "AzureNativeSubscription"
+	timestamp   = "{{ .Timestamp }}"
+}
+
+data "polaris_object" "vm" {
+	name        = "{{ .Resource.VMName }}"
+	object_type = "AzureNativeVirtualMachine"
+
+	depends_on = [polaris_refresh.sub]
+}
+`
+
+// refreshAWSAccountTmpl onboards an AWS account, looks it up via
+// polaris_object, then waits for the account to be refreshed using
+// polaris_refresh. The TIMESTAMP placeholder is replaced with time.Now at
+// test time.
+const refreshAWSAccountTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_aws_account" "default" {
+	name    = "{{ .Resource.AccountName }}"
+	profile = "{{ .Resource.Profile }}"
+
+	cloud_native_protection {
+		permission_groups = [
+			"BASIC",
+		]
+		regions = [
+			"us-east-2",
+		]
+	}
+}
+
+data "polaris_object" "account" {
+	name        = "{{ .Resource.AccountName }}"
+	object_type = "AwsNativeAccount"
+
+	depends_on = [polaris_aws_account.default]
+}
+
+resource "polaris_refresh" "account" {
+	object_id   = data.polaris_object.account.id
+	object_type = "AwsNativeAccount"
+	timestamp   = "{{ .Timestamp }}"
+}
+`
+
+func TestAccPolarisRefresh_awsAccount(t *testing.T) {
+	config, account, err := loadAWSTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Use the current time as the refresh timestamp to ensure the resource
+	// waits for a post-onboarding refresh.
+	config.Timestamp = time.Now().UTC().Format(time.RFC3339)
+
+	refreshAWSAccount, err := makeTerraformConfig(config, refreshAWSAccountTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: refreshAWSAccount,
+			Check: resource.ComposeTestCheckFunc(
+				// Verify the AWS account resource was created.
+				resource.TestCheckResourceAttr("polaris_aws_account.default", "name", account.AccountName),
+
+				// Verify the polaris_object data source returned the account.
+				resource.TestCheckResourceAttrSet("data.polaris_object.account", "id"),
+				resource.TestCheckResourceAttr("data.polaris_object.account", "object_type", "AwsNativeAccount"),
+
+				// Verify the polaris_refresh resource completed and its ID matches the account object ID.
+				resource.TestCheckResourceAttrPair("polaris_refresh.account", "id", "data.polaris_object.account", "id"),
+				resource.TestCheckResourceAttr("polaris_refresh.account", "object_type", "AwsNativeAccount"),
+				resource.TestCheckResourceAttr("polaris_refresh.account", "timestamp", config.Timestamp),
+			),
+		}},
+	})
+}
+
+func TestAccPolarisRefresh_azureSubscription(t *testing.T) {
+	config, subscription, err := loadAzureTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Use the current time as the refresh timestamp to ensure the resource
+	// waits for a post-onboarding refresh.
+	config.Timestamp = time.Now().UTC().Format(time.RFC3339)
+
+	refreshAzureSubscription, err := makeTerraformConfig(config, refreshAzureSubscriptionTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: refreshAzureSubscription,
+			Check: resource.ComposeTestCheckFunc(
+				// Verify the subscription resource was created.
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_name", subscription.SubscriptionName),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "cloud_native_protection.0.status", "CONNECTED"),
+
+				// Verify the polaris_object data source returned the subscription.
+				resource.TestCheckResourceAttrSet("data.polaris_object.sub", "id"),
+				resource.TestCheckResourceAttr("data.polaris_object.sub", "object_type", "AzureNativeSubscription"),
+
+				// Verify the polaris_refresh resource completed and its ID matches the subscription object ID.
+				resource.TestCheckResourceAttrPair("polaris_refresh.sub", "id", "data.polaris_object.sub", "id"),
+				resource.TestCheckResourceAttr("polaris_refresh.sub", "object_type", "AzureNativeSubscription"),
+				resource.TestCheckResourceAttr("polaris_refresh.sub", "timestamp", config.Timestamp),
+
+				// Verify that the VM is discoverable after the refresh.
+				resource.TestCheckResourceAttrSet("data.polaris_object.vm", "id"),
+				resource.TestCheckResourceAttr("data.polaris_object.vm", "name", subscription.VMName),
+				resource.TestCheckResourceAttr("data.polaris_object.vm", "object_type", "AzureNativeVirtualMachine"),
+			),
+		}},
+	})
+}
