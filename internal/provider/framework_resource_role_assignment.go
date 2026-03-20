@@ -124,6 +124,7 @@ func (r *roleAssignmentResource) Schema(ctx context.Context, _ resource.SchemaRe
 						path.MatchRoot(keyUserEmail),
 						path.MatchRoot(keyUserID),
 					),
+					isNotWhiteSpace(),
 				},
 			},
 			keyUserEmail: schema.StringAttribute{
@@ -134,12 +135,18 @@ func (r *roleAssignmentResource) Schema(ctx context.Context, _ resource.SchemaRe
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
+				Validators: []validator.String{
+					isNotWhiteSpace(),
+				},
 			},
 			keyUserID: schema.StringAttribute{
 				Optional:    true,
 				Description: "User ID. Changing this forces a new resource to be created.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					isNotWhiteSpace(),
 				},
 			},
 		},

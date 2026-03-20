@@ -85,6 +85,7 @@ func (d *ssoGroupDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 				Description: "SSO group name.",
 				Validators: []validator.String{
 					stringvalidator.ExactlyOneOf(path.MatchRoot(keySSOGroupID)),
+					isNotWhiteSpace(),
 				},
 			},
 			keyRoles: schema.SetNestedAttribute{
@@ -106,6 +107,9 @@ func (d *ssoGroupDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 			keySSOGroupID: schema.StringAttribute{
 				Optional:    true,
 				Description: "SSO group ID.",
+				Validators: []validator.String{
+					isNotWhiteSpace(),
+				},
 			},
 			keyUsers: schema.SetNestedAttribute{
 				Computed:    true,

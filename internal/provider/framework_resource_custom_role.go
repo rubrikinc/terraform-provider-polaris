@@ -25,11 +25,13 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
@@ -83,35 +85,56 @@ func (r *customRoleResource) Schema(ctx context.Context, _ resource.SchemaReques
 			keyName: schema.StringAttribute{
 				Required:    true,
 				Description: "Role name.",
+				Validators: []validator.String{
+					isNotWhiteSpace(),
+				},
 			},
 			keyDescription: schema.StringAttribute{
 				Optional:    true,
 				Description: "Role description.",
+				Validators: []validator.String{
+					isNotWhiteSpace(),
+				},
 			},
 		},
 		Blocks: map[string]schema.Block{
 			keyPermission: schema.SetNestedBlock{
 				Description: "Role permission.",
+				Validators: []validator.Set{
+					setvalidator.SizeAtLeast(1),
+				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						keyOperation: schema.StringAttribute{
 							Required:    true,
 							Description: "Operation to allow on object IDs under the snappable hierarchy.",
+							Validators: []validator.String{
+								isNotWhiteSpace(),
+							},
 						},
 					},
 					Blocks: map[string]schema.Block{
 						keyHierarchy: schema.SetNestedBlock{
 							Description: "Snappable hierarchy.",
+							Validators: []validator.Set{
+								setvalidator.SizeAtLeast(1),
+							},
 							NestedObject: schema.NestedBlockObject{
 								Attributes: map[string]schema.Attribute{
 									keySnappableType: schema.StringAttribute{
 										Required:    true,
 										Description: "Snappable/workload type.",
+										Validators: []validator.String{
+											isNotWhiteSpace(),
+										},
 									},
 									keyObjectIDs: schema.SetAttribute{
 										ElementType: types.StringType,
 										Required:    true,
 										Description: "Object/workload identifiers.",
+										Validators: []validator.Set{
+											setvalidator.ValueStringsAre(isNotWhiteSpace()),
+										},
 									},
 								},
 							},

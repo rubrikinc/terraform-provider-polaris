@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -51,5 +52,32 @@ func (v isUUIDValidator) ValidateString(_ context.Context, req validator.StringR
 	if _, err := uuid.Parse(req.ConfigValue.ValueString()); err != nil {
 		res.Diagnostics.AddAttributeError(req.Path, "Invalid UUID",
 			fmt.Sprintf("%q is not a valid UUID: %s", req.ConfigValue.ValueString(), err))
+	}
+}
+
+// isNotWhiteSpace returns a validator that checks if a string value is not
+// empty or contains only whitespace.
+func isNotWhiteSpace() validator.String {
+	return isNotWhiteSpaceValidator{}
+}
+
+type isNotWhiteSpaceValidator struct{}
+
+func (v isNotWhiteSpaceValidator) Description(_ context.Context) string {
+	return "value must not be empty or contain only whitespace"
+}
+
+func (v isNotWhiteSpaceValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v isNotWhiteSpaceValidator) ValidateString(_ context.Context, req validator.StringRequest, res *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	if strings.TrimSpace(req.ConfigValue.ValueString()) == "" {
+		res.Diagnostics.AddAttributeError(req.Path, "Invalid Value",
+			"value must not be empty or contain only whitespace")
 	}
 }

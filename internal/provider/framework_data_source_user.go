@@ -96,6 +96,7 @@ func (d *userDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest,
 				Description: "User email address.",
 				Validators: []validator.String{
 					stringvalidator.ExactlyOneOf(path.MatchRoot(keyUserID)),
+					isNotWhiteSpace(),
 				},
 			},
 			keyIsAccountOwner: schema.BoolAttribute{
@@ -125,6 +126,9 @@ func (d *userDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest,
 			keyUserID: schema.StringAttribute{
 				Optional:    true,
 				Description: "User ID.",
+				Validators: []validator.String{
+					isNotWhiteSpace(),
+				},
 			},
 		},
 	}

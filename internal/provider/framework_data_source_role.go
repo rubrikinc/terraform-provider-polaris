@@ -88,6 +88,7 @@ func (d *roleDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest,
 				Description: "Role name.",
 				Validators: []validator.String{
 					stringvalidator.ExactlyOneOf(path.MatchRoot("role_id")),
+					isNotWhiteSpace(),
 				},
 			},
 			keyRoleID: schema.StringAttribute{
