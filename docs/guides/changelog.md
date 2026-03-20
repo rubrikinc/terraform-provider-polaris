@@ -9,6 +9,7 @@ page_title: "Changelog"
   filter. [[docs](../data-sources/snapshot.md)]
 * Migrate the `polaris_custom_role`, `polaris_role_assignment` and `polaris_user` resources and the `polaris_role`,
   `polaris_role_template`, `polaris_sso_group` and `polaris_user` data sources to the Terraform Plugin Framework.
+* Add SBOM generation in SPDX format to release artifacts.
 
 ## v1.5.2
 * Add `network_access_type` field to the `polaris_azure_archival_location` resource and data source. The field
