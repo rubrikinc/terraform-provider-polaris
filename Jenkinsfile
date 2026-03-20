@@ -85,7 +85,8 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip=publish,sign --clean'
+                sh 'curl -sSfL https://get.anchore.io/syft | sh -s -- -b .'
+                sh 'curl -sL https://git.io/goreleaser | PATH=.:$PATH bash -s -- --snapshot --skip=publish,sign --clean'
             }
         }
         stage('Pre-test') {
