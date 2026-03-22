@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -37,12 +38,23 @@ name and type are known.
 
 Supported object types:
   * ´AwsNativeAccount´ - AWS Native Account
+  * ´AwsNativeEbsVolume´ - AWS Native EBS Volume
+  * ´AwsNativeEc2Instance´ - AWS Native EC2 Instance
+  * ´AwsNativeRdsInstance´ - AWS Native RDS Instance
   * ´AzureNativeSubscription´ - Azure Native Subscription
+  * ´AzureNativeVirtualMachine´ - Azure Native Virtual Machine
 `
 
 func dataSourceObject() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: objectRead,
+
+		// The read timeout is used by the AwsNativeAccount retry loop which
+		// polls the hierarchy until an active account appears. Other object
+		// types return immediately and are unaffected by this timeout.
+		Timeouts: &schema.ResourceTimeout{
+			Read: schema.DefaultTimeout(5 * time.Minute),
+		},
 
 		Description: description(dataSourceObjectDescription),
 		Schema: map[string]*schema.Schema{
@@ -60,10 +72,14 @@ func dataSourceObject() *schema.Resource {
 			keyObjectType: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Object type (e.g., 'AwsNativeAccount', 'AzureNativeSubscription').",
+				Description: "Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"AwsNativeAccount",
+					"AwsNativeEbsVolume",
+					"AwsNativeEc2Instance",
+					"AwsNativeRdsInstance",
 					"AzureNativeSubscription",
+					"AzureNativeVirtualMachine",
 				}, false),
 			},
 		},
@@ -83,34 +99,99 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 
 	api := hierarchy.Wrap(client.GQL)
 
-	// Call the appropriate ObjectsByName based on the object type
+	// Filters for workload-level object types. Unlike container-level types
+	// (e.g. AwsNativeAccount, AzureNativeSubscription), workload objects do not
+	// carry RSC feature-status metadata, so activity is determined via these
+	// server-side filters rather than inspecting the returned feature list.
+	activeFilters := []hierarchy.Filter{
+		{Field: "IS_RELIC", Texts: []string{"false"}},
+		{Field: "IS_GHOST", Texts: []string{"false"}},
+		{Field: "IS_ACTIVE", Texts: []string{"true"}},
+		{Field: "IS_ARCHIVED", Texts: []string{"false"}},
+	}
+
 	var objects []hierarchy.Object
 	switch objectType {
 	case hierarchy.ObjectType("AwsNativeAccount"):
-		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeAccount](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType)
+		// Container-level type: the API can return multiple entries for the
+		// same account name (e.g. an account added to RSC more than once).
+		// Activity is determined by inspecting the RSC feature status on each
+		// result rather than using server-side filters.
+		//
+		// A newly onboarded AWS account may not appear in the hierarchy
+		// immediately after creation because the polaris_aws_cnp_account
+		// resource only registers the account while the hierarchy object is
+		// created asynchronously after the polaris_aws_cnp_account_attachments
+		// resource finalizes the account setup. When polaris_object depends on
+		// the account, it can run before the hierarchy has caught up. We retry
+		// until an active account is found or the read timeout is reached.
+		for {
+			results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeAccount](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+
+			for _, r := range results {
+				var active bool
+				for _, feature := range r.Features {
+					switch feature.Status {
+					case hierarchy.StatusAdded, hierarchy.StatusRefreshed, hierarchy.StatusRefreshing:
+						active = true
+					default:
+						tflog.Debug(ctx, "skipping account because it is not active", map[string]any{
+							"account": r.Object.Name,
+							"status":  feature.Status,
+						})
+					}
+					if active {
+						objects = append(objects, r.Object)
+						break
+					}
+				}
+			}
+			if len(objects) > 0 {
+				break
+			}
+
+			tflog.Debug(ctx, "no active account found in hierarchy, retrying", map[string]any{
+				"name": name,
+			})
+
+			select {
+			case <-ctx.Done():
+				return diag.Errorf("timed out waiting for active object with name %q and type %q: %d result(s) returned, none active", name, objectType, len(results))
+			case <-time.After(10 * time.Second):
+			}
+		}
+	case hierarchy.ObjectType("AwsNativeEbsVolume"):
+		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeEBSVolume](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
 		for _, r := range results {
-			var active bool
-			for _, feature := range r.Features {
-				switch feature.Status {
-				case hierarchy.StatusAdded, hierarchy.StatusRefreshed, hierarchy.StatusRefreshing:
-					active = true
-				default:
-					tflog.Debug(ctx, "skipping account because it is not active", map[string]any{
-						"account": r.Object.Name,
-						"status":  feature.Status,
-					})
-				}
-				if active {
-					objects = append(objects, r.Object)
-					break
-				}
-			}
+			objects = append(objects, r.Object)
+		}
+	case hierarchy.ObjectType("AwsNativeEc2Instance"):
+		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeEC2Instance](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, r := range results {
+			objects = append(objects, r.Object)
+		}
+	case hierarchy.ObjectType("AwsNativeRdsInstance"):
+		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeRDSInstance](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, r := range results {
+			objects = append(objects, r.Object)
 		}
 	case hierarchy.ObjectType("AzureNativeSubscription"):
+		// Container-level type: same feature-status strategy as AwsNativeAccount.
 		results, err := hierarchy.ObjectsByName[hierarchy.AzureNativeSubscription](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType)
 		if err != nil {
 			return diag.FromErr(err)
@@ -133,6 +214,15 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 					break
 				}
 			}
+		}
+	case hierarchy.ObjectType("AzureNativeVirtualMachine"):
+		results, err := hierarchy.ObjectsByName[hierarchy.AzureNativeVirtualMachine](ctx, api, name, hierarchy.WorkloadAzureVM, activeFilters...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, r := range results {
+			objects = append(objects, r.Object)
 		}
 	}
 

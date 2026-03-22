@@ -60,7 +60,8 @@ type testConfig struct {
 	Provider struct {
 		Credentials string
 	}
-	Resource interface{}
+	Resource  interface{}
+	Timestamp string
 }
 
 // loadTestConfig returns a new testConfig initialized from the file pointed
@@ -165,6 +166,8 @@ type testAzureSubscription struct {
 		ResourceGroupRegion string   `json:"resourceGroupRegion"`
 		SubnetID            string   `json:"subnetId"`
 	} `json:"exocompute"`
+
+	VMName string `json:"vmName"`
 }
 
 // loadAzureTestConfig loads an Azure test configuration using the default
