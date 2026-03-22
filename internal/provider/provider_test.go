@@ -165,6 +165,8 @@ type testAzureSubscription struct {
 		ResourceGroupRegion string   `json:"resourceGroupRegion"`
 		SubnetID            string   `json:"subnetId"`
 	} `json:"exocompute"`
+
+	VMName string `json:"vmName"`
 }
 
 // loadAzureTestConfig loads an Azure test configuration using the default

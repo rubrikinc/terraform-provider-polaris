@@ -37,7 +37,11 @@ name and type are known.
 
 Supported object types:
   * ´AwsNativeAccount´ - AWS Native Account
+  * ´AwsNativeEbsVolume´ - AWS Native EBS Volume
+  * ´AwsNativeEc2Instance´ - AWS Native EC2 Instance
+  * ´AwsNativeRdsInstance´ - AWS Native RDS Instance
   * ´AzureNativeSubscription´ - Azure Native Subscription
+  * ´AzureNativeVirtualMachine´ - Azure Native Virtual Machine
 `
 
 func dataSourceObject() *schema.Resource {
@@ -60,10 +64,14 @@ func dataSourceObject() *schema.Resource {
 			keyObjectType: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Object type (e.g., 'AwsNativeAccount', 'AzureNativeSubscription').",
+				Description: "Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"AwsNativeAccount",
+					"AwsNativeEbsVolume",
+					"AwsNativeEc2Instance",
+					"AwsNativeRdsInstance",
 					"AzureNativeSubscription",
+					"AzureNativeVirtualMachine",
 				}, false),
 			},
 		},
@@ -83,10 +91,24 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 
 	api := hierarchy.Wrap(client.GQL)
 
-	// Call the appropriate ObjectsByName based on the object type
+	// Filters for workload-level object types. Unlike container-level types
+	// (e.g. AwsNativeAccount, AzureNativeSubscription), workload objects do not
+	// carry RSC feature-status metadata, so activity is determined via these
+	// server-side filters rather than inspecting the returned feature list.
+	activeFilters := []hierarchy.Filter{
+		{Field: "IS_RELIC", Texts: []string{"false"}},
+		{Field: "IS_GHOST", Texts: []string{"false"}},
+		{Field: "IS_ACTIVE", Texts: []string{"true"}},
+		{Field: "IS_ARCHIVED", Texts: []string{"false"}},
+	}
+
 	var objects []hierarchy.Object
 	switch objectType {
 	case hierarchy.ObjectType("AwsNativeAccount"):
+		// Container-level type: the API can return multiple entries for the
+		// same account name (e.g. an account added to RSC more than once).
+		// Activity is determined by inspecting the RSC feature status on each
+		// result rather than using server-side filters.
 		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeAccount](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType)
 		if err != nil {
 			return diag.FromErr(err)
@@ -110,7 +132,35 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 				}
 			}
 		}
+	case hierarchy.ObjectType("AwsNativeEbsVolume"):
+		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeEBSVolume](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, r := range results {
+			objects = append(objects, r.Object)
+		}
+	case hierarchy.ObjectType("AwsNativeEc2Instance"):
+		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeEC2Instance](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, r := range results {
+			objects = append(objects, r.Object)
+		}
+	case hierarchy.ObjectType("AwsNativeRdsInstance"):
+		results, err := hierarchy.ObjectsByName[hierarchy.AWSNativeRDSInstance](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, r := range results {
+			objects = append(objects, r.Object)
+		}
 	case hierarchy.ObjectType("AzureNativeSubscription"):
+		// Container-level type: same feature-status strategy as AwsNativeAccount.
 		results, err := hierarchy.ObjectsByName[hierarchy.AzureNativeSubscription](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType)
 		if err != nil {
 			return diag.FromErr(err)
@@ -133,6 +183,15 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 					break
 				}
 			}
+		}
+	case hierarchy.ObjectType("AzureNativeVirtualMachine"):
+		results, err := hierarchy.ObjectsByName[hierarchy.AzureNativeVirtualMachine](ctx, api, name, hierarchy.WorkloadAzureVM, activeFilters...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, r := range results {
+			objects = append(objects, r.Object)
 		}
 	}
 
