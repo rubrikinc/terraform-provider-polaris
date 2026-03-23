@@ -332,6 +332,7 @@ const (
 	keyRingName                                     = "ring_name"
 	keyRole                                         = "role"
 	keyRoleAssignment                               = "role_assignment"
+	keyRoleChaining                                 = "role_chaining"
 	keyRoleID                                       = "role_id"
 	keyRoleIDs                                      = "role_ids"
 	keyRoleKey                                      = "role_key"

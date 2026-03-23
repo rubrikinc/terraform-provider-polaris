@@ -34,8 +34,23 @@ description: |-
   be a separate account. When using a separate account, the outpost account
   must be onboarded first, using depends_on to enforce the ordering. The
   outpost_account_id and outpost_account_profile fields are legacy and not
-  recommended.rds_protection - Enable the RDS Protection feature for the account.servers_and_apps - Enable the Servers and Apps feature for the account.
+  recommended.rds_protection - Enable the RDS Protection feature for the account.role_chaining - Enable the Role Chaining feature for the account. This
+  feature is mutually exclusive with all other features and cannot be combined
+  with any other feature on the same account.servers_and_apps - Enable the Servers and Apps feature for the account.
   Required to run CCES clusters.
+  Role Chaining
+  The Role Chaining feature enables cross-account role chaining for AWS accounts.
+  This feature is mutually exclusive with all other features - it cannot be enabled
+  alongside any other feature on the same account.
+  
+  resource "polaris_aws_account" "role_chaining" {
+    profile = "role-chaining"
+  
+    role_chaining {
+      permission_groups = ["BASIC"]
+    }
+  }
+  
   Outpost Account
   The Cyber Recovery Data Scanning, Data Scanning and DSPM features require an
   outpost account to be onboarded. The outpost account can be the same account as
@@ -133,8 +148,27 @@ for an account:
     `outpost_account_id` and `outpost_account_profile` fields are legacy and not
     recommended.
   * `rds_protection` - Enable the RDS Protection feature for the account.
+  * `role_chaining` - Enable the Role Chaining feature for the account. This
+    feature is mutually exclusive with all other features and cannot be combined
+    with any other feature on the same account.
   * `servers_and_apps` - Enable the Servers and Apps feature for the account.
     Required to run CCES clusters.
+
+## Role Chaining
+
+The Role Chaining feature enables cross-account role chaining for AWS accounts.
+This feature is mutually exclusive with all other features - it cannot be enabled
+alongside any other feature on the same account.
+
+```terraform
+resource "polaris_aws_account" "role_chaining" {
+  profile = "role-chaining"
+
+  role_chaining {
+    permission_groups = ["BASIC"]
+  }
+}
+```
 
 ## Outpost Account
 
@@ -327,6 +361,7 @@ resource "polaris_aws_account" "account2" {
 - `permissions` (String) When set to 'update' feature permissions can be updated by applying the configuration.
 - `profile` (String) AWS named profile.
 - `rds_protection` (Block List, Max: 1) Enable the RDS Protection feature for the account. (see [below for nested schema](#nestedblock--rds_protection))
+- `role_chaining` (Block List, Max: 1) Enable the Role Chaining feature for the account. This feature is mutually exclusive with all other features. (see [below for nested schema](#nestedblock--role_chaining))
 - `servers_and_apps` (Block List, Max: 1) Enable the Servers and Apps feature for the account. (see [below for nested schema](#nestedblock--servers_and_apps))
 
 ### Read-Only
@@ -503,6 +538,19 @@ Read-Only:
 
 - `stack_arn` (String) CloudFormation stack ARN.
 - `status` (String) Status of the feature.
+
+
+<a id="nestedblock--role_chaining"></a>
+### Nested Schema for `role_chaining`
+
+Required:
+
+- `permission_groups` (Set of String) Permission groups to assign to the Role Chaining feature. Possible values are `BASIC`.
+
+Read-Only:
+
+- `stack_arn` (String) CloudFormation stack ARN.
+- `status` (String) Status of the Role Chaining feature.
 
 
 <a id="nestedblock--servers_and_apps"></a>
