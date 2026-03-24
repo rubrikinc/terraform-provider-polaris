@@ -88,8 +88,27 @@ for an account:
     ´outpost_account_id´ and ´outpost_account_profile´ fields are legacy and not
     recommended.
   * ´rds_protection´ - Enable the RDS Protection feature for the account.
+  * ´role_chaining´ - Enable the Role Chaining feature for the account. This
+    feature is mutually exclusive with all other features and cannot be combined
+    with any other feature on the same account.
   * ´servers_and_apps´ - Enable the Servers and Apps feature for the account.
     Required to run CCES clusters.
+
+## Role Chaining
+
+The Role Chaining feature enables cross-account role chaining for AWS accounts.
+This feature is mutually exclusive with all other features - it cannot be enabled
+alongside any other feature on the same account.
+
+´´´terraform
+resource "polaris_aws_account" "role_chaining" {
+  profile = "role-chaining"
+
+  role_chaining {
+    permission_groups = ["BASIC"]
+  }
+}
+´´´
 
 ## Outpost Account
 
@@ -205,6 +224,7 @@ func resourceAwsAccount() *schema.Resource {
 					keyKubernetesProtection,
 					keyOutpost,
 					keyRDSProtection,
+					keyRoleChaining,
 					keyServersAndApps,
 				},
 				Description: "Enable the Cloud Native Protection feature for the account.",
@@ -348,6 +368,52 @@ func resourceAwsAccount() *schema.Resource {
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the RDS Protection feature for the account.",
+			},
+			keyRoleChaining: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{"BASIC"}, false),
+							},
+							Required: true,
+							Description: "Permission groups to assign to the Role Chaining feature. Possible " +
+								"values are `BASIC`.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Role Chaining feature.",
+						},
+						keyStackARN: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "CloudFormation stack ARN.",
+						},
+					},
+				},
+				MaxItems: 1,
+				Optional: true,
+				ConflictsWith: []string{
+					keyCloudDiscovery,
+					keyCloudNativeArchival,
+					keyCloudNativeProtection,
+					keyCloudNativeDynamoDBProtection,
+					keyCloudNativeS3Protection,
+					keyCyberRecoveryDataScanning,
+					keyDataScanning,
+					keyDSPM,
+					keyExocompute,
+					keyKubernetesProtection,
+					keyOutpost,
+					keyRDSProtection,
+					keyServersAndApps,
+				},
+				Description: "Enable the Role Chaining feature for the account. This feature is mutually " +
+					"exclusive with all other features.",
 			},
 			keyServersAndApps: {
 				Type:        schema.TypeList,
@@ -500,6 +566,14 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		featureBlocks = append(featureBlocks, *featureBlock)
 	}
 
+	featureBlock, err = awsFromCFTFeatureBlock(keyRoleChaining, d.Get(keyRoleChaining))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if featureBlock != nil {
+		featureBlocks = append(featureBlocks, *featureBlock)
+	}
+
 	featureBlock, err = awsFromCFTFeatureBlock(keyServersAndApps, d.Get(keyServersAndApps))
 	if err != nil {
 		return diag.FromErr(err)
@@ -614,6 +688,9 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 	if err := d.Set(keyRDSProtection, awsToCFTFeatureBlock(account, keyRDSProtection)); err != nil {
 		return diag.FromErr(err)
 	}
+	if err := d.Set(keyRoleChaining, awsToCFTFeatureBlock(account, keyRoleChaining)); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyServersAndApps, awsToCFTFeatureBlock(account, keyServersAndApps)); err != nil {
 		return diag.FromErr(err)
 	}
@@ -723,6 +800,14 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		}
 	}
 
+	// When role_chaining is being removed, remove it first since it's
+	// mutually exclusive with all other features.
+	if awsCFTFeatureBlockRemoved(keyRoleChaining, d) {
+		if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyRoleChaining, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	// When the outpost feature is added, it needs to be added first since
 	// other features depends on it.
 	if awsCFTFeatureBlockAdded(keyOutpost, d) {
@@ -765,6 +850,11 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.D
 	if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyServersAndApps, d); err != nil {
 		return diag.FromErr(err)
 	}
+	if !awsCFTFeatureBlockAdded(keyRoleChaining, d) && !awsCFTFeatureBlockRemoved(keyRoleChaining, d) {
+		if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyRoleChaining, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	// The Cloud Discovery feature needs to be updated after the protection
 	// features.
@@ -776,6 +866,14 @@ func awsUpdateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.D
 	// other features depends on it.
 	if awsCFTFeatureBlockRemoved(keyOutpost, d) {
 		if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyOutpost, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// When role_chaining is being added, add it last since it's mutually
+	// exclusive with all other features.
+	if awsCFTFeatureBlockAdded(keyRoleChaining, d) {
+		if err := awsUpdateCFTFeatureBlock(ctx, client, account, id, keyRoleChaining, d); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -958,6 +1056,23 @@ func awsCustomizeDiffAccount(ctx context.Context, diff *schema.ResourceDiff, m a
 		}
 	}
 
+	// Prevent adding role_chaining to an existing account that has other
+	// features enabled. The role_chaining feature is mutually exclusive with
+	// all other features.
+	if diff.Id() != "" && diff.HasChange(keyRoleChaining) {
+		if block := diff.Get(keyRoleChaining).([]any); len(block) > 0 {
+			for blockKey := range awsCFTFeatureBlockMap {
+				if blockKey == keyRoleChaining {
+					continue
+				}
+				old, _ := diff.GetChange(blockKey)
+				if len(old.([]any)) > 0 {
+					return fmt.Errorf("role_chaining cannot be added while %s is enabled", blockKey)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -1062,6 +1177,9 @@ var awsCFTFeatureBlockMap = map[string][]core.Feature{
 	keyRDSProtection: {
 		core.FeatureRDSProtection,
 	},
+	keyRoleChaining: {
+		core.FeatureRoleChaining,
+	},
 	keyServersAndApps: {
 		core.FeatureServerAndApps,
 	},
@@ -1158,19 +1276,21 @@ func awsToCFTFeatureBlock(account aws.CloudAccount, featureKey string) []any {
 		groups.Add(string(group))
 	}
 
-	regions := schema.Set{F: schema.HashString}
-	for _, region := range feature.Regions {
-		regions.Add(region)
+	block := map[string]any{
+		keyPermissionGroups: &groups,
+		keyStatus:           core.FormatStatus(feature.Status),
+		keyStackARN:         feature.StackArn,
 	}
 
-	return []any{
-		map[string]any{
-			keyPermissionGroups: &groups,
-			keyRegions:          &regions,
-			keyStatus:           core.FormatStatus(feature.Status),
-			keyStackARN:         feature.StackArn,
-		},
+	if len(feature.Regions) > 0 {
+		regions := schema.Set{F: schema.HashString}
+		for _, region := range feature.Regions {
+			regions.Add(region)
+		}
+		block[keyRegions] = &regions
 	}
+
+	return []any{block}
 }
 
 // awsToCFTOutpostBlock returns the Outpost feature block for the specified AWS
