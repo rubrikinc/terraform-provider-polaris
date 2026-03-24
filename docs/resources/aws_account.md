@@ -380,11 +380,8 @@ Read-Only:
 
 Required:
 
-- `regions` (Set of String) Regions the feature will be enabled in.
-
-Optional:
-
 - `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `regions` (Set of String) Regions the feature will be enabled in.
 
 Read-Only:
 
@@ -453,11 +450,8 @@ Read-Only:
 
 Required:
 
-- `regions` (Set of String) Regions the feature will be enabled in.
-
-Optional:
-
 - `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`, `RSC_MANAGED_CLUSTER`.
+- `regions` (Set of String) Regions the feature will be enabled in.
 
 Read-Only:
 
