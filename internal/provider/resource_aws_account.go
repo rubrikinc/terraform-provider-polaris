@@ -110,6 +110,21 @@ resource "polaris_aws_account" "role_chaining" {
 }
 ´´´
 
+To onboard an account that uses cross-account role chaining, reference the RSC
+cloud account ID of the role chaining account using the ´role_chaining_account_id´
+field:
+´´´terraform
+resource "polaris_aws_account" "account" {
+  profile                  = "target"
+  role_chaining_account_id = polaris_aws_account.role_chaining.id
+
+  cloud_native_protection {
+    permission_groups = ["BASIC"]
+    regions           = ["us-east-2"]
+  }
+}
+´´´
+
 ## Outpost Account
 
 The Cyber Recovery Data Scanning, Data Scanning and DSPM features require an
@@ -415,6 +430,15 @@ func resourceAwsAccount() *schema.Resource {
 				Description: "Enable the Role Chaining feature for the account. This feature is mutually " +
 					"exclusive with all other features.",
 			},
+			keyRoleChainingAccountID: {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				ConflictsWith:    []string{keyRoleChaining},
+				ValidateDiagFunc: validation.ToDiagFunc(validation.IsUUID),
+				Description: "RSC cloud account ID of the AWS account with the Role Chaining feature " +
+					"enabled. When specified, the account will use cross-account role chaining.",
+			},
 			keyServersAndApps: {
 				Type:        schema.TypeList,
 				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupCCES}),
@@ -461,10 +485,13 @@ func awsCreateAccount(ctx context.Context, d *schema.ResourceData, m any) diag.D
 		account = aws.DefaultWithRole(roleARN)
 	}
 
-	// Account name.
+	// Account name and role chaining account.
 	var opts []aws.OptionFunc
 	if name, ok := d.GetOk(keyName); ok {
 		opts = append(opts, aws.Name(name.(string)))
+	}
+	if id, ok := d.GetOk(keyRoleChainingAccountID); ok {
+		opts = append(opts, aws.RoleChainingAccountID(id.(string)))
 	}
 
 	// Collect features and regions from the resource data.
@@ -696,6 +723,11 @@ func awsReadAccount(ctx context.Context, d *schema.ResourceData, m any) diag.Dia
 	}
 	if err := d.Set(keyName, account.Name); err != nil {
 		return diag.FromErr(err)
+	}
+	if account.RoleChainingAccountID != uuid.Nil {
+		if err := d.Set(keyRoleChainingAccountID, account.RoleChainingAccountID.String()); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	// Outpost feature. Note the outpost account can be separate from the cloud
@@ -1394,6 +1426,9 @@ func awsUpdateCFTFeatureBlock(ctx context.Context, client *polaris.Client, accou
 			} else {
 				opts = append(opts, aws.OutpostAccount(outpostID))
 			}
+		}
+		if id, ok := d.GetOk(keyRoleChainingAccountID); ok {
+			opts = append(opts, aws.RoleChainingAccountID(id.(string)))
 		}
 
 		_, err = aws.Wrap(client).AddAccountWithCFT(ctx, account, newFeatureBlock.features, opts...)

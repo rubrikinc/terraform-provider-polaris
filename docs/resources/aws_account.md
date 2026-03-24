@@ -51,6 +51,20 @@ description: |-
     }
   }
   
+  To onboard an account that uses cross-account role chaining, reference the RSC
+  cloud account ID of the role chaining account using the role_chaining_account_id
+  field:
+  
+  resource "polaris_aws_account" "account" {
+    profile                  = "target"
+    role_chaining_account_id = polaris_aws_account.role_chaining.id
+  
+    cloud_native_protection {
+      permission_groups = ["BASIC"]
+      regions           = ["us-east-2"]
+    }
+  }
+  
   Outpost Account
   The Cyber Recovery Data Scanning, Data Scanning and DSPM features require an
   outpost account to be onboarded. The outpost account can be the same account as
@@ -166,6 +180,21 @@ resource "polaris_aws_account" "role_chaining" {
 
   role_chaining {
     permission_groups = ["BASIC"]
+  }
+}
+```
+
+To onboard an account that uses cross-account role chaining, reference the RSC
+cloud account ID of the role chaining account using the `role_chaining_account_id`
+field:
+```terraform
+resource "polaris_aws_account" "account" {
+  profile                  = "target"
+  role_chaining_account_id = polaris_aws_account.role_chaining.id
+
+  cloud_native_protection {
+    permission_groups = ["BASIC"]
+    regions           = ["us-east-2"]
   }
 }
 ```
@@ -362,6 +391,7 @@ resource "polaris_aws_account" "account2" {
 - `profile` (String) AWS named profile.
 - `rds_protection` (Block List, Max: 1) Enable the RDS Protection feature for the account. (see [below for nested schema](#nestedblock--rds_protection))
 - `role_chaining` (Block List, Max: 1) Enable the Role Chaining feature for the account. This feature is mutually exclusive with all other features. (see [below for nested schema](#nestedblock--role_chaining))
+- `role_chaining_account_id` (String) RSC cloud account ID of the AWS account with the Role Chaining feature enabled. When specified, the account will use cross-account role chaining.
 - `servers_and_apps` (Block List, Max: 1) Enable the Servers and Apps feature for the account. (see [below for nested schema](#nestedblock--servers_and_apps))
 
 ### Read-Only

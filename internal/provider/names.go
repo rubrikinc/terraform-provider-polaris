@@ -333,6 +333,7 @@ const (
 	keyRole                                         = "role"
 	keyRoleAssignment                               = "role_assignment"
 	keyRoleChaining                                 = "role_chaining"
+	keyRoleChainingAccountID                        = "role_chaining_account_id"
 	keyRoleID                                       = "role_id"
 	keyRoleIDs                                      = "role_ids"
 	keyRoleKey                                      = "role_key"
