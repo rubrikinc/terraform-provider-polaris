@@ -7,7 +7,7 @@ description: |-
   name and type. This is useful for finding the ID of an object when only its
   name and type are known.
   Supported object types:
-  AwsNativeAccount - AWS Native AccountAzureNativeSubscription - Azure Native Subscription
+  AwsNativeAccount - AWS Native AccountAwsNativeEbsVolume - AWS Native EBS VolumeAwsNativeEc2Instance - AWS Native EC2 InstanceAwsNativeRdsInstance - AWS Native RDS InstanceAzureNativeSubscription - Azure Native SubscriptionAzureNativeVirtualMachine - Azure Native Virtual Machine
 ---
 
 # polaris_object (Data Source)
@@ -18,7 +18,11 @@ name and type are known.
 
 Supported object types:
   * `AwsNativeAccount` - AWS Native Account
+  * `AwsNativeEbsVolume` - AWS Native EBS Volume
+  * `AwsNativeEc2Instance` - AWS Native EC2 Instance
+  * `AwsNativeRdsInstance` - AWS Native RDS Instance
   * `AzureNativeSubscription` - Azure Native Subscription
+  * `AzureNativeVirtualMachine` - Azure Native Virtual Machine
 
 
 
@@ -28,7 +32,7 @@ Supported object types:
 ### Required
 
 - `name` (String) Exact object name to search for.
-- `object_type` (String) Object type (e.g., 'AwsNativeAccount', 'AzureNativeSubscription').
+- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.
 
 ### Read-Only
 
