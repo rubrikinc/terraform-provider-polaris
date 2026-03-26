@@ -185,6 +185,10 @@ func resourceAwsAccount() *schema.Resource {
 				Type: schema.TypeList,
 				Elem: awsCFTFeatureResource([]core.PermissionGroup{
 					core.PermissionGroupBasic,
+					core.PermissionGroupExportPowerOn,
+					core.PermissionGroupExportPowerOff,
+					core.PermissionGroupRestore,
+					core.PermissionGroupDownloadFile,
 					// The following permission groups cannot be used when onboarding an AWS account.
 					// They have been accepted in the past so we still silently allow them.
 					core.PermissionGroupExportAndRestore,
