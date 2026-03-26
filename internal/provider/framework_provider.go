@@ -121,6 +121,7 @@ func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Res
 	return []func() resource.Resource{
 		newCustomRoleResource,
 		newRoleAssignmentResource,
+		newSSOGroupResource,
 		newUserResource,
 	}
 }
