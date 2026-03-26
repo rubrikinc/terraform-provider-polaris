@@ -520,6 +520,7 @@ func featureResource() *schema.Resource {
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
 						"BASIC", "RSC_MANAGED_CLUSTER", "CLOUD_CLUSTER_ES",
+						"EXPORT_POWER_ON", "EXPORT_POWER_OFF", "RESTORE", "DOWNLOAD_FILE",
 						// The following permission groups cannot be used when onboarding an AWS account.
 						// They have been accepted in the past so we still silently allow them.
 						"EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT",
@@ -527,7 +528,8 @@ func featureResource() *schema.Resource {
 				},
 				Required: true,
 				Description: "RSC permission groups for the feature. Possible values are `BASIC`, " +
-					"`CLOUD_CLUSTER_ES` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is " +
+					"`CLOUD_CLUSTER_ES`, `RSC_MANAGED_CLUSTER`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, " +
+					"`RESTORE` and `DOWNLOAD_FILE`. For backwards compatibility, `[]` is " +
 					"interpreted as all applicable permission groups.",
 			},
 		},
