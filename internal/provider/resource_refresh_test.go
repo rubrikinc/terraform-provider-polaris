@@ -53,6 +53,7 @@ resource "polaris_azure_subscription" "default" {
 
 		regions = [
 			"westus2",
+			"eastus2",
 		]
 	}
 
