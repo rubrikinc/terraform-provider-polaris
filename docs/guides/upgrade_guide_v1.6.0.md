@@ -98,14 +98,14 @@ resource "polaris_sso_group" "example" {
 }
 ```
 
-For more details, see the [`polaris_sso_group` documentation](../resources/sso_group.md).
+For more details, see the [polaris_sso_group documentation](../resources/sso_group.md).
 
 ### polaris_identity_provider data source
 
 The new `polaris_identity_provider` data source looks up identity providers configured in RSC by ID or name. This is
 useful for referencing identity providers when configuring SSO group resources.
 
-For more details, see the [`polaris_identity_provider` documentation](../data-sources/identity_provider.md).
+For more details, see the [polaris_identity_provider documentation](../data-sources/identity_provider.md).
 
 ### polaris_refresh resource
 
@@ -113,7 +113,7 @@ The new `polaris_refresh` resource polls until an account or subscription's inve
 given timestamp. This ensures leaf objects like VMs and EC2 instances are discoverable via `polaris_object` after
 onboarding.
 
-For more details, see the [`polaris_refresh` documentation](../resources/refresh.md).
+For more details, see the [polaris_refresh documentation](../resources/refresh.md).
 
 ### polaris_aws_account: role chaining support
 
@@ -121,7 +121,7 @@ The `polaris_aws_account` resource now supports the `role_chaining` feature bloc
 feature is mutually exclusive with all other features. A new `role_chaining_account_id` field allows referencing the RSC
 cloud account ID of an account with the Role Chaining feature enabled.
 
-For more details, see the [`polaris_aws_account` documentation](../resources/aws_account.md).
+For more details, see the [polaris_aws_account documentation](../resources/aws_account.md).
 
 ### polaris_object: additional workload types
 
@@ -129,4 +129,4 @@ The `polaris_object` data source now supports `AwsNativeEbsVolume`, `AwsNativeEc
 `AzureNativeVirtualMachine` workload types. These workload-level types use server-side filters to exclude inactive
 objects.
 
-For more details, see the [`polaris_object` documentation](../data-sources/object.md).
+For more details, see the [polaris_object documentation](../data-sources/object.md).
