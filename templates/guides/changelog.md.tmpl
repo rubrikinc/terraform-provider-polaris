@@ -5,13 +5,34 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.6.0
-* Add `polaris_snapshot` data source. The data source is used to look up snapshots for RSC workloads using a timestamp
-  filter. [[docs](../data-sources/snapshot.md)]
+* **Breaking Change:** The `permission_groups` field is now required in the `cloud_native_protection` and `exocompute`
+  blocks of the `polaris_aws_account` resource. Previously it was optional for these two blocks only. See the
+  [Upgrade Guide](upgrade_guide_v1.6.0.md) for migration instructions.
+* New resource added for `polaris_sso_group` which creates and manages SSO groups in RSC. Supports assigning roles to
+  SSO groups and importing existing groups. [[docs](../resources/sso_group.md)]
+* New resource added for `polaris_refresh` which polls until an account or subscription's inventory refresh in RSC is
+  newer than a given timestamp. This ensures leaf objects like VMs and EC2 instances are discoverable via
+  `polaris_object` after onboarding. [[docs](../resources/refresh.md)]
+* New data source added for `polaris_identity_provider` which looks up identity providers configured in RSC by ID or
+  name. [[docs](../data-sources/identity_provider.md)]
+* New data source added for `polaris_snapshot` which looks up snapshots for RSC workloads using a timestamp filter.
+  [[docs](../data-sources/snapshot.md)]
+* Add support for the `cloud_discovery` feature in the `polaris_azure_subscription` resource. The feature enables
+  Azure Cloud Discovery for the subscription.
+* Add support for the `role_chaining` feature in the `polaris_aws_account` resource. The Role Chaining feature enables
+  cross-account role chaining and is mutually exclusive with all other features. [[docs](../resources/aws_account.md)]
+* Add `role_chaining_account_id` field to the `polaris_aws_account` resource. The field allows referencing the RSC
+  cloud account ID of an account with the Role Chaining feature enabled. [[docs](../resources/aws_account.md)]
+* Add support for the `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, `RESTORE` and `DOWNLOAD_FILE` permission groups in the
+  `polaris_aws_account` resource for escalation policy support.
+* Extend the `polaris_object` data source with support for `AwsNativeEbsVolume`, `AwsNativeEc2Instance`,
+  `AwsNativeRdsInstance` and `AzureNativeVirtualMachine` workload types. Workload-level types use server-side filters
+  to exclude inactive objects. [[docs](../data-sources/object.md)]
+* Add retry logic to the `polaris_object` data source for `AwsNativeAccount` lookups, since newly onboarded accounts
+  may not appear in the hierarchy immediately.
 * Migrate the `polaris_custom_role`, `polaris_role_assignment` and `polaris_user` resources and the `polaris_role`,
   `polaris_role_template`, `polaris_sso_group` and `polaris_user` data sources to the Terraform Plugin Framework.
 * Add SBOM generation in SPDX format to release artifacts.
-* The `permission_groups` field is now required in the `cloud_native_protection` and `exocompute` blocks of the
-  `polaris_aws_account` resource. Previously it was optional for these two blocks only.
 
 ## v1.5.2
 * Add `network_access_type` field to the `polaris_azure_archival_location` resource and data source. The field
