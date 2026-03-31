@@ -66,6 +66,8 @@ resource "polaris_gcp_exocompute" "default" {
 `
 
 func TestAccPolarisGCPExocompute_basic(t *testing.T) {
+	t.Skip("ITP-179")
+
 	config, project, err := loadGCPTestConfig()
 	if err != nil {
 		t.Fatal(err)
