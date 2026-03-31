@@ -77,7 +77,7 @@ Always use typed regions (`aws.Region`, `azure.Region`, `gcp.Region`) from the S
 
 ### UUID Handling
 
-Use `github.com/google/uuid` for all UUID operations. Parse with `uuid.Parse()`, convert with `.String()`.
+Use the existing third-party UUID dependency for all UUID operations. Do not write custom UUID parsing or formatting.
 
 ## Documentation
 
@@ -108,16 +108,34 @@ Use `github.com/google/uuid` for all UUID operations. Parse with `uuid.Parse()`,
 
 ## Go SDK Dependency
 
-The provider depends on `github.com/rubrikinc/rubrik-polaris-sdk-for-go`. During development, commit-based pseudo-versions are fine (e.g., `v1.3.3-0.20260326143530-e1a670b8f452`). For releases, the SDK must be pinned to a proper semver tag (e.g., `v1.4.0`). Tag the SDK first, then update the provider.
+The provider depends on `github.com/rubrikinc/rubrik-polaris-sdk-for-go`.
 
 ```bash
 go get github.com/rubrikinc/rubrik-polaris-sdk-for-go@<version>
 go mod tidy
 ```
 
+### Working with dependency source code
+
+Use `go list` to find the filesystem location of dependencies:
+
+```bash
+go list -m -json github.com/rubrikinc/rubrik-polaris-sdk-for-go | jq -r .Dir
+```
+
+This respects `GOWORK` and local workspace configurations. Do not look in the module cache directly or use `go doc` to read source — always use `go list` to resolve paths.
+
+### Important: never add replace directives
+
+Never add `replace` directives to `go.mod`. If you need to work with a local copy of the SDK, use a `go.work` file instead.
+
 ## Release Process
 
-### 1. Pre-release checks
+### 1. Ensure SDK is on a semver tag
+
+During development, commit-based pseudo-versions in `go.mod` are fine. Before releasing, the SDK must be pinned to a proper semver tag (e.g., `v1.4.0`). Tag the SDK first, then update the provider's `go.mod`.
+
+### 2. Pre-release checks
 
 ```bash
 go build ./...
@@ -127,14 +145,14 @@ go generate ./...   # verify no files changed
 go test ./...
 ```
 
-### 2. Update changelog and upgrade guide
+### 3. Update changelog and upgrade guide
 
 - Update `templates/guides/changelog.md.tmpl` with all changes since the last release
 - If there are breaking changes, new features, or deprecations, create or update `templates/guides/upgrade_guide_v<VERSION>.md.tmpl`
 - Run `go generate ./...` to regenerate docs
 - Commit, push, and merge via PR
 
-### 3. Tag and release
+### 4. Tag and release
 
 ```bash
 git checkout main && git pull origin main
