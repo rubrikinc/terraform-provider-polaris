@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -35,6 +36,7 @@ import (
 // testCredentials returns the RSC credentials from the environment.
 func testCredentials(t *testing.T) string {
 	t.Helper()
+	skipIfNotAcceptance(t)
 
 	credentials, err := loadTestCredentials("RUBRIK_POLARIS_SERVICEACCOUNT_FILE")
 	if err != nil {
@@ -47,6 +49,7 @@ func testCredentials(t *testing.T) string {
 // testUserEmail returns the new user email from the RSC test configuration.
 func testUserEmail(t *testing.T) string {
 	t.Helper()
+	skipIfNotAcceptance(t)
 
 	rsc, err := loadRSCTestConf()
 	if err != nil {
@@ -59,6 +62,7 @@ func testUserEmail(t *testing.T) string {
 // testSSOGroupName returns the SSO group name from the RSC test configuration.
 func testSSOGroupName(t *testing.T) string {
 	t.Helper()
+	skipIfNotAcceptance(t)
 
 	rsc, err := loadRSCTestConf()
 	if err != nil {
@@ -72,6 +76,7 @@ func testSSOGroupName(t *testing.T) string {
 // it does not, the test is skipped.
 func checkTestSSOGroup(t *testing.T, name string) {
 	t.Helper()
+	skipIfNotAcceptance(t)
 
 	polarisClient, err := testClient(t.Context())
 	if err != nil {
@@ -92,6 +97,7 @@ func checkTestSSOGroup(t *testing.T, name string) {
 // CLUSTER_ROOT. Returns the role ID.
 func createTestRole(t *testing.T, name string) uuid.UUID {
 	t.Helper()
+	skipIfNotAcceptance(t)
 
 	polarisClient, err := testClient(t.Context())
 	if err != nil {
@@ -124,6 +130,7 @@ func createTestRole(t *testing.T, name string) uuid.UUID {
 // the VIEW_CLUSTER permission on the CLUSTER_ROOT. Returns the role ID.
 func createTestRoleWithUniqueName(t *testing.T) uuid.UUID {
 	t.Helper()
+	skipIfNotAcceptance(t)
 
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -137,6 +144,7 @@ func createTestRoleWithUniqueName(t *testing.T) uuid.UUID {
 // Registers a cleanup function to delete the user. Returns the user ID.
 func createTestUser(t *testing.T, email string, roleID uuid.UUID) string {
 	t.Helper()
+	skipIfNotAcceptance(t)
 
 	polarisClient, err := testClient(t.Context())
 	if err != nil {
@@ -155,4 +163,14 @@ func createTestUser(t *testing.T, email string, roleID uuid.UUID) string {
 	})
 
 	return userID
+}
+
+// skipIfNotAcceptance skips the test if the TF_ACC environment variable is not
+// set.
+func skipIfNotAcceptance(t *testing.T) {
+	t.Helper()
+
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
+	}
 }
