@@ -4,6 +4,9 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.6.1
+* Re-release of v1.6.0 due to a GoReleaser bug that caused the v1.6.0 release to fail.
+
 ## v1.6.0
 * **Breaking Change:** The `permission_groups` field is now required in the `cloud_native_protection` and `exocompute`
   blocks of the `polaris_aws_account` resource. Previously it was optional for these two blocks only. See the
