@@ -29,13 +29,14 @@ builds:
 archives:
   - formats: zip
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
-    files:
-      - terraform-registry-manifest.json
 sboms:
   - artifacts: archive
 checksum:
-    name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
-    algorithm: sha256
+  extra_files:
+    - glob: 'terraform-registry-manifest.json'
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
+  name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
+  algorithm: sha256
 signs:
   - artifacts: checksum
     args:
@@ -47,5 +48,8 @@ signs:
       - "--detach-sign"
       - "${artifact}"
 release:
+  extra_files:
+    - glob: 'terraform-registry-manifest.json'
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
 changelog:
   disable: true
