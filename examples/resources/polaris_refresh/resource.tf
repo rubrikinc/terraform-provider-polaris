@@ -7,6 +7,11 @@ resource "polaris_aws_account" "account" {
     permission_groups = ["BASIC"]
     regions           = ["us-east-2"]
   }
+
+  cloud_discovery {
+    permission_groups = ["BASIC"]
+    regions           = ["us-east-2"]
+  }
 }
 
 data "polaris_object" "account" {
@@ -38,6 +43,11 @@ resource "polaris_azure_subscription" "sub" {
     resource_group_region = "eastus2"
 
     regions = ["eastus2"]
+  }
+
+  cloud_discovery {
+    permission_groups = ["BASIC"]
+    regions           = ["eastus2"]
   }
 }
 
