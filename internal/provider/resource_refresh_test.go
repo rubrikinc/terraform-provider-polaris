@@ -21,10 +21,14 @@
 package provider
 
 import (
+	"context"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // refreshAzureSubscriptionTmpl onboards an Azure subscription, looks it up
@@ -56,7 +60,17 @@ resource "polaris_azure_subscription" "default" {
 			"eastus2",
 		]
 	}
-
+{{ if .DiscoveryOnboarding }}
+	cloud_discovery {
+		permission_groups = [
+			"BASIC",
+		]
+		regions = [
+			"westus2",
+			"eastus2",
+		]
+	}
+{{ end }}
 	depends_on = [polaris_azure_service_principal.default]
 }
 
@@ -102,6 +116,16 @@ resource "polaris_aws_account" "default" {
 			"us-east-2",
 		]
 	}
+{{ if .DiscoveryOnboarding }}
+	cloud_discovery {
+		permission_groups = [
+			"BASIC",
+		]
+		regions = [
+			"us-east-2",
+		]
+	}
+{{ end }}
 }
 
 data "polaris_object" "account" {
@@ -118,11 +142,34 @@ resource "polaris_refresh" "account" {
 }
 `
 
+// discoveryOnboardingEnabled returns true if the CNP_DISCOVERY_ONBOARDING_ENABLED
+// feature flag is enabled. When this flag is enabled, automatic refresh only runs
+// for cloud discovery, so tests must also onboard that feature to trigger a
+// refresh.
+func discoveryOnboardingEnabled(t *testing.T) bool {
+	t.Helper()
+
+	credentials := os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE")
+	if credentials == "" {
+		return false
+	}
+
+	ctx := context.Background()
+	c, err := newClient(ctx, credentials, polaris.CacheParams{})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	return c.flag(ctx, core.FeatureFlagName("CNP_DISCOVERY_ONBOARDING_ENABLED"))
+}
+
 func TestAccPolarisRefresh_awsAccount(t *testing.T) {
 	config, account, err := loadAWSTestConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	config.DiscoveryOnboarding = discoveryOnboardingEnabled(t)
 
 	// Use the current time as the refresh timestamp to ensure the resource
 	// waits for a post-onboarding refresh.
@@ -159,6 +206,8 @@ func TestAccPolarisRefresh_azureSubscription(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	config.DiscoveryOnboarding = discoveryOnboardingEnabled(t)
 
 	// Use the current time as the refresh timestamp to ensure the resource
 	// waits for a post-onboarding refresh.

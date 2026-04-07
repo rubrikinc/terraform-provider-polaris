@@ -10,6 +10,9 @@ description: |-
   The resource does not trigger a refresh — RSC handles that automatically. It
   simply polls until the condition is met. All arguments are ForceNew, so any
   change destroys and recreates the resource (re-polls).
+  ~> Automatic refresh requires the cloud_discovery feature to be enabled on
+  the account or subscription. Without it, the resource may time out waiting for
+  a refresh that never occurs.
   The default timeout is 45 minutes and can be overridden with a timeouts
   block.
 ---
@@ -26,6 +29,10 @@ The resource does not trigger a refresh — RSC handles that automatically. It
 simply polls until the condition is met. All arguments are `ForceNew`, so any
 change destroys and recreates the resource (re-polls).
 
+~> Automatic refresh requires the `cloud_discovery` feature to be enabled on
+the account or subscription. Without it, the resource may time out waiting for
+a refresh that never occurs.
+
 The default timeout is 45 minutes and can be overridden with a `timeouts`
 block.
 
@@ -39,6 +46,11 @@ resource "polaris_aws_account" "account" {
   profile = "default"
 
   cloud_native_protection {
+    permission_groups = ["BASIC"]
+    regions           = ["us-east-2"]
+  }
+
+  cloud_discovery {
     permission_groups = ["BASIC"]
     regions           = ["us-east-2"]
   }
@@ -73,6 +85,11 @@ resource "polaris_azure_subscription" "sub" {
     resource_group_region = "eastus2"
 
     regions = ["eastus2"]
+  }
+
+  cloud_discovery {
+    permission_groups = ["BASIC"]
+    regions           = ["eastus2"]
   }
 }
 

@@ -1,248 +1,19 @@
 ---
-page_title: "polaris_sla_domain Resource - terraform-provider-polaris"
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
 subcategory: ""
 description: |-
-    The polaris_sla_domain resource is used to manage RSC global SLA Domains. SLA
-  Domain defines how you want to take snapshots of objects like virtual machines,
-  databases, SaaS apps and cloud objects. An SLA Domain can define frequency,
-  retention, archival and replication.
-  -> Enabling Instant Archive can increase bandwidth usage and archival storage
-  requirements.
-  -> The hourly retention for snapshots of cloud-native workloads must be a
-  multiple of 24.
-  -> For workloads backed up on a Rubrik cluster, snapshots are scheduled using
-  the time zone of that Rubrik cluster. For workloads backed up in the cloud,
-  snapshots are scheduled using the UTC time zone.
-  
-  Frequency
-  This defines when and how often snapshots are taken. This could be interval-based (days, hours, minutes) or calendar-based (a day of each month).
-  Retention
-  This defines how long the snapshot is kept on the Rubrik cluster.
-  Archival
-  Before You Start: To archive snapshots, make sure you’ve added archival locations.
-  To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days.
-  
-  Object types
-  Active Directory
-  Active Directory protection supports a minimum of 4 hours SLA.
-  Azure SQL Databases
-  Archival is mandatory and the backups will be instantly archived. Frequency and Retention apply to archived snapshots of the Azure SQL database.
-  Continuous backups for point-in-time recovery retentions is configured in azure_sql_database_config.
-  Azure SQL Managed Instance
-  Archival and Replication are not supported by Azure SQL Managed Instance.
-  Log backup for Azure SQL MI is configured in azure_sql_managed_instance_config.
-  Azure Blob Storage
-  Archival and Replication are not supported by Azure Blob Storage.
-  Backup location for scheduled snapshots is configured in azure_blob_config.
-  AWS RDS
-  Archival is only supported for PostgrSQL and Aurora PostgreSQL databases.
-  Continuous backups for point-in-time recovery retention is configured in aws_rds_config. If you don't specify a continuous backup, AWS provides 1 day of continuous backup by default for Aurora databases, which you can change but you can’t disable.
-  AWS S3
-  Archival and Replication are not supported by AWS S3. SLA Domains protecting AWS S3 cannot protect other object types.
-  Backup location(s) are configured in backup_location.
-  AWS DynamoDB
-  Replication is not supported by AWS DynamoDB.
-  Primary Backup Encryption KMS Key and Continuous backups for point-in-time recovery are configured in aws_dynamodb_config. Continuous backups will be automatically enabled for your DynamoDB tables.
-  Disabling continuous backups or changing the retention period in your AWS console may lead to higher storage and consumption costs. To avoid this, keep continuous backups enabled in your AWS console.
-  GCE Instance/Disk
-  Replication is not supported by GCE Instance/Disk.
-  Okta
-  Archival and Replication are not supported by Okta.
-  Microsoft 365
-  Archival and Replication are not supported by Microsoft 365.
-  M365 protection supports a minimum of 8 hours SLA (12 hours or more recomended).
-  OLVM
-  Archival is not supported by OLVM.
+  {{.Description | plainmarkdown | trimspace | prefixlines "  "}}
 ---
 
-# polaris_sla_domain (Resource)
+# {{.Name}} ({{.Type}})
 
-The `polaris_sla_domain` resource is used to manage RSC global SLA Domains. SLA
-Domain defines how you want to take snapshots of objects like virtual machines,
-databases, SaaS apps and cloud objects. An SLA Domain can define frequency,
-retention, archival and replication.
+{{.Description | trimspace}}
 
--> Enabling Instant Archive can increase bandwidth usage and archival storage
-   requirements.
-
--> The hourly retention for snapshots of cloud-native workloads must be a
-   multiple of 24.
-
--> For workloads backed up on a Rubrik cluster, snapshots are scheduled using
-   the time zone of that Rubrik cluster. For workloads backed up in the cloud,
-   snapshots are scheduled using the UTC time zone.
-
----
-
-### Frequency
-
-This defines when and how often snapshots are taken. This could be interval-based (days, hours, minutes) or calendar-based (a day of each month).
-
-### Retention
-
-This defines how long the snapshot is kept on the Rubrik cluster.
-
-### Archival
-Before You Start: To archive snapshots, make sure you’ve added archival locations.
-
-To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days.
-
----
-# Object types
-
-## Active Directory
-Active Directory protection supports a minimum of 4 hours SLA.
-
-## Azure SQL Databases
-Archival is mandatory and the backups will be instantly archived. Frequency and Retention apply to archived snapshots of the Azure SQL database.
-Continuous backups for point-in-time recovery retentions is configured in `azure_sql_database_config`.
-
-## Azure SQL Managed Instance
-Archival and Replication are not supported by Azure SQL Managed Instance.
-Log backup for Azure SQL MI is configured in `azure_sql_managed_instance_config`.
-
-## Azure Blob Storage
-Archival and Replication are not supported by Azure Blob Storage.
-Backup location for scheduled snapshots is configured in `azure_blob_config`.
-
-## AWS RDS
-Archival is only supported for PostgrSQL and Aurora PostgreSQL databases.
-Continuous backups for point-in-time recovery retention is configured in `aws_rds_config`. If you don't specify a continuous backup, AWS provides 1 day of continuous backup by default for Aurora databases, which you can change but you can’t disable.
-
-## AWS S3
-Archival and Replication are not supported by AWS S3. SLA Domains protecting AWS S3 cannot protect other object types.
-Backup location(s) are configured in `backup_location`.
-
-## AWS DynamoDB
-Replication is not supported by AWS DynamoDB.
-Primary Backup Encryption KMS Key and Continuous backups for point-in-time recovery are configured in `aws_dynamodb_config`. Continuous backups will be automatically enabled for your DynamoDB tables.
-Disabling continuous backups or changing the retention period in your AWS console may lead to higher storage and consumption costs. To avoid this, keep continuous backups enabled in your AWS console.
-
-## GCE Instance/Disk
-Replication is not supported by GCE Instance/Disk.
-
-## Okta
-Archival and Replication are not supported by Okta.
-
-## Microsoft 365
-Archival and Replication are not supported by Microsoft 365.
-M365 protection supports a minimum of 8 hours SLA (12 hours or more recomended).
-
-## OLVM
-Archival is not supported by OLVM.
-
-
+{{if .HasExample}}
 ## Example Usage
 
-```terraform
-# Basic daily SLA domain with snapshot windows
-# - Daily backup schedule with 7-day retention
-# - Snapshot window configuration (starts at 9 AM, 4-hour duration)
-# - First full snapshot scheduling (Tuesday at 7 PM, 5-hour duration)
-resource "polaris_sla_domain" "daily" {
-  name         = "daily"
-  description  = "Daily SLA Domain"
-  object_types = ["AWS_EC2_EBS_OBJECT_TYPE"]
-  daily_schedule {
-    frequency = 1
-    retention = 7
-  }
-  snapshot_window {
-    start_at = "09:00"
-    duration = 4
-  }
-  first_full_snapshot {
-    start_at = "Tue, 19:00"
-    duration = 5
-  }
-}
-
-
-# Weekly SLA domain with Azure Blob archival
-# - Weekly backup schedule (every Monday) with 4-week retention
-# - Azure Blob-specific configuration with archival location
-# - Using a data source to reference an existing archival location
-data "polaris_azure_archival_location" "archival_location" {
-  name = "my-archival-location"
-}
-
-resource "polaris_sla_domain" "weekly" {
-  name         = "weekly"
-  description  = "Weekly SLA Domain"
-  object_types = ["AZURE_BLOB_OBJECT_TYPE"]
-  weekly_schedule {
-    day_of_week    = "MONDAY"
-    frequency      = 1
-    retention      = 4
-    retention_unit = "WEEKS"
-  }
-  azure_blob_config {
-    archival_location_id = data.polaris_azure_archival_location.archival_location.id
-  }
-}
-
-# Advanced SLA domain with replication and cascading archival
-# - Daily backup schedule with 7-day retention
-# - Cross-cluster replication from mycluster2 to mycluster1
-# - Local retention on the target cluster (7 days)
-# - Cascading archival to a data center archival location after 7 days
-# - Archival tiering with instant tiering to Azure Archive storage
-# - Minimum accessible duration of 1 day (86400 seconds)
-data "polaris_sla_source_cluster" "mycluster1" {
-  name = "MY-CLUSTER-1"
-}
-
-data "polaris_sla_source_cluster" "mycluster2" {
-  name = "MY-CLUSTER-2"
-}
-
-data "polaris_data_center_archival_location" "myarchivallocation" {
-  cluster_id = data.polaris_sla_source_cluster.mycluster1.id
-  name       = "My Archival Location"
-}
-
-resource "polaris_sla_domain" "with_cascading_archival" {
-  name         = "with-cascading-archival"
-  description  = "SLA Domain with replication and cascading archival"
-  object_types = ["VSPHERE_OBJECT_TYPE"]
-
-  daily_schedule {
-    frequency      = 1
-    retention      = 7
-    retention_unit = "DAYS"
-  }
-
-  replication_spec {
-    retention      = 7
-    retention_unit = "DAYS"
-
-    local_retention {
-      retention      = 7
-      retention_unit = "DAYS"
-    }
-
-    replication_pair {
-      source_cluster = data.polaris_sla_source_cluster.mycluster2.id
-      target_cluster = data.polaris_sla_source_cluster.mycluster1.id
-    }
-
-    cascading_archival {
-      archival_location_id    = data.polaris_data_center_archival_location.myarchivallocation.id
-      archival_threshold      = 7
-      archival_threshold_unit = "DAYS"
-      frequency               = ["DAYS"]
-
-      archival_tiering {
-        instant_tiering                    = true
-        cold_storage_class                 = "AZURE_ARCHIVE"
-        min_accessible_duration_in_seconds = 86400
-        tier_existing_snapshots            = false
-      }
-    }
-  }
-}
-```
-
+{{tffile .ExampleFile}}
+{{end}}
 
 <!-- schema generated by tfplugindocs -->
 ## Schema
@@ -764,32 +535,14 @@ Required:
 
 Import is supported using the following syntax:
 
-
+{{if .HasImportIDConfig}}
 In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
 
-```terraform
-# Using SLA domain ID (UUID).
-import {
-  to = polaris_sla_domain.foobar
-  id = "0e55e625-b78d-4e83-87f3-90313a980211"
-}
+{{tffile .ImportIDConfigFile}}
+{{end}}
 
-# Using SLA domain name.
-import {
-  to = polaris_sla_domain.gold
-  id = "Gold"
-}
-```
-
-
-
+{{if .HasImport}}
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
-```terraform
-# Using SLA domain ID (UUID):
-% terraform import polaris_sla_domain.foobar 0e55e625-b78d-4e83-87f3-90313a980211
-
-# Using SLA domain name:
-% terraform import polaris_sla_domain.gold "Gold"
-```
-
+{{tffile .ImportFile}}
+{{end}}

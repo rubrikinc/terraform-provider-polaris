@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -123,6 +124,10 @@ func resourceSLADomain() *schema.Resource {
 		ReadContext:   readSLADomain,
 		UpdateContext: newSLADomainMutator("update"),
 		DeleteContext: deleteSLADomain,
+
+		Timeouts: &schema.ResourceTimeout{
+			Delete: schema.DefaultTimeout(10 * time.Minute),
+		},
 
 		Description: description(resourceSLADomainDescription),
 		Importer: &schema.ResourceImporter{
@@ -2616,6 +2621,32 @@ func deleteSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Di
 	id, err := uuid.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
+	}
+
+	// Wait for the SLA domain service to report zero assigned objects
+	// before deleting. This handles eventual consistency between the
+	// hierarchy service (which processes unassignments) and the SLA
+	// domain service (which enforces the "no assigned objects"
+	// precondition on delete).
+	for { // Bounded by the resource's Delete timeout.
+		count, err := sla.Wrap(client).DomainObjectCount(ctx, id)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if count == 0 {
+			break
+		}
+
+		tflog.Debug(ctx, "SLA domain still has assigned objects, waiting before delete", map[string]any{
+			"sla_id":       id.String(),
+			"object_count": count,
+		})
+
+		select {
+		case <-ctx.Done():
+			return diag.FromErr(ctx.Err())
+		case <-time.After(5 * time.Second):
+		}
 	}
 
 	if err := sla.Wrap(client).DeleteDomain(ctx, id); err != nil {
