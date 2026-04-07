@@ -4,6 +4,17 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.6.2
+* Fix managed identity upgrade for the `sql_db_protection` block in the `polaris_azure_subscription` resource. The
+  `upgradeFeatureToUseManagedIdentity` function was not including permission groups in the SDK call, causing the Go SDK
+  to select the legacy GraphQL query variant. This silently dropped the managed identity details (UMI), bypassing
+  backend validation and resulting in subscriptions upgraded to `BACKUP_V2` without the required UMI mapping.
+* Read back `user_assigned_managed_identity_name` and `user_assigned_managed_identity_principal_id` from the API during
+  `terraform plan` and `terraform apply` for the `sql_db_protection` block. Previously these fields were write-only and
+  not refreshed from remote state.
+* Require `cloud_discovery` for `polaris_refresh` when discovery onboarding is enabled.
+* Poll SLA domain object count before delete for eventual consistency.
+
 ## v1.6.1
 * Re-release of v1.6.0 due to a GoReleaser bug that caused the v1.6.0 release to fail.
 
