@@ -1826,6 +1826,10 @@ func upgradeFeatureToUseManagedIdentity(ctx context.Context, client *client, clo
 		},
 	}
 
+	if pgs, ok := azureFeaturePermissionGroups(block); ok {
+		feature = feature.WithPermissionGroups(pgs...)
+	}
+
 	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
 		CloudAccountID:      cloudAccountID,
 		Feature:             feature,
