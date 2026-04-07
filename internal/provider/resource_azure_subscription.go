@@ -1532,6 +1532,11 @@ func updateAzureFeatureState(d *schema.ResourceData, key string, feature azure.F
 		block[keyResourceGroupTags] = tags
 	}
 
+	if feature.Equal(core.FeatureAzureSQLDBProtection) {
+		block[keyUserAssignedManagedIdentityName] = feature.UserAssignedManagedIdentity.Name
+		block[keyUserAssignedManagedIdentityPrincipalID] = feature.UserAssignedManagedIdentity.PrincipalID
+	}
+
 	if err := d.Set(key, []any{block}); err != nil {
 		return err
 	}
@@ -1824,6 +1829,10 @@ func upgradeFeatureToUseManagedIdentity(ctx context.Context, client *client, clo
 			Region:            region.ToCloudAccountRegionEnum(),
 			ResourceGroupName: rgName,
 		},
+	}
+
+	if pgs, ok := azureFeaturePermissionGroups(block); ok {
+		feature = feature.WithPermissionGroups(pgs...)
 	}
 
 	if err := gqlazure.Wrap(polarisClient.GQL).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{

@@ -4,61 +4,6 @@ page_title: "Upgrade Guide: v1.6.0"
 
 # Upgrade Guide v1.6.0
 
-## New Features
-
-### polaris_sso_group resource
-
-The new `polaris_sso_group` resource creates and manages SSO groups in RSC. It supports assigning roles to SSO groups
-and importing existing groups using the `<group_name>:<identity_provider_id>` format.
-
-```terraform
-data "polaris_identity_provider" "example" {
-  name = "My IdP"
-}
-
-resource "polaris_sso_group" "example" {
-  group_name     = "mygroup"
-  auth_domain_id = data.polaris_identity_provider.example.identity_provider_id
-
-  role_ids = [
-    polaris_custom_role.viewer.id,
-  ]
-}
-```
-
-For more details, see the [polaris_sso_group documentation](../resources/sso_group.md).
-
-### polaris_identity_provider data source
-
-The new `polaris_identity_provider` data source looks up identity providers configured in RSC by ID or name. This is
-useful for referencing identity providers when configuring SSO group resources.
-
-For more details, see the [polaris_identity_provider documentation](../data-sources/identity_provider.md).
-
-### polaris_refresh resource
-
-The new `polaris_refresh` resource polls until an account or subscription's inventory refresh in RSC is newer than a
-given timestamp. This ensures leaf objects like VMs and EC2 instances are discoverable via `polaris_object` after
-onboarding.
-
-For more details, see the [polaris_refresh documentation](../resources/refresh.md).
-
-### polaris_aws_account: role chaining support
-
-The `polaris_aws_account` resource now supports the `role_chaining` feature block for cross-account role chaining. The
-feature is mutually exclusive with all other features. A new `role_chaining_account_id` field allows referencing the RSC
-cloud account ID of an account with the Role Chaining feature enabled.
-
-For more details, see the [polaris_aws_account documentation](../resources/aws_account.md).
-
-### polaris_object: additional workload types
-
-The `polaris_object` data source now supports `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance` and
-`AzureNativeVirtualMachine` workload types. These workload-level types use server-side filters to exclude inactive
-objects.
-
-For more details, see the [polaris_object documentation](../data-sources/object.md).
-
 ## Before Upgrading
 
 Review the [changelog](changelog.md) to understand what has changed and what might cause an issue when upgrading the
@@ -130,3 +75,58 @@ resource "polaris_aws_account" "example" {
   }
 }
 ```
+
+## New Features
+
+### polaris_sso_group resource
+
+The new `polaris_sso_group` resource creates and manages SSO groups in RSC. It supports assigning roles to SSO groups
+and importing existing groups using the `<group_name>:<identity_provider_id>` format.
+
+```terraform
+data "polaris_identity_provider" "example" {
+  name = "My IdP"
+}
+
+resource "polaris_sso_group" "example" {
+  group_name     = "mygroup"
+  auth_domain_id = data.polaris_identity_provider.example.identity_provider_id
+
+  role_ids = [
+    polaris_custom_role.viewer.id,
+  ]
+}
+```
+
+For more details, see the [polaris_sso_group documentation](../resources/sso_group.md).
+
+### polaris_identity_provider data source
+
+The new `polaris_identity_provider` data source looks up identity providers configured in RSC by ID or name. This is
+useful for referencing identity providers when configuring SSO group resources.
+
+For more details, see the [polaris_identity_provider documentation](../data-sources/identity_provider.md).
+
+### polaris_refresh resource
+
+The new `polaris_refresh` resource polls until an account or subscription's inventory refresh in RSC is newer than a
+given timestamp. This ensures leaf objects like VMs and EC2 instances are discoverable via `polaris_object` after
+onboarding.
+
+For more details, see the [polaris_refresh documentation](../resources/refresh.md).
+
+### polaris_aws_account: role chaining support
+
+The `polaris_aws_account` resource now supports the `role_chaining` feature block for cross-account role chaining. The
+feature is mutually exclusive with all other features. A new `role_chaining_account_id` field allows referencing the RSC
+cloud account ID of an account with the Role Chaining feature enabled.
+
+For more details, see the [polaris_aws_account documentation](../resources/aws_account.md).
+
+### polaris_object: additional workload types
+
+The `polaris_object` data source now supports `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance` and
+`AzureNativeVirtualMachine` workload types. These workload-level types use server-side filters to exclude inactive
+objects.
+
+For more details, see the [polaris_object documentation](../data-sources/object.md).
