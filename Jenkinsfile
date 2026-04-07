@@ -55,6 +55,10 @@ pipeline {
         // Run acceptance tests with the nightly build or when triggered manually.
         TF_ACC = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'true' : params.RUN_ACCEPTANCE_TEST}"
 
+        // Use a pre-downloaded Terraform CLI binary for acceptance tests to
+        // avoid intermittent download failures from hc-install.
+        TF_ACC_TERRAFORM_PATH = "${WORKSPACE}/terraform"
+
         // Enable logging from the terraform cli binary used by acceptance tests
         TF_ACC_LOG_PATH='terraform_cli.log'
         // Enable verbose Go SDK logging
@@ -92,6 +96,13 @@ pipeline {
         stage('Pre-test') {
             when { expression { env.TF_ACC == "true" } }
             steps {
+                sh '''
+                    TERRAFORM_VERSION=$(curl -s https://releases.hashicorp.com/terraform/ | grep -oP '(?<=href="/terraform/)1\\.[0-9]+\\.[0-9]+(?=/")' | head -1)
+                    echo "Downloading Terraform ${TERRAFORM_VERSION}"
+                    curl -sfLo terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+                    unzip -o terraform.zip
+                    chmod +x terraform
+                '''
                 sh 'go run github.com/rubrikinc/rubrik-polaris-sdk-for-go/cmd/testenv@v0.6.1 -precheck'
             }
         }
