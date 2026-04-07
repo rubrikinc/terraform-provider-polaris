@@ -4,26 +4,6 @@ page_title: "Upgrade Guide: v1.6.2"
 
 # Upgrade Guide v1.6.2
 
-## Bug Fixes
-
-### polaris_azure_subscription: managed identity upgrade fix
-
-The `upgradeFeatureToUseManagedIdentity` function was not including permission groups from the Terraform configuration
-when calling the Go SDK. This caused the SDK to select the legacy GraphQL query variant (using the deprecated `feature`
-field), which silently dropped the `FeatureSpecificInfo` payload containing the user-assigned managed identity (UMI)
-details. As a result, subscriptions upgraded to `BACKUP_V2` were missing the required UMI mapping.
-
-This fix extracts permission groups from the configuration block before calling the SDK, matching the pattern already
-used in `upgradeSQLDBFeatureToUseResourceGroup`. The SDK now selects the correct query variant (`featureToUpgrade`),
-which carries both permission groups and the managed identity input through to backend validation.
-
-### polaris_azure_subscription: managed identity state refresh
-
-The `user_assigned_managed_identity_name` and `user_assigned_managed_identity_principal_id` fields in the
-`sql_db_protection` block are now read back from the API during `terraform plan` and `terraform apply`. Previously
-these fields were write-only and not refreshed from remote state, which could cause unnecessary diffs or mask
-configuration drift.
-
 ## Before Upgrading
 
 Review the [changelog](changelog.md) to understand what has changed and what might cause an issue when upgrading the
@@ -61,3 +41,23 @@ this is expected as the provider now reads these values from the API. Proceed by
 % terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to the v1.6.2 version.
+
+## Bug Fixes
+
+### polaris_azure_subscription: managed identity upgrade fix
+
+The `upgradeFeatureToUseManagedIdentity` function was not including permission groups from the Terraform configuration
+when calling the Go SDK. This caused the SDK to select the legacy GraphQL query variant (using the deprecated `feature`
+field), which silently dropped the `FeatureSpecificInfo` payload containing the user-assigned managed identity (UMI)
+details. As a result, subscriptions upgraded to `BACKUP_V2` were missing the required UMI mapping.
+
+This fix extracts permission groups from the configuration block before calling the SDK, matching the pattern already
+used in `upgradeSQLDBFeatureToUseResourceGroup`. The SDK now selects the correct query variant (`featureToUpgrade`),
+which carries both permission groups and the managed identity input through to backend validation.
+
+### polaris_azure_subscription: managed identity state refresh
+
+The `user_assigned_managed_identity_name` and `user_assigned_managed_identity_principal_id` fields in the
+`sql_db_protection` block are now read back from the API during `terraform plan` and `terraform apply`. Previously
+these fields were write-only and not refreshed from remote state, which could cause unnecessary diffs or mask
+configuration drift.
