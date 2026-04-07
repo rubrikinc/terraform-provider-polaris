@@ -98,7 +98,6 @@ pipeline {
             steps {
                 sh '''
                     TERRAFORM_VERSION=$(curl -s https://releases.hashicorp.com/terraform/ | grep -oP '(?<=href="/terraform/)1\\.[0-9]+\\.[0-9]+(?=/")' | head -1)
-                    echo "Downloading Terraform ${TERRAFORM_VERSION}"
                     curl -sfLo terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
                     unzip -o terraform.zip
                     chmod +x terraform
