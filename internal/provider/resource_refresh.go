@@ -44,6 +44,10 @@ The resource does not trigger a refresh — RSC handles that automatically. It
 simply polls until the condition is met. All arguments are ´ForceNew´, so any
 change destroys and recreates the resource (re-polls).
 
+~> Automatic refresh requires the ´cloud_discovery´ feature to be enabled on
+the account or subscription. Without it, the resource may time out waiting for
+a refresh that never occurs.
+
 The default timeout is 45 minutes and can be overridden with a ´timeouts´
 block.
 `
