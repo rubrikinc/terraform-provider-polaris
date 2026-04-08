@@ -25,5 +25,3 @@ jobs:
         with:
           version: v2.14.3
           args: release --clean --snapshot --skip=sign,publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
