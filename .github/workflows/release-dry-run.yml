@@ -25,3 +25,8 @@ jobs:
         with:
           version: v2.14.3
           args: release --clean --snapshot --skip=sign,publish
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
