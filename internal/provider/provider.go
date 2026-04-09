@@ -121,6 +121,7 @@ func Provider() *schema.Provider {
 			keyPolarisDataCenterAWSAccount:        dataSourceDataCenterAWSAccount(),
 			keyPolarisDataCenterAzureSubscription: dataSourceDataCenterAzureSubscription(),
 			keyPolarisDeployment:                  dataSourceDeployment(),
+			keyPolarisFeatureFlag:                 dataSourceFeatureFlag(),
 			keyPolarisFeatures:                    dataSourceFeatures(),
 			keyPolarisGCPArchivalLocation:         dataSourceGcpArchivalLocation(),
 			keyPolarisGCPPermissions:              dataSourceGcpPermissions(),
