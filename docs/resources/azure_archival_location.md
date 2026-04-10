@@ -87,7 +87,7 @@ resource "polaris_azure_archival_location" "archival_location" {
 
 - `cloud_account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
 - `name` (String) Cloud native archival location name.
-- `storage_account_name_prefix` (String) Azure storage account name prefix. The storage account name prefix cannot be longer than 14 characters and can only consist of numbers and lower case letters. Changing this forces a new resource to be created.
+- `storage_account_name_prefix` (String) Azure storage account name prefix. When `storage_account_region` is not specified (`SOURCE_REGION`), the prefix cannot be longer than 16 characters. When `storage_account_region` is specified (`SPECIFIC_REGION`), the name cannot be longer than 24 characters. The value can only consist of numbers and lower case letters. Changing this forces a new resource to be created.
 
 ### Optional
 

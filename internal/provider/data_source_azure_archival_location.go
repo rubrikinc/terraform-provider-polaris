@@ -116,8 +116,9 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			keyStorageAccountNamePrefix: {
 				Type:     schema.TypeString,
 				Computed: true,
-				Description: "Azure storage account name prefix. The storage account name prefix cannot be longer " +
-					"than 14 characters and can only consist of numbers and lower case letters.",
+				Description: "Azure storage account name prefix. For `SOURCE_REGION`, the prefix cannot be " +
+					"longer than 16 characters. For `SPECIFIC_REGION`, the name cannot be longer than 24 " +
+					"characters. The value can only consist of numbers and lower case letters.",
 			},
 			keyStorageAccountRegion: {
 				Type:     schema.TypeString,
