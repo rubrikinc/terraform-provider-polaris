@@ -169,6 +169,7 @@ const (
 	keyExpiration                                   = "expiration"
 	keyExternalID                                   = "external_id"
 	keyFeature                                      = "feature"
+	keyFeatureFlag                                  = "feature_flag"
 	keyFeatures                                     = "features"
 	keyFirstFullSnapshot                            = "first_full_snapshot"
 	keyForceClusterDeleteOnDestroy                  = "force_cluster_delete_on_destroy"
