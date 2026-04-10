@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 
 	"github.com/google/uuid"
@@ -66,8 +67,8 @@ func resourceAzureArchivalLocation() *schema.Resource {
 		ReadContext:   azureReadArchivalLocation,
 		UpdateContext: azureUpdateArchivalLocation,
 		DeleteContext: azureDeleteArchivalLocation,
-
-		Description: description(resourceAzureArchivalLocationDescription),
+		CustomizeDiff: azureCustomizeDiffArchivalLocation,
+		Description:   description(resourceAzureArchivalLocationDescription),
 		Schema: map[string]*schema.Schema{
 			keyID: {
 				Type:        schema.TypeString,
@@ -133,10 +134,11 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				Description: "Azure storage account name prefix. The storage account name prefix cannot be longer " +
-					"than 14 characters and can only consist of numbers and lower case letters. Changing this forces " +
-					"a new resource to be created.",
-				ValidateFunc: validation.All(validation.StringLenBetween(1, 14),
+				Description: "Azure storage account name prefix. When `storage_account_region` is not specified " +
+					"(`SOURCE_REGION`), the prefix cannot be longer than 16 characters. When `storage_account_region` " +
+					"is specified (`SPECIFIC_REGION`), the name cannot be longer than 24 characters. The value can " +
+					"only consist of numbers and lower case letters. Changing this forces a new resource to be created.",
+				ValidateFunc: validation.All(validation.StringLenBetween(1, 24),
 					validation.StringMatch(regexp.MustCompile("^[a-z0-9]*$"),
 						"storage account name may only contain numbers and lowercase letters")),
 			},
@@ -321,6 +323,29 @@ func azureDeleteArchivalLocation(ctx context.Context, d *schema.ResourceData, m 
 	// Delete the Azure cloud native archival location.
 	if err := archival.Wrap(client).DeleteTargetMapping(ctx, targetMappingID); err != nil {
 		return diag.FromErr(err)
+	}
+
+	return nil
+}
+
+// azureCustomizeDiffArchivalLocation validates changes to the Azure archival
+// location resource.
+func azureCustomizeDiffArchivalLocation(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+	tflog.Trace(ctx, "azureCustomizeDiffArchivalLocation")
+
+	name := diff.Get(keyStorageAccountNamePrefix).(string)
+	if _, ok := diff.GetOk(keyStorageAccountRegion); ok {
+		// SPECIFIC_REGION: the name is used directly as the Azure storage
+		// account name, so it must be between 3 and 24 characters.
+		if len(name) < 3 {
+			return fmt.Errorf("storage_account_name_prefix must be at least 3 characters when storage_account_region is specified")
+		}
+	} else {
+		// SOURCE_REGION: an 8-character random UID is appended to the
+		// prefix, so it must not be longer than 16 characters.
+		if len(name) > 16 {
+			return fmt.Errorf("storage_account_name_prefix must not be longer than 16 characters when storage_account_region is not specified")
+		}
 	}
 
 	return nil
