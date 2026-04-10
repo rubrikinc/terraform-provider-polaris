@@ -113,7 +113,7 @@ func (d *featureFlagDataSource) Read(ctx context.Context, req datasource.ReadReq
 	name := config.Name.ValueString()
 	flag, err := core.Wrap(polarisClient.GQL).FeatureFlag(ctx, core.FeatureFlagName(name))
 	if err != nil {
-		res.Diagnostics.AddError("Failed to read feature flag", err.Error())
+		res.Diagnostics.AddError("Failed to read feature flag "+name, err.Error())
 		return
 	}
 

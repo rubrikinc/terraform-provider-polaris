@@ -288,7 +288,6 @@ const (
 	keyPolarisDataCenterAWSAccount                  = "polaris_data_center_aws_account"
 	keyPolarisDataCenterAzureSubscription           = "polaris_data_center_azure_subscription"
 	keyPolarisDeployment                            = "polaris_deployment"
-	keyPolarisFeatureFlag                           = "polaris_feature_flag"
 	keyPolarisFeatures                              = "polaris_features"
 	keyPolarisGCPArchivalLocation                   = "polaris_gcp_archival_location"
 	keyPolarisGCPCustomLabels                       = "polaris_gcp_custom_labels"
