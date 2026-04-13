@@ -120,6 +120,7 @@ func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Res
 
 	return []func() resource.Resource{
 		newCustomRoleResource,
+		newDataSecurityPolicyResource,
 		newRoleAssignmentResource,
 		newSSOGroupResource,
 		newUserResource,
@@ -130,6 +131,7 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 	tflog.Trace(ctx, "FrameworkProvider.DataSources")
 
 	return []func() datasource.DataSource{
+		newDataSecurityPolicyDataSource,
 		newFeatureFlagDataSource,
 		newIdentityProviderDataSource,
 		newRoleDataSource,
