@@ -298,7 +298,7 @@ func trustPolicyForRoleKey(ctx context.Context, client *polaris.Client, roleKey 
 	for _, feature := range account.Features {
 		features = append(features, feature.Feature)
 	}
-	trustPolicies, err := aws.Wrap(client).TrustPolicies(ctx, gqlaws.Cloud(account.Cloud), account.ID, features, externalID)
+	trustPolicies, err := aws.Wrap(client).TrustPolicies(ctx, gqlaws.Cloud(account.Cloud), account.ID, features, externalID, account.RoleChainingAccountID)
 	if err != nil {
 		return "", err
 	}

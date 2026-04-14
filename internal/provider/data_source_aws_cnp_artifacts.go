@@ -146,6 +146,9 @@ func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}
 
 		features = append(features, feature)
 	}
+	if err := core.ValidateRoleChaining(features); err != nil {
+		return diag.FromErr(err)
+	}
 
 	// Request artifacts.
 	profiles, roles, err := aws.Wrap(client).Artifacts(ctx, cloud, features)

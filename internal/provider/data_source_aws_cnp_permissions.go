@@ -85,6 +85,24 @@ are used when specifying the feature set.
    is always required except for the ´SERVERS_AND_APPS´ feature.
 `
 
+// roleChainingSyntheticPolicy is the policy document injected when the RSC
+// backend does not return any policy data for the ROLE_CHAINING feature.
+const roleChainingSyntheticPolicy = `{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "RoleChainingPolicySid",
+            "Effect": "Allow",
+            "Action": [
+                "sts:AssumeRole"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}`
+
 // This data source uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
@@ -180,11 +198,27 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 		features = append(features, feature)
 	}
 	roleKey := d.Get(keyRoleKey).(string)
+	if err := core.ValidateRoleChaining(features); err != nil {
+		return diag.FromErr(err)
+	}
 
 	customerPolicies, managedPolicies, err := aws.Wrap(client).Permissions(ctx, cloud, features, ec2RecoveryRolePath)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
+	// Workaround: the RSC backend does not return any policy data for
+	// the ROLE_CHAINING feature. Inject the expected sts:AssumeRole
+	// policy until the backend is fixed.
+	if len(features) == 1 && features[0].Equal(core.FeatureRoleChaining) && roleKey == "CROSSACCOUNT" && len(customerPolicies) == 0 {
+		customerPolicies = []aws.CustomerManagedPolicy{{
+			Artifact: roleKey,
+			Feature:  core.FeatureRoleChaining,
+			Name:     "RoleChaining",
+			Policy:   roleChainingSyntheticPolicy,
+		}}
+	}
+
 	slices.SortFunc(customerPolicies, func(i, j aws.CustomerManagedPolicy) int {
 		if r := cmp.Compare(i.Artifact, j.Artifact); r != 0 {
 			return r
