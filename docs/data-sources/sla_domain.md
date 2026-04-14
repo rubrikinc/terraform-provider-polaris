@@ -70,6 +70,7 @@ Read-Only:
 
 - `archival_location_id` (String) Archival location ID (UUID).
 - `archival_location_to_cluster_mapping` (List of Object) Mapping between archival location and Rubrik cluster. (see [below for nested schema](#nestedatt--archival--archival_location_to_cluster_mapping))
+- `frequency` (Set of String) Effective snapshot frequencies being archived.
 - `threshold` (Number) Threshold specifies the time before archiving the snapshots at the managing location.
 - `threshold_unit` (String) Threshold unit specifies the unit of threshold.
 

@@ -246,6 +246,27 @@ func resourceSLADomain() *schema.Resource {
 							Optional:    true,
 							Description: "Archival tiering specification for cold storage.",
 						},
+						keyFrequency: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									string(gqlsla.Minute),
+									string(gqlsla.Hours),
+									string(gqlsla.Days),
+									string(gqlsla.Weeks),
+									string(gqlsla.Months),
+									string(gqlsla.Quarters),
+									string(gqlsla.Years),
+								}, false),
+							},
+							Optional: true,
+							Description: "Override which snapshot frequencies to archive. When not specified, " +
+								"frequencies are derived from the snapshot schedule and will not be visible " +
+								"in state. Use the polaris_sla_domain data source to see the effective " +
+								"frequencies. Possible values are `MINUTES`, `HOURS`, `DAYS`, `WEEKS`, " +
+								"`MONTHS`, `QUARTERS`, `YEARS`.",
+						},
 					},
 				},
 				Optional: true,
@@ -1650,9 +1671,20 @@ func fromArchival(d *schema.ResourceData, schedule gqlsla.SnapshotSchedule) ([]g
 			}
 		}
 
+		// Parse frequencies — use user-specified values if provided,
+		// otherwise derive from the snapshot schedule.
+		var frequencies []gqlsla.RetentionUnit
+		if freqSet, ok := archival[keyFrequency].(*schema.Set); ok && freqSet.Len() > 0 {
+			for _, freq := range freqSet.List() {
+				frequencies = append(frequencies, gqlsla.RetentionUnit(freq.(string)))
+			}
+		} else {
+			frequencies = frequenciesFromSchedule(schedule)
+		}
+
 		archivalSpecs = append(archivalSpecs, gqlsla.ArchivalSpec{
 			GroupID:                          groupID,
-			Frequencies:                      frequenciesFromSchedule(schedule),
+			Frequencies:                      frequencies,
 			Threshold:                        archival[keyThreshold].(int),
 			ThresholdUnit:                    gqlsla.RetentionUnit(archival[keyThresholdUnit].(string)),
 			ArchivalLocationToClusterMapping: mappings,
@@ -1699,6 +1731,16 @@ func toArchival(domain gqlsla.Domain, existing []any) ([]any, error) {
 				keyTierExistingSnapshots:          spec.ArchivalTieringSpec.TierExistingSnapshots,
 			}
 			block[keyArchivalTiering] = []any{tieringMap}
+		}
+
+		if len(spec.Frequencies) > 0 {
+			frequencies := &schema.Set{F: schema.HashString}
+			for _, freq := range spec.Frequencies {
+				frequencies.Add(string(freq))
+			}
+			block[keyFrequency] = frequencies
+		} else {
+			block[keyFrequency] = nil
 		}
 
 		blocks[id] = block
@@ -2429,10 +2471,29 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
-	archival, err := toArchival(slaDomain, d.Get(keyArchival).([]any))
+	existing := d.Get(keyArchival).([]any)
+	archival, err := toArchival(slaDomain, existing)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
+	// Only persist frequencies to resource state when the user explicitly
+	// configured them. This avoids a perpetual diff when the provider
+	// derives frequencies from the snapshot schedule.
+	explicitFreqs := make(map[string]bool)
+	for _, old := range existing {
+		oldBlock := old.(map[string]any)
+		if freqSet, ok := oldBlock[keyFrequency].(*schema.Set); ok && freqSet.Len() > 0 {
+			explicitFreqs[oldBlock[keyArchivalLocationID].(string)] = true
+		}
+	}
+	for _, a := range archival {
+		block := a.(map[string]any)
+		if !explicitFreqs[block[keyArchivalLocationID].(string)] {
+			block[keyFrequency] = nil
+		}
+	}
+
 	if err := d.Set(keyArchival, archival); err != nil {
 		return diag.FromErr(err)
 	}
