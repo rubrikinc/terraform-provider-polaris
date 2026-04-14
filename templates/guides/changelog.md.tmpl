@@ -4,6 +4,15 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.6.3
+* New data source added for `polaris_feature_flag` which checks if a feature flag is enabled for the RSC account.
+  [[docs](../data-sources/feature_flag.md)]
+* Add support for the `ROLE_CHAINING` feature and `role_chaining_account_id` field in the `polaris_aws_cnp_account` and
+  `polaris_aws_cnp_account_attachments` resources, and in the `polaris_aws_cnp_permissions` data source.
+  [[docs](../resources/aws_cnp_account.md)] [[docs](../resources/aws_cnp_account_attachments.md)]
+* Fix `storage_account_name_prefix` max length validation in the `polaris_azure_archival_location` resource. The limit
+  is now 16 characters for `SOURCE_REGION` and 24 characters for `SPECIFIC_REGION`, matching the backend constraints.
+
 ## v1.6.2
 * Fix managed identity upgrade for the `sql_db_protection` block in the `polaris_azure_subscription` resource. The
   `upgradeFeatureToUseManagedIdentity` function was not including permission groups in the SDK call, causing the Go SDK

@@ -75,6 +75,10 @@ are used when specifying the feature set.
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
 
+´ROLE_CHAINING´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´SERVERS_AND_APPS´
   * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to onboard the
     feature.

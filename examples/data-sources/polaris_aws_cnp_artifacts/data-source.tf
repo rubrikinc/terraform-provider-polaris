@@ -1,4 +1,4 @@
-# Single feature with permission groups.
+# Single feature with one permission group.
 data "polaris_aws_cnp_artifacts" "artifacts" {
   feature {
     name = "CLOUD_NATIVE_PROTECTION"
@@ -8,8 +8,9 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
   }
 }
 
-# Single feature with multiple permission groups. When multiple permission
-# groups are specified, the BASIC permission group must always be included.
+# Single feature with multiple permission groups. BASIC must always be
+# included, except for the SERVERS_AND_APPS feature which only supports
+# the CLOUD_CLUSTER_ES permission group.
 data "polaris_aws_cnp_artifacts" "artifacts" {
   feature {
     name = "EXOCOMPUTE"
@@ -20,7 +21,7 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
   }
 }
 
-# Multiple features with permission groups.
+# Multiple features with multiple permission groups.
 data "polaris_aws_cnp_artifacts" "artifacts" {
   feature {
     name = "CLOUD_NATIVE_PROTECTION"
@@ -35,5 +36,23 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
       "BASIC",
       "RSC_MANAGED_CLUSTER",
     ]
+  }
+}
+
+# Using a variable for the features.
+variable "features" {
+  type = map(object({
+    permission_groups = set(string)
+  }))
+  description = "RSC features with permission groups."
+}
+
+data "polaris_aws_cnp_artifacts" "artifacts" {
+  dynamic "feature" {
+    for_each = var.features
+    content {
+      name              = feature.key
+      permission_groups = feature.value["permission_groups"]
+    }
   }
 }
