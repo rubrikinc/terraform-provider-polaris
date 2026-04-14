@@ -241,6 +241,7 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 
 	var customerPoliciesAttr []map[string]string
 	for _, policy := range customerPolicies {
+		// endorctl:allow
 		if roleKey == policy.Artifact {
 			customerPoliciesAttr = append(customerPoliciesAttr, map[string]string{
 				keyFeature: policy.Feature.Name,
@@ -259,6 +260,7 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 
 	var managedPoliciesAttr []string
 	for _, policy := range managedPolicies {
+		// endorctl:allow
 		if roleKey == policy.Artifact {
 			managedPoliciesAttr = append(managedPoliciesAttr, policy.Name)
 			hash.Write([]byte(policy.Artifact))
