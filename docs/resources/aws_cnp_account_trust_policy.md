@@ -8,8 +8,11 @@ required by RSC. The `policy` field of `aws_cnp_account_trust_policy` resource
 should be used with the `assume_role_policy` of the `aws_iam_role` resource.
 
 ~> **Note:** The `polaris_aws_cnp_account` resource can now be used to get the
-   IAM trust policies for all role keys. The `aws_cnp_account_trust_policy`
+   IAM trust policies for all role keys. The `polaris_aws_cnp_account_trust_policy`
    resource is no longer required and will be deprecated in a future version.
+
+~> **Note:** This resource does not support role chaining. Use the `trust_policies`
+   field of the `polaris_aws_cnp_account` resource for accounts using role chaining.
 
 ~> **Note:** Once `external_id` has been set it cannot be changed. Unless the
    cloud account is removed and onboarded again.
@@ -27,8 +30,11 @@ required by RSC. The `policy` field of `aws_cnp_account_trust_policy` resource
 should be used with the `assume_role_policy` of the `aws_iam_role` resource.
 
 ~> **Note:** The `polaris_aws_cnp_account` resource can now be used to get the
-   IAM trust policies for all role keys. The `aws_cnp_account_trust_policy`
+   IAM trust policies for all role keys. The `polaris_aws_cnp_account_trust_policy`
    resource is no longer required and will be deprecated in a future version.
+
+~> **Note:** This resource does not support role chaining. Use the `trust_policies`
+   field of the `polaris_aws_cnp_account` resource for accounts using role chaining.
 
 ~> **Note:** Once `external_id` has been set it cannot be changed. Unless the
    cloud account is removed and onboarded again.

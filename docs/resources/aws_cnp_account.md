@@ -212,6 +212,7 @@ resource "polaris_aws_cnp_account" "account" {
 - `delete_snapshots_on_destroy` (Boolean) Should snapshots be deleted when the resource is destroyed.
 - `external_id` (String) External ID. Changing this forces a new resource to be created.
 - `name` (String) Account name.
+- `role_chaining_account_id` (String) RSC cloud account ID of the role chaining account. When specified, the account will use cross-account role chaining. Changing this forces a new resource to be created.
 
 ### Read-Only
 
