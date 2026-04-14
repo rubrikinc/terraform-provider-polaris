@@ -150,6 +150,14 @@ func dataSourceSLADomain() *schema.Resource {
 							Computed:    true,
 							Description: "Archival tiering specification for cold storage.",
 						},
+						keyFrequency: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Computed:    true,
+							Description: "Effective snapshot frequencies being archived.",
+						},
 					},
 				},
 				Computed:    true,

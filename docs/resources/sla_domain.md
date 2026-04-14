@@ -302,6 +302,7 @@ Optional:
 - `archival_location_id` (String) Archival location ID (UUID).
 - `archival_location_to_cluster_mapping` (Block List) Mapping between archival location and Rubrik cluster. Each mapping specifies which cluster should be used for archiving to a specific location. (see [below for nested schema](#nestedblock--archival--archival_location_to_cluster_mapping))
 - `archival_tiering` (Block List, Max: 1) Archival tiering specification for cold storage. (see [below for nested schema](#nestedblock--archival--archival_tiering))
+- `frequency` (Set of String) Override which snapshot frequencies to archive. When not specified, frequencies are derived from the snapshot schedule and will not be visible in state. Use the [polaris_sla_domain](../data-sources/sla_domain.md) data source to see the effective frequencies. Possible values are `MINUTES`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS`, `YEARS`.
 - `threshold` (Number) Threshold specifies the time before archiving the snapshots at the managing location. The archival location retains the snapshots according to the SLA Domain schedule.
 - `threshold_unit` (String) Threshold unit specifies the unit of `threshold`. Possible values are `DAYS`, `WEEKS`, `MONTHS` and `YEARS`. Default value is `DAYS`.
 
@@ -635,7 +636,7 @@ Optional:
 - `archival_threshold` (Number) Archival threshold specifies when to archive replicated snapshots.
 - `archival_threshold_unit` (String) Archival threshold unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS` and `YEARS`.
 - `archival_tiering` (Block List, Max: 1) Archival tiering specification for cold storage. (see [below for nested schema](#nestedblock--replication_spec--cascading_archival--archival_tiering))
-- `frequency` (Set of String) Frequencies for cascading archival. Possible values are `MINUTE`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS`, `YEARS`.
+- `frequency` (Set of String) Frequencies for cascading archival. Possible values are `MINUTES`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `QUARTERS`, `YEARS`.
 
 <a id="nestedblock--replication_spec--cascading_archival--archival_tiering"></a>
 ### Nested Schema for `replication_spec.cascading_archival.archival_tiering`
