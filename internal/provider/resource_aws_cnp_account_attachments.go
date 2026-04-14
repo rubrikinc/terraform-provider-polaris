@@ -70,20 +70,28 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 					ValidateFunc: validation.StringInSlice([]string{
 						"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION",
 						"CLOUD_NATIVE_S3_PROTECTION", "CLOUD_NATIVE_DYNAMODB_PROTECTION", "EXOCOMPUTE",
-						"RDS_PROTECTION", "KUBERNETES_PROTECTION", "SERVERS_AND_APPS",
+						"RDS_PROTECTION", "KUBERNETES_PROTECTION", "SERVERS_AND_APPS", "ROLE_CHAINING",
 					}, false),
 				},
 				MinItems: 1,
 				Required: true,
 				Description: "RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
 					"`CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
-					"`KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.",
+					"`EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.",
 			},
 			keyInstanceProfile: {
 				Type:        schema.TypeSet,
 				Elem:        instanceProfileResource(),
 				Optional:    true,
 				Description: "Instance profiles to attach to the cloud account.",
+			},
+			keyRoleChainingAccountID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.IsUUID,
+				Description: "RSC cloud account ID of the role chaining account. When specified, " +
+					"the account will use cross-account role chaining.",
 			},
 			keyRole: {
 				Type:        schema.TypeSet,
@@ -92,6 +100,7 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 				Description: "Roles to attach to the cloud account.",
 			},
 		},
+		CustomizeDiff: awsCustomizeDiffCnpAccountAttachments,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -125,8 +134,23 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		roles[block[keyKey].(string)] = block[keyARN].(string)
 	}
 
+	ensureRoleChainingArtifact(roles, features)
+
 	// Request artifacts be added to account.
-	id, err := aws.Wrap(client).AddAccountArtifacts(ctx, accountID, features, profiles, roles)
+	var roleChainingAccountID uuid.UUID
+	if id, ok := d.GetOk(keyRoleChainingAccountID); ok {
+		roleChainingAccountID, err = uuid.Parse(id.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+	id, err := aws.Wrap(client).AddAccountArtifacts(ctx, aws.AddAccountArtifactsParams{
+		CloudAccountID:        accountID,
+		Features:              features,
+		InstanceProfiles:      profiles,
+		Roles:                 roles,
+		RoleChainingAccountID: roleChainingAccountID,
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -184,6 +208,12 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
+	// Workaround: the ROLE_CHAINING artifact is registered as a
+	// duplicate of CROSSACCOUNT by the create function. Remove it from
+	// the read response so it doesn't appear in state and cause a
+	// perpetual diff.
+	delete(roles, "ROLE_CHAINING")
+
 	oldRoles := make(map[string]string)
 	for _, role := range d.Get(keyRole).(*schema.Set).List() {
 		block := role.(map[string]any)
@@ -228,8 +258,23 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		roles[block[keyKey].(string)] = block[keyARN].(string)
 	}
 
+	ensureRoleChainingArtifact(roles, features)
+
 	// Update artifacts.
-	_, err = aws.Wrap(client).AddAccountArtifacts(ctx, id, features, profiles, roles)
+	var roleChainingAccountID uuid.UUID
+	if id, ok := d.GetOk(keyRoleChainingAccountID); ok {
+		roleChainingAccountID, err = uuid.Parse(id.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+	_, err = aws.Wrap(client).AddAccountArtifacts(ctx, aws.AddAccountArtifactsParams{
+		CloudAccountID:        id,
+		Features:              features,
+		InstanceProfiles:      profiles,
+		Roles:                 roles,
+		RoleChainingAccountID: roleChainingAccountID,
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -252,6 +297,34 @@ func awsDeleteCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	d.SetId("")
 
 	return nil
+}
+
+// ensureRoleChainingArtifact duplicates the CROSSACCOUNT role ARN as
+// ROLE_CHAINING when the ROLE_CHAINING feature is present. This is a
+// workaround for the RSC backend not returning the ROLE_CHAINING_ROLE_ARN
+// artifact.
+func ensureRoleChainingArtifact(roles map[string]string, features []core.Feature) {
+	crossAccountARN, ok := roles["CROSSACCOUNT"]
+	if !ok {
+		return
+	}
+	if _, ok := roles["ROLE_CHAINING"]; ok {
+		return
+	}
+	if _, ok := core.LookupFeature(features, core.FeatureRoleChaining); ok {
+		roles["ROLE_CHAINING"] = crossAccountARN
+	}
+}
+
+func awsCustomizeDiffCnpAccountAttachments(ctx context.Context, diff *schema.ResourceDiff, m any) error {
+	tflog.Trace(ctx, "awsCustomizeDiffCnpAccountAttachments")
+
+	var features []core.Feature
+	for _, feature := range diff.Get(keyFeatures).(*schema.Set).List() {
+		features = append(features, core.Feature{Name: feature.(string)})
+	}
+
+	return core.ValidateRoleChaining(features)
 }
 
 func instanceProfileResource() *schema.Resource {

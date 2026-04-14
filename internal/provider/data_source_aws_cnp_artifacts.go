@@ -75,6 +75,10 @@ are used when specifying the feature set.
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
 
+´ROLE_CHAINING´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´SERVERS_AND_APPS´
   * ´CLOUD_CLUSTER_ES´ - Represents the basic set of permissions required to onboard the
     feature.
@@ -145,6 +149,9 @@ func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}
 		}
 
 		features = append(features, feature)
+	}
+	if err := core.ValidateRoleChaining(features); err != nil {
+		return diag.FromErr(err)
 	}
 
 	// Request artifacts.

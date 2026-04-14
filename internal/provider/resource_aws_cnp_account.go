@@ -80,11 +80,15 @@ are used when specifying the feature set.
   * ´RSC_MANAGED_CLUSTER´ - Represents the set of permissions required for the
     Rubrik-managed Exocompute cluster.
 
+´KUBERNETES_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´RDS_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
 
-´KUBERNETES_PROTECTION´
+´ROLE_CHAINING´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
 
@@ -156,6 +160,14 @@ func resourceAwsCnpAccount() *schema.Resource {
 				Description:  "AWS account ID. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
+			keyRoleChainingAccountID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.IsUUID,
+				Description: "RSC cloud account ID of the role chaining account. When specified, " +
+					"the account will use cross-account role chaining.",
+			},
 			keyRegions: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
@@ -207,12 +219,26 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 		regions = append(regions, region.(string))
 	}
 
+	var roleChainingAccountID uuid.UUID
+	if id, ok := d.GetOk(keyRoleChainingAccountID); ok {
+		roleChainingAccountID, err = uuid.Parse(id.(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	id, err := aws.Wrap(client).AddAccountWithIAM(ctx, aws.AccountWithName(cloud, nativeID, name), features, aws.Regions(regions...))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if _, err := aws.Wrap(client).TrustPolicies(ctx, gqlaws.Cloud(cloud), id, features, externalID); err != nil {
+	if _, err := aws.Wrap(client).TrustPolicies(ctx, aws.TrustPoliciesParams{
+		Cloud:                 gqlaws.Cloud(cloud),
+		CloudAccountID:        id,
+		Features:              features,
+		ExternalID:            externalID,
+		RoleChainingAccountID: roleChainingAccountID,
+	}); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -248,7 +274,22 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.
 	for _, feature := range account.Features {
 		features = append(features, feature.Feature)
 	}
-	policies, err := aws.Wrap(client).TrustPolicies(ctx, gqlaws.Cloud(account.Cloud), id, features, externalID)
+	roleChainingAccountID := account.RoleChainingAccountID
+	if roleChainingAccountID == uuid.Nil {
+		if id, ok := d.GetOk(keyRoleChainingAccountID); ok {
+			roleChainingAccountID, err = uuid.Parse(id.(string))
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	}
+	policies, err := aws.Wrap(client).TrustPolicies(ctx, aws.TrustPoliciesParams{
+		Cloud:                 gqlaws.Cloud(account.Cloud),
+		CloudAccountID:        id,
+		Features:              features,
+		ExternalID:            externalID,
+		RoleChainingAccountID: roleChainingAccountID,
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -284,6 +325,11 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.
 	}
 	if err := d.Set(keyRegions, regions); err != nil {
 		return diag.FromErr(err)
+	}
+	if account.RoleChainingAccountID != uuid.Nil {
+		if err := d.Set(keyRoleChainingAccountID, account.RoleChainingAccountID.String()); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 	policySet := &schema.Set{F: schema.HashResource(trustPolicyResource())}
 	for roleKey, policy := range policies {
@@ -422,6 +468,15 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 func awsCustomizeDiffCnpAccount(ctx context.Context, diff *schema.ResourceDiff, m any) error {
 	tflog.Trace(ctx, "awsCustomizeDiffCnpAccount")
 
+	// Prevent ROLE_CHAINING from being combined with other features.
+	var features []core.Feature
+	for _, block := range diff.Get(keyFeature).(*schema.Set).List() {
+		features = append(features, core.Feature{Name: block.(map[string]any)[keyName].(string)})
+	}
+	if err := core.ValidateRoleChaining(features); err != nil {
+		return err
+	}
+
 	if diff.HasChange(keyFeature) {
 		if err := diff.SetNewComputed(keyTrustPolicies); err != nil {
 			return err
@@ -506,12 +561,12 @@ func featureResource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				Description: "RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
-					"`KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.",
+					"`CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
+					"`EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION",
 					"CLOUD_NATIVE_DYNAMODB_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION", "KUBERNETES_PROTECTION",
-					"EXOCOMPUTE", "RDS_PROTECTION", "SERVERS_AND_APPS",
+					"EXOCOMPUTE", "ROLE_CHAINING", "RDS_PROTECTION", "SERVERS_AND_APPS",
 				}, false),
 			},
 			keyPermissionGroups: {
@@ -528,8 +583,8 @@ func featureResource() *schema.Resource {
 				},
 				Required: true,
 				Description: "RSC permission groups for the feature. Possible values are `BASIC`, " +
-					"`CLOUD_CLUSTER_ES`, `RSC_MANAGED_CLUSTER`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, " +
-					"`RESTORE` and `DOWNLOAD_FILE`. For backwards compatibility, `[]` is " +
+					"`CLOUD_CLUSTER_ES`, `DOWNLOAD_FILE`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, " +
+					"`RESTORE` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is " +
 					"interpreted as all applicable permission groups.",
 			},
 		},
@@ -574,7 +629,7 @@ func trustPolicyResource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 				Description: "RSC artifact key for the AWS role. Possible values are `CROSSACCOUNT`, " +
-					"`EXOCOMPUTE_EKS_MASTERNODE` and `EXOCOMPUTE_EKS_WORKERNODE`.",
+					"`EXOCOMPUTE_EKS_MASTERNODE`, `EXOCOMPUTE_EKS_WORKERNODE` and `EXOCOMPUTE_EKS_LAMBDA`.",
 			},
 			keyPolicy: {
 				Type:        schema.TypeString,

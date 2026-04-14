@@ -33,6 +33,9 @@ description: |-
   RDS_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the
   feature.
+  ROLE_CHAINING
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   SERVERS_AND_APPS
   CLOUD_CLUSTER_ES - Represents the basic set of permissions required to onboard the
   feature.
@@ -83,6 +86,10 @@ are used when specifying the feature set.
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
+`ROLE_CHAINING`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+
 `SERVERS_AND_APPS`
   * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
     feature.
@@ -93,7 +100,7 @@ are used when specifying the feature set.
 ## Example Usage
 
 ```terraform
-# Single feature with permission groups.
+# Single feature with one permission group.
 data "polaris_aws_cnp_artifacts" "artifacts" {
   feature {
     name = "CLOUD_NATIVE_PROTECTION"
@@ -103,8 +110,9 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
   }
 }
 
-# Single feature with multiple permission groups. When multiple permission
-# groups are specified, the BASIC permission group must always be included.
+# Single feature with multiple permission groups. BASIC must always be
+# included, except for the SERVERS_AND_APPS feature which only supports
+# the CLOUD_CLUSTER_ES permission group.
 data "polaris_aws_cnp_artifacts" "artifacts" {
   feature {
     name = "EXOCOMPUTE"
@@ -115,7 +123,7 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
   }
 }
 
-# Multiple features with permission groups.
+# Multiple features with multiple permission groups.
 data "polaris_aws_cnp_artifacts" "artifacts" {
   feature {
     name = "CLOUD_NATIVE_PROTECTION"
@@ -130,6 +138,24 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
       "BASIC",
       "RSC_MANAGED_CLUSTER",
     ]
+  }
+}
+
+# Using a variable for the features.
+variable "features" {
+  type = map(object({
+    permission_groups = set(string)
+  }))
+  description = "RSC features with permission groups."
+}
+
+data "polaris_aws_cnp_artifacts" "artifacts" {
+  dynamic "feature" {
+    for_each = var.features
+    content {
+      name              = feature.key
+      permission_groups = feature.value["permission_groups"]
+    }
   }
 }
 ```
@@ -156,5 +182,5 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `KUBERNETES_PROTECTION`, `SERVERS_AND_APPS`, `EXOCOMPUTE` and `RDS_PROTECTION`.
-- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `CLOUD_CLUSTER_ES`, `RSC_MANAGED_CLUSTER`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, `RESTORE` and `DOWNLOAD_FILE`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
+- `name` (String) RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.
+- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `CLOUD_CLUSTER_ES`, `DOWNLOAD_FILE`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, `RESTORE` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.

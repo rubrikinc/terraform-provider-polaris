@@ -44,6 +44,10 @@ are used when specifying the feature set.
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
+`ROLE_CHAINING`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+
 `SERVERS_AND_APPS`
   * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
     feature.
@@ -97,6 +101,10 @@ are used when specifying the feature set.
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
 
+`ROLE_CHAINING`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+
 `SERVERS_AND_APPS`
   * `CLOUD_CLUSTER_ES` - Represents the basic set of permissions required to onboard the
     feature.
@@ -130,7 +138,6 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 # polaris_aws_cnp_artifacts data source.
 data "polaris_aws_cnp_permissions" "permissions" {
   for_each = data.polaris_aws_cnp_artifacts.artifacts.role_keys
-  cloud    = data.polaris_aws_cnp_artifacts.artifacts.cloud
   role_key = each.key
 
   dynamic "feature" {
