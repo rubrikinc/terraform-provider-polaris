@@ -228,7 +228,13 @@ func awsCreateCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 		return diag.FromErr(err)
 	}
 
-	if _, err := aws.Wrap(client).TrustPolicies(ctx, gqlaws.Cloud(cloud), id, features, externalID, roleChainingAccountID); err != nil {
+	if _, err := aws.Wrap(client).TrustPolicies(ctx, aws.TrustPoliciesParams{
+		Cloud:                 gqlaws.Cloud(cloud),
+		CloudAccountID:        id,
+		Features:              features,
+		ExternalID:            externalID,
+		RoleChainingAccountID: roleChainingAccountID,
+	}); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -273,7 +279,13 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.
 			}
 		}
 	}
-	policies, err := aws.Wrap(client).TrustPolicies(ctx, gqlaws.Cloud(account.Cloud), id, features, externalID, roleChainingAccountID)
+	policies, err := aws.Wrap(client).TrustPolicies(ctx, aws.TrustPoliciesParams{
+		Cloud:                 gqlaws.Cloud(account.Cloud),
+		CloudAccountID:        id,
+		Features:              features,
+		ExternalID:            externalID,
+		RoleChainingAccountID: roleChainingAccountID,
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}

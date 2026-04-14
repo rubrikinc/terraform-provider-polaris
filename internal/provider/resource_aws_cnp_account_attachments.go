@@ -144,7 +144,13 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 			return diag.FromErr(err)
 		}
 	}
-	id, err := aws.Wrap(client).AddAccountArtifacts(ctx, accountID, features, profiles, roles, roleChainingAccountID)
+	id, err := aws.Wrap(client).AddAccountArtifacts(ctx, aws.AddAccountArtifactsParams{
+		CloudAccountID:        accountID,
+		Features:              features,
+		InstanceProfiles:      profiles,
+		Roles:                 roles,
+		RoleChainingAccountID: roleChainingAccountID,
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -262,7 +268,13 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 			return diag.FromErr(err)
 		}
 	}
-	_, err = aws.Wrap(client).AddAccountArtifacts(ctx, id, features, profiles, roles, roleChainingAccountID)
+	_, err = aws.Wrap(client).AddAccountArtifacts(ctx, aws.AddAccountArtifactsParams{
+		CloudAccountID:        id,
+		Features:              features,
+		InstanceProfiles:      profiles,
+		Roles:                 roles,
+		RoleChainingAccountID: roleChainingAccountID,
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
