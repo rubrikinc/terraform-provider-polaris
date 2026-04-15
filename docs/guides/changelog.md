@@ -10,6 +10,9 @@ page_title: "Changelog"
 * Add support for the `ROLE_CHAINING` feature and `role_chaining_account_id` field in the `polaris_aws_cnp_account` and
   `polaris_aws_cnp_account_attachments` resources, and in the `polaris_aws_cnp_permissions` data source.
   [[docs](../resources/aws_cnp_account.md)] [[docs](../resources/aws_cnp_account_attachments.md)]
+* Add `frequency` field to the `archival` block in the `polaris_sla_domain` resource. The field allows overriding which
+  snapshot frequencies are archived instead of deriving them from the snapshot schedule.
+  [[docs](../resources/sla_domain.md)]
 * Fix `storage_account_name_prefix` max length validation in the `polaris_azure_archival_location` resource. The limit
   is now 16 characters for `SOURCE_REGION` and 24 characters for `SPECIFIC_REGION`, matching the backend constraints.
 

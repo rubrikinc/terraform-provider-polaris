@@ -147,6 +147,32 @@ field of the `polaris_aws_cnp_account` resource when using role chaining.
 For more details, see the [polaris_aws_cnp_account documentation](../resources/aws_cnp_account.md) and the
 [polaris_aws_cnp_account_attachments documentation](../resources/aws_cnp_account_attachments.md).
 
+### polaris_sla_domain: archival frequency override
+
+The `archival` block in the `polaris_sla_domain` resource now supports a `frequency` field that allows overriding which
+snapshot frequencies are archived. When not specified, frequencies are derived from the snapshot schedule as before.
+
+```terraform
+resource "polaris_sla_domain" "example" {
+  # ...
+
+  archival {
+    archival_location_id = polaris_aws_archival_location.example.id
+    threshold            = 30
+    threshold_unit       = "DAYS"
+
+    frequency = [
+      "DAYS",
+      "WEEKS",
+    ]
+  }
+}
+```
+
+The effective frequencies can be read back using the `polaris_sla_domain` data source.
+
+For more details, see the [polaris_sla_domain documentation](../resources/sla_domain.md).
+
 ## Bug Fixes
 
 ### polaris_azure_archival_location: storage_account_name_prefix max length fix
