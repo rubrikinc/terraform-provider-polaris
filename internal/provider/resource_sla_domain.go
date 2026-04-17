@@ -2944,25 +2944,32 @@ func toSapHanaConfig(config *gqlsla.SapHanaConfig) []any {
 		return nil
 	}
 
-	result := map[string]any{}
+	// Pre-seed unit fields with the schema's Default to avoid drift when the
+	// matching duration is unset. The Default is injected during plan, not
+	// during d.Set(), so state must carry the same value after refresh.
+	result := map[string]any{
+		keyIncrementalFrequencyUnit:  string(gqlsla.Days),
+		keyLogRetentionUnit:          string(gqlsla.Days),
+		keyDifferentialFrequencyUnit: string(gqlsla.Days),
+	}
 	if config.IncrementalFrequency.Duration > 0 {
 		result[keyIncrementalFrequency] = config.IncrementalFrequency.Duration
-		result[keyIncrementalFrequencyUnit] = config.IncrementalFrequency.Unit
+		result[keyIncrementalFrequencyUnit] = string(config.IncrementalFrequency.Unit)
 	}
 	if config.LogRetention.Duration > 0 {
 		result[keyLogRetention] = config.LogRetention.Duration
-		result[keyLogRetentionUnit] = config.LogRetention.Unit
+		result[keyLogRetentionUnit] = string(config.LogRetention.Unit)
 	}
 	if config.DifferentialFrequency.Duration > 0 {
 		result[keyDifferentialFrequency] = config.DifferentialFrequency.Duration
-		result[keyDifferentialFrequencyUnit] = config.DifferentialFrequency.Unit
+		result[keyDifferentialFrequencyUnit] = string(config.DifferentialFrequency.Unit)
 	}
-	if config.StorageSnapshotConfig != nil {
+	if c := config.StorageSnapshotConfig; c != nil && (c.Frequency.Duration > 0 || c.Retention.Duration > 0) {
 		result[keyStorageSnapshotConfig] = []any{map[string]any{
-			keyFrequency:     config.StorageSnapshotConfig.Frequency.Duration,
-			keyFrequencyUnit: config.StorageSnapshotConfig.Frequency.Unit,
-			keyRetention:     config.StorageSnapshotConfig.Retention.Duration,
-			keyRetentionUnit: config.StorageSnapshotConfig.Retention.Unit,
+			keyFrequency:     c.Frequency.Duration,
+			keyFrequencyUnit: string(c.Frequency.Unit),
+			keyRetention:     c.Retention.Duration,
+			keyRetentionUnit: string(c.Retention.Unit),
 		}}
 	}
 
@@ -3012,18 +3019,22 @@ func toDB2Config(config *gqlsla.DB2Config) []any {
 		return nil
 	}
 
-	result := map[string]any{}
+	result := map[string]any{
+		keyIncrementalFrequencyUnit:  string(gqlsla.Days),
+		keyLogRetentionUnit:          string(gqlsla.Days),
+		keyDifferentialFrequencyUnit: string(gqlsla.Days),
+	}
 	if config.IncrementalFrequency.Duration > 0 {
 		result[keyIncrementalFrequency] = config.IncrementalFrequency.Duration
-		result[keyIncrementalFrequencyUnit] = config.IncrementalFrequency.Unit
+		result[keyIncrementalFrequencyUnit] = string(config.IncrementalFrequency.Unit)
 	}
 	if config.LogRetention.Duration > 0 {
 		result[keyLogRetention] = config.LogRetention.Duration
-		result[keyLogRetentionUnit] = config.LogRetention.Unit
+		result[keyLogRetentionUnit] = string(config.LogRetention.Unit)
 	}
 	if config.DifferentialFrequency.Duration > 0 {
 		result[keyDifferentialFrequency] = config.DifferentialFrequency.Duration
-		result[keyDifferentialFrequencyUnit] = config.DifferentialFrequency.Unit
+		result[keyDifferentialFrequencyUnit] = string(config.DifferentialFrequency.Unit)
 	}
 	if config.LogArchivalMethod != "" {
 		result[keyLogArchivalMethod] = string(config.LogArchivalMethod)
@@ -3106,15 +3117,16 @@ func toOracleConfig(config *gqlsla.OracleConfig) []any {
 	}
 
 	result := map[string]any{
-		keyFrequency:        config.Frequency.Duration,
-		keyFrequencyUnit:    config.Frequency.Unit,
-		keyLogRetention:     config.LogRetention.Duration,
-		keyLogRetentionUnit: config.LogRetention.Unit,
+		keyFrequency:            config.Frequency.Duration,
+		keyFrequencyUnit:        string(config.Frequency.Unit),
+		keyLogRetention:         config.LogRetention.Duration,
+		keyLogRetentionUnit:     string(config.LogRetention.Unit),
+		keyHostLogRetentionUnit: string(gqlsla.Days),
 	}
 
 	if config.HostLogRetention.Duration > 0 {
 		result[keyHostLogRetention] = config.HostLogRetention.Duration
-		result[keyHostLogRetentionUnit] = config.HostLogRetention.Unit
+		result[keyHostLogRetentionUnit] = string(config.HostLogRetention.Unit)
 	}
 
 	return []any{result}
@@ -3298,22 +3310,27 @@ func toInformixConfig(config *gqlsla.InformixSlaConfig) []any {
 		return nil
 	}
 
-	result := map[string]any{}
+	result := map[string]any{
+		keyIncrementalFrequencyUnit: string(gqlsla.Days),
+		keyIncrementalRetentionUnit: string(gqlsla.Days),
+		keyFrequencyUnit:            string(gqlsla.Days),
+		keyRetentionUnit:            string(gqlsla.Days),
+	}
 	if config.IncrementalFrequency.Duration > 0 {
 		result[keyIncrementalFrequency] = config.IncrementalFrequency.Duration
-		result[keyIncrementalFrequencyUnit] = config.IncrementalFrequency.Unit
+		result[keyIncrementalFrequencyUnit] = string(config.IncrementalFrequency.Unit)
 	}
 	if config.IncrementalRetention.Duration > 0 {
 		result[keyIncrementalRetention] = config.IncrementalRetention.Duration
-		result[keyIncrementalRetentionUnit] = config.IncrementalRetention.Unit
+		result[keyIncrementalRetentionUnit] = string(config.IncrementalRetention.Unit)
 	}
 	if config.LogFrequency.Duration > 0 {
 		result[keyFrequency] = config.LogFrequency.Duration
-		result[keyFrequencyUnit] = config.LogFrequency.Unit
+		result[keyFrequencyUnit] = string(config.LogFrequency.Unit)
 	}
 	if config.LogRetention.Duration > 0 {
 		result[keyRetention] = config.LogRetention.Duration
-		result[keyRetentionUnit] = config.LogRetention.Unit
+		result[keyRetentionUnit] = string(config.LogRetention.Unit)
 	}
 
 	return []any{result}

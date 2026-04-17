@@ -7,6 +7,14 @@ page_title: "Changelog"
 ## v1.7.0
 * Add Terraform search support for the `polaris_custom_role` resource. Enables `terraform query` to discover custom
   roles in RSC, including roles not managed by Terraform.
+* Improve handling of optional retention fields in the object-specific configuration blocks of the
+  `polaris_sla_domain` resource (`sap_hana_config`, `db2_config`, `mssql_config`, `oracle_config`, `mongo_config`,
+  `managed_volume_config`, `postgres_db_cluster_config`, `mysql_config`, `informix_config`, `gcp_cloud_sql_config`).
+  Omitted retention fields are now left out of the API request instead of being sent with empty values.
+* Improve state refresh for the `sap_hana_config`, `db2_config`, `oracle_config` and `informix_config` blocks of the
+  `polaris_sla_domain` resource. Optional retention unit fields now mirror the schema default when the matching
+  duration is unset, and the `storage_snapshot_config` block in `sap_hana_config` is only emitted when it has data.
+  This removes spurious diffs after apply.
 
 ## v1.6.3
 * New data source added for `polaris_feature_flag` which checks if a feature flag is enabled for the RSC account.
