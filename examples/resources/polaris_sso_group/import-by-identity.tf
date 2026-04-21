@@ -1,6 +1,6 @@
 import {
   to = polaris_sso_group.auditors
   identity = {
-    id = "a3f4b5c6-d7e8-9012-3456-789abcdef012"
+    id = "8deda554-e76f-4025-91d9-cb20def6b7b8"
   }
 }

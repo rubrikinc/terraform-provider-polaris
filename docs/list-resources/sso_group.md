@@ -21,7 +21,7 @@ list "polaris_sso_group" "by_name" {
   provider = polaris
 
   config {
-    name = "Engineering"
+    name = "Auditors"
   }
 }
 
@@ -29,8 +29,8 @@ list "polaris_sso_group" "by_name_and_domain" {
   provider = polaris
 
   config {
-    name            = "Engineering"
-    auth_domain_id  = "12345678-1234-1234-1234-123456789012"
+    name            = "Auditors"
+    auth_domain_id  = "1a5629cb-2681-4ea4-b36c-ea8b2f3990cd"
   }
 }
 ```

@@ -341,10 +341,39 @@ func (r *ssoGroupResource) Delete(ctx context.Context, req resource.DeleteReques
 func (r *ssoGroupResource) ImportState(ctx context.Context, req resource.ImportStateRequest, res *resource.ImportStateResponse) {
 	tflog.Trace(ctx, "ssoGroupResource.ImportState")
 
+	polarisClient, err := r.client.polaris()
+	if err != nil {
+		res.Diagnostics.AddError("RSC client error", err.Error())
+		return
+	}
+
+	// Import by identity block (Terraform 1.12+).
+	if req.Identity != nil {
+		var identity ssoGroupIdentityModel
+		res.Diagnostics.Append(req.Identity.Get(ctx, &identity)...)
+		if res.Diagnostics.HasError() {
+			return
+		}
+
+		res.Diagnostics.Append(res.State.SetAttribute(ctx, path.Root(keyID), identity.ID.ValueString())...)
+		res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
+		return
+	}
+
+	// Import by raw UUID.
+	if _, err := uuid.Parse(req.ID); err == nil {
+		res.Diagnostics.Append(res.State.SetAttribute(ctx, path.Root(keyID), req.ID)...)
+
+		identity := ssoGroupIdentityModel{ID: types.StringValue(req.ID)}
+		res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
+		return
+	}
+
+	// Import by legacy composite format: "<group_name>:<identity_provider_id>".
 	parts := strings.SplitN(req.ID, ":", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		res.Diagnostics.AddError("Invalid import ID",
-			`Expected import ID format: "<group_name>:<identity_provider_id>"`)
+			`Expected a UUID or the legacy format "<group_name>:<identity_provider_id>"`)
 		return
 	}
 	groupName := parts[0]
@@ -353,12 +382,6 @@ func (r *ssoGroupResource) ImportState(ctx context.Context, req resource.ImportS
 	if _, err := uuid.Parse(authDomainID); err != nil {
 		res.Diagnostics.AddError("Invalid import ID",
 			fmt.Sprintf("The identity provider ID %q is not a valid UUID: %s", authDomainID, err))
-		return
-	}
-
-	polarisClient, err := r.client.polaris()
-	if err != nil {
-		res.Diagnostics.AddError("RSC client error", err.Error())
 		return
 	}
 

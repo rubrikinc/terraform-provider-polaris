@@ -76,7 +76,7 @@ In Terraform v1.12.0 and later, the [`import` block](https://developer.hashicorp
 import {
   to = polaris_sso_group.auditors
   identity = {
-    id = "a3f4b5c6-d7e8-9012-3456-789abcdef012"
+    id = "8deda554-e76f-4025-91d9-cb20def6b7b8"
   }
 }
 ```
@@ -93,12 +93,12 @@ In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.
 ```terraform
 import {
   to = polaris_sso_group.auditors
-  id = "Auditors:1a5629cb-2681-4ea4-b36c-ea8b2f3990cd"
+  id = "1a5629cb-2681-4ea4-b36c-ea8b2f3990cd"
 }
 ```
 
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-% terraform import polaris_sso_group.auditors "Auditors:1a5629cb-2681-4ea4-b36c-ea8b2f3990cd"
+% terraform import polaris_sso_group.auditors 1a5629cb-2681-4ea4-b36c-ea8b2f3990cd
 ```
