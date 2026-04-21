@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.7.0
+* Add Terraform search support for the `polaris_custom_role` resource. Enables `terraform query` to discover custom
+  roles in RSC, including roles not managed by Terraform.
+
 ## v1.6.3
 * New data source added for `polaris_feature_flag` which checks if a feature flag is enabled for the RSC account.
   [[docs](../data-sources/feature_flag.md)]
