@@ -20,6 +20,8 @@ page_title: "Changelog"
   plans because the API returned `LOGARCHMETH1` while the schema treated the field as unset.
 * Add Terraform search support for the `polaris_user` resource. Enables `terraform query` to discover users in RSC,
   including users not managed by Terraform.
+* Add Terraform search support for the `polaris_sso_group` resource. Enables `terraform query` to discover SSO groups
+  in RSC, including groups not managed by Terraform. Supports filtering by name and auth domain ID.
 
 ## v1.6.3
 * New data source added for `polaris_feature_flag` which checks if a feature flag is enabled for the RSC account.

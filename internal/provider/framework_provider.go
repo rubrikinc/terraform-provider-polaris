@@ -148,6 +148,7 @@ func (p *FrameworkProvider) ListResources(ctx context.Context) []func() list.Lis
 
 	return []func() list.ListResource{
 		newCustomRoleListResource,
+		newSSOGroupListResource,
 		newUserListResource,
 	}
 }
