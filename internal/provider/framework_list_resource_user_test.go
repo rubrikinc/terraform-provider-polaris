@@ -31,9 +31,7 @@ import (
 )
 
 func TestAccUserListResource(t *testing.T) {
-	email := testUserEmail(t)
-	roleID := createTestRole(t, "Test Search User Role")
-	userID := createTestUser(t, email, roleID)
+	userID := createTestUser(t, testUserEmail(t), createTestRole(t, "Test Search User Role"))
 
 	resource.Test(t, resource.TestCase{
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
@@ -72,7 +70,7 @@ func TestAccUserListResource(t *testing.T) {
 				}
 			`,
 			ConfigVariables: config.Variables{
-				"user_email": config.StringVariable(email),
+				"user_email": config.StringVariable(testUserEmail(t)),
 			},
 			QueryResultChecks: []querycheck.QueryResultCheck{
 				querycheck.ExpectIdentity("polaris_user.filtered", map[string]knownvalue.Check{
