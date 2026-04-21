@@ -66,7 +66,7 @@ func (r *userListResource) ListResourceConfigSchema(ctx context.Context, _ list.
 		Attributes: map[string]listschema.Attribute{
 			keyEmail: listschema.StringAttribute{
 				Optional:    true,
-				Description: "Filter users by email.",
+				Description: "Filter users by email. Matches users whose email contains the given value (case-insensitive).",
 			},
 		},
 	}

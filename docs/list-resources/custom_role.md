@@ -31,4 +31,4 @@ list "polaris_custom_role" "by_name" {
 
 ### Optional
 
-- `name` (String) Filter roles by name.
+- `name` (String) Filter roles by name. Matches roles whose name contains the given value (case-insensitive).

@@ -63,7 +63,7 @@ func (r *ssoGroupListResource) ListResourceConfigSchema(ctx context.Context, _ l
 		Attributes: map[string]listschema.Attribute{
 			keyName: listschema.StringAttribute{
 				Optional:    true,
-				Description: "Filter SSO groups by name.",
+				Description: "Filter SSO groups by name. Matches groups whose name contains the given value (case-insensitive).",
 			},
 			keyAuthDomainID: listschema.StringAttribute{
 				Optional:    true,

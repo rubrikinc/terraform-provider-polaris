@@ -31,4 +31,4 @@ list "polaris_user" "by_email" {
 
 ### Optional
 
-- `email` (String) Filter users by email.
+- `email` (String) Filter users by email. Matches users whose email contains the given value (case-insensitive).

@@ -41,4 +41,4 @@ list "polaris_sso_group" "by_name_and_domain" {
 ### Optional
 
 - `auth_domain_id` (String) Filter SSO groups by auth domain ID (identity provider ID).
-- `name` (String) Filter SSO groups by name.
+- `name` (String) Filter SSO groups by name. Matches groups whose name contains the given value (case-insensitive).

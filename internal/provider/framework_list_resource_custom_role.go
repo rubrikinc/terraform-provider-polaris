@@ -66,7 +66,7 @@ func (r *customRoleListResource) ListResourceConfigSchema(ctx context.Context, _
 		Attributes: map[string]listschema.Attribute{
 			keyName: listschema.StringAttribute{
 				Optional:    true,
-				Description: "Filter roles by name.",
+				Description: "Filter roles by name. Matches roles whose name contains the given value (case-insensitive).",
 			},
 		},
 	}
