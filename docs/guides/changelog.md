@@ -15,6 +15,9 @@ page_title: "Changelog"
   `polaris_sla_domain` resource. Optional retention unit fields now mirror the schema default when the matching
   duration is unset, and the `storage_snapshot_config` block in `sap_hana_config` is only emitted when it has data.
   This removes spurious diffs after apply.
+* Set the default for `log_archival_method` in the `db2_config` block of the `polaris_sla_domain` resource to
+  `LOGARCHMETH1`, matching the RSC backend default. Previously, omitting the field produced a drift on subsequent
+  plans because the API returned `LOGARCHMETH1` while the schema treated the field as unset.
 
 ## v1.6.3
 * New data source added for `polaris_feature_flag` which checks if a feature flag is enabled for the RSC account.

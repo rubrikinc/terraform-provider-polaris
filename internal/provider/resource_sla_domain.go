@@ -519,7 +519,8 @@ func resourceSLADomain() *schema.Resource {
 						keyLogArchivalMethod: {
 							Type:         schema.TypeString,
 							Optional:     true,
-							Description:  "Log archival method. Possible values are `LOGARCHMETH1`, `LOGARCHMETH2`.",
+							Default:      string(gqlsla.Db2LogArchivalMethod1),
+							Description:  "Log archival method. Possible values are `LOGARCHMETH1`, `LOGARCHMETH2`. Default is `LOGARCHMETH1`.",
 							ValidateFunc: validation.StringInSlice([]string{"LOGARCHMETH1", "LOGARCHMETH2"}, false),
 						},
 					},
