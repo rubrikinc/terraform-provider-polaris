@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -45,6 +46,7 @@ RSC.
 
 var (
 	_ resource.Resource                = &customRoleResource{}
+	_ resource.ResourceWithIdentity    = &customRoleResource{}
 	_ resource.ResourceWithImportState = &customRoleResource{}
 )
 
@@ -57,6 +59,10 @@ type customRoleModel struct {
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
 	Permission  types.Set    `tfsdk:"permission"`
+}
+
+type customRoleIdentityModel struct {
+	ID types.String `tfsdk:"id"`
 }
 
 func newCustomRoleResource() resource.Resource {
@@ -146,6 +152,19 @@ func (r *customRoleResource) Schema(ctx context.Context, _ resource.SchemaReques
 	}
 }
 
+func (r *customRoleResource) IdentitySchema(ctx context.Context, _ resource.IdentitySchemaRequest, res *resource.IdentitySchemaResponse) {
+	tflog.Trace(ctx, "customRoleResource.IdentitySchema")
+
+	res.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			keyID: identityschema.StringAttribute{
+				RequiredForImport: true,
+				Description:       "Role ID (UUID).",
+			},
+		},
+	}
+}
+
 func (r *customRoleResource) Configure(ctx context.Context, req resource.ConfigureRequest, res *resource.ConfigureResponse) {
 	tflog.Trace(ctx, "customRoleResource.Configure")
 
@@ -184,6 +203,9 @@ func (r *customRoleResource) Create(ctx context.Context, req resource.CreateRequ
 
 	plan.ID = types.StringValue(id.String())
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+
+	identity := customRoleIdentityModel{ID: plan.ID}
+	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
 }
 
 func (r *customRoleResource) Read(ctx context.Context, req resource.ReadRequest, res *resource.ReadResponse) {
@@ -228,6 +250,9 @@ func (r *customRoleResource) Read(ctx context.Context, req resource.ReadRequest,
 	state.Permission = permissionSet
 
 	res.Diagnostics.Append(res.State.Set(ctx, &state)...)
+
+	identity := customRoleIdentityModel{ID: state.ID}
+	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
 }
 
 func (r *customRoleResource) Update(ctx context.Context, req resource.UpdateRequest, res *resource.UpdateResponse) {
@@ -270,6 +295,9 @@ func (r *customRoleResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	plan.ID = state.ID
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+
+	identity := customRoleIdentityModel{ID: plan.ID}
+	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
 }
 
 func (r *customRoleResource) Delete(ctx context.Context, req resource.DeleteRequest, res *resource.DeleteResponse) {
@@ -306,5 +334,5 @@ func (r *customRoleResource) Delete(ctx context.Context, req resource.DeleteRequ
 func (r *customRoleResource) ImportState(ctx context.Context, req resource.ImportStateRequest, res *resource.ImportStateResponse) {
 	tflog.Trace(ctx, "customRoleResource.ImportState")
 
-	resource.ImportStatePassthroughID(ctx, path.Root(keyID), req, res)
+	resource.ImportStatePassthroughWithIdentity(ctx, path.Root(keyID), path.Root(keyID), req, res)
 }

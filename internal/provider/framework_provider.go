@@ -24,6 +24,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -31,6 +32,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 )
+
+var _ provider.ProviderWithListResources = &FrameworkProvider{}
 
 const Name = "registry.terraform.io/rubrikinc/polaris"
 
@@ -113,6 +116,7 @@ func (p *FrameworkProvider) Configure(ctx context.Context, req provider.Configur
 
 	res.ResourceData = c
 	res.DataSourceData = c
+	res.ListResourceData = c
 }
 
 func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -136,5 +140,13 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 		newRoleTemplateDataSource,
 		newSSOGroupDataSource,
 		newUserDataSource,
+	}
+}
+
+func (p *FrameworkProvider) ListResources(ctx context.Context) []func() list.ListResource {
+	tflog.Trace(ctx, "FrameworkProvider.ListResources")
+
+	return []func() list.ListResource{
+		newCustomRoleListResource,
 	}
 }

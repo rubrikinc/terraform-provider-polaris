@@ -67,6 +67,10 @@ func TestAccCustomRoleResource(t *testing.T) {
 							})}),
 						}),
 					})),
+				statecheck.ExpectIdentity("polaris_custom_role.role", map[string]knownvalue.Check{
+					keyID: NonNullUUID(),
+				}),
+				statecheck.ExpectIdentityValueMatchesState("polaris_custom_role.role", tfjsonpath.New(keyID)),
 			},
 		}, {
 			// Verify that the resource can be updated.
@@ -118,6 +122,10 @@ func TestAccCustomRoleResource(t *testing.T) {
 							})}),
 						}),
 					})),
+				statecheck.ExpectIdentity("polaris_custom_role.role", map[string]knownvalue.Check{
+					keyID: NonNullUUID(),
+				}),
+				statecheck.ExpectIdentityValueMatchesState("polaris_custom_role.role", tfjsonpath.New(keyID)),
 			},
 		}, {
 			// Verify that the resource can be imported.
