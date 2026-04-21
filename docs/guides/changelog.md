@@ -18,6 +18,8 @@ page_title: "Changelog"
 * Set the default for `log_archival_method` in the `db2_config` block of the `polaris_sla_domain` resource to
   `LOGARCHMETH1`, matching the RSC backend default. Previously, omitting the field produced a drift on subsequent
   plans because the API returned `LOGARCHMETH1` while the schema treated the field as unset.
+* Add Terraform search support for the `polaris_user` resource. Enables `terraform query` to discover users in RSC,
+  including users not managed by Terraform.
 
 ## v1.6.3
 * New data source added for `polaris_feature_flag` which checks if a feature flag is enabled for the RSC account.

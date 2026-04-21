@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -49,6 +50,7 @@ The ´polaris_user´ resource is used to create and manage local users in RSC.
 
 var (
 	_ resource.Resource                 = &userResource{}
+	_ resource.ResourceWithIdentity     = &userResource{}
 	_ resource.ResourceWithImportState  = &userResource{}
 	_ resource.ResourceWithUpgradeState = &userResource{}
 )
@@ -64,6 +66,10 @@ type userResourceModel struct {
 	IsAccountOwner types.Bool   `tfsdk:"is_account_owner"`
 	RoleIDs        types.Set    `tfsdk:"role_ids"`
 	Status         types.String `tfsdk:"status"`
+}
+
+type userIdentityModel struct {
+	ID types.String `tfsdk:"id"`
 }
 
 func newUserResource() resource.Resource {
@@ -134,6 +140,19 @@ func (r *userResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 	}
 }
 
+func (r *userResource) IdentitySchema(ctx context.Context, _ resource.IdentitySchemaRequest, res *resource.IdentitySchemaResponse) {
+	tflog.Trace(ctx, "userResource.IdentitySchema")
+
+	res.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			keyID: identityschema.StringAttribute{
+				RequiredForImport: true,
+				Description:       "User ID (UUID).",
+			},
+		},
+	}
+}
+
 func (r *userResource) Configure(ctx context.Context, req resource.ConfigureRequest, res *resource.ConfigureResponse) {
 	tflog.Trace(ctx, "userResource.Configure")
 
@@ -187,6 +206,9 @@ func (r *userResource) Create(ctx context.Context, req resource.CreateRequest, r
 	plan.IsAccountOwner = types.BoolValue(user.IsAccountOwner)
 	plan.Status = types.StringValue(user.Status)
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+
+	identity := userIdentityModel{ID: plan.ID}
+	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
 }
 
 func (r *userResource) Read(ctx context.Context, req resource.ReadRequest, res *resource.ReadResponse) {
@@ -231,6 +253,9 @@ func (r *userResource) Read(ctx context.Context, req resource.ReadRequest, res *
 	state.Status = types.StringValue(user.Status)
 	state.RoleIDs = roleIDsSet
 	res.Diagnostics.Append(res.State.Set(ctx, &state)...)
+
+	identity := userIdentityModel{ID: state.ID}
+	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
 }
 
 func (r *userResource) Update(ctx context.Context, req resource.UpdateRequest, res *resource.UpdateResponse) {
@@ -281,6 +306,9 @@ func (r *userResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	plan.IsAccountOwner = types.BoolValue(user.IsAccountOwner)
 	plan.Status = types.StringValue(user.Status)
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+
+	identity := userIdentityModel{ID: plan.ID}
+	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
 }
 
 func (r *userResource) Delete(ctx context.Context, req resource.DeleteRequest, res *resource.DeleteResponse) {
@@ -310,7 +338,7 @@ func (r *userResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 func (r *userResource) ImportState(ctx context.Context, req resource.ImportStateRequest, res *resource.ImportStateResponse) {
 	tflog.Trace(ctx, "userResource.ImportState")
 
-	resource.ImportStatePassthroughID(ctx, path.Root(keyID), req, res)
+	resource.ImportStatePassthroughWithIdentity(ctx, path.Root(keyID), path.Root(keyID), req, res)
 }
 
 // collectRoleIDs extracts role UUIDs from the model RoleIDs set.

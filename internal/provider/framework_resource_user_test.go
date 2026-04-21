@@ -90,6 +90,10 @@ func TestAccUserResource(t *testing.T) {
 					"polaris_user.user", []tfjsonpath.Path{tfjsonpath.New(keyRoleIDs)},
 					"polaris_custom_role.auditor", tfjsonpath.New(keyID),
 					compare.ValuesSame()),
+				statecheck.ExpectIdentity("polaris_user.user", map[string]knownvalue.Check{
+					keyID: knownvalue.NotNull(),
+				}),
+				statecheck.ExpectIdentityValueMatchesState("polaris_user.user", tfjsonpath.New(keyID)),
 			},
 		}, {
 			// Verify that the resource can be updated with an additional role.
@@ -154,6 +158,10 @@ func TestAccUserResource(t *testing.T) {
 					"polaris_user.user", []tfjsonpath.Path{tfjsonpath.New(keyRoleIDs)},
 					"polaris_custom_role.cluster_viewer", tfjsonpath.New(keyID),
 					compare.ValuesSame()),
+				statecheck.ExpectIdentity("polaris_user.user", map[string]knownvalue.Check{
+					keyID: knownvalue.NotNull(),
+				}),
+				statecheck.ExpectIdentityValueMatchesState("polaris_user.user", tfjsonpath.New(keyID)),
 			},
 		}, {
 			// Verify that the resource can be imported.
