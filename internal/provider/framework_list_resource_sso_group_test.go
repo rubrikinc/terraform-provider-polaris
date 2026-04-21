@@ -28,22 +28,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
 func TestAccSSOGroupListResource(t *testing.T) {
-	name := testSSOGroupName(t)
-	checkTestSSOGroup(t, name)
-
-	// Look up the group ID for exact identity assertions.
-	polarisClient, err := testClient(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	group, err := access.Wrap(polarisClient).SSOGroupByName(t.Context(), name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	groupID := checkTestSSOGroup(t, testSSOGroupName(t))
 
 	resource.Test(t, resource.TestCase{
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
@@ -61,7 +49,7 @@ func TestAccSSOGroupListResource(t *testing.T) {
 			`,
 			QueryResultChecks: []querycheck.QueryResultCheck{
 				querycheck.ExpectIdentity("polaris_sso_group.all", map[string]knownvalue.Check{
-					keyID: knownvalue.StringExact(group.ID),
+					keyID: knownvalue.StringExact(groupID),
 				}),
 			},
 		}, {
@@ -82,11 +70,11 @@ func TestAccSSOGroupListResource(t *testing.T) {
 				}
 			`,
 			ConfigVariables: config.Variables{
-				"sso_group_name": config.StringVariable(name),
+				"sso_group_name": config.StringVariable(testSSOGroupName(t)),
 			},
 			QueryResultChecks: []querycheck.QueryResultCheck{
 				querycheck.ExpectIdentity("polaris_sso_group.filtered", map[string]knownvalue.Check{
-					keyID: knownvalue.StringExact(group.ID),
+					keyID: knownvalue.StringExact(groupID),
 				}),
 				querycheck.ExpectLength("polaris_sso_group.filtered", 1),
 			},

@@ -73,8 +73,8 @@ func testSSOGroupName(t *testing.T) string {
 }
 
 // checkTestSSOGroup checks if the SSO group with the specified name exists. If
-// it does not, the test is skipped.
-func checkTestSSOGroup(t *testing.T, name string) {
+// it does not, the test is skipped. Returns the group ID.
+func checkTestSSOGroup(t *testing.T, name string) string {
 	t.Helper()
 	skipIfNotAcceptance(t)
 
@@ -83,13 +83,15 @@ func checkTestSSOGroup(t *testing.T, name string) {
 		t.Fatal(err)
 	}
 
-	_, err = access.Wrap(polarisClient).SSOGroupByName(t.Context(), name)
+	group, err := access.Wrap(polarisClient).SSOGroupByName(t.Context(), name)
 	if errors.Is(err, graphql.ErrNotFound) {
 		t.Skip("SSO group not available")
 	}
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	return group.ID
 }
 
 // createTestRole creates a custom role via the SDK and registers a cleanup
