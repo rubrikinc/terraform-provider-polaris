@@ -127,18 +127,21 @@ func (r *customRoleListResource) List(ctx context.Context, req list.ListRequest,
 			if req.IncludeResource {
 				permissionSet, permDiags := fromPermissions(ctx, role.AssignedPermissions)
 				result.Diagnostics.Append(permDiags...)
-				if !result.Diagnostics.HasError() {
-					model := customRoleModel{
-						ID:          types.StringValue(role.ID.String()),
-						Name:        types.StringValue(role.Name),
-						Description: types.StringValue(role.Description),
-						Permission:  permissionSet,
-					}
-					result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
-					if result.Diagnostics.HasError() {
-						push(result)
-						return
-					}
+				if result.Diagnostics.HasError() {
+					push(result)
+					return
+				}
+
+				model := customRoleModel{
+					ID:          types.StringValue(role.ID.String()),
+					Name:        types.StringValue(role.Name),
+					Description: types.StringValue(role.Description),
+					Permission:  permissionSet,
+				}
+				result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
+				if result.Diagnostics.HasError() {
+					push(result)
+					return
 				}
 			}
 
