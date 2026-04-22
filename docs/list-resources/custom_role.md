@@ -3,14 +3,12 @@
 page_title: "polaris_custom_role List Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_custom_role resource is used to create and manage custom roles in
-  RSC.
+  The polaris_custom_role list resource lists custom roles in RSC.
 ---
 
 # polaris_custom_role (List Resource)
 
-The `polaris_custom_role` resource is used to create and manage custom roles in
-RSC.
+The `polaris_custom_role` list resource lists custom roles in RSC.
 
 ## Example Usage
 

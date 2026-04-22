@@ -31,6 +31,10 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
+const listResourceCustomRoleDescription = `
+The ´polaris_custom_role´ list resource lists custom roles in RSC.
+`
+
 var (
 	_ list.ListResource              = &customRoleListResource{}
 	_ list.ListResourceWithConfigure = &customRoleListResource{}
@@ -58,7 +62,7 @@ func (r *customRoleListResource) ListResourceConfigSchema(ctx context.Context, _
 	tflog.Trace(ctx, "customRoleListResource.ListResourceConfigSchema")
 
 	res.Schema = listschema.Schema{
-		Description: description(resourceCustomRoleDescription),
+		Description: description(listResourceCustomRoleDescription),
 		Attributes: map[string]listschema.Attribute{
 			keyName: listschema.StringAttribute{
 				Optional:    true,
@@ -94,11 +98,7 @@ func (r *customRoleListResource) List(ctx context.Context, req list.ListRequest,
 		return
 	}
 
-	var nameFilter string
-	if !config.Name.IsNull() {
-		nameFilter = config.Name.ValueString()
-	}
-
+	nameFilter := config.Name.ValueString()
 	roles, err := access.Wrap(polarisClient).Roles(ctx, nameFilter)
 	if err != nil {
 		diags.AddError("Failed to list custom roles", err.Error())
@@ -119,6 +119,10 @@ func (r *customRoleListResource) List(ctx context.Context, req list.ListRequest,
 				ID: types.StringValue(role.ID.String()),
 			}
 			result.Diagnostics.Append(result.Identity.Set(ctx, identity)...)
+			if result.Diagnostics.HasError() {
+				push(result)
+				return
+			}
 
 			if req.IncludeResource {
 				permissionSet, permDiags := fromPermissions(ctx, role.AssignedPermissions)
@@ -131,6 +135,10 @@ func (r *customRoleListResource) List(ctx context.Context, req list.ListRequest,
 						Permission:  permissionSet,
 					}
 					result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
+					if result.Diagnostics.HasError() {
+						push(result)
+						return
+					}
 				}
 			}
 
