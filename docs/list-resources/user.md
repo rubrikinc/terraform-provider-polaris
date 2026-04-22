@@ -3,12 +3,12 @@
 page_title: "polaris_user List Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_user resource is used to create and manage local users in RSC.
+  The polaris_user list resource lists local users in RSC.
 ---
 
 # polaris_user (List Resource)
 
-The `polaris_user` resource is used to create and manage local users in RSC.
+The `polaris_user` list resource lists local users in RSC.
 
 ## Example Usage
 

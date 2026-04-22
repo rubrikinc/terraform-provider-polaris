@@ -31,6 +31,10 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 )
 
+const listResourceUserDescription = `
+The ´polaris_user´ list resource lists local users in RSC.
+`
+
 var (
 	_ list.ListResource              = &userListResource{}
 	_ list.ListResourceWithConfigure = &userListResource{}
@@ -58,7 +62,7 @@ func (r *userListResource) ListResourceConfigSchema(ctx context.Context, _ list.
 	tflog.Trace(ctx, "userListResource.ListResourceConfigSchema")
 
 	res.Schema = listschema.Schema{
-		Description: description(frameworkResourceUserDescription),
+		Description: description(listResourceUserDescription),
 		Attributes: map[string]listschema.Attribute{
 			keyEmail: listschema.StringAttribute{
 				Optional:    true,
@@ -94,11 +98,7 @@ func (r *userListResource) List(ctx context.Context, req list.ListRequest, strea
 		return
 	}
 
-	var emailFilter string
-	if !config.Email.IsNull() {
-		emailFilter = config.Email.ValueString()
-	}
-
+	emailFilter := config.Email.ValueString()
 	users, err := access.Wrap(polarisClient).Users(ctx, emailFilter)
 	if err != nil {
 		diags.AddError("Failed to list users", err.Error())
@@ -119,6 +119,10 @@ func (r *userListResource) List(ctx context.Context, req list.ListRequest, strea
 				ID: types.StringValue(user.ID),
 			}
 			result.Diagnostics.Append(result.Identity.Set(ctx, identity)...)
+			if result.Diagnostics.HasError() {
+				push(result)
+				return
+			}
 
 			if req.IncludeResource {
 				roleIDs := make([]string, 0, len(user.Roles))
@@ -127,16 +131,23 @@ func (r *userListResource) List(ctx context.Context, req list.ListRequest, strea
 				}
 				roleIDsSet, setDiags := types.SetValueFrom(ctx, types.StringType, roleIDs)
 				result.Diagnostics.Append(setDiags...)
-				if !result.Diagnostics.HasError() {
-					model := userResourceModel{
-						ID:             types.StringValue(user.ID),
-						Domain:         types.StringValue(string(user.Domain)),
-						Email:          types.StringValue(user.Email),
-						IsAccountOwner: types.BoolValue(user.IsAccountOwner),
-						RoleIDs:        roleIDsSet,
-						Status:         types.StringValue(user.Status),
-					}
-					result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
+				if result.Diagnostics.HasError() {
+					push(result)
+					return
+				}
+
+				model := userResourceModel{
+					ID:             types.StringValue(user.ID),
+					Domain:         types.StringValue(string(user.Domain)),
+					Email:          types.StringValue(user.Email),
+					IsAccountOwner: types.BoolValue(user.IsAccountOwner),
+					RoleIDs:        roleIDsSet,
+					Status:         types.StringValue(user.Status),
+				}
+				result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
+				if result.Diagnostics.HasError() {
+					push(result)
+					return
 				}
 			}
 
