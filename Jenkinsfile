@@ -80,10 +80,10 @@ pipeline {
             steps {
                 sh 'go version' // Log Go version used.
                 sh 'go mod tidy'
-                sh 'go vet ./...'
+                sh 'go vet -tags=cdm ./...'
                 sh 'go generate ./... >/dev/null'
                 sh 'git diff --exit-code || (echo "Generated files are out of sync. Please run go generate and commit the changes." && exit 1)'
-                sh 'GOTOOLCHAIN=$(go env GOVERSION) go run honnef.co/go/tools/cmd/staticcheck@v0.7.0 ./...'
+                sh 'GOTOOLCHAIN=$(go env GOVERSION) go run honnef.co/go/tools/cmd/staticcheck@v0.7.0 -tags=cdm ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
@@ -107,7 +107,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                sh 'if [ "$TF_ACC" != "true" ]; then unset TF_ACC; fi; CGO_ENABLED=0 go test -count=1 -timeout=120m -v ./...'
+                sh 'if [ "$TF_ACC" != "true" ]; then unset TF_ACC; fi; CGO_ENABLED=0 go test -skip=^TestAccCDM -count=1 -timeout=120m -v ./...'
             }
         }
     }

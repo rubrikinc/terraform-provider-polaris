@@ -105,6 +105,7 @@ Use the existing third-party UUID dependency for all UUID operations. Do not wri
 - Test function names use camelCase: `TestAccPolarisAwsAccount_basic`
 - Prefer fakes over mocks for dependencies
 - Cloud-specific tests require config files: `TEST_AWSACCOUNT_FILE`, `TEST_AZURESUBSCRIPTION_FILE`, `TEST_GCPPROJECT_FILE`, `TEST_RSCCONFIG_FILE`
+- CDM (Data Center) tests are gated behind the `cdm` build tag and require `TEST_DATACENTER_FILE`. Passing `-tags=cdm` includes them alongside the default suite (it does not replace it). Run with `TF_ACC=1 go test -tags=cdm ./...`
 
 ## Go SDK Dependency
 
