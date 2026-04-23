@@ -206,6 +206,9 @@ func (r *userResource) Create(ctx context.Context, req resource.CreateRequest, r
 	plan.IsAccountOwner = types.BoolValue(user.IsAccountOwner)
 	plan.Status = types.StringValue(user.Status)
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := userIdentityModel{ID: plan.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
@@ -253,6 +256,9 @@ func (r *userResource) Read(ctx context.Context, req resource.ReadRequest, res *
 	state.Status = types.StringValue(user.Status)
 	state.RoleIDs = roleIDsSet
 	res.Diagnostics.Append(res.State.Set(ctx, &state)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := userIdentityModel{ID: state.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
@@ -306,6 +312,9 @@ func (r *userResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	plan.IsAccountOwner = types.BoolValue(user.IsAccountOwner)
 	plan.Status = types.StringValue(user.Status)
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := userIdentityModel{ID: plan.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)

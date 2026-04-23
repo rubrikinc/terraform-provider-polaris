@@ -203,6 +203,9 @@ func (r *customRoleResource) Create(ctx context.Context, req resource.CreateRequ
 
 	plan.ID = types.StringValue(id.String())
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := customRoleIdentityModel{ID: plan.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
@@ -250,6 +253,9 @@ func (r *customRoleResource) Read(ctx context.Context, req resource.ReadRequest,
 	state.Permission = permissionSet
 
 	res.Diagnostics.Append(res.State.Set(ctx, &state)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := customRoleIdentityModel{ID: state.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
@@ -295,6 +301,9 @@ func (r *customRoleResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	plan.ID = state.ID
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := customRoleIdentityModel{ID: plan.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
