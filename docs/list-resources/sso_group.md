@@ -3,12 +3,12 @@
 page_title: "polaris_sso_group List Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  The polaris_sso_group resource is used to create and manage SSO groups in RSC.
+  The polaris_sso_group list resource lists SSO groups in RSC.
 ---
 
 # polaris_sso_group (List Resource)
 
-The `polaris_sso_group` resource is used to create and manage SSO groups in RSC.
+The `polaris_sso_group` list resource lists SSO groups in RSC.
 
 ## Example Usage
 

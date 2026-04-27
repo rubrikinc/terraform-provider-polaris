@@ -200,6 +200,9 @@ func (r *ssoGroupResource) Create(ctx context.Context, req resource.CreateReques
 	plan.ID = types.StringValue(group.ID)
 	plan.DomainName = types.StringValue(group.DomainName)
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := ssoGroupIdentityModel{ID: plan.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
@@ -245,6 +248,9 @@ func (r *ssoGroupResource) Read(ctx context.Context, req resource.ReadRequest, r
 	state.GroupName = types.StringValue(group.Name)
 	state.RoleIDs = roleIDsSet
 	res.Diagnostics.Append(res.State.Set(ctx, &state)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := ssoGroupIdentityModel{ID: state.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)
@@ -309,6 +315,9 @@ func (r *ssoGroupResource) Update(ctx context.Context, req resource.UpdateReques
 	plan.DomainName = types.StringValue(group.DomainName)
 	plan.RoleIDs = roleIDsSet
 	res.Diagnostics.Append(res.State.Set(ctx, &plan)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
 
 	identity := ssoGroupIdentityModel{ID: plan.ID}
 	res.Diagnostics.Append(res.Identity.Set(ctx, identity)...)

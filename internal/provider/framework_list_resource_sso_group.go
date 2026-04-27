@@ -31,6 +31,10 @@ import (
 	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
+const listResourceSSOGroupDescription = `
+The ´polaris_sso_group´ list resource lists SSO groups in RSC.
+`
+
 var (
 	_ list.ListResource              = &ssoGroupListResource{}
 	_ list.ListResourceWithConfigure = &ssoGroupListResource{}
@@ -59,7 +63,7 @@ func (r *ssoGroupListResource) ListResourceConfigSchema(ctx context.Context, _ l
 	tflog.Trace(ctx, "ssoGroupListResource.ListResourceConfigSchema")
 
 	res.Schema = listschema.Schema{
-		Description: description(resourceSSOGroupDescription),
+		Description: description(listResourceSSOGroupDescription),
 		Attributes: map[string]listschema.Attribute{
 			keyName: listschema.StringAttribute{
 				Optional:    true,
@@ -127,6 +131,10 @@ func (r *ssoGroupListResource) List(ctx context.Context, req list.ListRequest, s
 				ID: types.StringValue(group.ID),
 			}
 			result.Diagnostics.Append(result.Identity.Set(ctx, identity)...)
+			if result.Diagnostics.HasError() {
+				push(result)
+				return
+			}
 
 			if req.IncludeResource {
 				roleIDs := make([]string, 0, len(group.Roles))
@@ -135,14 +143,21 @@ func (r *ssoGroupListResource) List(ctx context.Context, req list.ListRequest, s
 				}
 				roleIDsSet, setDiags := types.SetValueFrom(ctx, types.StringType, roleIDs)
 				result.Diagnostics.Append(setDiags...)
-				if !result.Diagnostics.HasError() {
-					model := ssoGroupResourceModel{
-						ID:         types.StringValue(group.ID),
-						DomainName: types.StringValue(group.DomainName),
-						GroupName:  types.StringValue(group.Name),
-						RoleIDs:    roleIDsSet,
-					}
-					result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
+				if result.Diagnostics.HasError() {
+					push(result)
+					return
+				}
+
+				model := ssoGroupResourceModel{
+					ID:         types.StringValue(group.ID),
+					DomainName: types.StringValue(group.DomainName),
+					GroupName:  types.StringValue(group.Name),
+					RoleIDs:    roleIDsSet,
+				}
+				result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
+				if result.Diagnostics.HasError() {
+					push(result)
+					return
 				}
 			}
 
