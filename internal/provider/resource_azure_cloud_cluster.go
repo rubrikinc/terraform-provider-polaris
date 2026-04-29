@@ -86,8 +86,8 @@ func resourceAzureCloudCluster() *schema.Resource {
 			keyIsAzResilient: {
 				Type:        schema.TypeBool,
 				Optional:    true,
+				Computed:    true,
 				ForceNew:    true,
-				Default:     false,
 				Description: "Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` instead of a single `subnet` and `availability_zone`. Changing this forces a new resource to be created.",
 			},
 			keyClusterConfig: {
@@ -113,9 +113,8 @@ func resourceAzureCloudCluster() *schema.Resource {
 						keyAdminPassword: {
 							Type:         schema.TypeString,
 							Required:     true,
-							Sensitive:    true,
+							WriteOnly:    true,
 							Description:  "Password for the cluster admin user. Changing this value will have no effect on the cluster.",
-							ForceNew:     true,
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyNumNodes: {
