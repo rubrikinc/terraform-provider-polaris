@@ -83,6 +83,13 @@ func resourceAzureCloudCluster() *schema.Resource {
 				Description:  "RSC cloud account ID (UUID).",
 				ValidateFunc: validation.IsUUID,
 			},
+			keyIsAzResilient: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				ForceNew:    true,
+				Default:     false,
+				Description: "Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` instead of a single `subnet` and `availability_zone`. Changing this forces a new resource to be created.",
+			},
 			keyClusterConfig: {
 				Type:        schema.TypeList,
 				Required:    true,
@@ -310,7 +317,31 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Type:        schema.TypeString,
 							Optional:    true,
 							ForceNew:    true,
-							Description: "Availability zone for the cluster, if this is not specified, the cluster will be deployed in availability zone 1. Changing this forces a new resource to be created.",
+							Description: "Availability zone for the cluster, if this is not specified, the cluster will be deployed in availability zone 1. Used for single-AZ deployments. Changing this forces a new resource to be created.",
+						},
+						keySubnetAzConfigs: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							ForceNew:    true,
+							Description: "Subnet and availability zone pairs for Multi-AZ deployments. Required when `is_az_resilient` is true. Each block specifies a subnet and its availability zone. Changing this forces a new resource to be created.",
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyAvailabilityZone: {
+										Type:         schema.TypeString,
+										Required:     true,
+										ForceNew:     true,
+										Description:  "Availability zone identifier.",
+										ValidateFunc: validation.StringIsNotWhiteSpace,
+									},
+									keySubnet: {
+										Type:         schema.TypeString,
+										Required:     true,
+										ForceNew:     true,
+										Description:  "Subnet name for this availability zone.",
+										ValidateFunc: validation.StringIsNotWhiteSpace,
+									},
+								},
+							},
 						},
 					},
 				},
@@ -377,6 +408,17 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 
 	region := azureRegion.RegionFromName(vmConfigMap[keyRegion].(string))
 
+	var subnetAzConfigs []gqlcloudcluster.SubnetAzConfig
+	if v, ok := vmConfigMap[keySubnetAzConfigs]; ok {
+		for _, item := range v.([]any) {
+			configMap := item.(map[string]any)
+			subnetAzConfigs = append(subnetAzConfigs, gqlcloudcluster.SubnetAzConfig{
+				AvailabilityZone: configMap[keyAvailabilityZone].(string),
+				Subnet:           configMap[keySubnet].(string),
+			})
+		}
+	}
+
 	vmConfig := gqlcloudcluster.AzureVMConfig{
 		CDMVersion:                   vmConfigMap[keyCDMVersion].(string),
 		InstanceType:                 gqlcloudcluster.AzureCCESSupportedInstanceType(instanceTypeStr),
@@ -385,6 +427,7 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 		NetworkResourceGroup:         vmConfigMap[keyNetworkResourceGroup].(string),
 		VnetResourceGroup:            vmConfigMap[keyVnetResourceGroup].(string),
 		Subnet:                       vmConfigMap[keySubnet].(string),
+		SubnetAzConfigs:              subnetAzConfigs,
 		Vnet:                         vmConfigMap[keyVnet].(string),
 		NetworkSecurityGroup:         vmConfigMap[keyNetworkSecurityGroup].(string),
 		NetworkSecurityResourceGroup: vmConfigMap[keyNetworkSecurityResourceGroup].(string),
@@ -417,6 +460,7 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 	input := gqlcloudcluster.CreateAzureClusterInput{
 		CloudAccountID:       cloudAccountID,
 		ClusterConfig:        clusterConfig,
+		IsAzResilient:        d.Get(keyIsAzResilient).(bool),
 		IsESType:             true,
 		KeepClusterOnFailure: clusterConfigMap[keyKeepClusterOnFailure].(bool),
 		Validations:          validations,

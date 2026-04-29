@@ -94,7 +94,14 @@ func resourceAwsCloudCluster() *schema.Resource {
 				Optional:    true,
 				ForceNew:    true,
 				Default:     false,
-				Description: "Whether to use placement groups for the cluster. Changing this forces a new resource to be created.",
+				Description: "Whether to use placement groups for the cluster. Cannot be used with `is_az_resilient`. Changing this forces a new resource to be created.",
+			},
+			keyIsAzResilient: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				ForceNew:    true,
+				Default:     false,
+				Description: "Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` and `use_placement_groups` must be false. Changing this forces a new resource to be created.",
 			},
 			keyClusterConfig: {
 				Type:        schema.TypeList,
@@ -260,10 +267,34 @@ func resourceAwsCloudCluster() *schema.Resource {
 						},
 						keySubnetID: {
 							Type:         schema.TypeString,
-							Required:     true,
+							Optional:     true,
 							ForceNew:     true,
-							Description:  "AWS subnet ID where the cluster nodes will be deployed. Changing this forces a new resource to be created.",
+							Description:  "AWS subnet ID where the cluster nodes will be deployed. Required when `is_az_resilient` is false. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keySubnetAzConfigs: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							ForceNew:    true,
+							Description: "Subnet and availability zone pairs for Multi-AZ deployments. Required when `is_az_resilient` is true. Each block specifies a subnet and its availability zone. Changing this forces a new resource to be created.",
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyAvailabilityZone: {
+										Type:         schema.TypeString,
+										Required:     true,
+										ForceNew:     true,
+										Description:  "Availability zone name.",
+										ValidateFunc: validation.StringIsNotWhiteSpace,
+									},
+									keySubnet: {
+										Type:         schema.TypeString,
+										Required:     true,
+										ForceNew:     true,
+										Description:  "Subnet ID for this availability zone.",
+										ValidateFunc: validation.StringIsNotWhiteSpace,
+									},
+								},
+							},
 						},
 						keySecurityGroupIDs: {
 							Type: schema.TypeSet,
@@ -356,12 +387,24 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		gqlcloudcluster.AllChecks,
 	}
 
+	var subnetAzConfigs []gqlcloudcluster.SubnetAzConfig
+	if v, ok := vmConfigMap[keySubnetAzConfigs]; ok {
+		for _, item := range v.([]any) {
+			configMap := item.(map[string]any)
+			subnetAzConfigs = append(subnetAzConfigs, gqlcloudcluster.SubnetAzConfig{
+				AvailabilityZone: configMap[keyAvailabilityZone].(string),
+				Subnet:           configMap[keySubnet].(string),
+			})
+		}
+	}
+
 	vmConfig := gqlcloudcluster.AwsVmConfig{
 		CDMVersion:          vmConfigMap[keyCDMVersion].(string),
 		InstanceProfileName: vmConfigMap[keyInstanceProfileName].(string),
 		InstanceType:        instanceType,
 		SecurityGroups:      securityGroups,
 		Subnet:              vmConfigMap[keySubnetID].(string),
+		SubnetAzConfigs:     subnetAzConfigs,
 		VMType:              vmType,
 		VPC:                 vmConfigMap[keyVPCID].(string),
 	}
@@ -388,6 +431,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	input := gqlcloudcluster.CreateAwsClusterInput{
 		CloudAccountID:       cloudAccountID,
 		ClusterConfig:        clusterConfig,
+		IsAzResilient:        d.Get(keyIsAzResilient).(bool),
 		IsEsType:             true,
 		KeepClusterOnFailure: clusterConfigMap[keyKeepClusterOnFailure].(bool),
 		Region:               d.Get(keyRegion).(string),
