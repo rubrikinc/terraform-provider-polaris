@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -319,6 +320,42 @@ func resourceAwsCloudCluster() *schema.Resource {
 					},
 				},
 			},
+		},
+		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, meta any) error {
+			isAzResilient := diff.Get(keyIsAzResilient).(bool)
+
+			vmConfigList := diff.Get(keyVMConfig).([]any)
+			if len(vmConfigList) == 0 {
+				return nil
+			}
+			vmConfigMap := vmConfigList[0].(map[string]any)
+
+			hasSubnetAzConfigs := false
+			if configs, ok := vmConfigMap[keySubnetAzConfigs]; ok && len(configs.([]any)) > 0 {
+				hasSubnetAzConfigs = true
+			}
+			hasSubnetID := vmConfigMap[keySubnetID] != ""
+
+			if isAzResilient {
+				if !hasSubnetAzConfigs {
+					return fmt.Errorf("%s is required in %s when %s is true", keySubnetAzConfigs, keyVMConfig, keyIsAzResilient)
+				}
+				if hasSubnetID {
+					return fmt.Errorf("%s cannot be specified in %s when %s is true, use %s instead", keySubnetID, keyVMConfig, keyIsAzResilient, keySubnetAzConfigs)
+				}
+				if diff.Get(keyUsePlacementGroups).(bool) {
+					return fmt.Errorf("%s must be false when %s is true", keyUsePlacementGroups, keyIsAzResilient)
+				}
+			} else {
+				if hasSubnetAzConfigs {
+					return fmt.Errorf("%s cannot be specified in %s when %s is false", keySubnetAzConfigs, keyVMConfig, keyIsAzResilient)
+				}
+				if !hasSubnetID {
+					return fmt.Errorf("%s is required in %s when %s is false", keySubnetID, keyVMConfig, keyIsAzResilient)
+				}
+			}
+
+			return nil
 		},
 		Timeouts: &schema.ResourceTimeout{
 			Create:  schema.DefaultTimeout(60 * time.Minute),

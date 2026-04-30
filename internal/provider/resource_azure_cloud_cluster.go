@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -274,9 +275,9 @@ func resourceAzureCloudCluster() *schema.Resource {
 						},
 						keySubnet: {
 							Type:         schema.TypeString,
-							Required:     true,
+							Optional:     true,
 							ForceNew:     true,
-							Description:  "Azure subnet name for the cluster nodes. Changing this forces a new resource to be created.",
+							Description:  "Azure subnet name for the cluster nodes. Required when `is_az_resilient` is false. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyVnet: {
@@ -345,6 +346,41 @@ func resourceAzureCloudCluster() *schema.Resource {
 					},
 				},
 			},
+		},
+		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, meta any) error {
+			isAzResilient := diff.Get(keyIsAzResilient).(bool)
+
+			vmConfigList := diff.Get(keyVMConfig).([]any)
+			if len(vmConfigList) == 0 {
+				return nil
+			}
+			vmConfigMap := vmConfigList[0].(map[string]any)
+
+			hasSubnetAzConfigs := false
+			if configs, ok := vmConfigMap[keySubnetAzConfigs]; ok && len(configs.([]any)) > 0 {
+				hasSubnetAzConfigs = true
+			}
+
+			if isAzResilient {
+				if !hasSubnetAzConfigs {
+					return fmt.Errorf("%s is required in %s when %s is true", keySubnetAzConfigs, keyVMConfig, keyIsAzResilient)
+				}
+				if vmConfigMap[keySubnet] != "" {
+					return fmt.Errorf("%s cannot be specified in %s when %s is true, use %s instead", keySubnet, keyVMConfig, keyIsAzResilient, keySubnetAzConfigs)
+				}
+				if vmConfigMap[keyAvailabilityZone] != "" {
+					return fmt.Errorf("%s cannot be specified in %s when %s is true, use %s instead", keyAvailabilityZone, keyVMConfig, keyIsAzResilient, keySubnetAzConfigs)
+				}
+			} else {
+				if hasSubnetAzConfigs {
+					return fmt.Errorf("%s cannot be specified in %s when %s is false", keySubnetAzConfigs, keyVMConfig, keyIsAzResilient)
+				}
+				if vmConfigMap[keySubnet] == "" {
+					return fmt.Errorf("%s is required in %s when %s is false", keySubnet, keyVMConfig, keyIsAzResilient)
+				}
+			}
+
+			return nil
 		},
 		Timeouts: &schema.ResourceTimeout{
 			Create:  schema.DefaultTimeout(60 * time.Minute),
