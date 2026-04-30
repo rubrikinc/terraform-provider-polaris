@@ -107,13 +107,14 @@ func resourceAzureCloudCluster() *schema.Resource {
 						keyAdminEmail: {
 							Type:         schema.TypeString,
 							Required:     true,
+							WriteOnly:    true,
 							Description:  "Email address for the cluster admin user. Changing this value will have no effect on the cluster.",
-							ForceNew:     true,
 							ValidateFunc: validateEmailAddress,
 						},
 						keyAdminPassword: {
 							Type:         schema.TypeString,
 							Required:     true,
+							Sensitive:    true,
 							WriteOnly:    true,
 							Description:  "Password for the cluster admin user. Changing this value will have no effect on the cluster.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
