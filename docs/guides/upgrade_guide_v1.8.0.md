@@ -11,8 +11,10 @@ provider.
 
 ## Prerequisites
 
-This release requires **Terraform 1.11 or later**. The `admin_password` field on the `polaris_aws_cloud_cluster` and
-`polaris_azure_cloud_cluster` resources now uses write-only attributes, which are only supported in Terraform 1.11+.
+This release requires **Terraform 1.11 or later**. The `admin_email` and `admin_password` fields on the
+`polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources now use write-only attributes, which are only
+supported in Terraform 1.11+. These fields are only used during initial cluster creation and cannot be changed after
+deployment, so they no longer need to be stored in state.
 
 If you are running an older version of Terraform, you will see the following error when applying your configuration:
 
@@ -20,7 +22,7 @@ If you are running an older version of Terraform, you will see the following err
 Error: Write-only Attribute Not Allowed
 
 The resource contains a non-null value for write-only attribute
-"admin_password" Write-only attributes are only supported in Terraform
+"admin_email" Write-only attributes are only supported in Terraform
 1.11 and later.
 ```
 
