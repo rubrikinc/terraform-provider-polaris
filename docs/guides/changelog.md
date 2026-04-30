@@ -4,6 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.8.0
+* Add support for Multi-AZ resiliency in the `polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources.
+  The new `is_az_resilient` field enables deploying clusters across multiple availability zones, and the new
+  `subnet_az_config` block in `vm_config` specifies per-zone subnet mappings.
+  [[docs](../resources/aws_cloud_cluster.md)] [[docs](../resources/azure_cloud_cluster.md)]
+
 ## v1.7.1
 * **Deprecated:** `features` field in the `polaris_aws_cnp_account_attachments` resource. Permission groups for each
   feature are now read from the cloud account managed by `polaris_aws_cnp_account` when artifacts are registered, so
