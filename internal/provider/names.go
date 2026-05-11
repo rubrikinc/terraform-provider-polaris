@@ -193,7 +193,7 @@ const (
 	keyInstanceType                                 = "instance_type"
 	keyIPAddresses                                  = "ip_addresses"
 	keyIsAccountOwner                               = "is_account_owner"
-	keyIsAzResilient                                = "is_az_resilient"
+	keyAzResilient                                  = "az_resilient"
 	keyActive                                       = "active"
 	keyIsOrgAdmin                                   = "is_org_admin"
 	keyKey                                          = "key"

@@ -84,7 +84,7 @@ resource "polaris_aws_cloud_cluster" "example" {
 resource "polaris_aws_cloud_cluster" "multi_az" {
   cloud_account_id     = "12345678-1234-1234-1234-123456789012"
   region               = "us-west-2"
-  is_az_resilient      = true
+  az_resilient         = true
   use_placement_groups = false
 
   cluster_config {

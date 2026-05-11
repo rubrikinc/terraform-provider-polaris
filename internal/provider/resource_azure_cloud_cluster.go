@@ -84,7 +84,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 				Description:  "RSC cloud account ID (UUID).",
 				ValidateFunc: validation.IsUUID,
 			},
-			keyIsAzResilient: {
+			keyAzResilient: {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Computed:    true,
@@ -278,7 +278,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Type:         schema.TypeString,
 							Optional:     true,
 							ForceNew:     true,
-							Description:  "Azure subnet name for the cluster nodes. Required when `is_az_resilient` is false. Changing this forces a new resource to be created.",
+							Description:  "Azure subnet name for the cluster nodes. Required when `az_resilient` is false. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyVnet: {
@@ -324,7 +324,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 							Type:        schema.TypeList,
 							Optional:    true,
 							ForceNew:    true,
-							Description: "Subnet and availability zone pairs for Multi-AZ deployments. Required when `is_az_resilient` is true. Each block specifies a subnet and its availability zone. Changing this forces a new resource to be created.",
+							Description: "Subnet and availability zone pairs for Multi-AZ deployments. Required when `az_resilient` is true. Each block specifies a subnet and its availability zone. Changing this forces a new resource to be created.",
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									keyAvailabilityZone: {
@@ -349,7 +349,7 @@ func resourceAzureCloudCluster() *schema.Resource {
 			},
 		},
 		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, meta any) error {
-			isAzResilient := diff.Get(keyIsAzResilient).(bool)
+			azResilient := diff.Get(keyAzResilient).(bool)
 
 			vmConfigList := diff.Get(keyVMConfig).([]any)
 			if len(vmConfigList) == 0 {
@@ -362,22 +362,22 @@ func resourceAzureCloudCluster() *schema.Resource {
 				hasSubnetAzConfigs = true
 			}
 
-			if isAzResilient {
+			if azResilient {
 				if !hasSubnetAzConfigs {
-					return fmt.Errorf("%s is required in %s when %s is true", keySubnetAzConfigs, keyVMConfig, keyIsAzResilient)
+					return fmt.Errorf("%s is required in %s when %s is true", keySubnetAzConfigs, keyVMConfig, keyAzResilient)
 				}
 				if vmConfigMap[keySubnet] != "" {
-					return fmt.Errorf("%s cannot be specified in %s when %s is true, use %s instead", keySubnet, keyVMConfig, keyIsAzResilient, keySubnetAzConfigs)
+					return fmt.Errorf("%s cannot be specified in %s when %s is true, use %s instead", keySubnet, keyVMConfig, keyAzResilient, keySubnetAzConfigs)
 				}
 				if vmConfigMap[keyAvailabilityZone] != "" {
-					return fmt.Errorf("%s cannot be specified in %s when %s is true, use %s instead", keyAvailabilityZone, keyVMConfig, keyIsAzResilient, keySubnetAzConfigs)
+					return fmt.Errorf("%s cannot be specified in %s when %s is true, use %s instead", keyAvailabilityZone, keyVMConfig, keyAzResilient, keySubnetAzConfigs)
 				}
 			} else {
 				if hasSubnetAzConfigs {
-					return fmt.Errorf("%s cannot be specified in %s when %s is false", keySubnetAzConfigs, keyVMConfig, keyIsAzResilient)
+					return fmt.Errorf("%s cannot be specified in %s when %s is false", keySubnetAzConfigs, keyVMConfig, keyAzResilient)
 				}
 				if vmConfigMap[keySubnet] == "" {
-					return fmt.Errorf("%s is required in %s when %s is false", keySubnet, keyVMConfig, keyIsAzResilient)
+					return fmt.Errorf("%s is required in %s when %s is false", keySubnet, keyVMConfig, keyAzResilient)
 				}
 			}
 
@@ -462,13 +462,18 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 		ResourceGroup:                vmConfigMap[keyResourceGroupName].(string),
 		NetworkResourceGroup:         vmConfigMap[keyNetworkResourceGroup].(string),
 		VnetResourceGroup:            vmConfigMap[keyVnetResourceGroup].(string),
-		Subnet:                       vmConfigMap[keySubnet].(string),
 		SubnetAzConfigs:              subnetAzConfigs,
 		Vnet:                         vmConfigMap[keyVnet].(string),
 		NetworkSecurityGroup:         vmConfigMap[keyNetworkSecurityGroup].(string),
 		NetworkSecurityResourceGroup: vmConfigMap[keyNetworkSecurityResourceGroup].(string),
 		VMType:                       vmType,
-		AvailabilityZone:             vmConfigMap[keyAvailabilityZone].(string),
+	}
+
+	if subnet := vmConfigMap[keySubnet].(string); subnet != "" {
+		vmConfig.Subnet = subnet
+	}
+	if az := vmConfigMap[keyAvailabilityZone].(string); az != "" {
+		vmConfig.AvailabilityZone = az
 	}
 
 	azureEsConfig := gqlcloudcluster.AzureEsConfigInput{
@@ -482,10 +487,16 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 		},
 	}
 
+	// WriteOnly fields are nulled in the planned state, so we must read
+	// them from the raw config.
+	rawConfig := d.GetRawConfig()
+	adminEmail := rawConfig.GetAttr(keyClusterConfig).AsValueSlice()[0].GetAttr(keyAdminEmail).AsString()
+	adminPassword := rawConfig.GetAttr(keyClusterConfig).AsValueSlice()[0].GetAttr(keyAdminPassword).AsString()
+
 	clusterConfig := gqlcloudcluster.AzureClusterConfig{
 		ClusterName:      clusterConfigMap[keyClusterName].(string),
-		UserEmail:        clusterConfigMap[keyAdminEmail].(string),
-		AdminPassword:    secret.String(clusterConfigMap[keyAdminPassword].(string)),
+		UserEmail:        adminEmail,
+		AdminPassword:    secret.String(adminPassword),
 		DNSNameServers:   dnsNameServers,
 		DNSSearchDomains: dnsSearchDomains,
 		NTPServers:       ntpServers,
@@ -496,7 +507,7 @@ func azureCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 	input := gqlcloudcluster.CreateAzureClusterInput{
 		CloudAccountID:       cloudAccountID,
 		ClusterConfig:        clusterConfig,
-		IsAzResilient:        d.Get(keyIsAzResilient).(bool),
+		IsAzResilient:        d.Get(keyAzResilient).(bool),
 		IsESType:             true,
 		KeepClusterOnFailure: clusterConfigMap[keyKeepClusterOnFailure].(bool),
 		Validations:          validations,

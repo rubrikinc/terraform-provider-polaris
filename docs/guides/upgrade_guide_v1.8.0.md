@@ -68,11 +68,11 @@ This will read the remote state of the resources and migrate the local Terraform
 The `polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources now support deploying clusters across
 multiple availability zones for AZ resiliency. This is controlled by two new fields:
 
-- `is_az_resilient` (bool) - Set to `true` to enable Multi-AZ deployment.
+- `az_resilient` (bool) - Set to `true` to enable Multi-AZ deployment.
 - `subnet_az_config` (block list in `vm_config`) - Specifies a subnet for each availability zone. Required when
-  `is_az_resilient` is `true`.
+  `az_resilient` is `true`.
 
-When `is_az_resilient` is enabled:
+When `az_resilient` is enabled:
 - `use_placement_groups` must be `false` (AWS only).
 - At least 3 availability zones should be specified in `subnet_az_config`.
 - For AWS, `subnet_id` in `vm_config` becomes optional.
@@ -84,7 +84,7 @@ When `is_az_resilient` is enabled:
 resource "polaris_aws_cloud_cluster" "multi_az" {
   cloud_account_id     = "12345678-1234-1234-1234-123456789012"
   region               = "us-west-2"
-  is_az_resilient      = true
+  az_resilient      = true
   use_placement_groups = false
 
   cluster_config {
@@ -129,7 +129,7 @@ resource "polaris_aws_cloud_cluster" "multi_az" {
 ```terraform
 resource "polaris_azure_cloud_cluster" "multi_az" {
   cloud_account_id = "12345678-1234-1234-1234-123456789012"
-  is_az_resilient  = true
+  az_resilient  = true
 
   cluster_config {
     cluster_name            = "my-multi-az-cluster"

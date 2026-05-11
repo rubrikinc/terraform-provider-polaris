@@ -6,7 +6,7 @@ page_title: "Changelog"
 
 ## v1.8.0
 * Add support for Multi-AZ resiliency in the `polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources.
-  The new `is_az_resilient` field enables deploying clusters across multiple availability zones, and the new
+  The new `az_resilient` field enables deploying clusters across multiple availability zones, and the new
   `subnet_az_config` block in `vm_config` specifies per-zone subnet mappings.
   [[docs](../resources/aws_cloud_cluster.md)] [[docs](../resources/azure_cloud_cluster.md)]
 

@@ -85,7 +85,7 @@ resource "polaris_azure_cloud_cluster" "example" {
 # Create an Azure cloud cluster with Multi-AZ resiliency
 resource "polaris_azure_cloud_cluster" "multi_az" {
   cloud_account_id = "12345678-1234-1234-1234-123456789012"
-  is_az_resilient  = true
+  az_resilient     = true
 
   cluster_config {
     cluster_name            = "my-multi-az-cluster"
