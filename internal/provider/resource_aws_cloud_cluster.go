@@ -440,10 +440,12 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		InstanceProfileName: vmConfigMap[keyInstanceProfileName].(string),
 		InstanceType:        instanceType,
 		SecurityGroups:      securityGroups,
-		Subnet:              vmConfigMap[keySubnetID].(string),
 		SubnetAzConfigs:     subnetAzConfigs,
 		VMType:              vmType,
 		VPC:                 vmConfigMap[keyVPCID].(string),
+	}
+	if subnet := vmConfigMap[keySubnetID].(string); subnet != "" {
+		vmConfig.Subnet = subnet
 	}
 
 	awsEsConfig := gqlcloudcluster.AwsEsConfigInput{
