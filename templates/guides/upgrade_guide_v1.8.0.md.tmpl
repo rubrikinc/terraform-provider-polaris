@@ -9,27 +9,14 @@ page_title: "Upgrade Guide: v1.8.0"
 Review the [changelog](changelog.md) to understand what has changed and what might cause an issue when upgrading the
 provider.
 
+~> **Note:** If you are upgrading across multiple minor versions (e.g. v1.6.x to v1.8.0), review the upgrade guide for
+each intermediate version as well. Each guide documents breaking changes and migration steps specific to that release.
+
 ## Prerequisites
 
-This release requires **Terraform 1.11 or later**. The `admin_email` and `admin_password` fields on the
-`polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources now use write-only attributes, which are only
-supported in Terraform 1.11+. These fields are only used during initial cluster creation and cannot be changed after
-deployment, so they no longer need to be stored in state.
-
-If you are running an older version of Terraform, you will see the following error when applying your configuration:
-
-```
-Error: Write-only Attribute Not Allowed
-
-The resource contains a non-null value for write-only attribute
-"admin_email" Write-only attributes are only supported in Terraform
-1.11 and later.
-```
-
-Upgrade Terraform before upgrading the provider:
-```shell
-% brew upgrade terraform
-```
+Some resources in this version of the provider require **Terraform v1.11.0 or later**. See the
+[Significant Changes](#significant-changes) section below for details on which resources are affected. For instructions
+on upgrading Terraform, see the [HashiCorp installation guide](https://developer.hashicorp.com/terraform/install).
 
 ## How to Upgrade
 
@@ -60,6 +47,24 @@ Otherwise, proceed by running:
 % terraform apply -refresh-only
 ```
 This will read the remote state of the resources and migrate the local Terraform state to the v1.8.0 version.
+
+## Significant Changes
+
+### Write-Only Attributes on Cloud Cluster Resources
+
+The `admin_email` and `admin_password` fields on the `polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster`
+resources now use write-only attributes, which require **Terraform v1.11.0 or later**. These fields are only used during
+initial cluster creation and cannot be changed after deployment, so they no longer need to be stored in state.
+
+If you are running an older version of Terraform, you will see the following error when applying your configuration:
+
+```
+Error: Write-only Attribute Not Allowed
+
+The resource contains a non-null value for write-only attribute
+"admin_email" Write-only attributes are only supported in Terraform
+1.11 and later.
+```
 
 ## New Features
 

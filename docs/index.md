@@ -5,8 +5,9 @@ page_title: "Provider: RSC"
 # RSC Provider
 The RSC provider, formerly known as the Polaris provider, provides resources to interact with the Rubrik RSC platform.
 
-~> **Note:** This provider requires **Terraform 1.14.0 or later**. Features such as write-only attributes (v1.11+),
-list resources / `terraform query` (v1.12+), and list identities (v1.14+) depend on recent Terraform capabilities.
+~> **Note:** **Terraform v1.14.0 or later** is required to use all features and functionality of this provider. Features
+such as write-only attributes (v1.11+), list resources / `terraform query` (v1.12+), and list identities (v1.14+)
+depend on recent Terraform capabilities.
 Additional examples on how to use the provider are available in the
 [terraform-provider-polaris-examples](https://github.com/rubrikinc/terraform-provider-polaris-examples) GitHub
 repository. Documentation for the Rubrik Security Cloud is available at https://docs.rubrik.com/en-us/saas/index.html.

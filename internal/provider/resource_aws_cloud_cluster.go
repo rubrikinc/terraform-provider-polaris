@@ -53,6 +53,9 @@ number of nodes, instance types, and network configuration.
 ~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
 
+~> **Note:** This resource requires **Terraform v1.11.0 or later** due to the use of write-only attributes for
+   ´admin_email´ and ´admin_password´.
+
 ~> **Note:** Cloud Cluster deletion is now supported. When destroying this resource,
    the cluster will be removed from RSC. If the cluster has blocking conditions
    (active SLAs, global SLAs, or RCV locations), the deletion will fail and you must
