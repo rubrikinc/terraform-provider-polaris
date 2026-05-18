@@ -5,17 +5,12 @@ subcategory: ""
 description: |-
   The aws_cnp_account_attachments resource attaches AWS instance profiles and AWS
   roles to an RSC cloud account.
-  -> Note: The features field takes only the feature names and not the permission
-  groups associated with the features.
 ---
 
 # polaris_aws_cnp_account_attachments (Resource)
 
 The `aws_cnp_account_attachments` resource attaches AWS instance profiles and AWS
 roles to an RSC cloud account.
-
--> **Note:** The `features` field takes only the feature names and not the permission
-   groups associated with the features.
 
 ## Example Usage
 
@@ -27,7 +22,14 @@ roles to an RSC cloud account.
 # and role has been defined for each RSC artifact.
 resource "polaris_aws_cnp_account_attachments" "attachments" {
   account_id = polaris_aws_cnp_account.account.id
-  features   = polaris_aws_cnp_account.account.feature.*.name
+
+  dynamic "feature" {
+    for_each = polaris_aws_cnp_account.account.feature
+    content {
+      name              = feature.value["name"]
+      permission_groups = feature.value["permission_groups"]
+    }
+  }
 
   dynamic "instance_profile" {
     for_each = aws_iam_instance_profile.profile
@@ -51,8 +53,15 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 # the role-chaining account, use the above example.
 resource "polaris_aws_cnp_account_attachments" "attachments" {
   account_id               = polaris_aws_cnp_account.account.id
-  features                 = polaris_aws_cnp_account.account.feature.*.name
   role_chaining_account_id = polaris_aws_cnp_account.role_chaining.id
+
+  dynamic "feature" {
+    for_each = polaris_aws_cnp_account.account.feature
+    content {
+      name              = feature.value["name"]
+      permission_groups = feature.value["permission_groups"]
+    }
+  }
 
   dynamic "instance_profile" {
     for_each = aws_iam_instance_profile.profile
@@ -79,7 +88,7 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 ### Required
 
 - `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
-- `features` (Set of String) RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.
+- `feature` (Block Set, Min: 1) RSC feature with permission groups. (see [below for nested schema](#nestedblock--feature))
 - `role` (Block Set, Min: 1) Roles to attach to the cloud account. (see [below for nested schema](#nestedblock--role))
 
 ### Optional
@@ -90,6 +99,15 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 ### Read-Only
 
 - `id` (String) RSC cloud account ID (UUID).
+
+<a id="nestedblock--feature"></a>
+### Nested Schema for `feature`
+
+Required:
+
+- `name` (String) RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.
+- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `CLOUD_CLUSTER_ES`, `DOWNLOAD_FILE`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, `RECOVERY`, `RESTORE` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
+
 
 <a id="nestedblock--role"></a>
 ### Nested Schema for `role`

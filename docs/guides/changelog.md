@@ -4,6 +4,17 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.8.0
+* **Breaking Change:** The `features` attribute on the `polaris_aws_cnp_account_attachments` resource has been
+  replaced with a `feature` block carrying both the feature name and its permission groups. State migrates
+  automatically; configurations must be updated. See the [upgrade guide](upgrade_guide_v1.8.0.md) for migration
+  instructions.
+* Add support for the `RECOVERY` permission group on the `RDS_PROTECTION` and `CLOUD_NATIVE_DYNAMODB_PROTECTION`
+  features in the `polaris_aws_account`, `polaris_aws_cnp_account` and `polaris_aws_cnp_account_attachments`
+  resources, and in the `polaris_aws_cnp_permissions` data source. Requires the
+  `REL_ENABLE_AWS_PAAS_DB_PRIVILEGE_ELEVATION` feature flag to be enabled on the RSC account.
+  [[docs](../resources/aws_cnp_account.md)] [[docs](../resources/aws_cnp_account_attachments.md)]
+
 ## v1.7.0
 * Add Terraform search support for the `polaris_custom_role` resource. Enables `terraform query` to discover custom
   roles in RSC, including roles not managed by Terraform.

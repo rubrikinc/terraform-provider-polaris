@@ -37,9 +37,6 @@ import (
 const resourceAWSCNPAccountAttachmentsDescription = `
 The ´aws_cnp_account_attachments´ resource attaches AWS instance profiles and AWS
 roles to an RSC cloud account.
-
--> **Note:** The ´features´ field takes only the feature names and not the permission
-   groups associated with the features.
 `
 
 func resourceAwsCnpAccountAttachments() *schema.Resource {
@@ -63,21 +60,12 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 				Description:  "RSC cloud account ID (UUID). Changing this forces a new resource to be created.",
 				ValidateFunc: validation.IsUUID,
 			},
-			keyFeatures: {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-					ValidateFunc: validation.StringInSlice([]string{
-						"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION",
-						"CLOUD_NATIVE_S3_PROTECTION", "CLOUD_NATIVE_DYNAMODB_PROTECTION", "EXOCOMPUTE",
-						"RDS_PROTECTION", "KUBERNETES_PROTECTION", "SERVERS_AND_APPS", "ROLE_CHAINING",
-					}, false),
-				},
-				MinItems: 1,
-				Required: true,
-				Description: "RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
-					"`EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.",
+			keyFeature: {
+				Type:        schema.TypeSet,
+				Elem:        featureResource(),
+				MinItems:    1,
+				Required:    true,
+				Description: "RSC feature with permission groups.",
 			},
 			keyInstanceProfile: {
 				Type:        schema.TypeSet,
@@ -104,6 +92,13 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
+
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Type:    resourceAwsCnpAccountAttachmentsV0().CoreConfigSchema().ImpliedType(),
+			Upgrade: resourceAwsCnpAccountAttachmentsStateUpgradeV0,
+			Version: 0,
+		}},
 	}
 }
 
@@ -120,8 +115,13 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 	var features []core.Feature
-	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	for _, block := range d.Get(keyFeature).(*schema.Set).List() {
+		block := block.(map[string]any)
+		feature := core.Feature{Name: block[keyName].(string)}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+		features = append(features, feature)
 	}
 	profiles := make(map[string]string)
 	for _, roleAttr := range d.Get(keyInstanceProfile).(*schema.Set).List() {
@@ -182,9 +182,16 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	features := &schema.Set{F: schema.HashString}
+	featureSet := &schema.Set{F: schema.HashResource(featureResource())}
 	for _, feature := range account.Features {
-		features.Add(feature.Feature.Name)
+		groups := &schema.Set{F: schema.HashString}
+		for _, group := range feature.Feature.PermissionGroups {
+			groups.Add(string(group))
+		}
+		featureSet.Add(map[string]any{
+			keyName:             feature.Feature.Name,
+			keyPermissionGroups: groups,
+		})
 	}
 
 	// Request the cloud account artifacts.
@@ -196,7 +203,7 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 	if err := d.Set(keyAccountID, account.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyFeatures, features); err != nil {
+	if err := d.Set(keyFeature, featureSet); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -244,8 +251,13 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	}
 
 	var features []core.Feature
-	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	for _, block := range d.Get(keyFeature).(*schema.Set).List() {
+		block := block.(map[string]any)
+		feature := core.Feature{Name: block[keyName].(string)}
+		for _, group := range block[keyPermissionGroups].(*schema.Set).List() {
+			feature = feature.WithPermissionGroups(core.PermissionGroup(group.(string)))
+		}
+		features = append(features, feature)
 	}
 	profiles := make(map[string]string)
 	for _, roleAttr := range d.Get(keyInstanceProfile).(*schema.Set).List() {
@@ -320,8 +332,9 @@ func awsCustomizeDiffCnpAccountAttachments(ctx context.Context, diff *schema.Res
 	tflog.Trace(ctx, "awsCustomizeDiffCnpAccountAttachments")
 
 	var features []core.Feature
-	for _, feature := range diff.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	for _, block := range diff.Get(keyFeature).(*schema.Set).List() {
+		block := block.(map[string]any)
+		features = append(features, core.Feature{Name: block[keyName].(string)})
 	}
 
 	return core.ValidateRoleChaining(features)

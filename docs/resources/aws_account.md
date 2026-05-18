@@ -431,7 +431,7 @@ Read-Only:
 
 Required:
 
-- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`, `RECOVERY`.
 - `regions` (Set of String) Regions the feature will be enabled in.
 
 Read-Only:
@@ -561,7 +561,7 @@ Read-Only:
 
 Required:
 
-- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`.
+- `permission_groups` (Set of String) Permission groups to assign to the feature. Possible values are `BASIC`, `RECOVERY`.
 - `regions` (Set of String) Regions the feature will be enabled in.
 
 Read-Only:

@@ -58,6 +58,8 @@ are used when specifying the feature set.
 ´CLOUD_NATIVE_DYNAMODB_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
+  * ´RECOVERY´ - Represents the set of elevated permissions required to perform
+    recovery operations.
 
 ´CLOUD_NATIVE_S3_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
@@ -76,6 +78,8 @@ are used when specifying the feature set.
 ´RDS_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
+  * ´RECOVERY´ - Represents the set of elevated permissions required to perform
+    recovery operations.
 
 ´ROLE_CHAINING´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the

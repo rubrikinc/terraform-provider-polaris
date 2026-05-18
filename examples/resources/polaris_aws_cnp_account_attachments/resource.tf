@@ -5,7 +5,14 @@
 # and role has been defined for each RSC artifact.
 resource "polaris_aws_cnp_account_attachments" "attachments" {
   account_id = polaris_aws_cnp_account.account.id
-  features   = polaris_aws_cnp_account.account.feature.*.name
+
+  dynamic "feature" {
+    for_each = polaris_aws_cnp_account.account.feature
+    content {
+      name              = feature.value["name"]
+      permission_groups = feature.value["permission_groups"]
+    }
+  }
 
   dynamic "instance_profile" {
     for_each = aws_iam_instance_profile.profile
@@ -29,8 +36,15 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 # the role-chaining account, use the above example.
 resource "polaris_aws_cnp_account_attachments" "attachments" {
   account_id               = polaris_aws_cnp_account.account.id
-  features                 = polaris_aws_cnp_account.account.feature.*.name
   role_chaining_account_id = polaris_aws_cnp_account.role_chaining.id
+
+  dynamic "feature" {
+    for_each = polaris_aws_cnp_account.account.feature
+    content {
+      name              = feature.value["name"]
+      permission_groups = feature.value["permission_groups"]
+    }
+  }
 
   dynamic "instance_profile" {
     for_each = aws_iam_instance_profile.profile
