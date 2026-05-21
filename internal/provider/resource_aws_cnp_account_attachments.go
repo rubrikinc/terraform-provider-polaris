@@ -75,14 +75,15 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 						"RDS_PROTECTION", "KUBERNETES_PROTECTION", "SERVERS_AND_APPS", "ROLE_CHAINING",
 					}, false),
 				},
-				MinItems: 1,
-				Required: true,
+				Optional: true,
+				Computed: true,
 				Description: "RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
 					"`CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
 					"`EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.",
 				Deprecated: "Permission groups are now read from the cloud account managed by " +
-					"`polaris_aws_cnp_account` when artifacts are registered. This field is retained for " +
-					"backwards compatibility and will be removed in a future major release.",
+					"`polaris_aws_cnp_account` when artifacts are registered, so the attachments resource no " +
+					"longer needs to track features. This field is retained for backwards compatibility, is " +
+					"populated from the cloud account if omitted, and will be removed in a future major release.",
 			},
 			keyInstanceProfile: {
 				Type:        schema.TypeSet,
