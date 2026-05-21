@@ -124,7 +124,7 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	features, err := featuresWithLivePermissionGroups(ctx, client, accountID, d.Get(keyFeatures).(*schema.Set))
+	features, err := liveAccountFeatures(ctx, client, accountID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -248,7 +248,7 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	features, err := featuresWithLivePermissionGroups(ctx, client, id, d.Get(keyFeatures).(*schema.Set))
+	features, err := liveAccountFeatures(ctx, client, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -304,51 +304,30 @@ func awsDeleteCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	return nil
 }
 
-// featuresWithLivePermissionGroups reads the cloud account and, for each
-// configured feature name, populates the permission groups currently
-// registered on the account. This avoids guessing a single default (e.g.
-// BASIC) which would be wrong for features like EXOCOMPUTE (BASIC +
-// RSC_MANAGED_CLUSTER), SERVERS_AND_APPS (CLOUD_CLUSTER_ES), or
-// CLOUD_NATIVE_PROTECTION (BASIC + RESTORE + EXPORT_POWER_ON +
-// EXPORT_POWER_OFF + DOWNLOAD_FILE), and lets callers opt into newer groups
-// like RECOVERY by configuring them on the cloud account resource without
-// also having to schema-track them on the attachments resource. When a
-// configured feature is not present on the account (drift), BASIC is used as
-// a conservative fallback.
-func featuresWithLivePermissionGroups(ctx context.Context, client *polaris.Client, accountID uuid.UUID, configured *schema.Set) ([]core.Feature, error) {
+// liveAccountFeatures reads the cloud account and returns its features with
+// the permission groups currently registered for each one. This is what
+// AddAccountArtifacts needs: the attachments resource registers role and
+// instance-profile artifacts for whatever features the matching
+// polaris_aws_cnp_account resource has onboarded, with the same permission
+// groups. Sourcing the list from the account (rather than from the
+// deprecated `features` field on this resource) lets new groups like
+// RECOVERY flow through automatically and keeps the call site working once
+// the field is removed.
+func liveAccountFeatures(ctx context.Context, client *polaris.Client, accountID uuid.UUID) ([]core.Feature, error) {
 	account, err := aws.Wrap(client).AccountByID(ctx, accountID)
 	if err != nil {
 		return nil, err
 	}
 
-	features := make([]core.Feature, 0, configured.Len())
-	for _, raw := range configured.List() {
-		name := raw.(string)
-		feature := core.Feature{Name: name}
-		groups := permissionGroupsForFeature(account, name)
-		if len(groups) > 0 {
-			feature = feature.WithPermissionGroups(groups...)
+	features := make([]core.Feature, 0, len(account.Features))
+	for _, f := range account.Features {
+		feature := core.Feature{Name: f.Name}
+		if len(f.PermissionGroups) > 0 {
+			feature = feature.WithPermissionGroups(f.PermissionGroups...)
 		}
 		features = append(features, feature)
 	}
 	return features, nil
-}
-
-// permissionGroupsForFeature returns the permission groups currently
-// registered for the named feature on the given account, or [BASIC] when the
-// feature is not present (drift fallback).
-func permissionGroupsForFeature(account aws.CloudAccount, name string) []core.PermissionGroup {
-	for _, f := range account.Features {
-		if f.Name == name {
-			if len(f.PermissionGroups) == 0 {
-				return []core.PermissionGroup{core.PermissionGroupBasic}
-			}
-			groups := make([]core.PermissionGroup, len(f.PermissionGroups))
-			copy(groups, f.PermissionGroups)
-			return groups
-		}
-	}
-	return []core.PermissionGroup{core.PermissionGroupBasic}
 }
 
 // ensureRoleChainingArtifact duplicates the CROSSACCOUNT role ARN as
