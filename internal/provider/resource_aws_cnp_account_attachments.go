@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -38,8 +39,9 @@ const resourceAWSCNPAccountAttachmentsDescription = `
 The ´aws_cnp_account_attachments´ resource attaches AWS instance profiles and AWS
 roles to an RSC cloud account.
 
--> **Note:** The ´features´ field takes only the feature names and not the permission
-   groups associated with the features.
+-> **Note:** Permission groups for each feature are read from the cloud account
+   managed by ´polaris_aws_cnp_account´ when artifacts are registered. The
+   ´features´ field is retained for backwards compatibility and is deprecated.
 `
 
 func resourceAwsCnpAccountAttachments() *schema.Resource {
@@ -78,6 +80,9 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 				Description: "RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
 					"`CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
 					"`EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.",
+				Deprecated: "Permission groups are now read from the cloud account managed by " +
+					"`polaris_aws_cnp_account` when artifacts are registered. This field is retained for " +
+					"backwards compatibility and will be removed in a future major release.",
 			},
 			keyInstanceProfile: {
 				Type:        schema.TypeSet,
@@ -119,9 +124,9 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	var features []core.Feature
-	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	features, err := featuresWithLivePermissionGroups(ctx, client, accountID, d.Get(keyFeatures).(*schema.Set))
+	if err != nil {
+		return diag.FromErr(err)
 	}
 	profiles := make(map[string]string)
 	for _, roleAttr := range d.Get(keyInstanceProfile).(*schema.Set).List() {
@@ -243,9 +248,9 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	var features []core.Feature
-	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	features, err := featuresWithLivePermissionGroups(ctx, client, id, d.Get(keyFeatures).(*schema.Set))
+	if err != nil {
+		return diag.FromErr(err)
 	}
 	profiles := make(map[string]string)
 	for _, roleAttr := range d.Get(keyInstanceProfile).(*schema.Set).List() {
@@ -297,6 +302,53 @@ func awsDeleteCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	d.SetId("")
 
 	return nil
+}
+
+// featuresWithLivePermissionGroups reads the cloud account and, for each
+// configured feature name, populates the permission groups currently
+// registered on the account. This avoids guessing a single default (e.g.
+// BASIC) which would be wrong for features like EXOCOMPUTE (BASIC +
+// RSC_MANAGED_CLUSTER), SERVERS_AND_APPS (CLOUD_CLUSTER_ES), or
+// CLOUD_NATIVE_PROTECTION (BASIC + RESTORE + EXPORT_POWER_ON +
+// EXPORT_POWER_OFF + DOWNLOAD_FILE), and lets callers opt into newer groups
+// like RECOVERY by configuring them on the cloud account resource without
+// also having to schema-track them on the attachments resource. When a
+// configured feature is not present on the account (drift), BASIC is used as
+// a conservative fallback.
+func featuresWithLivePermissionGroups(ctx context.Context, client *polaris.Client, accountID uuid.UUID, configured *schema.Set) ([]core.Feature, error) {
+	account, err := aws.Wrap(client).AccountByID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	features := make([]core.Feature, 0, configured.Len())
+	for _, raw := range configured.List() {
+		name := raw.(string)
+		feature := core.Feature{Name: name}
+		groups := permissionGroupsForFeature(account, name)
+		if len(groups) > 0 {
+			feature = feature.WithPermissionGroups(groups...)
+		}
+		features = append(features, feature)
+	}
+	return features, nil
+}
+
+// permissionGroupsForFeature returns the permission groups currently
+// registered for the named feature on the given account, or [BASIC] when the
+// feature is not present (drift fallback).
+func permissionGroupsForFeature(account aws.CloudAccount, name string) []core.PermissionGroup {
+	for _, f := range account.Features {
+		if f.Name == name {
+			if len(f.PermissionGroups) == 0 {
+				return []core.PermissionGroup{core.PermissionGroupBasic}
+			}
+			groups := make([]core.PermissionGroup, len(f.PermissionGroups))
+			copy(groups, f.PermissionGroups)
+			return groups
+		}
+	}
+	return []core.PermissionGroup{core.PermissionGroupBasic}
 }
 
 // ensureRoleChainingArtifact duplicates the CROSSACCOUNT role ARN as
