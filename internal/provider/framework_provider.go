@@ -134,6 +134,7 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 	tflog.Trace(ctx, "FrameworkProvider.DataSources")
 
 	return []func() datasource.DataSource{
+		newAwsPermissionGroupsDataSource,
 		newFeatureFlagDataSource,
 		newIdentityProviderDataSource,
 		newRoleDataSource,
