@@ -574,7 +574,7 @@ func featureResource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"BASIC", "RSC_MANAGED_CLUSTER", "CLOUD_CLUSTER_ES",
+						"BASIC", "RECOVERY", "RSC_MANAGED_CLUSTER", "CLOUD_CLUSTER_ES",
 						"EXPORT_POWER_ON", "EXPORT_POWER_OFF", "RESTORE", "DOWNLOAD_FILE",
 						// The following permission groups cannot be used when onboarding an AWS account.
 						// They have been accepted in the past so we still silently allow them.
@@ -584,7 +584,7 @@ func featureResource() *schema.Resource {
 				Required: true,
 				Description: "RSC permission groups for the feature. Possible values are `BASIC`, " +
 					"`CLOUD_CLUSTER_ES`, `DOWNLOAD_FILE`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, " +
-					"`RESTORE` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is " +
+					"`RECOVERY`, `RESTORE` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is " +
 					"interpreted as all applicable permission groups.",
 			},
 		},

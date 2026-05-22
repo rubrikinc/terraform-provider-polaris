@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -38,8 +39,9 @@ const resourceAWSCNPAccountAttachmentsDescription = `
 The ´aws_cnp_account_attachments´ resource attaches AWS instance profiles and AWS
 roles to an RSC cloud account.
 
--> **Note:** The ´features´ field takes only the feature names and not the permission
-   groups associated with the features.
+-> **Note:** Permission groups for each feature are read from the cloud account
+   managed by ´polaris_aws_cnp_account´ when artifacts are registered. The
+   ´features´ field is retained for backwards compatibility and is deprecated.
 `
 
 func resourceAwsCnpAccountAttachments() *schema.Resource {
@@ -73,11 +75,15 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 						"RDS_PROTECTION", "KUBERNETES_PROTECTION", "SERVERS_AND_APPS", "ROLE_CHAINING",
 					}, false),
 				},
-				MinItems: 1,
-				Required: true,
+				Optional: true,
+				Computed: true,
 				Description: "RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
 					"`CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
 					"`EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.",
+				Deprecated: "Permission groups are now read from the cloud account managed by " +
+					"`polaris_aws_cnp_account` when artifacts are registered, so the attachments resource no " +
+					"longer needs to track features. This field is retained for backwards compatibility, is " +
+					"populated from the cloud account if omitted, and will be removed in a future major release.",
 			},
 			keyInstanceProfile: {
 				Type:        schema.TypeSet,
@@ -119,9 +125,9 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	var features []core.Feature
-	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	features, err := accountFeatures(ctx, client, accountID)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 	profiles := make(map[string]string)
 	for _, roleAttr := range d.Get(keyInstanceProfile).(*schema.Set).List() {
@@ -243,9 +249,9 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	var features []core.Feature
-	for _, feature := range d.Get(keyFeatures).(*schema.Set).List() {
-		features = append(features, core.Feature{Name: feature.(string)})
+	features, err := accountFeatures(ctx, client, id)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 	profiles := make(map[string]string)
 	for _, roleAttr := range d.Get(keyInstanceProfile).(*schema.Set).List() {
@@ -297,6 +303,22 @@ func awsDeleteCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	d.SetId("")
 
 	return nil
+}
+
+// accountFeatures returns the features and permission groups currently
+// registered on the cloud account, so newly added groups are picked up
+// without changes here.
+func accountFeatures(ctx context.Context, client *polaris.Client, accountID uuid.UUID) ([]core.Feature, error) {
+	account, err := aws.Wrap(client).AccountByID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	features := make([]core.Feature, 0, len(account.Features))
+	for _, f := range account.Features {
+		features = append(features, f.Feature)
+	}
+	return features, nil
 }
 
 // ensureRoleChainingArtifact duplicates the CROSSACCOUNT role ARN as

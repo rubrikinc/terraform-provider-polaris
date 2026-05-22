@@ -249,8 +249,11 @@ func resourceAwsAccount() *schema.Resource {
 				Description: "Enable the Cloud Native Protection feature for the account.",
 			},
 			keyCloudNativeDynamoDBProtection: {
-				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Type: schema.TypeList,
+				Elem: awsCFTFeatureResource([]core.PermissionGroup{
+					core.PermissionGroupBasic,
+					core.PermissionGroupRecovery,
+				}),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Cloud Native DynamoDB Protection feature for the account.",
@@ -382,8 +385,11 @@ func resourceAwsAccount() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyRDSProtection: {
-				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Type: schema.TypeList,
+				Elem: awsCFTFeatureResource([]core.PermissionGroup{
+					core.PermissionGroupBasic,
+					core.PermissionGroupRecovery,
+				}),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the RDS Protection feature for the account.",

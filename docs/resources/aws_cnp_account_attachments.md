@@ -5,8 +5,9 @@ subcategory: ""
 description: |-
   The aws_cnp_account_attachments resource attaches AWS instance profiles and AWS
   roles to an RSC cloud account.
-  -> Note: The features field takes only the feature names and not the permission
-  groups associated with the features.
+  -> Note: Permission groups for each feature are read from the cloud account
+  managed by polaris_aws_cnp_account when artifacts are registered. The
+  features field is retained for backwards compatibility and is deprecated.
 ---
 
 # polaris_aws_cnp_account_attachments (Resource)
@@ -14,8 +15,9 @@ description: |-
 The `aws_cnp_account_attachments` resource attaches AWS instance profiles and AWS
 roles to an RSC cloud account.
 
--> **Note:** The `features` field takes only the feature names and not the permission
-   groups associated with the features.
+-> **Note:** Permission groups for each feature are read from the cloud account
+   managed by `polaris_aws_cnp_account` when artifacts are registered. The
+   `features` field is retained for backwards compatibility and is deprecated.
 
 ## Example Usage
 
@@ -79,11 +81,11 @@ resource "polaris_aws_cnp_account_attachments" "attachments" {
 ### Required
 
 - `account_id` (String) RSC cloud account ID (UUID). Changing this forces a new resource to be created.
-- `features` (Set of String) RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.
 - `role` (Block Set, Min: 1) Roles to attach to the cloud account. (see [below for nested schema](#nestedblock--role))
 
 ### Optional
 
+- `features` (Set of String, Deprecated) RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.
 - `instance_profile` (Block Set) Instance profiles to attach to the cloud account. (see [below for nested schema](#nestedblock--instance_profile))
 - `role_chaining_account_id` (String) RSC cloud account ID of the role chaining account. When specified, the account will use cross-account role chaining.
 
