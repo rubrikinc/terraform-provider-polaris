@@ -125,7 +125,7 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	features, err := liveAccountFeatures(ctx, client, accountID)
+	features, err := accountFeatures(ctx, client, accountID)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -249,7 +249,7 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	features, err := liveAccountFeatures(ctx, client, id)
+	features, err := accountFeatures(ctx, client, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -305,16 +305,10 @@ func awsDeleteCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 	return nil
 }
 
-// liveAccountFeatures reads the cloud account and returns its features with
-// the permission groups currently registered for each one. This is what
-// AddAccountArtifacts needs: the attachments resource registers role and
-// instance-profile artifacts for whatever features the matching
-// polaris_aws_cnp_account resource has onboarded, with the same permission
-// groups. Sourcing the list from the account (rather than from the
-// deprecated `features` field on this resource) lets new groups like
-// RECOVERY flow through automatically and keeps the call site working once
-// the field is removed.
-func liveAccountFeatures(ctx context.Context, client *polaris.Client, accountID uuid.UUID) ([]core.Feature, error) {
+// accountFeatures returns the features and permission groups currently
+// registered on the cloud account, so newly added groups are picked up
+// without changes here.
+func accountFeatures(ctx context.Context, client *polaris.Client, accountID uuid.UUID) ([]core.Feature, error) {
 	account, err := aws.Wrap(client).AccountByID(ctx, accountID)
 	if err != nil {
 		return nil, err
@@ -322,11 +316,7 @@ func liveAccountFeatures(ctx context.Context, client *polaris.Client, accountID 
 
 	features := make([]core.Feature, 0, len(account.Features))
 	for _, f := range account.Features {
-		feature := core.Feature{Name: f.Name}
-		if len(f.PermissionGroups) > 0 {
-			feature = feature.WithPermissionGroups(f.PermissionGroups...)
-		}
-		features = append(features, feature)
+		features = append(features, f.Feature)
 	}
 	return features, nil
 }

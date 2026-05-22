@@ -9,6 +9,14 @@ page_title: "Upgrade Guide: v1.8.0"
 Review the [changelog](changelog.md) to understand what has changed and what might cause an issue when upgrading the
 provider.
 
+The v1.8.0 release is also published as the renamed `rubrikinc/rubrik` provider. The `rubrikinc/polaris` provider will
+continue to be released and supported for some time, so there is no need to switch right now. The
+`rubrikinc/polaris` provider will eventually be retired, however, and you will need to switch to the `rubrikinc/rubrik`
+provider before then. The migration paths will improve over time as more resources gain support for Terraform's
+`moved {}` block, making the switch progressively simpler. See the
+[v1.8.0 upgrade guide for the rubrikinc/rubrik provider](https://registry.terraform.io/providers/rubrikinc/rubrik/latest/docs/guides/upgrade_guide_v1.8.0)
+for the currently available migration paths.
+
 ## How to Upgrade
 
 Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v1.8.0 release. One
