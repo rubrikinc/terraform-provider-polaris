@@ -4,11 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
-## v1.8.0
+## v1.7.1
 * **Deprecated:** `features` field in the `polaris_aws_cnp_account_attachments` resource. Permission groups for each
   feature are now read from the cloud account managed by `polaris_aws_cnp_account` when artifacts are registered, so
   this field no longer needs to track them. The field is retained for backwards compatibility and will be removed in
-  a future major release. See the [v1.8.0 upgrade guide](upgrade_guide_v1.8.0.md).
+  a future major release. See the [v1.7.1 upgrade guide](upgrade_guide_v1.7.1.md).
 * Add support for the `RECOVERY` permission group in the `RDS_PROTECTION` and `CLOUD_NATIVE_DYNAMODB_PROTECTION`
   features in the `polaris_aws_account`, `polaris_aws_cnp_account` and `polaris_aws_cnp_account_attachments`
   resources. `RECOVERY` grants the elevated AWS permissions required to perform recovery operations.
