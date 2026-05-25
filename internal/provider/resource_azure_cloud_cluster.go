@@ -471,6 +471,7 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	}
 
 	// Use AllCloudClusters and filter for cluster
+	//lint:ignore SA1019 temporary: migration to cluster.API.ListClusters/AllClusters pending
 	cloudClusters, err := gqlcloudcluster.Wrap(client.GQL).AllCloudClusters(ctx, 1, "", clusterFilter, gqlcluster.SortByClusterName, core.SortOrderDesc)
 	if err != nil {
 		return diag.FromErr(err)
