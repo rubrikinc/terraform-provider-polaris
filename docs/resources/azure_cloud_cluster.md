@@ -53,6 +53,9 @@ number of nodes, instance types, and network configuration.
    to force removal when eligible.
 
 
+~> **Note:** This resource requires **Terraform v1.11.0 or later**. The `admin_email` and `admin_password` fields in
+the `cluster_config` block use write-only attributes, which are only supported in Terraform v1.11.0 and later.
+
 
 ## Example Usage
 
