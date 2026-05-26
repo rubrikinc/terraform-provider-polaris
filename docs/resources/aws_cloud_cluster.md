@@ -16,6 +16,9 @@ number of nodes, instance types, and network configuration.
 ~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
 
+~> **Note:** This resource requires **Terraform v1.11.0 or later** due to the use of write-only attributes for
+   `admin_email` and `admin_password`.
+
 ~> **Note:** Cloud Cluster deletion is now supported. When destroying this resource,
    the cluster will be removed from RSC. If the cluster has blocking conditions
    (active SLAs, global SLAs, or RCV locations), the deletion will fail and you must
@@ -40,12 +43,18 @@ number of nodes, instance types, and network configuration.
 ~> **Note:** The AWS account must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
 
+~> **Note:** This resource requires **Terraform v1.11.0 or later** due to the use of write-only attributes for
+   `admin_email` and `admin_password`.
+
 ~> **Note:** Cloud Cluster deletion is now supported. When destroying this resource,
    the cluster will be removed from RSC. If the cluster has blocking conditions
    (active SLAs, global SLAs, or RCV locations), the deletion will fail and you must
    resolve these conditions first. Use the 'force_cluster_delete_on_destroy' option
    to force removal when eligible.
 
+
+~> **Note:** This resource requires **Terraform v1.11.0 or later**. The `admin_email` and `admin_password` fields in
+the `cluster_config` block use write-only attributes, which are only supported in Terraform v1.11.0 and later.
 
 
 ## Example Usage
@@ -77,6 +86,49 @@ resource "polaris_aws_cloud_cluster" "example" {
     vpc_id                = "vpc-12345678"
     subnet_id             = "subnet-12345678"
     security_group_ids    = ["sg-12345678", "sg-45678901"]
+  }
+}
+
+# Create an AWS cloud cluster with Multi-AZ resiliency
+resource "polaris_aws_cloud_cluster" "multi_az" {
+  cloud_account_id     = "12345678-1234-1234-1234-123456789012"
+  region               = "us-west-2"
+  az_resilient         = true
+  use_placement_groups = false
+
+  cluster_config {
+    cluster_name            = "my-multi-az-cluster"
+    admin_email             = "admin@example.com"
+    admin_password          = "RubrikGoForward!"
+    dns_name_servers        = ["8.8.8.8", "8.8.4.4"]
+    ntp_servers             = ["pool.ntp.org"]
+    num_nodes               = 3
+    bucket_name             = "my-s3-bucket"
+    enable_immutability     = true
+    keep_cluster_on_failure = false
+  }
+
+  vm_config {
+    cdm_version           = "9.4.0-p2-30507"
+    instance_type         = "M6I_2XLARGE"
+    instance_profile_name = "RubrikCloudClusterInstanceProfile"
+    vpc_id                = "vpc-12345678"
+    security_group_ids    = ["sg-12345678", "sg-45678901"]
+
+    subnet_az_config {
+      availability_zone = "us-west-2a"
+      subnet            = "subnet-11111111"
+    }
+
+    subnet_az_config {
+      availability_zone = "us-west-2b"
+      subnet            = "subnet-22222222"
+    }
+
+    subnet_az_config {
+      availability_zone = "us-west-2c"
+      subnet            = "subnet-33333333"
+    }
   }
 }
 ```
