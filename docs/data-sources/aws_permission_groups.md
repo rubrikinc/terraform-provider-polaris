@@ -4,45 +4,55 @@ page_title: "polaris_aws_permission_groups Data Source - terraform-provider-pola
 subcategory: ""
 description: |-
   The polaris_aws_permission_groups data source retrieves the latest permission
-  groups available for one or more RSC AWS features, along with the IAM action
-  statements that each permission group grants. It is intended for users of the
-  IAM-based onboarding flow who want to programmatically discover which permission
-  groups are available (for example, the BASIC and RECOVERY split on
+  groups available for a single RSC AWS feature, along with the IAM action
+  statements that the feature requires. It is intended for users of the IAM-based
+  onboarding flow who want to programmatically discover which permission groups
+  are available (for example, the BASIC and RECOVERY split on
   RDS_PROTECTION) and the underlying actions, instead of hard-coding them.
+  To look up multiple features at once, use for_each on the data source.
 ---
 
 # polaris_aws_permission_groups (Data Source)
 
 The `polaris_aws_permission_groups` data source retrieves the latest permission
-groups available for one or more RSC AWS features, along with the IAM action
-statements that each permission group grants. It is intended for users of the
-IAM-based onboarding flow who want to programmatically discover which permission
-groups are available (for example, the `BASIC` and `RECOVERY` split on
+groups available for a single RSC AWS feature, along with the IAM action
+statements that the feature requires. It is intended for users of the IAM-based
+onboarding flow who want to programmatically discover which permission groups
+are available (for example, the `BASIC` and `RECOVERY` split on
 `RDS_PROTECTION`) and the underlying actions, instead of hard-coding them.
+
+To look up multiple features at once, use `for_each` on the data source.
 
 ## Example Usage
 
 ```terraform
-# Look up the latest permission groups available for one or more RSC AWS
-# features.
-data "polaris_aws_permission_groups" "groups" {
-  feature_names = [
-    "CLOUD_NATIVE_PROTECTION",
-    "RDS_PROTECTION",
-  ]
+# Look up the latest permission groups available for a single RSC AWS feature.
+data "polaris_aws_permission_groups" "cnp" {
+  feature = "CLOUD_NATIVE_PROTECTION"
 }
 
-# Feed the discovered permission group names into a polaris_aws_cnp_account
-# feature block instead of hard-coding them.
-locals {
-  feature_groups = {
-    for f in data.polaris_aws_permission_groups.groups.feature :
-    f.name => [for pg in f.permission_group : pg.name]
-  }
+# Use the result with the splat operator to feed permission group names into a
+# polaris_aws_cnp_account feature block instead of hard-coding them.
+output "cnp_permission_groups" {
+  value = data.polaris_aws_permission_groups.cnp.permission_groups[*].name
+}
+
+# Look up several features at once with for_each.
+data "polaris_aws_permission_groups" "all" {
+  for_each = toset([
+    "CLOUD_NATIVE_PROTECTION",
+    "EXOCOMPUTE",
+    "RDS_PROTECTION",
+  ])
+
+  feature = each.key
 }
 
 output "permission_groups_by_feature" {
-  value = local.feature_groups
+  value = {
+    for f, d in data.polaris_aws_permission_groups.all :
+    f => d.permission_groups[*].name
+  }
 }
 ```
 
@@ -51,41 +61,27 @@ output "permission_groups_by_feature" {
 
 ### Required
 
-- `feature_names` (Set of String) RSC feature names to look up permission groups for (e.g. `RDS_PROTECTION`).
+- `feature` (String) RSC feature name to look up permission groups for (e.g. `RDS_PROTECTION`).
 
 ### Read-Only
 
-- `feature` (Attributes List) Permission group catalog grouped by RSC feature. (see [below for nested schema](#nestedatt--feature))
-- `id` (String) SHA-256 hash of the feature names and permission groups returned.
+- `id` (String) SHA-256 hash of the permission groups and statements returned.
+- `permission_groups` (Attributes List) Permission groups available for the feature, sorted by name. (see [below for nested schema](#nestedatt--permission_groups))
+- `permission_statements` (Attributes List) Flat list of IAM action statements required by the feature, merged across all permission groups and exploded so each `(action, use_case)` pair is its own entry. Sorted by `name` then `use_case`. (see [below for nested schema](#nestedatt--permission_statements))
 
-<a id="nestedatt--feature"></a>
-### Nested Schema for `feature`
-
-Read-Only:
-
-- `name` (String) RSC feature name.
-- `permission_group` (Attributes List) Permission groups available for the feature. (see [below for nested schema](#nestedatt--feature--permission_group))
-
-<a id="nestedatt--feature--permission_group"></a>
-### Nested Schema for `feature.permission_group`
+<a id="nestedatt--permission_groups"></a>
+### Nested Schema for `permission_groups`
 
 Read-Only:
 
 - `name` (String) Permission group name.
-- `permission_statement` (Attributes List) IAM permission statements granted by the permission group. (see [below for nested schema](#nestedatt--feature--permission_group--permission_statement))
 - `version` (Number) Permission group version.
 
-<a id="nestedatt--feature--permission_group--permission_statement"></a>
-### Nested Schema for `feature.permission_group.permission_statement`
 
-Read-Only:
-
-- `action` (Attributes List) IAM actions granted by the permission statement. (see [below for nested schema](#nestedatt--feature--permission_group--permission_statement--action))
-
-<a id="nestedatt--feature--permission_group--permission_statement--action"></a>
-### Nested Schema for `feature.permission_group.permission_statement.action`
+<a id="nestedatt--permission_statements"></a>
+### Nested Schema for `permission_statements`
 
 Read-Only:
 
 - `name` (String) IAM action.
-- `usecases` (List of String) Use cases for the IAM action.
+- `use_case` (String) Use case the IAM action is required for.
