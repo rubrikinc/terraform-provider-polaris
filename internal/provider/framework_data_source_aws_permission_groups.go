@@ -41,10 +41,10 @@ import (
 const dataSourceAWSPermissionGroupsDescription = `
 The ´polaris_aws_permission_groups´ data source retrieves the latest permission
 groups available for a single RSC AWS feature, along with the IAM action
-statements that the feature requires. It is intended for users of the IAM-based
-onboarding flow who want to programmatically discover which permission groups
-are available (for example, the ´BASIC´ and ´RECOVERY´ split on
-´RDS_PROTECTION´) and the underlying actions, instead of hard-coding them.
+statements that each permission group requires. It is intended for users of the
+IAM-based onboarding flow who want to programmatically discover which
+permission groups are available (for example, the ´BASIC´ and ´RECOVERY´ split
+on ´RDS_PROTECTION´) and the underlying actions, instead of hard-coding them.
 
 To look up multiple features at once, use ´for_each´ on the data source.
 `
@@ -56,10 +56,9 @@ type awsPermissionGroupsDataSource struct {
 }
 
 type awsPermissionGroupsModel struct {
-	ID                   types.String `tfsdk:"id"`
-	Feature              types.String `tfsdk:"feature"`
-	PermissionGroups     types.List   `tfsdk:"permission_groups"`
-	PermissionStatements types.List   `tfsdk:"permission_statements"`
+	ID               types.String `tfsdk:"id"`
+	Feature          types.String `tfsdk:"feature"`
+	PermissionGroups types.List   `tfsdk:"permission_groups"`
 }
 
 func newAwsPermissionGroupsDataSource() datasource.DataSource {
@@ -102,23 +101,22 @@ func (d *awsPermissionGroupsDataSource) Schema(ctx context.Context, _ datasource
 							Computed:    true,
 							Description: "Permission group version.",
 						},
-					},
-				},
-			},
-			keyPermissionStatements: schema.ListNestedAttribute{
-				Computed: true,
-				Description: "Flat list of IAM action statements required by the feature, merged across all " +
-					"permission groups and exploded so each `(action, use_case)` pair is its own entry. " +
-					"Sorted by `name` then `use_case`.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						keyName: schema.StringAttribute{
-							Computed:    true,
-							Description: "IAM action.",
-						},
-						keyUseCase: schema.StringAttribute{
-							Computed:    true,
-							Description: "Use case the IAM action is required for.",
+						keyStatements: schema.ListNestedAttribute{
+							Computed: true,
+							Description: "IAM actions required by this permission group, one entry per " +
+								"`(action, use_case)` pair. Sorted by `name` then `use_case`.",
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									keyName: schema.StringAttribute{
+										Computed:    true,
+										Description: "IAM action.",
+									},
+									keyUseCase: schema.StringAttribute{
+										Computed:    true,
+										Description: "Use case the IAM action is required for.",
+									},
+								},
+							},
 						},
 					},
 				},
@@ -173,23 +171,13 @@ func (d *awsPermissionGroupsDataSource) Read(ctx context.Context, req datasource
 	hash := sha256.New()
 	hash.Write([]byte(featureName))
 
-	groupValues := make([]attr.Value, 0, len(groups))
 	type stmtKey struct{ name, useCase string }
-	stmtSet := make(map[stmtKey]struct{})
+	groupValues := make([]attr.Value, 0, len(groups))
 	for _, pg := range groups {
 		hash.Write([]byte(pg.PermissionsGroup))
 		hash.Write([]byte(strconv.Itoa(pg.Version)))
 
-		groupValue, diags := types.ObjectValue(permissionGroupAttrTypes(), map[string]attr.Value{
-			keyName:    types.StringValue(string(pg.PermissionsGroup)),
-			keyVersion: types.Int64Value(int64(pg.Version)),
-		})
-		res.Diagnostics.Append(diags...)
-		if res.Diagnostics.HasError() {
-			return
-		}
-		groupValues = append(groupValues, groupValue)
-
+		stmtSet := make(map[stmtKey]struct{})
 		for _, stmt := range pg.PermissionStatements {
 			for _, act := range stmt.Actions {
 				// RSC currently leaves usecase empty for AWS actions; emit
@@ -203,33 +191,50 @@ func (d *awsPermissionGroupsDataSource) Read(ctx context.Context, req datasource
 				}
 			}
 		}
-	}
 
-	stmts := make([]stmtKey, 0, len(stmtSet))
-	for k := range stmtSet {
-		stmts = append(stmts, k)
-	}
-	slices.SortFunc(stmts, func(a, b stmtKey) int {
-		if r := cmp.Compare(a.name, b.name); r != 0 {
-			return r
+		stmts := make([]stmtKey, 0, len(stmtSet))
+		for k := range stmtSet {
+			stmts = append(stmts, k)
 		}
-		return cmp.Compare(a.useCase, b.useCase)
-	})
+		slices.SortFunc(stmts, func(a, b stmtKey) int {
+			if r := cmp.Compare(a.name, b.name); r != 0 {
+				return r
+			}
+			return cmp.Compare(a.useCase, b.useCase)
+		})
 
-	stmtValues := make([]attr.Value, 0, len(stmts))
-	for _, s := range stmts {
-		hash.Write([]byte(s.name))
-		hash.Write([]byte(s.useCase))
+		stmtValues := make([]attr.Value, 0, len(stmts))
+		for _, s := range stmts {
+			hash.Write([]byte(s.name))
+			hash.Write([]byte(s.useCase))
 
-		stmtValue, diags := types.ObjectValue(permissionStatementAttrTypes(), map[string]attr.Value{
-			keyName:    types.StringValue(s.name),
-			keyUseCase: types.StringValue(s.useCase),
+			stmtValue, diags := types.ObjectValue(statementAttrTypes(), map[string]attr.Value{
+				keyName:    types.StringValue(s.name),
+				keyUseCase: types.StringValue(s.useCase),
+			})
+			res.Diagnostics.Append(diags...)
+			if res.Diagnostics.HasError() {
+				return
+			}
+			stmtValues = append(stmtValues, stmtValue)
+		}
+
+		stmtsList, diags := types.ListValue(types.ObjectType{AttrTypes: statementAttrTypes()}, stmtValues)
+		res.Diagnostics.Append(diags...)
+		if res.Diagnostics.HasError() {
+			return
+		}
+
+		groupValue, diags := types.ObjectValue(permissionGroupAttrTypes(), map[string]attr.Value{
+			keyName:       types.StringValue(string(pg.PermissionsGroup)),
+			keyVersion:    types.Int64Value(int64(pg.Version)),
+			keyStatements: stmtsList,
 		})
 		res.Diagnostics.Append(diags...)
 		if res.Diagnostics.HasError() {
 			return
 		}
-		stmtValues = append(stmtValues, stmtValue)
+		groupValues = append(groupValues, groupValue)
 	}
 
 	groupsList, diags := types.ListValue(types.ObjectType{AttrTypes: permissionGroupAttrTypes()}, groupValues)
@@ -238,32 +243,26 @@ func (d *awsPermissionGroupsDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 
-	stmtsList, diags := types.ListValue(types.ObjectType{AttrTypes: permissionStatementAttrTypes()}, stmtValues)
-	res.Diagnostics.Append(diags...)
-	if res.Diagnostics.HasError() {
-		return
-	}
-
 	state := awsPermissionGroupsModel{
-		ID:                   types.StringValue(fmt.Sprintf("%x", hash.Sum(nil))),
-		Feature:              config.Feature,
-		PermissionGroups:     groupsList,
-		PermissionStatements: stmtsList,
+		ID:               types.StringValue(fmt.Sprintf("%x", hash.Sum(nil))),
+		Feature:          config.Feature,
+		PermissionGroups: groupsList,
 	}
 
 	res.Diagnostics.Append(res.State.Set(ctx, &state)...)
 }
 
-func permissionGroupAttrTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		keyName:    types.StringType,
-		keyVersion: types.Int64Type,
-	}
-}
-
-func permissionStatementAttrTypes() map[string]attr.Type {
+func statementAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 		keyName:    types.StringType,
 		keyUseCase: types.StringType,
+	}
+}
+
+func permissionGroupAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		keyName:       types.StringType,
+		keyVersion:    types.Int64Type,
+		keyStatements: types.ListType{ElemType: types.ObjectType{AttrTypes: statementAttrTypes()}},
 	}
 }

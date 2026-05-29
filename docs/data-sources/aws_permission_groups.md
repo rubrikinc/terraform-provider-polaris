@@ -5,10 +5,10 @@ subcategory: ""
 description: |-
   The polaris_aws_permission_groups data source retrieves the latest permission
   groups available for a single RSC AWS feature, along with the IAM action
-  statements that the feature requires. It is intended for users of the IAM-based
-  onboarding flow who want to programmatically discover which permission groups
-  are available (for example, the BASIC and RECOVERY split on
-  RDS_PROTECTION) and the underlying actions, instead of hard-coding them.
+  statements that each permission group requires. It is intended for users of the
+  IAM-based onboarding flow who want to programmatically discover which
+  permission groups are available (for example, the BASIC and RECOVERY split
+  on RDS_PROTECTION) and the underlying actions, instead of hard-coding them.
   To look up multiple features at once, use for_each on the data source.
 ---
 
@@ -16,10 +16,10 @@ description: |-
 
 The `polaris_aws_permission_groups` data source retrieves the latest permission
 groups available for a single RSC AWS feature, along with the IAM action
-statements that the feature requires. It is intended for users of the IAM-based
-onboarding flow who want to programmatically discover which permission groups
-are available (for example, the `BASIC` and `RECOVERY` split on
-`RDS_PROTECTION`) and the underlying actions, instead of hard-coding them.
+statements that each permission group requires. It is intended for users of the
+IAM-based onboarding flow who want to programmatically discover which
+permission groups are available (for example, the `BASIC` and `RECOVERY` split
+on `RDS_PROTECTION`) and the underlying actions, instead of hard-coding them.
 
 To look up multiple features at once, use `for_each` on the data source.
 
@@ -31,10 +31,15 @@ data "polaris_aws_permission_groups" "cnp" {
   feature = "CLOUD_NATIVE_PROTECTION"
 }
 
-# Use the result with the splat operator to feed permission group names into a
-# polaris_aws_cnp_account feature block instead of hard-coding them.
+# Splat over permission_groups to get just the group names — feed straight
+# into a polaris_aws_cnp_account feature block instead of hard-coding them.
 output "cnp_permission_groups" {
   value = data.polaris_aws_permission_groups.cnp.permission_groups[*].name
+}
+
+# Splat across groups to get every IAM action required by the feature.
+output "cnp_actions" {
+  value = flatten(data.polaris_aws_permission_groups.cnp.permission_groups[*].statements[*].name)
 }
 
 # Look up several features at once with for_each.
@@ -67,7 +72,6 @@ output "permission_groups_by_feature" {
 
 - `id` (String) SHA-256 hash of the permission groups and statements returned.
 - `permission_groups` (Attributes List) Permission groups available for the feature, sorted by name. (see [below for nested schema](#nestedatt--permission_groups))
-- `permission_statements` (Attributes List) Flat list of IAM action statements required by the feature, merged across all permission groups and exploded so each `(action, use_case)` pair is its own entry. Sorted by `name` then `use_case`. (see [below for nested schema](#nestedatt--permission_statements))
 
 <a id="nestedatt--permission_groups"></a>
 ### Nested Schema for `permission_groups`
@@ -75,11 +79,11 @@ output "permission_groups_by_feature" {
 Read-Only:
 
 - `name` (String) Permission group name.
+- `statements` (Attributes List) IAM actions required by this permission group, one entry per `(action, use_case)` pair. Sorted by `name` then `use_case`. (see [below for nested schema](#nestedatt--permission_groups--statements))
 - `version` (Number) Permission group version.
 
-
-<a id="nestedatt--permission_statements"></a>
-### Nested Schema for `permission_statements`
+<a id="nestedatt--permission_groups--statements"></a>
+### Nested Schema for `permission_groups.statements`
 
 Read-Only:
 

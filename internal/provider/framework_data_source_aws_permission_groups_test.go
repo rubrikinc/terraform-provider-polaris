@@ -68,25 +68,22 @@ func TestAccAwsPermissionGroupsDataSource(t *testing.T) {
 					knownvalue.StringExact("CLOUD_NATIVE_PROTECTION")),
 
 				// CLOUD_NATIVE_PROTECTION always exposes the BASIC permission
-				// group; assert its shape without pinning version (the catalog
-				// version is bumped by RSC over time). ListPartial also asserts
-				// permission_groups has at least one element.
+				// group; assert its shape (name, non-null version, and at
+				// least one statement) without pinning the version or specific
+				// actions, which the RSC catalog evolves over time. The
+				// statement's use_case is "" because RSC does not populate
+				// usecase for AWS actions yet.
 				statecheck.ExpectKnownValue("data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyPermissionGroups),
 					knownvalue.ListPartial(map[int]knownvalue.Check{
-						0: knownvalue.ObjectExact(map[string]knownvalue.Check{
+						0: knownvalue.ObjectPartial(map[string]knownvalue.Check{
 							keyName:    knownvalue.StringExact("BASIC"),
 							keyVersion: knownvalue.NotNull(),
-						}),
-					})),
-
-				// permission_statements has at least one entry; name is set and
-				// use_case is empty (RSC does not populate usecase for AWS
-				// actions yet, so we expect "" until that backfill lands).
-				statecheck.ExpectKnownValue("data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyPermissionStatements),
-					knownvalue.ListPartial(map[int]knownvalue.Check{
-						0: knownvalue.ObjectExact(map[string]knownvalue.Check{
-							keyName:    knownvalue.NotNull(),
-							keyUseCase: knownvalue.StringExact(""),
+							keyStatements: knownvalue.ListPartial(map[int]knownvalue.Check{
+								0: knownvalue.ObjectExact(map[string]knownvalue.Check{
+									keyName:    knownvalue.NotNull(),
+									keyUseCase: knownvalue.StringExact(""),
+								}),
+							}),
 						}),
 					})),
 
@@ -99,10 +96,6 @@ func TestAccAwsPermissionGroupsDataSource(t *testing.T) {
 				statecheck.CompareValuePairs(
 					"data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyPermissionGroups),
 					"data.polaris_aws_permission_groups.all[0]", tfjsonpath.New(keyPermissionGroups),
-					compare.ValuesSame()),
-				statecheck.CompareValuePairs(
-					"data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyPermissionStatements),
-					"data.polaris_aws_permission_groups.all[0]", tfjsonpath.New(keyPermissionStatements),
 					compare.ValuesSame()),
 
 				// EXOCOMPUTE (index 1) produces a distinct id, confirming the
