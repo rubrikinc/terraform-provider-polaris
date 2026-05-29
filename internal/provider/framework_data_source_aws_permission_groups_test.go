@@ -39,17 +39,23 @@ func TestAccAwsPermissionGroupsDataSource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
 		Steps: []resource.TestStep{{
-			// Single-feature lookup, plus a parallel for_each lookup over two
-			// features so we can verify that for_each returns the same data
-			// as a directly-targeted lookup.
+			// Single-feature lookup, plus a parallel count-based lookup over
+			// two features so we can verify that the data source returns the
+			// same data when invoked indirectly. count is used here instead of
+			// for_each because for_each on data sources interacts badly with
+			// the testing framework.
 			Config: `
+				locals {
+					features = ["CLOUD_NATIVE_PROTECTION", "EXOCOMPUTE"]
+				}
+
 				data "polaris_aws_permission_groups" "cnp" {
 					feature = "CLOUD_NATIVE_PROTECTION"
 				}
 
 				data "polaris_aws_permission_groups" "all" {
-					for_each = toset(["CLOUD_NATIVE_PROTECTION", "EXOCOMPUTE"])
-					feature  = each.key
+					count   = length(local.features)
+					feature = local.features[count.index]
 				}
 			`,
 			ConfigStateChecks: []statecheck.StateCheck{
@@ -84,25 +90,26 @@ func TestAccAwsPermissionGroupsDataSource(t *testing.T) {
 						}),
 					})),
 
-				// for_each lookup for the same feature returns identical data.
+				// Counted lookup for CLOUD_NATIVE_PROTECTION (index 0) returns
+				// identical data to the directly-targeted lookup.
 				statecheck.CompareValuePairs(
 					"data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyID),
-					`data.polaris_aws_permission_groups.all["CLOUD_NATIVE_PROTECTION"]`, tfjsonpath.New(keyID),
+					"data.polaris_aws_permission_groups.all[0]", tfjsonpath.New(keyID),
 					compare.ValuesSame()),
 				statecheck.CompareValuePairs(
 					"data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyPermissionGroups),
-					`data.polaris_aws_permission_groups.all["CLOUD_NATIVE_PROTECTION"]`, tfjsonpath.New(keyPermissionGroups),
+					"data.polaris_aws_permission_groups.all[0]", tfjsonpath.New(keyPermissionGroups),
 					compare.ValuesSame()),
 				statecheck.CompareValuePairs(
 					"data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyPermissionStatements),
-					`data.polaris_aws_permission_groups.all["CLOUD_NATIVE_PROTECTION"]`, tfjsonpath.New(keyPermissionStatements),
+					"data.polaris_aws_permission_groups.all[0]", tfjsonpath.New(keyPermissionStatements),
 					compare.ValuesSame()),
 
-				// The other for_each branch produces a distinct id, confirming
-				// that the data source is keyed on the input feature.
+				// EXOCOMPUTE (index 1) produces a distinct id, confirming the
+				// data source is keyed on the input feature.
 				statecheck.CompareValuePairs(
-					`data.polaris_aws_permission_groups.all["CLOUD_NATIVE_PROTECTION"]`, tfjsonpath.New(keyID),
-					`data.polaris_aws_permission_groups.all["EXOCOMPUTE"]`, tfjsonpath.New(keyID),
+					"data.polaris_aws_permission_groups.all[0]", tfjsonpath.New(keyID),
+					"data.polaris_aws_permission_groups.all[1]", tfjsonpath.New(keyID),
 					compare.ValuesDiffer()),
 			},
 		}},
