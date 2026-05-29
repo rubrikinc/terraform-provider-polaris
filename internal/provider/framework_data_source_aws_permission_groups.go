@@ -192,6 +192,12 @@ func (d *awsPermissionGroupsDataSource) Read(ctx context.Context, req datasource
 
 		for _, stmt := range pg.PermissionStatements {
 			for _, act := range stmt.Actions {
+				// RSC currently leaves usecase empty for AWS actions; emit
+				// the action once with use_case = "" so it is still surfaced.
+				if len(act.UseCases) == 0 {
+					stmtSet[stmtKey{name: act.Action}] = struct{}{}
+					continue
+				}
 				for _, uc := range act.UseCases {
 					stmtSet[stmtKey{name: act.Action, useCase: uc}] = struct{}{}
 				}

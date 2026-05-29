@@ -79,14 +79,14 @@ func TestAccAwsPermissionGroupsDataSource(t *testing.T) {
 						}),
 					})),
 
-				// permission_statements has at least one (name, use_case) pair
-				// and both fields are populated. We don't pin specific actions
-				// because the IAM catalog evolves.
+				// permission_statements has at least one entry; name is set and
+				// use_case is empty (RSC does not populate usecase for AWS
+				// actions yet, so we expect "" until that backfill lands).
 				statecheck.ExpectKnownValue("data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyPermissionStatements),
 					knownvalue.ListPartial(map[int]knownvalue.Check{
 						0: knownvalue.ObjectExact(map[string]knownvalue.Check{
 							keyName:    knownvalue.NotNull(),
-							keyUseCase: knownvalue.NotNull(),
+							keyUseCase: knownvalue.StringExact(""),
 						}),
 					})),
 
