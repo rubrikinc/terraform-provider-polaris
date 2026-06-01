@@ -15,6 +15,9 @@ page_title: "Changelog"
   feature are now read from the cloud account managed by `polaris_aws_cnp_account` when artifacts are registered, so
   this field no longer needs to track them. The field is retained for backwards compatibility and will be removed in
   a future major release. See the [v1.7.1 upgrade guide](upgrade_guide_v1.7.1.md).
+* New data source added for `polaris_aws_permission_groups` which retrieves the latest permission groups, and the
+  underlying IAM action statements, available for one or more RSC AWS features.
+  [[docs](../data-sources/aws_permission_groups.md)]
 * Add support for the `RECOVERY` permission group in the `RDS_PROTECTION` and `CLOUD_NATIVE_DYNAMODB_PROTECTION`
   features in the `polaris_aws_account`, `polaris_aws_cnp_account` and `polaris_aws_cnp_account_attachments`
   resources. `RECOVERY` grants the elevated AWS permissions required to perform recovery operations.

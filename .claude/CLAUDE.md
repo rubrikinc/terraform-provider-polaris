@@ -51,7 +51,7 @@ const keyMyField = "my_field"
 
 ### Two Provider Frameworks
 
-The provider uses both SDKv2 and the Terraform Plugin Framework (muxed together). Newer resources use the Framework pattern (`framework_resource_*.go`), older ones use SDKv2 (`resource_*.go`). Follow the pattern matching the file you're working in.
+The provider uses both SDKv2 and the Terraform Plugin Framework (muxed together). **All new resources and data sources MUST use the Framework pattern** (`framework_resource_*.go`, `framework_data_source_*.go`) — SDKv2 is being deprecated and will be removed entirely. When editing an existing SDKv2 file, follow its pattern, but do not create new `resource_*.go` / `data_source_*.go` files.
 
 ### Description Helper
 
