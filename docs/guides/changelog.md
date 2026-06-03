@@ -5,6 +5,9 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.8.0
+* New data source added for `polaris_azure_resource_groups` which lists the Azure resource groups visible to RSC,
+  optionally filtered by subscription ID and/or by exact resource group name.
+  [[docs](../data-sources/azure_resource_groups.md)]
 * Add support for Multi-AZ resiliency in the `polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources.
   The new `az_resilient` field enables deploying clusters across multiple availability zones, and the new
   `subnet_az_config` block in `vm_config` specifies per-zone subnet mappings.

@@ -135,6 +135,7 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 
 	return []func() datasource.DataSource{
 		newAwsPermissionGroupsDataSource,
+		newAzureResourceGroupsDataSource,
 		newFeatureFlagDataSource,
 		newIdentityProviderDataSource,
 		newRoleDataSource,
