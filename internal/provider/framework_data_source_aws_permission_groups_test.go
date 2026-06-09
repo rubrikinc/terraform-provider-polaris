@@ -74,12 +74,12 @@ func TestAccAwsPermissionGroupsDataSource(t *testing.T) {
 				// statement's use_case is "" because RSC does not populate
 				// usecase for AWS actions yet.
 				statecheck.ExpectKnownValue("data.polaris_aws_permission_groups.cnp", tfjsonpath.New(keyPermissionGroups),
-					knownvalue.ListPartial(map[int]knownvalue.Check{
-						0: knownvalue.ObjectPartial(map[string]knownvalue.Check{
+					knownvalue.SetPartial([]knownvalue.Check{
+						knownvalue.ObjectPartial(map[string]knownvalue.Check{
 							keyName:    knownvalue.StringExact("BASIC"),
 							keyVersion: knownvalue.NotNull(),
-							keyStatements: knownvalue.ListPartial(map[int]knownvalue.Check{
-								0: knownvalue.ObjectExact(map[string]knownvalue.Check{
+							keyStatements: knownvalue.SetPartial([]knownvalue.Check{
+								knownvalue.ObjectExact(map[string]knownvalue.Check{
 									keyName:    knownvalue.NotNull(),
 									keyUseCase: knownvalue.StringExact(""),
 								}),

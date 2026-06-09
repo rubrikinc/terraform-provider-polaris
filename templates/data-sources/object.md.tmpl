@@ -21,10 +21,11 @@ description: |-
 ### Required
 
 - `name` (String) Exact object name to search for.
-- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.
+- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeResourceGroup`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.
 
 ### Optional
 
+- `subscription_id` (String) RSC cloud account ID of the parent Azure subscription (UUID). Required when `object_type` is `AzureNativeResourceGroup`; ignored for other object types.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

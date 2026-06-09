@@ -326,8 +326,6 @@ func resourceAwsCloudCluster() *schema.Resource {
 			},
 		},
 		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, meta any) error {
-			azResilient := diff.Get(keyAzResilient).(bool)
-
 			vmConfigList := diff.Get(keyVMConfig).([]any)
 			if len(vmConfigList) == 0 {
 				return nil
@@ -340,7 +338,7 @@ func resourceAwsCloudCluster() *schema.Resource {
 			}
 			hasSubnetID := vmConfigMap[keySubnetID] != ""
 
-			if azResilient {
+			if diff.Get(keyAzResilient).(bool) {
 				if !hasSubnetAzConfigs {
 					return fmt.Errorf("%s is required in %s when %s is true", keySubnetAzConfigs, keyVMConfig, keyAzResilient)
 				}

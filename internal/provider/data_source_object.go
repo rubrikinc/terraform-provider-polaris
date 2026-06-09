@@ -24,10 +24,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
@@ -41,6 +43,7 @@ Supported object types:
   * ´AwsNativeEbsVolume´ - AWS Native EBS Volume
   * ´AwsNativeEc2Instance´ - AWS Native EC2 Instance
   * ´AwsNativeRdsInstance´ - AWS Native RDS Instance
+  * ´AzureNativeResourceGroup´ - Azure Native Resource Group (requires ´subscription_id´)
   * ´AzureNativeSubscription´ - Azure Native Subscription
   * ´AzureNativeVirtualMachine´ - Azure Native Virtual Machine
 `
@@ -72,15 +75,22 @@ func dataSourceObject() *schema.Resource {
 			keyObjectType: {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.",
+				Description: "Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeResourceGroup`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"AwsNativeAccount",
 					"AwsNativeEbsVolume",
 					"AwsNativeEc2Instance",
 					"AwsNativeRdsInstance",
+					"AzureNativeResourceGroup",
 					"AzureNativeSubscription",
 					"AzureNativeVirtualMachine",
 				}, false),
+			},
+			keySubscriptionID: {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "RSC cloud account ID of the parent Azure subscription (UUID). Required when `object_type` is `AzureNativeResourceGroup`; ignored for other object types.",
+				ValidateFunc: validation.IsUUID,
 			},
 		},
 	}
@@ -224,6 +234,34 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 		for _, r := range results {
 			objects = append(objects, r.Object)
 		}
+	case hierarchy.ObjectType("AzureNativeResourceGroup"):
+		// Azure resource groups are not exposed via the hierarchy inventory
+		// query used for the other object types, so route through the
+		// dedicated NativeResourceGroups SDK wrapper. Resource group names are
+		// unique within a subscription, so a (subscription, name) tuple
+		// resolves to at most one resource group.
+		subIDStr := d.Get(keySubscriptionID).(string)
+		if subIDStr == "" {
+			return diag.Errorf("subscription_id is required when object_type is %q", objectType)
+		}
+		subID, err := uuid.Parse(subIDStr)
+		if err != nil {
+			return diag.Errorf("invalid subscription_id %q: %s", subIDStr, err)
+		}
+
+		// nameSubstring is a substring filter server-side, so a query for
+		// "foo" can return "foo" and "foobar". Pick the exact-name match.
+		rgs, err := azure.Wrap(client).NativeResourceGroups(ctx, []uuid.UUID{subID}, name)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		for _, rg := range rgs {
+			if rg.Name == name {
+				d.SetId(rg.ID)
+				return nil
+			}
+		}
+		return diag.Errorf("no object found with name %q and type %q in subscription %q", name, objectType, subIDStr)
 	}
 
 	if len(objects) == 0 {

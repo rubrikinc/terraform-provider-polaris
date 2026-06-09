@@ -6,7 +6,7 @@ description: |-
   name and type. This is useful for finding the ID of an object when only its
   name and type are known.
   Supported object types:
-  AwsNativeAccount - AWS Native AccountAwsNativeEbsVolume - AWS Native EBS VolumeAwsNativeEc2Instance - AWS Native EC2 InstanceAwsNativeRdsInstance - AWS Native RDS InstanceAzureNativeSubscription - Azure Native SubscriptionAzureNativeVirtualMachine - Azure Native Virtual Machine
+  AwsNativeAccount - AWS Native AccountAwsNativeEbsVolume - AWS Native EBS VolumeAwsNativeEc2Instance - AWS Native EC2 InstanceAwsNativeRdsInstance - AWS Native RDS InstanceAzureNativeResourceGroup - Azure Native Resource Group (requires subscription_id)AzureNativeSubscription - Azure Native SubscriptionAzureNativeVirtualMachine - Azure Native Virtual Machine
 ---
 
 # polaris_object (Data Source)
@@ -20,6 +20,7 @@ Supported object types:
   * `AwsNativeEbsVolume` - AWS Native EBS Volume
   * `AwsNativeEc2Instance` - AWS Native EC2 Instance
   * `AwsNativeRdsInstance` - AWS Native RDS Instance
+  * `AzureNativeResourceGroup` - Azure Native Resource Group (requires `subscription_id`)
   * `AzureNativeSubscription` - Azure Native Subscription
   * `AzureNativeVirtualMachine` - Azure Native Virtual Machine
 
@@ -31,10 +32,11 @@ Supported object types:
 ### Required
 
 - `name` (String) Exact object name to search for.
-- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.
+- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeResourceGroup`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.
 
 ### Optional
 
+- `subscription_id` (String) RSC cloud account ID of the parent Azure subscription (UUID). Required when `object_type` is `AzureNativeResourceGroup`; ignored for other object types.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

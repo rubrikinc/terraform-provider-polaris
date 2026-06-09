@@ -24,7 +24,7 @@ each intermediate version as well. Each guide documents breaking changes and mig
 
 Some resources in this version of the provider require **Terraform v1.11.0 or later**. See the
 [Significant Changes](#significant-changes) section below for details on which resources are affected. For instructions
-on upgrading Terraform, see the [HashiCorp installation guide](https://developer.hashicorp.com/terraform/install).
+on installing Terraform, see the [HashiCorp installation guide](https://developer.hashicorp.com/terraform/install).
 
 ## How to Upgrade
 
@@ -49,7 +49,7 @@ After the provider has been updated, validate the correctness of the Terraform c
 ```shell
 % terraform plan
 ```
-If you get an error or an unwanted diff, please see the _New Features_ section below for additional instructions.
+If you get an error or an unwanted diff, please see the _Significant Changes_ section below for additional instructions.
 Otherwise, proceed by running:
 ```shell
 % terraform apply -refresh-only
@@ -73,8 +73,6 @@ The resource contains a non-null value for write-only attribute
 "admin_email" Write-only attributes are only supported in Terraform
 1.11 and later.
 ```
-
-## New Features
 
 ### Multi-AZ Resiliency for Cloud Clusters
 
