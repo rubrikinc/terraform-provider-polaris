@@ -8,6 +8,11 @@ page_title: "Changelog"
 * Add support for the `AzureNativeResourceGroup` object type in the `polaris_object` data source. Pair with the
   new `subscription_id` field to resolve an Azure resource group to its RSC ID by `(subscription_id, name)`.
   [[docs](../data-sources/object.md)]
+* New data source added for `polaris_azure_permission_groups` which returns the permission groups available for a
+  single RSC Azure feature, along with the Azure RBAC actions and data actions each permission group requires.
+  Statements are tagged with their scope (`subscription` or `resource_group`) and kind (`action` or
+  `data_action`). Useful for programmatically discovering the available permission groups at plan time.
+  [[docs](../data-sources/azure_permission_groups.md)]
 * Add support for Multi-AZ resiliency in the `polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources.
   The new `az_resilient` field enables deploying clusters across multiple availability zones, and the new
   `subnet_az_config` block in `vm_config` specifies per-zone subnet mappings.
