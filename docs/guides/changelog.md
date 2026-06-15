@@ -8,6 +8,11 @@ page_title: "Changelog"
 * Add support for the `AzureNativeResourceGroup` object type in the `polaris_object` data source. Pair with the
   new `subscription_id` field to resolve an Azure resource group to its RSC ID by `(subscription_id, name)`.
   [[docs](../data-sources/object.md)]
+* New data source added for `polaris_aws_permission_groups` which returns the permission groups available for a
+  single RSC AWS feature, along with the IAM action statements that each permission group requires. Useful for
+  programmatically discovering the available permission groups (for example, the `BASIC` and `RECOVERY` split on
+  `RDS_PROTECTION`) at plan time.
+  [[docs](../data-sources/aws_permission_groups.md)]
 * New data source added for `polaris_azure_permission_groups` which returns the permission groups available for a
   single RSC Azure feature, along with the Azure RBAC actions and data actions each permission group requires.
   Statements are tagged with their scope (`subscription` or `resource_group`) and kind (`action` or
@@ -17,15 +22,16 @@ page_title: "Changelog"
   The new `az_resilient` field enables deploying clusters across multiple availability zones, and the new
   `subnet_az_config` block in `vm_config` specifies per-zone subnet mappings.
   [[docs](../resources/aws_cloud_cluster.md)] [[docs](../resources/azure_cloud_cluster.md)]
+* Add write-only attributes for `admin_email` and `admin_password` in the `cluster_config` block of the
+  `polaris_aws_cloud_cluster` and `polaris_azure_cloud_cluster` resources. The credentials are only consumed during
+  initial cluster creation and are no longer persisted to state. Requires Terraform v1.11.0 or later.
+  [[docs](../resources/aws_cloud_cluster.md)] [[docs](../resources/azure_cloud_cluster.md)]
 
 ## v1.7.1
 * **Deprecated:** `features` field in the `polaris_aws_cnp_account_attachments` resource. Permission groups for each
   feature are now read from the cloud account managed by `polaris_aws_cnp_account` when artifacts are registered, so
   this field no longer needs to track them. The field is retained for backwards compatibility and will be removed in
   a future major release. See the [v1.7.1 upgrade guide](upgrade_guide_v1.7.1.md).
-* New data source added for `polaris_aws_permission_groups` which retrieves the latest permission groups, and the
-  underlying IAM action statements, available for one or more RSC AWS features.
-  [[docs](../data-sources/aws_permission_groups.md)]
 * Add support for the `RECOVERY` permission group in the `RDS_PROTECTION` and `CLOUD_NATIVE_DYNAMODB_PROTECTION`
   features in the `polaris_aws_account`, `polaris_aws_cnp_account` and `polaris_aws_cnp_account_attachments`
   resources. `RECOVERY` grants the elevated AWS permissions required to perform recovery operations.
