@@ -4,6 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.9.0
+* Add support for the `SERVERS_AND_APPS` feature in the `polaris_gcp_project` resource and the `polaris_gcp_project`
+  and `polaris_gcp_permissions` data sources. The feature uses the `CLOUD_CLUSTER_ES` permission group and, unlike
+  other GCP features, does not use the `BASIC` permission group.
+  [[docs](../resources/gcp_project.md)]
+
 ## v1.8.0
 * Add support for the `AzureNativeResourceGroup` object type in the `polaris_object` data source. Pair with the
   new `subscription_id` field to resolve an Azure resource group to its RSC ID by `(subscription_id, name)`.

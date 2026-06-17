@@ -28,6 +28,10 @@ description: |-
   for automated networking setup. When automated networking setup is enabled,
   RSC is responsible for creating and maintaining the networking resources for
   Exocompute. See the polaris_gcp_exocompute resource for more information.
+  SERVERS_AND_APPS
+  CLOUD_CLUSTER_ES - Represents the set of permissions required to onboard
+  the feature. Note, unlike other features, SERVERS_AND_APPS does not use
+  the BASIC permission group.
 ---
 
 # polaris_gcp_project (Resource)
@@ -67,6 +71,11 @@ are used when specifying the feature.
     for automated networking setup. When automated networking setup is enabled,
     RSC is responsible for creating and maintaining the networking resources for
     Exocompute. See the `polaris_gcp_exocompute` resource for more information.
+
+`SERVERS_AND_APPS`
+  * `CLOUD_CLUSTER_ES` - Represents the set of permissions required to onboard
+    the feature. Note, unlike other features, `SERVERS_AND_APPS` does not use
+    the `BASIC` permission group.
 
 ## Example Usage
 
@@ -130,8 +139,8 @@ Optional:
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST` and `EXOCOMPUTE`.
-- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and `AUTOMATED_NETWORKING_SETUP`.
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.
+- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `AUTOMATED_NETWORKING_SETUP` and `CLOUD_CLUSTER_ES`.
 
 Optional:
 

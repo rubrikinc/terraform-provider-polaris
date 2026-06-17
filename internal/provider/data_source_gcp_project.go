@@ -171,9 +171,10 @@ func gcpFeatureResourceWithStatus() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST` and `EXOCOMPUTE`.",
+					"`CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "GCP_SHARED_VPC_HOST", "EXOCOMPUTE",
+					"SERVERS_AND_APPS",
 				}, false),
 			},
 			keyPermissionGroups: {
@@ -182,12 +183,12 @@ func gcpFeatureResourceWithStatus() *schema.Resource {
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
 						"BASIC", "ENCRYPTION", "EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY",
-						"AUTOMATED_NETWORKING_SETUP",
+						"AUTOMATED_NETWORKING_SETUP", "CLOUD_CLUSTER_ES",
 					}, false),
 				},
 				Required: true,
 				Description: "Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, " +
-					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and `AUTOMATED_NETWORKING_SETUP`.",
+					"`EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `AUTOMATED_NETWORKING_SETUP` and `CLOUD_CLUSTER_ES`.",
 			},
 			keyStatus: {
 				Type:        schema.TypeString,
