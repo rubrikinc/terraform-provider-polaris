@@ -30,8 +30,12 @@ description: |-
   for automated networking setup. When automated networking setup is enabled,
   RSC is responsible for creating and maintaining the networking resources for
   Exocompute. See the polaris_gcp_exocompute resource for more information.
+  SERVERS_AND_APPS
+  CLOUD_CLUSTER_ES - Represents the set of permissions required to onboard
+  the feature.
   -> Note: When permission groups are specified, the BASIC permission group
-  is always required .
+  is always required, except for SERVERS_AND_APPS which only supports the
+  CLOUD_CLUSTER_ES permission group and does not use BASIC.
   -> Note: Due to backward compatibility, the features field allow the
   feature names to be given in 3 different styles: EXAMPLE_FEATURE_NAME,
   example-feature-name or example_feature_name. The recommended style is
@@ -78,8 +82,13 @@ are used when specifying the feature.
     RSC is responsible for creating and maintaining the networking resources for
     Exocompute. See the `polaris_gcp_exocompute` resource for more information.
 
+`SERVERS_AND_APPS`
+  * `CLOUD_CLUSTER_ES` - Represents the set of permissions required to onboard
+    the feature.
+
 -> **Note:** When permission groups are specified, the `BASIC` permission group
-   is always required .
+   is always required, except for `SERVERS_AND_APPS` which only supports the
+   `CLOUD_CLUSTER_ES` permission group and does not use `BASIC`.
 
 -> **Note:** Due to backward compatibility, the `features` field allow the
    feature names to be given in 3 different styles: `EXAMPLE_FEATURE_NAME`,
@@ -103,9 +112,9 @@ data "polaris_gcp_permissions" "cloud_native_archival" {
 
 ### Optional
 
-- `feature` (String) RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST` and `EXOCOMPUTE`.
-- `features` (Set of String, Deprecated) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST` and `EXOCOMPUTE`. **Deprecated:** use `feature` instead.
-- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY` and `AUTOMATED_NETWORKING_SETUP`.
+- `feature` (String) RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.
+- `features` (Set of String, Deprecated) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`. **Deprecated:** use `feature` instead.
+- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `AUTOMATED_NETWORKING_SETUP` and `CLOUD_CLUSTER_ES`.
 
 ### Read-Only
 
