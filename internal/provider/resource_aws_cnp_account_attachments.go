@@ -140,8 +140,6 @@ func awsCreateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		roles[block[keyKey].(string)] = block[keyARN].(string)
 	}
 
-	ensureRoleChainingArtifact(roles, features)
-
 	// Request artifacts be added to account.
 	var roleChainingAccountID uuid.UUID
 	if id, ok := d.GetOk(keyRoleChainingAccountID); ok {
@@ -214,12 +212,6 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
-	// Workaround: the ROLE_CHAINING artifact is registered as a
-	// duplicate of CROSSACCOUNT by the create function. Remove it from
-	// the read response so it doesn't appear in state and cause a
-	// perpetual diff.
-	delete(roles, "ROLE_CHAINING")
-
 	oldRoles := make(map[string]string)
 	for _, role := range d.Get(keyRole).(*schema.Set).List() {
 		block := role.(map[string]any)
@@ -263,8 +255,6 @@ func awsUpdateCnpAccountAttachments(ctx context.Context, d *schema.ResourceData,
 		block := roleAttr.(map[string]any)
 		roles[block[keyKey].(string)] = block[keyARN].(string)
 	}
-
-	ensureRoleChainingArtifact(roles, features)
 
 	// Update artifacts.
 	var roleChainingAccountID uuid.UUID
@@ -319,23 +309,6 @@ func accountFeatures(ctx context.Context, client *polaris.Client, accountID uuid
 		features = append(features, f.Feature)
 	}
 	return features, nil
-}
-
-// ensureRoleChainingArtifact duplicates the CROSSACCOUNT role ARN as
-// ROLE_CHAINING when the ROLE_CHAINING feature is present. This is a
-// workaround for the RSC backend not returning the ROLE_CHAINING_ROLE_ARN
-// artifact.
-func ensureRoleChainingArtifact(roles map[string]string, features []core.Feature) {
-	crossAccountARN, ok := roles["CROSSACCOUNT"]
-	if !ok {
-		return
-	}
-	if _, ok := roles["ROLE_CHAINING"]; ok {
-		return
-	}
-	if _, ok := core.LookupFeature(features, core.FeatureRoleChaining); ok {
-		roles["ROLE_CHAINING"] = crossAccountARN
-	}
 }
 
 func awsCustomizeDiffCnpAccountAttachments(ctx context.Context, diff *schema.ResourceDiff, m any) error {
