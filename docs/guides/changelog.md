@@ -10,8 +10,9 @@ page_title: "Changelog"
   other GCP features, does not use the `BASIC` permission group.
   [[docs](../resources/gcp_project.md)]
 * Fix ROLE_CHAINING handling in the `polaris_aws_cnp_account` and `polaris_aws_cnp_account_attachments` resources and
-  the `polaris_aws_cnp_permissions` data source. The Go SDK now filters the spurious CROSSACCOUNT artifact RSC returns
-  for role-chaining accounts, so the provider no longer needs its client-side workarounds.
+  the `polaris_aws_cnp_permissions` data source. Role-chaining accounts surface the role under the `ROLE_CHAINING`
+  artifact key instead of `CROSSACCOUNT`; see the [v1.8.1 upgrade guide](upgrade_guide_v1.8.1.md) for the expected
+  one-time diff.
 
 ## v1.8.0
 * Add support for the `AzureNativeResourceGroup` object type in the `polaris_object` data source. Pair with the
