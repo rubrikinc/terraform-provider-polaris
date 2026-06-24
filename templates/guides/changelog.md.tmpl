@@ -4,11 +4,14 @@ page_title: "Changelog"
 
 # Changelog
 
-## v1.9.0
+## v1.8.1
 * Add support for the `SERVERS_AND_APPS` feature in the `polaris_gcp_project` resource and the `polaris_gcp_project`
   and `polaris_gcp_permissions` data sources. The feature uses the `CLOUD_CLUSTER_ES` permission group and, unlike
   other GCP features, does not use the `BASIC` permission group.
   [[docs](../resources/gcp_project.md)]
+* Fix ROLE_CHAINING handling in the `polaris_aws_cnp_account` and `polaris_aws_cnp_account_attachments` resources and
+  the `polaris_aws_cnp_permissions` data source. The Go SDK now filters the spurious CROSSACCOUNT artifact RSC returns
+  for role-chaining accounts, so the provider no longer needs its client-side workarounds.
 
 ## v1.8.0
 * Add support for the `AzureNativeResourceGroup` object type in the `polaris_object` data source. Pair with the
