@@ -5,12 +5,23 @@ subcategory: ""
 description: |-
   The polaris_custom_role resource is used to create and manage custom roles in
   RSC.
+  -> Note: Granting the VIEW_CLUSTER operation requires also granting
+  VIEW_CLUSTER_REFERENCE. RSC automatically grants VIEW_CLUSTER_REFERENCE
+  whenever VIEW_CLUSTER is granted, so specifying VIEW_CLUSTER alone results
+  in perpetual configuration drift. VIEW_CLUSTER_REFERENCE may be granted on
+  its own.
 ---
 
 # polaris_custom_role (Resource)
 
 The `polaris_custom_role` resource is used to create and manage custom roles in
 RSC.
+
+-> **Note:** Granting the `VIEW_CLUSTER` operation requires also granting
+   `VIEW_CLUSTER_REFERENCE`. RSC automatically grants `VIEW_CLUSTER_REFERENCE`
+   whenever `VIEW_CLUSTER` is granted, so specifying `VIEW_CLUSTER` alone results
+   in perpetual configuration drift. `VIEW_CLUSTER_REFERENCE` may be granted on
+   its own.
 
 ## Example Usage
 

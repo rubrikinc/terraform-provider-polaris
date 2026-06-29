@@ -21,12 +21,17 @@
 package provider
 
 import (
+	"context"
+	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
 func TestAccCustomRoleResource(t *testing.T) {
@@ -93,6 +98,13 @@ func TestAccCustomRoleResource(t *testing.T) {
 							object_ids     = ["CLUSTER_ROOT"]
 						}
 					}
+					permission {
+						operation = "VIEW_CLUSTER_REFERENCE"
+						hierarchy {
+							snappable_type = "AllSubHierarchyType"
+							object_ids     = ["CLUSTER_ROOT"]
+						}
+					}
 				}
 			`,
 			ConfigStateChecks: []statecheck.StateCheck{
@@ -114,6 +126,15 @@ func TestAccCustomRoleResource(t *testing.T) {
 						}),
 						knownvalue.ObjectExact(map[string]knownvalue.Check{
 							keyOperation: knownvalue.StringExact("VIEW_CLUSTER"),
+							keyHierarchy: knownvalue.SetExact([]knownvalue.Check{knownvalue.ObjectExact(map[string]knownvalue.Check{
+								keySnappableType: knownvalue.StringExact("AllSubHierarchyType"),
+								keyObjectIDs: knownvalue.SetExact([]knownvalue.Check{
+									knownvalue.StringExact("CLUSTER_ROOT"),
+								}),
+							})}),
+						}),
+						knownvalue.ObjectExact(map[string]knownvalue.Check{
+							keyOperation: knownvalue.StringExact("VIEW_CLUSTER_REFERENCE"),
 							keyHierarchy: knownvalue.SetExact([]knownvalue.Check{knownvalue.ObjectExact(map[string]knownvalue.Check{
 								keySnappableType: knownvalue.StringExact("AllSubHierarchyType"),
 								keyObjectIDs: knownvalue.SetExact([]knownvalue.Check{
@@ -224,6 +245,13 @@ func TestAccCustomRoleResource_FrameworkMigration(t *testing.T) {
 					object_ids     = ["CLUSTER_ROOT"]
 				}
 			}
+			permission {
+				operation = "VIEW_CLUSTER_REFERENCE"
+				hierarchy {
+					snappable_type = "AllSubHierarchyType"
+					object_ids     = ["CLUSTER_ROOT"]
+				}
+			}
 		}
 	`
 
@@ -251,4 +279,123 @@ func TestAccCustomRoleResource_FrameworkMigration(t *testing.T) {
 			PlanOnly:                 true,
 		}},
 	})
+}
+
+// TestAccCustomRoleResource_ViewClusterOnly verifies that the config validator
+// rejects a role granting VIEW_CLUSTER without VIEW_CLUSTER_REFERENCE. The error
+// is raised at plan time, so no role is created and the step never reaches apply.
+func TestAccCustomRoleResource_ViewClusterOnly(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: protoV6ProviderFactories,
+		Steps: []resource.TestStep{{
+			Config: `
+				resource "polaris_custom_role" "role" {
+					name        = "Test Cluster Viewer"
+					description = "Test Role: Delete Me!"
+
+					permission {
+						operation = "VIEW_CLUSTER"
+						hierarchy {
+							snappable_type = "AllSubHierarchyType"
+							object_ids     = ["CLUSTER_ROOT"]
+						}
+					}
+				}
+			`,
+			ExpectError: regexp.MustCompile("(?s)VIEW_CLUSTER requires VIEW_CLUSTER_REFERENCE"),
+		}},
+	})
+}
+
+// TestAccCustomRoleResource_ViewClusterReferenceOnly verifies that a role with
+// only the VIEW_CLUSTER_REFERENCE operation, i.e. without VIEW_CLUSTER, is
+// accepted by the validator and does not drift. VIEW_CLUSTER_REFERENCE is a
+// narrower permission that RSC does not expand, so the applied permission set
+// must remain exactly as configured.
+func TestAccCustomRoleResource_ViewClusterReferenceOnly(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: protoV6ProviderFactories,
+		CheckDestroy:             customRoleCheckDestroy(t.Context()),
+		Steps: []resource.TestStep{{
+			Config: `
+				resource "polaris_custom_role" "role" {
+					name        = "Test Cluster Reference Viewer"
+					description = "Test Role: Delete Me!"
+
+					permission {
+						operation = "VIEW_CLUSTER_REFERENCE"
+						hierarchy {
+							snappable_type = "AllSubHierarchyType"
+							object_ids     = ["CLUSTER_ROOT"]
+						}
+					}
+				}
+			`,
+			ConfigStateChecks: []statecheck.StateCheck{
+				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyID),
+					NonNullUUID()),
+				// The permission set must remain exactly VIEW_CLUSTER_REFERENCE. If
+				// RSC expanded it (for example by adding VIEW_CLUSTER) this check
+				// would fail.
+				statecheck.ExpectKnownValue("polaris_custom_role.role", tfjsonpath.New(keyPermission),
+					knownvalue.SetExact([]knownvalue.Check{
+						knownvalue.ObjectExact(map[string]knownvalue.Check{
+							keyOperation: knownvalue.StringExact("VIEW_CLUSTER_REFERENCE"),
+							keyHierarchy: knownvalue.SetExact([]knownvalue.Check{knownvalue.ObjectExact(map[string]knownvalue.Check{
+								keySnappableType: knownvalue.StringExact("AllSubHierarchyType"),
+								keyObjectIDs: knownvalue.SetExact([]knownvalue.Check{
+									knownvalue.StringExact("CLUSTER_ROOT"),
+								}),
+							})}),
+						}),
+					})),
+			},
+		}},
+	})
+}
+
+func TestValidateCustomRoleConfig(t *testing.T) {
+	ctx := context.Background()
+
+	// permSet builds a permission set with one hierarchy per operation so the
+	// config mirrors a realistic custom role.
+	permSet := func(operations ...access.Operation) types.Set {
+		perms := make([]access.Permission, 0, len(operations))
+		for _, op := range operations {
+			perms = append(perms, access.Permission{
+				Operation: string(op),
+				ObjectsForHierarchyTypes: []access.ObjectsForHierarchyType{{
+					SnappableType: "AllSubHierarchyType",
+					ObjectIDs:     []string{hierarchy.ClusterRoot},
+				}},
+			})
+		}
+		set, diags := fromPermissions(ctx, perms)
+		if diags.HasError() {
+			t.Fatalf("fromPermissions: %v", diags)
+		}
+		return set
+	}
+
+	tests := []struct {
+		name       string
+		permission types.Set
+		wantErr    bool
+	}{
+		{"both present", permSet(access.OperationViewCluster, access.OperationViewClusterReference), false},
+		{"both present with another operation", permSet("EXPORT_DATA_CLASS_GLOBAL", access.OperationViewCluster, access.OperationViewClusterReference), false},
+		{"neither present", permSet("EXPORT_DATA_CLASS_GLOBAL"), false},
+		{"only view_cluster", permSet(access.OperationViewCluster), true},
+		{"only view_cluster_reference is allowed", permSet(access.OperationViewClusterReference), false},
+		{"null permission set", types.SetNull(types.ObjectType{AttrTypes: permissionModelAttrTypes()}), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diags := validateCustomRoleConfig(ctx, customRoleModel{Permission: tt.permission})
+			if got := diags.HasError(); got != tt.wantErr {
+				t.Errorf("validateCustomRoleConfig() error = %v, wantErr %v: %v", got, tt.wantErr, diags)
+			}
+		})
+	}
 }
