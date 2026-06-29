@@ -133,6 +133,13 @@ func TestAccUserResource(t *testing.T) {
 							object_ids     = ["CLUSTER_ROOT"]
 						}
 					}
+					permission {
+						operation = "VIEW_CLUSTER_REFERENCE"
+						hierarchy {
+							snappable_type = "AllSubHierarchyType"
+							object_ids     = ["CLUSTER_ROOT"]
+						}
+					}
 				}
 
 				resource "polaris_user" "user" {

@@ -4,6 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.9.0
+* **Breaking Change:** The `polaris_custom_role` resource now requires the `VIEW_CLUSTER_REFERENCE` permission
+  operation to be granted alongside `VIEW_CLUSTER`. RSC automatically adds `VIEW_CLUSTER_REFERENCE` whenever
+  `VIEW_CLUSTER` is granted, so granting `VIEW_CLUSTER` alone resulted in perpetual drift. `VIEW_CLUSTER_REFERENCE`
+  may still be granted on its own. See the [v1.9.0 upgrade guide](upgrade_guide_v1.9.0.md).
+
 ## v1.8.1
 * Add support for the `SERVERS_AND_APPS` feature in the `polaris_gcp_project` resource and the `polaris_gcp_project`
   and `polaris_gcp_permissions` data sources. The feature uses the `CLOUD_CLUSTER_ES` permission group and, unlike

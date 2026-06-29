@@ -55,6 +55,13 @@ func TestAccRoleDataSource(t *testing.T) {
 							object_ids     = ["CLUSTER_ROOT"]
 						}
 					}
+					permission {
+						operation = "VIEW_CLUSTER_REFERENCE"
+						hierarchy {
+							snappable_type = "AllSubHierarchyType"
+							object_ids     = ["CLUSTER_ROOT"]
+						}
+					}
 				}
 
 				data "polaris_role" "by_id" {
@@ -141,6 +148,13 @@ func TestAccRoleDataSource_FrameworkMigration(t *testing.T) {
 
 					permission {
 						operation = "VIEW_CLUSTER"
+						hierarchy {
+							snappable_type = "AllSubHierarchyType"
+							object_ids     = ["CLUSTER_ROOT"]
+						}
+					}
+					permission {
+						operation = "VIEW_CLUSTER_REFERENCE"
 						hierarchy {
 							snappable_type = "AllSubHierarchyType"
 							object_ids     = ["CLUSTER_ROOT"]

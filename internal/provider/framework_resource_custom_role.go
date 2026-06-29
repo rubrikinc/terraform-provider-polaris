@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
@@ -37,17 +38,25 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
 const resourceCustomRoleDescription = `
 The ´polaris_custom_role´ resource is used to create and manage custom roles in
 RSC.
+
+-> **Note:** Granting the ´VIEW_CLUSTER´ operation requires also granting
+   ´VIEW_CLUSTER_REFERENCE´. RSC automatically grants ´VIEW_CLUSTER_REFERENCE´
+   whenever ´VIEW_CLUSTER´ is granted, so specifying ´VIEW_CLUSTER´ alone results
+   in perpetual configuration drift. ´VIEW_CLUSTER_REFERENCE´ may be granted on
+   its own.
 `
 
 var (
-	_ resource.Resource                = &customRoleResource{}
-	_ resource.ResourceWithIdentity    = &customRoleResource{}
-	_ resource.ResourceWithImportState = &customRoleResource{}
+	_ resource.Resource                   = &customRoleResource{}
+	_ resource.ResourceWithIdentity       = &customRoleResource{}
+	_ resource.ResourceWithImportState    = &customRoleResource{}
+	_ resource.ResourceWithValidateConfig = &customRoleResource{}
 )
 
 type customRoleResource struct {
@@ -150,6 +159,60 @@ func (r *customRoleResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 		},
 	}
+}
+
+func (r *customRoleResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, res *resource.ValidateConfigResponse) {
+	tflog.Trace(ctx, "customRoleResource.ValidateConfig")
+
+	var config customRoleModel
+	res.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
+
+	res.Diagnostics.Append(validateCustomRoleConfig(ctx, config)...)
+}
+
+// validateCustomRoleConfig holds the plan-time, client-free validation rules
+// for the resource so they can be unit-tested in isolation.
+func validateCustomRoleConfig(ctx context.Context, config customRoleModel) diag.Diagnostics {
+	if config.Permission.IsNull() || config.Permission.IsUnknown() {
+		return nil
+	}
+
+	var perms []permissionModel
+	var diags diag.Diagnostics
+	diags.Append(config.Permission.ElementsAs(ctx, &perms, false)...)
+	if diags.HasError() {
+		return diags
+	}
+
+	var hasViewCluster, hasViewClusterReference bool
+	for _, p := range perms {
+		switch {
+		case p.Operation.IsUnknown():
+			return diags
+		case p.Operation.ValueString() == string(gqlaccess.OperationViewCluster):
+			hasViewCluster = true
+		case p.Operation.ValueString() == string(gqlaccess.OperationViewClusterReference):
+			hasViewClusterReference = true
+		}
+	}
+
+	// The dependency is one-directional: RSC grants VIEW_CLUSTER_REFERENCE
+	// automatically when VIEW_CLUSTER is granted, so VIEW_CLUSTER without
+	// VIEW_CLUSTER_REFERENCE drifts. VIEW_CLUSTER_REFERENCE on its own is a valid,
+	// narrower permission and is allowed.
+	if hasViewCluster && !hasViewClusterReference {
+		diags.AddAttributeError(path.Root(keyPermission),
+			"VIEW_CLUSTER requires VIEW_CLUSTER_REFERENCE",
+			"RSC automatically grants the VIEW_CLUSTER_REFERENCE permission whenever VIEW_CLUSTER is "+
+				"granted. Add a VIEW_CLUSTER_REFERENCE permission to keep Terraform state consistent "+
+				"and avoid perpetual drift.",
+		)
+	}
+
+	return diags
 }
 
 func (r *customRoleResource) IdentitySchema(ctx context.Context, _ resource.IdentitySchemaRequest, res *resource.IdentitySchemaResponse) {

@@ -95,8 +95,8 @@ func checkTestSSOGroup(t *testing.T, name string) string {
 }
 
 // createTestRole creates a custom role via the SDK and registers a cleanup
-// function to delete it. The role will have the VIEW_CLUSTER permission on the
-// CLUSTER_ROOT. Returns the role ID.
+// function to delete it. The role will have the VIEW_CLUSTER and
+// VIEW_CLUSTER_REFERENCE permissions on the CLUSTER_ROOT. Returns the role ID.
 func createTestRole(t *testing.T, name string) uuid.UUID {
 	t.Helper()
 	skipIfNotAcceptance(t)
@@ -109,6 +109,12 @@ func createTestRole(t *testing.T, name string) uuid.UUID {
 	desc := "Test Role: Delete Me!"
 	roleID, err := access.Wrap(polarisClient).CreateRole(t.Context(), name, desc, []gqlaccess.Permission{{
 		Operation: "VIEW_CLUSTER",
+		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{"CLUSTER_ROOT"},
+		}},
+	}, {
+		Operation: "VIEW_CLUSTER_REFERENCE",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
 			ObjectIDs:     []string{"CLUSTER_ROOT"},
@@ -129,7 +135,8 @@ func createTestRole(t *testing.T, name string) uuid.UUID {
 
 // createTestRoleWithUniqueName creates a custom role with a unqiue name via
 // the SDK and registers a cleanup function to delete it. The role will have
-// the VIEW_CLUSTER permission on the CLUSTER_ROOT. Returns the role ID.
+// the VIEW_CLUSTER and VIEW_CLUSTER_REFERENCE permissions on the CLUSTER_ROOT.
+// Returns the role ID.
 func createTestRoleWithUniqueName(t *testing.T) uuid.UUID {
 	t.Helper()
 	skipIfNotAcceptance(t)
