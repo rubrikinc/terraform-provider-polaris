@@ -4,11 +4,14 @@ page_title: "Changelog"
 
 # Changelog
 
-## v1.9.0
+## v1.8.2
 * **Breaking Change:** The `polaris_custom_role` resource now requires the `VIEW_CLUSTER_REFERENCE` permission
   operation to be granted alongside `VIEW_CLUSTER`. RSC automatically adds `VIEW_CLUSTER_REFERENCE` whenever
   `VIEW_CLUSTER` is granted, so granting `VIEW_CLUSTER` alone resulted in perpetual drift. `VIEW_CLUSTER_REFERENCE`
-  may still be granted on its own. See the [v1.9.0 upgrade guide](upgrade_guide_v1.9.0.md).
+  may still be granted on its own. See the [v1.8.2 upgrade guide](upgrade_guide_v1.8.2.md).
+* Fix a bug in the `polaris_data_center_archival_location_amazon_s3` resource where the `cloud_compute_settings`
+  block was read from the `archival_proxy_settings` configuration. Specifying an `archival_proxy_settings` block
+  caused the provider to crash, and any `cloud_compute_settings` values were silently ignored.
 
 ## v1.8.1
 * Add support for the `SERVERS_AND_APPS` feature in the `polaris_gcp_project` resource and the `polaris_gcp_project`

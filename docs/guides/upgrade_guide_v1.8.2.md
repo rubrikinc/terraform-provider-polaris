@@ -1,10 +1,10 @@
 ---
-page_title: "Upgrade Guide: v1.9.0"
+page_title: "Upgrade Guide: v1.8.2"
 ---
 
-# Upgrade Guide v1.9.0
+# Upgrade Guide v1.8.2
 
-The v1.9.0 release adds a plan-time validation to the `polaris_custom_role` resource: a role that grants the
+The v1.8.2 release adds a plan-time validation to the `polaris_custom_role` resource: a role that grants the
 `VIEW_CLUSTER` operation must now also grant `VIEW_CLUSTER_REFERENCE`. See the [changelog](changelog.md) for the full
 list of changes.
 
@@ -21,12 +21,12 @@ Terraform's `moved {}` block, making the switch progressively simpler. See the
 [latest upgrade guide for the rubrikinc/rubrik provider](https://registry.terraform.io/providers/rubrikinc/rubrik/latest/docs/guides)
 for the currently available migration paths.
 
-~> **Note:** If you are upgrading across multiple minor versions (e.g. v1.7.x to v1.9.0), review the upgrade guide for
+~> **Note:** If you are upgrading across multiple minor versions (e.g. v1.7.x to v1.8.2), review the upgrade guide for
 each intermediate version as well. Each guide documents breaking changes and migration steps specific to that release.
 
 ## How to Upgrade
 
-Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v1.9.0 release. One
+Make sure that the `version` field is configured in a way which allows Terraform to upgrade to the v1.8.2 release. One
 way of doing this is by using the pessimistic constraint operator `~>`, which allows Terraform to upgrade to the latest
 release within the same minor version:
 ```terraform
@@ -34,7 +34,7 @@ terraform {
   required_providers {
     polaris = {
       source  = "rubrikinc/polaris"
-      version = "~> 1.9.0"
+      version = "~> 1.8.2"
     }
   }
 }
@@ -52,7 +52,7 @@ Otherwise, proceed by running:
 ```shell
 % terraform apply -refresh-only
 ```
-This will read the remote state of the resources and migrate the local Terraform state to the v1.9.0 version.
+This will read the remote state of the resources and migrate the local Terraform state to the v1.8.2 version.
 
 ## Significant Changes
 

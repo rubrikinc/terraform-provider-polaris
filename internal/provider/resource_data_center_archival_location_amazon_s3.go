@@ -556,7 +556,7 @@ func toArchivalProxySettings(target gqlarchival.AWSTarget) []any {
 // fromCloudComputeSettings extracts the cloud compute settings data from the
 // resource configuration.
 func fromCloudComputeSettings(d *schema.ResourceData) (*gqlarchival.AWSTargetCloudComputeSettings, bool) {
-	data, ok := d.GetOk(keyArchivalProxySettings)
+	data, ok := d.GetOk(keyCloudComputeSettings)
 	if !ok {
 		return nil, false
 	}
