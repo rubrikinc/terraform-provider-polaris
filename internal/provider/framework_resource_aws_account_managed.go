@@ -295,7 +295,31 @@ func (r *awsAccountManagedResource) Update(ctx context.Context, req resource.Upd
 
 func (r *awsAccountManagedResource) Delete(ctx context.Context, req resource.DeleteRequest, res *resource.DeleteResponse) {
 	tflog.Trace(ctx, "awsAccountManagedResource.Delete")
-	// No-op: the registered account is left in RSC (removal is handled out of band).
+
+	var state awsAccountManagedModel
+	res.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
+
+	polarisClient, err := r.client.polaris()
+	if err != nil {
+		res.Diagnostics.AddError("RSC client error", err.Error())
+		return
+	}
+
+	accountID, err := uuid.Parse(state.ID.ValueString())
+	if err != nil {
+		res.Diagnostics.AddError("Invalid account ID", err.Error())
+		return
+	}
+
+	// By now the features have been disabled (polaris_aws_account_managed_stack)
+	// and the CloudFormation stack deleted, so finalize the account removal in
+	// RSC. This is a no-op if the stack's deletion notifier already removed it.
+	if err := aws.Wrap(polarisClient).FinalizeManagedAccountDeletion(ctx, accountID); err != nil {
+		res.Diagnostics.AddError("Failed to finalize RSC-managed AWS account deletion", err.Error())
+	}
 }
 
 func (r *awsAccountManagedResource) ImportState(ctx context.Context, req resource.ImportStateRequest, res *resource.ImportStateResponse) {

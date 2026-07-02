@@ -67,10 +67,11 @@ type awsAccountManagedStackResource struct {
 }
 
 type awsAccountManagedStackModel struct {
-	ID                 types.String `tfsdk:"id"`
-	AccountID          types.String `tfsdk:"account_id"`
-	StackARN           types.String `tfsdk:"stack_arn"`
-	PermissionsVersion types.String `tfsdk:"permissions_version"`
+	ID                       types.String `tfsdk:"id"`
+	AccountID                types.String `tfsdk:"account_id"`
+	StackARN                 types.String `tfsdk:"stack_arn"`
+	PermissionsVersion       types.String `tfsdk:"permissions_version"`
+	DeleteSnapshotsOnDestroy types.Bool   `tfsdk:"delete_snapshots_on_destroy"`
 }
 
 func newAwsAccountManagedStackResource() resource.Resource {
@@ -125,6 +126,11 @@ func (r *awsAccountManagedStackResource) Schema(ctx context.Context, _ resource.
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},
+			},
+			keyDeleteSnapshotsOnDestroy: schema.BoolAttribute{
+				Optional: true,
+				Description: "If true, the account's snapshots are deleted when the resource is destroyed. " +
+					"Defaults to false. Applied when the account's features are disabled during destroy.",
 			},
 		},
 	}
@@ -248,7 +254,34 @@ func (r *awsAccountManagedStackResource) Update(ctx context.Context, req resourc
 
 func (r *awsAccountManagedStackResource) Delete(ctx context.Context, req resource.DeleteRequest, res *resource.DeleteResponse) {
 	tflog.Trace(ctx, "awsAccountManagedStackResource.Delete")
-	// No-op: the account remains onboarded in RSC (teardown is handled out of band).
+
+	var state awsAccountManagedStackModel
+	res.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
+
+	polarisClient, err := r.client.polaris()
+	if err != nil {
+		res.Diagnostics.AddError("RSC client error", err.Error())
+		return
+	}
+
+	accountID, err := uuid.Parse(state.ID.ValueString())
+	if err != nil {
+		res.Diagnostics.AddError("Invalid account ID", err.Error())
+		return
+	}
+
+	// Disable all features (Cloud Discovery last) and wait for the disable jobs.
+	// This runs before the CloudFormation stack is destroyed, so RSC has finished
+	// tearing the features down while the IAM roles still exist.
+	deleteCtx, cancel := context.WithTimeout(ctx, managedStackOnboardTimeout)
+	defer cancel()
+
+	if err := aws.Wrap(polarisClient).DisableManagedAccount(deleteCtx, accountID, state.DeleteSnapshotsOnDestroy.ValueBool()); err != nil {
+		res.Diagnostics.AddError("Failed to disable RSC-managed AWS account features", err.Error())
+	}
 }
 
 func (r *awsAccountManagedStackResource) ImportState(ctx context.Context, req resource.ImportStateRequest, res *resource.ImportStateResponse) {
