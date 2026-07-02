@@ -140,7 +140,8 @@ func (r *awsAccountManagedResource) Schema(ctx context.Context, _ resource.Schem
 				Computed:    true,
 				Description: "RSC features to onboard. When omitted, all BaaS-supported features are used: " +
 					"`CLOUD_NATIVE_PROTECTION`, `RDS_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION` and `CLOUD_DISCOVERY`. " +
-					"Changing this forces a new resource to be created.",
+					"`CLOUD_DISCOVERY` is a prerequisite for the protection features and must be included when " +
+					"`features` is set. Changing this forces a new resource to be created.",
 				PlanModifiers: []planmodifier.Set{
 					setplanmodifier.RequiresReplace(),
 					setplanmodifier.UseStateForUnknown(),
@@ -149,6 +150,7 @@ func (r *awsAccountManagedResource) Schema(ctx context.Context, _ resource.Schem
 					setvalidator.ValueStringsAre(stringvalidator.OneOf(
 						"CLOUD_NATIVE_PROTECTION", "RDS_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION", "CLOUD_DISCOVERY",
 					)),
+					setMustContain("CLOUD_DISCOVERY"),
 				},
 			},
 			keyRegions: schema.SetAttribute{

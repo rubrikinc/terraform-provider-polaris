@@ -81,3 +81,42 @@ func (v isNotWhiteSpaceValidator) ValidateString(_ context.Context, req validato
 			"value must not be empty or contain only whitespace")
 	}
 }
+
+// setMustContain returns a validator that checks a set of strings contains the
+// given value. A null or unknown set passes (nothing to validate yet).
+func setMustContain(value string) validator.Set {
+	return setMustContainValidator{value: value}
+}
+
+type setMustContainValidator struct {
+	value string
+}
+
+func (v setMustContainValidator) Description(_ context.Context) string {
+	return fmt.Sprintf("set must contain %q", v.value)
+}
+
+func (v setMustContainValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v setMustContainValidator) ValidateSet(ctx context.Context, req validator.SetRequest, res *validator.SetResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	var values []string
+	res.Diagnostics.Append(req.ConfigValue.ElementsAs(ctx, &values, false)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
+
+	for _, value := range values {
+		if value == v.value {
+			return
+		}
+	}
+
+	res.Diagnostics.AddAttributeError(req.Path, "Missing required value",
+		fmt.Sprintf("%q must be included in the set", v.value))
+}
