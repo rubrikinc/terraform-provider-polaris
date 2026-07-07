@@ -53,8 +53,9 @@ The account, its features and its regions were all defined by the
 account ID and the deployed stack ARN. Wire the stack ARN in so onboarding runs
 only after the stack exists.
 
--> **Note:** Destroying this resource removes it from state only; the account
-   remains onboarded in RSC.
+-> **Note:** Destroying this resource disables the account's features in RSC
+   and waits for the disable to complete (Cloud Discovery is disabled last). Set
+   ´delete_snapshots_on_destroy´ to also delete the account's snapshots.
 `
 
 var (
