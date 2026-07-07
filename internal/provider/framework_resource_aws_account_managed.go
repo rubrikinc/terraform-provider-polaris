@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
@@ -419,10 +420,14 @@ func resolveManagedRegions(ctx context.Context, set types.Set) ([]awsregions.Reg
 		return regions, regionNames(regions), diags
 	}
 
-	regions, err := awsregions.ParseRegions(names)
-	if err != nil {
-		diags.AddError("Invalid AWS region", err.Error())
-		return nil, nil, diags
+	regions := make([]awsregions.Region, 0, len(names))
+	for _, name := range names {
+		region := awsregions.RegionFromName(name)
+		if region == awsregions.RegionUnknown {
+			diags.AddError("Invalid AWS region", fmt.Sprintf("unknown AWS region: %q", name))
+			return nil, nil, diags
+		}
+		regions = append(regions, region)
 	}
 	return regions, regionNames(regions), diags
 }
