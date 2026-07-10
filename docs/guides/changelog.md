@@ -4,6 +4,10 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.9.0
+* Add support for `retain_archive_logs_indefinitely` in the `oracle_config` block of the `polaris_sla_domain` resource. [[docs](../resources/sla_domain.md)]
+* Fix the description of `host_log_retention_unit` in the `oracle_config` block to document `MINUTES` and `HOURS` as valid values. [[docs](../resources/sla_domain.md)]
+
 ## v1.8.2
 * **Breaking Change:** The `polaris_custom_role` resource now requires the `VIEW_CLUSTER_REFERENCE` permission
   operation to be granted alongside `VIEW_CLUSTER`. RSC automatically adds `VIEW_CLUSTER_REFERENCE` whenever

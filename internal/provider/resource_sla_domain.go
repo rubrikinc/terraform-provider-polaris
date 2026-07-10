@@ -605,8 +605,13 @@ func resourceSLADomain() *schema.Resource {
 							Type:         schema.TypeString,
 							Optional:     true,
 							Default:      string(gqlsla.Days),
-							Description:  "Host log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
+							Description:  "Host log retention unit. Possible values are `MINUTES`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.",
 							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
+						},
+						keyRetainArchiveLogsIndefinitely: {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Description: "When true, Oracle archive logs are retained indefinitely on the host and never deleted. Mutually exclusive with `host_log_retention`.",
 						},
 					},
 				},
@@ -3109,6 +3114,16 @@ func fromOracleConfig(d *schema.ResourceData) (*gqlsla.OracleConfig, error) {
 		}
 	}
 
+	if retainIndefinitely, _ := config[keyRetainArchiveLogsIndefinitely].(bool); retainIndefinitely {
+		if oracleConfig.HostLogRetention.Duration > 0 {
+			return nil, fmt.Errorf("oracle_config: retain_archive_logs_indefinitely and host_log_retention are mutually exclusive")
+		}
+		oracleConfig.HostLogRetention = gqlsla.RetentionDuration{
+			Duration: -2,
+			Unit:     gqlsla.Minute,
+		}
+	}
+
 	return oracleConfig, nil
 }
 
@@ -3118,14 +3133,20 @@ func toOracleConfig(config *gqlsla.OracleConfig) []any {
 	}
 
 	result := map[string]any{
-		keyFrequency:            config.Frequency.Duration,
-		keyFrequencyUnit:        string(config.Frequency.Unit),
-		keyLogRetention:         config.LogRetention.Duration,
-		keyLogRetentionUnit:     string(config.LogRetention.Unit),
-		keyHostLogRetentionUnit: string(gqlsla.Days),
+		keyFrequency:                     config.Frequency.Duration,
+		keyFrequencyUnit:                 string(config.Frequency.Unit),
+		keyLogRetention:                  config.LogRetention.Duration,
+		keyLogRetentionUnit:              string(config.LogRetention.Unit),
+		keyHostLogRetentionUnit:          string(gqlsla.Days),
+		keyRetainArchiveLogsIndefinitely: false,
 	}
 
-	if config.HostLogRetention.Duration > 0 {
+	switch config.HostLogRetention.Duration {
+	case -2:
+		result[keyRetainArchiveLogsIndefinitely] = true
+	case 0:
+		// not set — leave absent
+	default:
 		result[keyHostLogRetention] = config.HostLogRetention.Duration
 		result[keyHostLogRetentionUnit] = string(config.HostLogRetention.Unit)
 	}

@@ -68,6 +68,7 @@ const (
 	keyGCPCloudSQLConfig                            = "gcp_cloud_sql_config"
 	keyHostLogRetention                             = "host_log_retention"
 	keyHostLogRetentionUnit                         = "host_log_retention_unit"
+	keyRetainArchiveLogsIndefinitely                = "retain_archive_logs_indefinitely"
 	keyIncrementalFrequency                         = "incremental_frequency"
 	keyIncrementalFrequencyUnit                     = "incremental_frequency_unit"
 	keyIncrementalRetention                         = "incremental_retention"
