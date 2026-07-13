@@ -170,7 +170,7 @@ func (r *awsAccountManagedStackResource) Create(ctx context.Context, req resourc
 	onboardCtx, cancel := context.WithTimeout(ctx, managedStackOnboardTimeout)
 	defer cancel()
 
-	if err := aws.Wrap(polarisClient).CompleteManagedAccountOnboarding(onboardCtx, accountID); err != nil {
+	if err := aws.Wrap(polarisClient).AddManagedAccountFinalize(onboardCtx, accountID); err != nil {
 		res.Diagnostics.AddError("Failed to complete RSC-managed AWS onboarding", err.Error())
 		return
 	}
@@ -244,7 +244,7 @@ func (r *awsAccountManagedStackResource) Update(ctx context.Context, req resourc
 		onboardCtx, cancel := context.WithTimeout(ctx, managedStackOnboardTimeout)
 		defer cancel()
 
-		if err := aws.Wrap(polarisClient).CompleteManagedAccountUpdate(onboardCtx, accountID); err != nil {
+		if err := aws.Wrap(polarisClient).UpdateManagedAccountFinalize(onboardCtx, accountID); err != nil {
 			res.Diagnostics.AddError("Failed to complete RSC-managed AWS permissions update", err.Error())
 			return
 		}
@@ -280,7 +280,7 @@ func (r *awsAccountManagedStackResource) Delete(ctx context.Context, req resourc
 	deleteCtx, cancel := context.WithTimeout(ctx, managedStackOnboardTimeout)
 	defer cancel()
 
-	if err := aws.Wrap(polarisClient).DisableManagedAccount(deleteCtx, accountID, state.DeleteSnapshotsOnDestroy.ValueBool()); err != nil {
+	if err := aws.Wrap(polarisClient).RemoveManagedAccount(deleteCtx, accountID, state.DeleteSnapshotsOnDestroy.ValueBool()); err != nil {
 		res.Diagnostics.AddError("Failed to disable RSC-managed AWS account features", err.Error())
 	}
 }

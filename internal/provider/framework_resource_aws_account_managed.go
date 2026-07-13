@@ -41,6 +41,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	awsregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
@@ -265,7 +266,7 @@ func (r *awsAccountManagedResource) Read(ctx context.Context, req resource.ReadR
 	// refresh the CloudFormation template URL so the stack is redeployed and the
 	// polaris_aws_account_managed_stack resource re-completes onboarding. When up
 	// to date the signed template URL is left untouched to avoid churn.
-	templateURL, err := aws.Wrap(polarisClient).PrepareManagedAccountUpdate(ctx, accountID)
+	templateURL, err := aws.Wrap(polarisClient).UpdateManagedAccount(ctx, accountID)
 	if err != nil {
 		res.Diagnostics.AddError("Failed to check RSC-managed AWS account for updates", err.Error())
 		return
@@ -320,7 +321,7 @@ func (r *awsAccountManagedResource) Delete(ctx context.Context, req resource.Del
 	// By now the features have been disabled (polaris_aws_account_managed_stack)
 	// and the CloudFormation stack deleted, so finalize the account removal in
 	// RSC. This is a no-op if the stack's deletion notifier already removed it.
-	if err := aws.Wrap(polarisClient).FinalizeManagedAccountDeletion(ctx, accountID); err != nil {
+	if err := aws.Wrap(polarisClient).RemoveManagedAccountFinalize(ctx, accountID); err != nil {
 		res.Diagnostics.AddError("Failed to finalize RSC-managed AWS account deletion", err.Error())
 	}
 }
@@ -349,17 +350,22 @@ func (r *awsAccountManagedResource) register(ctx context.Context, m *awsAccountM
 		}
 	}
 	if len(featureNames) == 0 {
-		featureNames = aws.BaaSDefaultFeatureNames()
+		featureNames = aws.ManagedAccountDefaultFeatureNames()
+	}
+	features := make([]core.Feature, 0, len(featureNames))
+	for _, name := range featureNames {
+		features = append(features, core.Feature{Name: name})
 	}
 
-	regions, regionNames, regionDiags := resolveManagedRegions(ctx, m.Regions)
+	regionNames, regionDiags := resolveManagedRegions(ctx, m.Regions)
 	diags.Append(regionDiags...)
 	if diags.HasError() {
 		return diags
 	}
 
-	artifacts, err := aws.Wrap(polarisClient).RegisterManagedAccount(ctx,
-		aws.AccountWithName(m.Cloud.ValueString(), m.NativeID.ValueString(), m.Name.ValueString()), featureNames, regions)
+	accountID, stack, err := aws.Wrap(polarisClient).AddManagedAccount(ctx,
+		aws.AccountWithName(m.Cloud.ValueString(), m.NativeID.ValueString(), m.Name.ValueString()), features,
+		aws.Regions(regionNames...))
 	if err != nil {
 		diags.AddError("Failed to register RSC-managed AWS account", err.Error())
 		return diags
@@ -373,28 +379,34 @@ func (r *awsAccountManagedResource) register(ctx context.Context, m *awsAccountM
 		return diags
 	}
 
-	version, err := aws.Wrap(polarisClient).ManagedAccountPermissionsVersion(ctx, artifacts.AccountID)
+	account, err := aws.Wrap(polarisClient).AccountByID(ctx, accountID)
+	if err != nil {
+		diags.AddError("Failed to read RSC-managed AWS account", err.Error())
+		return diags
+	}
+
+	version, err := aws.Wrap(polarisClient).ManagedAccountPermissionsVersion(ctx, accountID)
 	if err != nil {
 		diags.AddError("Failed to read permission version", err.Error())
 		return diags
 	}
 
-	m.ID = types.StringValue(artifacts.AccountID.String())
-	m.Name = types.StringValue(artifacts.Name)
+	m.ID = types.StringValue(accountID.String())
+	m.Name = types.StringValue(account.Name)
 	m.Features = featureSet
 	m.Regions = regionSet
-	m.CloudFormationURL = types.StringValue(artifacts.CloudFormationURL)
-	m.TemplateURL = types.StringValue(artifacts.TemplateURL)
-	m.StackName = types.StringValue(artifacts.StackName)
+	m.CloudFormationURL = types.StringValue(stack.CloudFormationURL)
+	m.TemplateURL = types.StringValue(stack.TemplateURL)
+	m.StackName = types.StringValue(stack.StackName)
 	m.PermissionsVersion = types.StringValue(version)
 
 	return diags
 }
 
-// resolveManagedRegions returns the typed regions and their canonical names for
+// resolveManagedRegions validates and returns the canonical region names for
 // state. When the set is null/unknown/empty it defaults to the full
 // BaaS-supported region set.
-func resolveManagedRegions(ctx context.Context, set types.Set) ([]awsregions.Region, []string, diag.Diagnostics) {
+func resolveManagedRegions(ctx context.Context, set types.Set) ([]string, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	regionNames := func(regions []awsregions.Region) []string {
@@ -406,28 +418,23 @@ func resolveManagedRegions(ctx context.Context, set types.Set) ([]awsregions.Reg
 	}
 
 	if set.IsNull() || set.IsUnknown() {
-		regions := aws.BaaSSupportedRegions()
-		return regions, regionNames(regions), diags
+		return regionNames(aws.ManagedAccountSupportedRegions()), diags
 	}
 
 	var names []string
 	diags.Append(set.ElementsAs(ctx, &names, false)...)
 	if diags.HasError() {
-		return nil, nil, diags
+		return nil, diags
 	}
 	if len(names) == 0 {
-		regions := aws.BaaSSupportedRegions()
-		return regions, regionNames(regions), diags
+		return regionNames(aws.ManagedAccountSupportedRegions()), diags
 	}
 
-	regions := make([]awsregions.Region, 0, len(names))
 	for _, name := range names {
-		region := awsregions.RegionFromName(name)
-		if region == awsregions.RegionUnknown {
+		if awsregions.RegionFromName(name) == awsregions.RegionUnknown {
 			diags.AddError("Invalid AWS region", fmt.Sprintf("unknown AWS region: %q", name))
-			return nil, nil, diags
+			return nil, diags
 		}
-		regions = append(regions, region)
 	}
-	return regions, regionNames(regions), diags
+	return names, diags
 }
