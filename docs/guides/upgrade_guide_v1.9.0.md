@@ -5,7 +5,8 @@ page_title: "Upgrade Guide: v1.9.0"
 # Upgrade Guide v1.9.0
 
 The v1.9.0 release adds a feature-gated V1/V2 model for Azure SQL Database and Managed Instance SLAs in the
-`polaris_sla_domain` resource. See the [changelog](changelog.md) for the full list of changes.
+`polaris_sla_domain` resource, and adds support for onboarding and reading Azure DevOps organizations, projects and
+repositories. See the [changelog](changelog.md) for the full list of changes.
 
 ## Before Upgrading
 
@@ -155,3 +156,113 @@ backup-service selector when editing an existing SLA.
 
 The release also adds a computed `backup_type` attribute (`NATIVE` for V1, `RUBRIK` for V2) and allows combining the
 Azure SQL Database and Managed Instance object types in a single SLA.
+
+## New Features
+
+### Azure DevOps Onboarding
+
+A new `polaris_azure_devops_organization` resource onboards an Azure DevOps organization to RSC using a
+customer-supplied application (non-OAuth). Onboarding has three steps that map to three Terraform objects:
+
+1. Register the customer application for the Azure DevOps use case with a `polaris_azure_service_principal` resource,
+   setting the new `use_case = "AZURE_DEVOPS"` field.
+2. Generate the onboarding scripts with the `polaris_azure_devops_script` data source and run them against the
+   organization out of band. The provider does not run the scripts — run each one with the Azure CLI signed in
+   (`az login`) as a Project Collection Administrator in the organization; the script mints a short-lived Azure DevOps
+   token from that session, so no personal access token is required.
+3. Onboard the organization with the `polaris_azure_devops_organization` resource.
+
+```terraform
+resource "polaris_azure_service_principal" "devops" {
+  app_id        = "25c2b42a-c76b-11eb-9767-6ff6b5b7e72b"
+  app_name      = "My DevOps App"
+  app_secret    = "<my-apps-secret>"
+  tenant_domain = "mydomain.onmicrosoft.com"
+  tenant_id     = "2bfdaef8-c76b-11eb-8d3d-4706c14a88f0"
+  use_case      = "AZURE_DEVOPS"
+}
+
+data "polaris_azure_devops_script" "onboard" {
+  org_native_ids = ["my-org"]
+  tenant_domain  = polaris_azure_service_principal.devops.tenant_domain
+
+  feature {
+    name = "AZURE_DEVOPS_PROTECTION"
+  }
+  feature {
+    name = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+  }
+}
+
+resource "polaris_azure_devops_organization" "org" {
+  native_id            = "my-org"
+  tenant_domain        = polaris_azure_service_principal.devops.tenant_domain
+  exocompute_host_type = "RUBRIK_HOST"
+  exocompute_region    = "eastus"
+  storage_type         = "RCV"
+
+  feature {
+    name = "AZURE_DEVOPS_PROTECTION"
+  }
+  feature {
+    name = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+  }
+
+  depends_on = [polaris_azure_service_principal.devops]
+}
+```
+
+The `use_case` field on `polaris_azure_service_principal` selects whether the application is registered for cloud
+native protection (the default) or Azure DevOps. Credentials are stored separately per use case, so a tenant that uses
+both declares one service principal per use case. Omitting the field preserves the existing cloud native protection
+behavior, so existing service principal configurations are unaffected.
+
+### Reading Azure DevOps Objects
+
+Three new data sources read onboarded Azure DevOps objects by RSC ID: `polaris_azure_devops_organization`,
+`polaris_azure_devops_project` and `polaris_azure_devops_repository`.
+
+The `polaris_object` data source also gains support for the `AzureDevOpsOrganization`, `AzureDevOpsProject` and
+`AzureDevOpsRepository` object types, resolving an object to its RSC ID by name for use with the
+`polaris_sla_domain_assignment` resource. Because project and repository names are only unique within their parent, set
+the optional `org_id` (for a project) or `project_id` (for a repository) to disambiguate a name shared across parents:
+
+```terraform
+data "polaris_object" "repo" {
+  object_type = "AzureDevOpsRepository"
+  name        = "my-repo"
+  project_id  = data.polaris_object.project.id
+}
+```
+
+### Discovery and Bulk Import
+
+A new `polaris_azure_devops_organization` list resource lists onboarded Azure DevOps organizations, so you can discover
+them with `terraform query` or bring existing organizations under management with an `import` block:
+
+```terraform
+variable "clouds" {
+  type        = map(string)
+  description = "Map of Azure DevOps organization native_id to cloud type (PUBLIC, CHINA or USGOV)."
+  default     = {}
+}
+
+list "polaris_azure_devops_organization" "all" {
+  provider = polaris
+}
+
+import {
+  for_each = list.polaris_azure_devops_organization.all.results
+  to       = polaris_azure_devops_organization.org[each.value.identity.id]
+  identity = {
+    id    = each.value.identity.id
+    cloud = lookup(var.clouds, each.value.resource.native_id, "PUBLIC")
+  }
+}
+```
+
+RSC does not return the enabled `feature` blocks or the `cloud` type for onboarded organizations, so neither is
+populated in list results. After generating configuration, set at least one `feature` block on each organization before
+applying. The `cloud` type defaults to `PUBLIC` on import; for any non-public organization supply it in the import
+`identity` block, e.g. with a `var.clouds` map keyed on the organization `native_id` as shown above. For details,
+see the [polaris_azure_devops_organization list resource documentation](../list-resources/azure_devops_organization.md).

@@ -13,6 +13,24 @@ page_title: "Changelog"
   `CNP_AZURE_SQL_SLA_REVAMP` feature: a new `ltr_config` block on `azure_sql_database_config` and
   `azure_sql_managed_instance_config`, and a computed `backup_type` attribute. The Azure SQL Database and Managed
   Instance object types may now be combined in a single SLA. [[docs](../resources/sla_domain.md)]
+* New resource added for `polaris_azure_devops_organization` which onboards an Azure DevOps organization to RSC
+  using a customer-supplied application (non-OAuth). [[docs](../resources/azure_devops_organization.md)]
+* New data source added for `polaris_azure_devops_script` which generates the Azure DevOps onboarding scripts to run
+  against an organization out of band. [[docs](../data-sources/azure_devops_script.md)]
+* New data source added for `polaris_azure_devops_organization` which reads an onboarded Azure DevOps organization.
+  [[docs](../data-sources/azure_devops_organization.md)]
+* New data source added for `polaris_azure_devops_project` which reads an Azure DevOps project.
+  [[docs](../data-sources/azure_devops_project.md)]
+* New data source added for `polaris_azure_devops_repository` which reads an Azure DevOps repository.
+  [[docs](../data-sources/azure_devops_repository.md)]
+* New list resource added for `polaris_azure_devops_organization` which lists onboarded Azure DevOps organizations
+  for discovery and bulk import. [[docs](../list-resources/azure_devops_organization.md)]
+* Add support for `use_case` in the `polaris_azure_service_principal` resource, selecting whether the service
+  principal is registered for cloud native protection (default) or Azure DevOps. The credentials are stored
+  separately per use case. [[docs](../resources/azure_service_principal.md)]
+* Add support for the `AzureDevOpsOrganization`, `AzureDevOpsProject` and `AzureDevOpsRepository` object types in
+  the `polaris_object` data source, resolving an Azure DevOps object to its RSC ID by name for use with the
+  `polaris_sla_domain_assignment` resource. [[docs](../data-sources/object.md)]
 
 ## v1.8.2
 * **Breaking Change:** The `polaris_custom_role` resource now requires the `VIEW_CLUSTER_REFERENCE` permission

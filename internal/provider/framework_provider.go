@@ -123,6 +123,7 @@ func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Res
 	tflog.Trace(ctx, "FrameworkProvider.Resources")
 
 	return []func() resource.Resource{
+		newAzureDevOpsOrganizationResource,
 		newCustomRoleResource,
 		newRoleAssignmentResource,
 		newSSOGroupResource,
@@ -135,6 +136,10 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 
 	return []func() datasource.DataSource{
 		newAwsPermissionGroupsDataSource,
+		newAzureDevOpsOrganizationDataSource,
+		newAzureDevOpsProjectDataSource,
+		newAzureDevOpsRepositoryDataSource,
+		newAzureDevOpsScriptDataSource,
 		newAzurePermissionGroupsDataSource,
 		newFeatureFlagDataSource,
 		newIdentityProviderDataSource,
@@ -149,6 +154,7 @@ func (p *FrameworkProvider) ListResources(ctx context.Context) []func() list.Lis
 	tflog.Trace(ctx, "FrameworkProvider.ListResources")
 
 	return []func() list.ListResource{
+		newAzureDevOpsOrganizationListResource,
 		newCustomRoleListResource,
 		newSSOGroupListResource,
 		newUserListResource,
