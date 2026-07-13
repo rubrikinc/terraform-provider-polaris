@@ -5,6 +5,14 @@ page_title: "Changelog"
 # Changelog
 
 ## v1.9.0
+* **Breaking Change:** When the `CNP_AZURE_SQL_SLA_REVAMP` feature is enabled, a V2 (Rubrik-managed) Azure SQL
+  Database SLA in the `polaris_sla_domain` resource must specify its backup location with a `backup_location` block
+  instead of the top-level `archival` block. Accounts without the feature enabled are unaffected. See the
+  [v1.9.0 upgrade guide](upgrade_guide_v1.9.0.md).
+* Add support for the Azure SQL V1/V2 SLA model in the `polaris_sla_domain` resource and data source, gated on the
+  `CNP_AZURE_SQL_SLA_REVAMP` feature: a new `ltr_config` block on `azure_sql_database_config` and
+  `azure_sql_managed_instance_config`, and a computed `backup_type` attribute. The Azure SQL Database and Managed
+  Instance object types may now be combined in a single SLA. [[docs](../resources/sla_domain.md)]
 * Add support for `retain_archive_logs_indefinitely` in the `oracle_config` block of the `polaris_sla_domain` resource. [[docs](../resources/sla_domain.md)]
 * Fix the description of `host_log_retention_unit` in the `oracle_config` block to document `MINUTES` and `HOURS` as valid values. [[docs](../resources/sla_domain.md)]
 

@@ -40,6 +40,72 @@ domains. A SLA domain is looked up using either the ID or the name.
 // This data source uses a template for its documentation due to a bug in the TF
 // docs generator. Remember to update the template if the documentation for any
 // fields are changed.
+// ltrConfigDataSourceSchema returns the read-only (computed) schema for an Azure
+// SQL long-term retention (LTR) configuration block, used by the data source.
+func ltrConfigDataSourceSchema() *schema.Schema {
+	retentionElem := func() *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				keyRetention: {
+					Type:        schema.TypeInt,
+					Computed:    true,
+					Description: "Retention value in the configured retention unit.",
+				},
+				keyRetentionUnit: {
+					Type:        schema.TypeString,
+					Computed:    true,
+					Description: "Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.",
+				},
+			},
+		}
+	}
+	return &schema.Schema{
+		Type:        schema.TypeList,
+		Computed:    true,
+		Description: "Long-term retention (LTR) configuration for a V1 (Azure-managed) Azure SQL SLA.",
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				keyWeeklyRetention: {
+					Type:        schema.TypeList,
+					Computed:    true,
+					Elem:        retentionElem(),
+					Description: "The weekly Azure SQL long-term retention.",
+				},
+				keyMonthlyRetention: {
+					Type:        schema.TypeList,
+					Computed:    true,
+					Elem:        retentionElem(),
+					Description: "The monthly Azure SQL long-term retention.",
+				},
+				keyYearlyRetention: {
+					Type:        schema.TypeList,
+					Computed:    true,
+					Description: "The yearly Azure SQL long-term retention.",
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							keyRetention: {
+								Type:        schema.TypeInt,
+								Computed:    true,
+								Description: "Retention value in the configured retention unit.",
+							},
+							keyRetentionUnit: {
+								Type:        schema.TypeString,
+								Computed:    true,
+								Description: "Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.",
+							},
+							keyWeekOfYear: {
+								Type:        schema.TypeInt,
+								Computed:    true,
+								Description: "The week of the year (1-52) retained as the yearly backup.",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func dataSourceSLADomain() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: slaDomainRead,
@@ -219,6 +285,7 @@ func dataSourceSLADomain() *schema.Resource {
 							Computed:    true,
 							Description: "Log retention specifies for how long, in days, the continuous backups are kept.",
 						},
+						keyLTRConfig: ltrConfigDataSourceSchema(),
 					},
 				},
 				Computed:    true,
@@ -233,10 +300,17 @@ func dataSourceSLADomain() *schema.Resource {
 							Computed:    true,
 							Description: "Log retention specifies for how long, in days, the log backups are kept.",
 						},
+						keyLTRConfig: ltrConfigDataSourceSchema(),
 					},
 				},
 				Computed:    true,
 				Description: "Azure SQL MI log backups.",
+			},
+			keyBackupType: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "Identifies which system manages the SLA's Azure SQL backups: `NATIVE` for a V1 " +
+					"(Azure-managed / long-term retention) SLA, or the Rubrik-managed value for a V2 SLA.",
 			},
 			keyVMwareVMConfig: {
 				Type: schema.TypeList,
@@ -1173,6 +1247,9 @@ func slaDomainRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 	}
 
 	if err := d.Set(keyAzureSQLDatabaseConfig, toAzureSQLConfig(slaDomain.ObjectSpecificConfigs.AzureSQLDatabaseDBConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyBackupType, string(slaDomain.BackupType)); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyAzureSQLManagedInstanceConfig, toAzureSQLConfig(slaDomain.ObjectSpecificConfigs.AzureSQLManagedInstanceDBConfig)); err != nil {
