@@ -32,6 +32,7 @@ description: |-
 - `azure_sql_database_config` (List of Object) Azure SQL Database continuous backups for point-in-time recovery. (see [below for nested schema](#nestedatt--azure_sql_database_config))
 - `azure_sql_managed_instance_config` (List of Object) Azure SQL MI log backups. (see [below for nested schema](#nestedatt--azure_sql_managed_instance_config))
 - `backup_location` (List of Object) Backup locations for AWS S3 object type. (see [below for nested schema](#nestedatt--backup_location))
+- `backup_type` (String) Identifies which system manages the SLA's Azure SQL backups: `NATIVE` for a V1 (Azure-managed / long-term retention) SLA, or the Rubrik-managed value for a V2 SLA.
 - `daily_schedule` (List of Object) Daily schedule of the SLA Domain. (see [below for nested schema](#nestedatt--daily_schedule))
 - `description` (String) SLA domain description.
 - `first_full_snapshot` (List of Object) First full snapshot window. (see [below for nested schema](#nestedatt--first_full_snapshot))
@@ -100,6 +101,44 @@ Read-Only:
 Read-Only:
 
 - `log_retention` (Number) Log retention specifies for how long, in days, the continuous backups are kept.
+- `ltr_config` (List of Object) Long-term retention (LTR) configuration for a V1 (Azure-managed) Azure SQL SLA. (see [below for nested schema](#nestedatt--azure_sql_database_config--ltr_config))
+
+<a id="nestedatt--azure_sql_database_config--ltr_config"></a>
+### Nested Schema for `azure_sql_database_config.ltr_config`
+
+Read-Only:
+
+- `monthly_retention` (List of Object) The monthly Azure SQL long-term retention. (see [below for nested schema](#nestedatt--azure_sql_database_config--ltr_config--monthly_retention))
+- `weekly_retention` (List of Object) The weekly Azure SQL long-term retention. (see [below for nested schema](#nestedatt--azure_sql_database_config--ltr_config--weekly_retention))
+- `yearly_retention` (List of Object) The yearly Azure SQL long-term retention. (see [below for nested schema](#nestedatt--azure_sql_database_config--ltr_config--yearly_retention))
+
+<a id="nestedatt--azure_sql_database_config--ltr_config--monthly_retention"></a>
+### Nested Schema for `azure_sql_database_config.ltr_config.monthly_retention`
+
+Read-Only:
+
+- `retention` (Number) Retention value in the configured retention unit.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+
+
+<a id="nestedatt--azure_sql_database_config--ltr_config--weekly_retention"></a>
+### Nested Schema for `azure_sql_database_config.ltr_config.weekly_retention`
+
+Read-Only:
+
+- `retention` (Number) Retention value in the configured retention unit.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+
+
+<a id="nestedatt--azure_sql_database_config--ltr_config--yearly_retention"></a>
+### Nested Schema for `azure_sql_database_config.ltr_config.yearly_retention`
+
+Read-Only:
+
+- `retention` (Number) Retention value in the configured retention unit.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+- `week_of_year` (Number) The week of the year (1-52) retained as the yearly backup.
+
 
 
 <a id="nestedatt--azure_sql_managed_instance_config"></a>
@@ -108,6 +147,44 @@ Read-Only:
 Read-Only:
 
 - `log_retention` (Number) Log retention specifies for how long, in days, the log backups are kept.
+- `ltr_config` (List of Object) Long-term retention (LTR) configuration for a V1 (Azure-managed) Azure SQL SLA. (see [below for nested schema](#nestedatt--azure_sql_managed_instance_config--ltr_config))
+
+<a id="nestedatt--azure_sql_managed_instance_config--ltr_config"></a>
+### Nested Schema for `azure_sql_managed_instance_config.ltr_config`
+
+Read-Only:
+
+- `monthly_retention` (List of Object) The monthly Azure SQL long-term retention. (see [below for nested schema](#nestedatt--azure_sql_managed_instance_config--ltr_config--monthly_retention))
+- `weekly_retention` (List of Object) The weekly Azure SQL long-term retention. (see [below for nested schema](#nestedatt--azure_sql_managed_instance_config--ltr_config--weekly_retention))
+- `yearly_retention` (List of Object) The yearly Azure SQL long-term retention. (see [below for nested schema](#nestedatt--azure_sql_managed_instance_config--ltr_config--yearly_retention))
+
+<a id="nestedatt--azure_sql_managed_instance_config--ltr_config--monthly_retention"></a>
+### Nested Schema for `azure_sql_managed_instance_config.ltr_config.monthly_retention`
+
+Read-Only:
+
+- `retention` (Number) Retention value in the configured retention unit.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+
+
+<a id="nestedatt--azure_sql_managed_instance_config--ltr_config--weekly_retention"></a>
+### Nested Schema for `azure_sql_managed_instance_config.ltr_config.weekly_retention`
+
+Read-Only:
+
+- `retention` (Number) Retention value in the configured retention unit.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+
+
+<a id="nestedatt--azure_sql_managed_instance_config--ltr_config--yearly_retention"></a>
+### Nested Schema for `azure_sql_managed_instance_config.ltr_config.yearly_retention`
+
+Read-Only:
+
+- `retention` (Number) Retention value in the configured retention unit.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+- `week_of_year` (Number) The week of the year (1-52) retained as the yearly backup.
+
 
 
 <a id="nestedatt--backup_location"></a>
