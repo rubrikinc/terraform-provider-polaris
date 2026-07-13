@@ -124,6 +124,7 @@ func resourceSLADomain() *schema.Resource {
 		ReadContext:   readSLADomain,
 		UpdateContext: newSLADomainMutator("update"),
 		DeleteContext: deleteSLADomain,
+		CustomizeDiff: slaDomainCustomizeDiff,
 
 		Timeouts: &schema.ResourceTimeout{
 			Delete: schema.DefaultTimeout(10 * time.Minute),
@@ -347,13 +348,15 @@ func resourceSLADomain() *schema.Resource {
 								"kept.",
 							ValidateFunc: validation.IntBetween(1, 35),
 						},
+						keyLTRConfig: ltrConfigSchema(),
 					},
 				},
 				Optional: true,
 				MaxItems: 1,
 				Description: "Azure SQL Database continuous backups for point-in-time recovery. Continuous " +
-					"backups are stored in the source database. Note, the changes will be applied during the next " +
-					"maintenance window.",
+					"backups are stored in the source database. A V1 (Azure-managed) SLA also specifies " +
+					"`ltr_config`; a V2 (Rubrik-managed) SLA omits it and specifies a backup location and " +
+					"snapshot schedule. Note, the changes will be applied during the next maintenance window.",
 			},
 			keyAzureSQLManagedInstanceConfig: {
 				Type: schema.TypeList,
@@ -365,12 +368,20 @@ func resourceSLADomain() *schema.Resource {
 							Description:  "Log retention specifies for how long, in days, the log backups are kept.",
 							ValidateFunc: validation.IntBetween(1, 35),
 						},
+						keyLTRConfig: ltrConfigSchema(),
 					},
 				},
 				Optional: true,
 				MaxItems: 1,
-				Description: "Azure SQL MI log backups. Note, the changes will be applied during the next " +
-					"maintenance window.",
+				Description: "Azure SQL MI log backups. A V1 (Azure-managed) SLA also specifies `ltr_config`; a " +
+					"V2 (Rubrik-managed) SLA omits it and specifies a backup location and snapshot schedule. " +
+					"Note, the changes will be applied during the next maintenance window.",
+			},
+			keyBackupType: {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: "Identifies which system manages the SLA's Azure SQL backups: `NATIVE` for a V1 " +
+					"(Azure-managed / long-term retention) SLA, or the Rubrik-managed value for a V2 SLA. Read-only.",
 			},
 			keyVMwareVMConfig: {
 				Type: schema.TypeList,
@@ -942,7 +953,9 @@ func resourceSLADomain() *schema.Resource {
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
-					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
+					keyAWSRDSConfig,                  // For AWS RDS, snapshot frequency is optional.
+					keyAzureSQLDatabaseConfig,        // V1 (Azure-managed) Azure SQL DB SLAs may omit the schedule.
+					keyAzureSQLManagedInstanceConfig, // V1 (Azure-managed) Azure SQL MI SLAs may omit the schedule.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in days.",
@@ -1015,7 +1028,9 @@ func resourceSLADomain() *schema.Resource {
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
-					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
+					keyAWSRDSConfig,                  // For AWS RDS, snapshot frequency is optional.
+					keyAzureSQLDatabaseConfig,        // V1 (Azure-managed) Azure SQL DB SLAs may omit the schedule.
+					keyAzureSQLManagedInstanceConfig, // V1 (Azure-managed) Azure SQL MI SLAs may omit the schedule.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in hours.",
@@ -1058,7 +1073,9 @@ func resourceSLADomain() *schema.Resource {
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
-					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
+					keyAWSRDSConfig,                  // For AWS RDS, snapshot frequency is optional.
+					keyAzureSQLDatabaseConfig,        // V1 (Azure-managed) Azure SQL DB SLAs may omit the schedule.
+					keyAzureSQLManagedInstanceConfig, // V1 (Azure-managed) Azure SQL MI SLAs may omit the schedule.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in minutes.",
@@ -1114,7 +1131,9 @@ func resourceSLADomain() *schema.Resource {
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
-					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
+					keyAWSRDSConfig,                  // For AWS RDS, snapshot frequency is optional.
+					keyAzureSQLDatabaseConfig,        // V1 (Azure-managed) Azure SQL DB SLAs may omit the schedule.
+					keyAzureSQLManagedInstanceConfig, // V1 (Azure-managed) Azure SQL MI SLAs may omit the schedule.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in months.",
@@ -1214,7 +1233,9 @@ func resourceSLADomain() *schema.Resource {
 					keyMonthlySchedule,
 					keyWeeklySchedule,
 					keyYearlySchedule,
-					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
+					keyAWSRDSConfig,                  // For AWS RDS, snapshot frequency is optional.
+					keyAzureSQLDatabaseConfig,        // V1 (Azure-managed) Azure SQL DB SLAs may omit the schedule.
+					keyAzureSQLManagedInstanceConfig, // V1 (Azure-managed) Azure SQL MI SLAs may omit the schedule.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in quarters.",
@@ -1545,7 +1566,9 @@ func resourceSLADomain() *schema.Resource {
 					keyMonthlySchedule,
 					keyQuarterlySchedule,
 					keyYearlySchedule,
-					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
+					keyAWSRDSConfig,                  // For AWS RDS, snapshot frequency is optional.
+					keyAzureSQLDatabaseConfig,        // V1 (Azure-managed) Azure SQL DB SLAs may omit the schedule.
+					keyAzureSQLManagedInstanceConfig, // V1 (Azure-managed) Azure SQL MI SLAs may omit the schedule.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in weeks.",
@@ -1609,7 +1632,9 @@ func resourceSLADomain() *schema.Resource {
 					keyMonthlySchedule,
 					keyQuarterlySchedule,
 					keyWeeklySchedule,
-					keyAWSRDSConfig, // For AWS RDS, snapshot frequency is optional.
+					keyAWSRDSConfig,                  // For AWS RDS, snapshot frequency is optional.
+					keyAzureSQLDatabaseConfig,        // V1 (Azure-managed) Azure SQL DB SLAs may omit the schedule.
+					keyAzureSQLManagedInstanceConfig, // V1 (Azure-managed) Azure SQL MI SLAs may omit the schedule.
 				},
 				MaxItems:    1,
 				Description: "Take snapshots with frequency specified in years.",
@@ -2255,6 +2280,27 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			}
 		}
 
+		// The CNP_AZURE_SQL_SLA_REVAMP feature introduces the V1/V2 Azure SQL SLA
+		// model (ltr_config, and backup_location for SQL). When it is not enabled
+		// for the account, the provider keeps the legacy Azure SQL behavior so
+		// existing configurations are not broken. FeatureFlag returns Enabled=false
+		// when the flag is off or absent.
+		azureSQLRevamp, err := core.Wrap(client.GQL).FeatureFlag(ctx, "CNP_AZURE_SQL_SLA_REVAMP")
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		// Azure SQL V2 (Rubrik-managed) SLAs store their backup location in the
+		// SLA-level backup location specs, the same mechanism used by AWS S3
+		// multiple backup locations. V1 (Azure-managed) SLAs carry an LTR config
+		// and no backup location. Only wired when the revamp feature is enabled.
+		if azureSQLRevamp.Enabled && len(backupLocations) == 0 {
+			if (azureSQLConfig != nil && azureSQLConfig.LTRConfig == nil) ||
+				(azureSQLMIConfig != nil && azureSQLMIConfig.LTRConfig == nil) {
+				backupLocations = fromBackupLocation(d)
+			}
+		}
+
 		var objectTypes []gqlsla.ObjectType
 		objectTypeList := d.Get(keyObjectTypes).(*schema.Set).List()
 		for _, objectType := range objectTypeList {
@@ -2267,33 +2313,12 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 					return diag.Errorf("Active Directory object type requires minimum of 4 hours SLA")
 				}
 			case gqlsla.ObjectAzureSQLDatabase:
-				if len(objectTypeList) > 1 {
-					return diag.Errorf("Azure SQL Database object type cannot be combined with other object types")
-				}
-				if azureSQLConfig == nil {
-					return diag.Errorf("Azure SQL Database object type requires Azure SQL Database configuration")
-				}
-				if len(archivalSpecs) != 1 {
-					return diag.Errorf("Azure SQL Database object type requires an archival location with instant archival enabled")
-				}
-				if archivalSpecs[0].Threshold != 0 {
-					return diag.Errorf("Azure SQL Database object type requires an archival location with instant archival enabled")
-				}
-				if len(replicationSpecs) > 0 {
-					return diag.Errorf("Azure SQL Database object type does not support replication")
+				if err := validateAzureSQLDatabaseObjectType(azureSQLRevamp.Enabled, objectTypeList, azureSQLConfig, schedule, backupLocations, archivalSpecs, replicationSpecs); err != nil {
+					return diag.FromErr(err)
 				}
 			case gqlsla.ObjectAzureSQLManagedInstance:
-				if azureSQLMIConfig == nil {
-					return diag.Errorf("Azure SQL Managed Instance object type requires Azure SQL Managed Instance configuration")
-				}
-				if azureSQLConfig != nil {
-					return diag.Errorf("Azure SQL Managed Instance object type cannot be combined with Azure SQL Database configuration")
-				}
-				if len(archivalSpecs) > 0 {
-					return diag.Errorf("Azure SQL Managed Instance object type does not support archival locations")
-				}
-				if len(replicationSpecs) > 0 {
-					return diag.Errorf("Azure SQL Managed Instance object type does not support replication")
+				if err := validateAzureSQLManagedInstanceObjectType(azureSQLRevamp.Enabled, objectTypeList, azureSQLMIConfig, azureSQLConfig, schedule, backupLocations, archivalSpecs, replicationSpecs); err != nil {
+					return diag.FromErr(err)
 				}
 			case gqlsla.ObjectAzureBlob:
 				if blobConfig == nil {
@@ -2518,6 +2543,9 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyAzureSQLManagedInstanceConfig, toAzureSQLConfig(slaDomain.ObjectSpecificConfigs.AzureSQLManagedInstanceDBConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyBackupType, string(slaDomain.BackupType)); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyVMwareVMConfig, toVMwareVMConfig(slaDomain.ObjectSpecificConfigs.VMwareVMConfig)); err != nil {
@@ -2843,6 +2871,255 @@ func fromAzureBlobConfig(d *schema.ResourceData) (*gqlsla.AzureBlobConfig, error
 	}, nil
 }
 
+// ltrConfigSchema returns the schema for an Azure SQL long-term retention (LTR)
+// configuration block. Its presence marks the SLA as V1 (Azure-managed).
+func ltrConfigSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Description: "Long-term retention (LTR) configuration for a V1 (Azure-managed) Azure SQL SLA. When " +
+			"set, the SLA manages Azure native LTR backups and must not specify a Rubrik backup location or " +
+			"snapshot schedule. When omitted, the SLA is a V2 (Rubrik-managed) SLA.",
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				keyWeeklyRetention:  ltrRetentionSchema("weekly"),
+				keyMonthlyRetention: ltrRetentionSchema("monthly"),
+				keyYearlyRetention: {
+					Type:        schema.TypeList,
+					Optional:    true,
+					MaxItems:    1,
+					Description: "The yearly Azure SQL long-term retention.",
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							keyRetention:     ltrRetentionValueSchema(),
+							keyRetentionUnit: ltrRetentionUnitSchema(),
+							keyWeekOfYear: {
+								Type:         schema.TypeInt,
+								Required:     true,
+								ValidateFunc: validation.IntBetween(1, 52),
+								Description:  "The week of the year (1-52) to retain as the yearly backup.",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// ltrRetentionSchema returns the schema for a single (weekly or monthly) Azure
+// SQL LTR retention block.
+func ltrRetentionSchema(period string) *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeList,
+		Optional:    true,
+		MaxItems:    1,
+		Description: "The " + period + " Azure SQL long-term retention.",
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				keyRetention:     ltrRetentionValueSchema(),
+				keyRetentionUnit: ltrRetentionUnitSchema(),
+			},
+		},
+	}
+}
+
+// ltrRetentionValueSchema returns the schema for an LTR retention value. Azure
+// accepts 0, or a value equivalent to between 7 and 3650 days; the exact bound
+// depends on the unit and is enforced by RSC/Azure.
+func ltrRetentionValueSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:         schema.TypeInt,
+		Required:     true,
+		ValidateFunc: validation.IntAtLeast(0),
+		Description:  "Retention value in the configured retention unit. Azure accepts 0, or 7 to 3650 days.",
+	}
+}
+
+// ltrRetentionUnitSchema returns the schema for an LTR retention unit.
+func ltrRetentionUnitSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Required: true,
+		ValidateFunc: validation.StringInSlice([]string{
+			string(gqlsla.Days),
+			string(gqlsla.Weeks),
+			string(gqlsla.Months),
+			string(gqlsla.Years),
+		}, false),
+		Description: "Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.",
+	}
+}
+
+// errLTRConfigRequiresFeature is returned when ltr_config is used while the
+// CNP_AZURE_SQL_SLA_REVAMP feature is not enabled for the account.
+var errLTRConfigRequiresFeature = errors.New(
+	"ltr_config requires the CNP_AZURE_SQL_SLA_REVAMP feature, which is not enabled for this account")
+
+// validateAzureSQLDatabaseObjectType validates an Azure SQL Database SLA. When
+// the CNP_AZURE_SQL_SLA_REVAMP feature is enabled it applies the V1/V2 model;
+// otherwise it applies the legacy model (a single instant-archival location is
+// required, no V1/V2 split) so configurations created before the feature
+// continue to work unchanged.
+func validateAzureSQLDatabaseObjectType(revamp bool, objectTypeList []any, config *gqlsla.AzureDBConfig, schedule gqlsla.SnapshotSchedule, backupLocations []gqlsla.BackupLocationSpec, archivalSpecs []gqlsla.ArchivalSpec, replicationSpecs []gqlsla.ReplicationSpec) error {
+	if config == nil {
+		return fmt.Errorf("the Azure SQL Database object type requires Azure SQL Database configuration")
+	}
+	if len(replicationSpecs) > 0 {
+		return fmt.Errorf("the Azure SQL Database object type does not support replication")
+	}
+
+	if !revamp {
+		// Legacy behavior (feature disabled).
+		if config.LTRConfig != nil {
+			return errLTRConfigRequiresFeature
+		}
+		if len(objectTypeList) > 1 {
+			return fmt.Errorf("the Azure SQL Database object type cannot be combined with other object types")
+		}
+		if len(archivalSpecs) != 1 || archivalSpecs[0].Threshold != 0 {
+			return fmt.Errorf("the Azure SQL Database object type requires an archival location with instant archival enabled")
+		}
+		return nil
+	}
+
+	// Revamp behavior (feature enabled): V1/V2 model.
+	if !onlyAzureSQLObjectTypes(objectTypeList) {
+		return fmt.Errorf("the Azure SQL Database object type can only be combined with Azure SQL Managed Instance")
+	}
+	return validateAzureSQLSLA("Azure SQL Database", config, schedule, backupLocations, archivalSpecs)
+}
+
+// validateAzureSQLManagedInstanceObjectType validates an Azure SQL Managed
+// Instance SLA, gated on the CNP_AZURE_SQL_SLA_REVAMP feature in the same way as
+// validateAzureSQLDatabaseObjectType. Legacy MI SLAs do not support archival.
+func validateAzureSQLManagedInstanceObjectType(revamp bool, objectTypeList []any, miConfig, dbConfig *gqlsla.AzureDBConfig, schedule gqlsla.SnapshotSchedule, backupLocations []gqlsla.BackupLocationSpec, archivalSpecs []gqlsla.ArchivalSpec, replicationSpecs []gqlsla.ReplicationSpec) error {
+	if miConfig == nil {
+		return fmt.Errorf("the Azure SQL Managed Instance object type requires Azure SQL Managed Instance configuration")
+	}
+	if len(replicationSpecs) > 0 {
+		return fmt.Errorf("the Azure SQL Managed Instance object type does not support replication")
+	}
+
+	if !revamp {
+		// Legacy behavior (feature disabled).
+		if miConfig.LTRConfig != nil {
+			return errLTRConfigRequiresFeature
+		}
+		if dbConfig != nil {
+			return fmt.Errorf("the Azure SQL Managed Instance object type cannot be combined with Azure SQL Database configuration")
+		}
+		if len(archivalSpecs) > 0 {
+			return fmt.Errorf("the Azure SQL Managed Instance object type does not support archival locations")
+		}
+		return nil
+	}
+
+	// Revamp behavior (feature enabled): V1/V2 model.
+	if !onlyAzureSQLObjectTypes(objectTypeList) {
+		return fmt.Errorf("the Azure SQL Managed Instance object type can only be combined with Azure SQL Database")
+	}
+	return validateAzureSQLSLA("Azure SQL Managed Instance", miConfig, schedule, backupLocations, archivalSpecs)
+}
+
+// validateAzureSQLSLA enforces the V1/V2 separation for Azure SQL Database and
+// Managed Instance SLAs. A V1 (Azure-managed) SLA carries an LTR config and must
+// not specify a Rubrik backup location, snapshot schedule, or archival location.
+// A V2 (Rubrik-managed) SLA omits the LTR config and must specify a backup
+// location and a snapshot schedule. The archival location for Azure SQL now
+// lives in backup_location (renamed from "archival location"), not the top-level
+// archival block.
+func validateAzureSQLSLA(name string, config *gqlsla.AzureDBConfig, schedule gqlsla.SnapshotSchedule, backupLocations []gqlsla.BackupLocationSpec, archivalSpecs []gqlsla.ArchivalSpec) error {
+	if config.LTRConfig != nil {
+		// V1 (Azure-managed, long-term retention).
+		if len(backupLocations) > 0 {
+			return fmt.Errorf("%s V1 (Azure-managed) SLA with ltr_config must not specify a backup_location", name)
+		}
+		if !scheduleEmpty(schedule) {
+			return fmt.Errorf("%s V1 (Azure-managed) SLA with ltr_config must not specify a Rubrik snapshot schedule", name)
+		}
+		if len(archivalSpecs) > 0 {
+			return fmt.Errorf("%s V1 (Azure-managed) SLA with ltr_config must not specify an archival location", name)
+		}
+		return nil
+	}
+
+	// V2 (Rubrik-managed).
+	if len(archivalSpecs) > 0 {
+		return fmt.Errorf("%s stores its backup location in backup_location, not the archival block; remove the archival block", name)
+	}
+	if len(backupLocations) == 0 {
+		return fmt.Errorf("%s V2 (Rubrik-managed) SLA requires a backup_location; set ltr_config for a V1 (Azure-managed) SLA", name)
+	}
+	if scheduleEmpty(schedule) {
+		return fmt.Errorf("%s V2 (Rubrik-managed) SLA requires a snapshot schedule", name)
+	}
+	return nil
+}
+
+// slaDomainCustomizeDiff blocks changing an existing Azure SQL SLA Domain
+// between V1 (Azure-managed, with ltr_config) and V2 (Rubrik-managed, without
+// ltr_config). RSC does not allow switching the backup service of an existing
+// SLA — the UI directs the user to create a new SLA Domain instead. Editing
+// retention values within a version is still allowed.
+func slaDomainCustomizeDiff(ctx context.Context, d *schema.ResourceDiff, m any) error {
+	if d.Id() == "" {
+		return nil // creating a new SLA — any backup service is allowed.
+	}
+
+	for _, key := range []string{keyAzureSQLDatabaseConfig, keyAzureSQLManagedInstanceConfig} {
+		o, n := d.GetChange(key)
+		oList, _ := o.([]any)
+		nList, _ := n.([]any)
+		if len(oList) == 0 || len(nList) == 0 {
+			continue // config block added or removed wholesale — not an in-place service flip.
+		}
+		if configHasLTRConfig(o) != configHasLTRConfig(n) {
+			return fmt.Errorf("cannot change the backup service of an existing Azure SQL SLA Domain " +
+				"between Azure-managed (V1, with ltr_config) and Rubrik-managed (V2, without ltr_config); " +
+				"create a new SLA Domain to use a different backup service")
+		}
+	}
+
+	return nil
+}
+
+// configHasLTRConfig reports whether an azure_sql_*_config block value carries a
+// non-empty ltr_config (i.e. is a V1 / Azure-managed SLA).
+func configHasLTRConfig(v any) bool {
+	list, ok := v.([]any)
+	if !ok || len(list) == 0 || list[0] == nil {
+		return false
+	}
+	block, ok := list[0].(map[string]any)
+	if !ok {
+		return false
+	}
+	ltr, ok := block[keyLTRConfig].([]any)
+	return ok && len(ltr) > 0 && ltr[0] != nil
+}
+
+// onlyAzureSQLObjectTypes reports whether every object type in the list is an
+// Azure SQL Database or Azure SQL Managed Instance. These two may be combined in
+// a single SLA (matching the UI) but not with any other object type.
+func onlyAzureSQLObjectTypes(objectTypes []any) bool {
+	for _, ot := range objectTypes {
+		switch gqlsla.ObjectType(ot.(string)) {
+		case gqlsla.ObjectAzureSQLDatabase, gqlsla.ObjectAzureSQLManagedInstance:
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// scheduleEmpty reports whether no Rubrik snapshot schedule is configured.
+func scheduleEmpty(s gqlsla.SnapshotSchedule) bool {
+	return s.Daily == nil && s.Hourly == nil && s.Minute == nil && s.Monthly == nil &&
+		s.Quarterly == nil && s.Weekly == nil && s.Yearly == nil
+}
+
 func fromAzureSQLConfig(d *schema.ResourceData, key string) (*gqlsla.AzureDBConfig, error) {
 	block, ok := d.GetOk(key)
 	if !ok {
@@ -2852,7 +3129,48 @@ func fromAzureSQLConfig(d *schema.ResourceData, key string) (*gqlsla.AzureDBConf
 	sqlConfig := block.([]any)[0].(map[string]any)
 	return &gqlsla.AzureDBConfig{
 		LogRetentionInDays: sqlConfig[keyLogRetention].(int),
+		LTRConfig:          fromLTRConfig(sqlConfig[keyLTRConfig].([]any)),
 	}, nil
+}
+
+// fromLTRConfig builds the SDK LTR config from the ltr_config schema block. It
+// returns nil when no LTR config is set, marking the SLA as V2.
+func fromLTRConfig(block []any) *gqlsla.AzureSQLLTRConfig {
+	if len(block) == 0 || block[0] == nil {
+		return nil
+	}
+
+	ltr := block[0].(map[string]any)
+	config := &gqlsla.AzureSQLLTRConfig{
+		WeeklyBackupRetention:  fromLTRRetention(ltr[keyWeeklyRetention].([]any)),
+		MonthlyBackupRetention: fromLTRRetention(ltr[keyMonthlyRetention].([]any)),
+	}
+
+	if yearly := ltr[keyYearlyRetention].([]any); len(yearly) > 0 && yearly[0] != nil {
+		y := yearly[0].(map[string]any)
+		config.YearlyBackupRetention = &gqlsla.AzureSQLYearlyLTRRetention{
+			Retention: gqlsla.AzureSQLLTRRetention{
+				Retention:     y[keyRetention].(int),
+				RetentionUnit: gqlsla.RetentionUnit(y[keyRetentionUnit].(string)),
+			},
+			WeekOfYear: y[keyWeekOfYear].(int),
+		}
+	}
+
+	return config
+}
+
+// fromLTRRetention builds a single LTR retention from a weekly/monthly block.
+func fromLTRRetention(block []any) *gqlsla.AzureSQLLTRRetention {
+	if len(block) == 0 || block[0] == nil {
+		return nil
+	}
+
+	r := block[0].(map[string]any)
+	return &gqlsla.AzureSQLLTRRetention{
+		Retention:     r[keyRetention].(int),
+		RetentionUnit: gqlsla.RetentionUnit(r[keyRetentionUnit].(string)),
+	}
 }
 
 func toAzureSQLConfig(sqlConfig *gqlsla.AzureDBConfig) []any {
@@ -2862,6 +3180,40 @@ func toAzureSQLConfig(sqlConfig *gqlsla.AzureDBConfig) []any {
 
 	return []any{map[string]any{
 		keyLogRetention: sqlConfig.LogRetentionInDays,
+		keyLTRConfig:    toLTRConfig(sqlConfig.LTRConfig),
+	}}
+}
+
+// toLTRConfig converts the SDK LTR config into the ltr_config schema block.
+func toLTRConfig(ltr *gqlsla.AzureSQLLTRConfig) []any {
+	if ltr == nil {
+		return nil
+	}
+
+	block := map[string]any{
+		keyWeeklyRetention:  toLTRRetention(ltr.WeeklyBackupRetention),
+		keyMonthlyRetention: toLTRRetention(ltr.MonthlyBackupRetention),
+	}
+	if ltr.YearlyBackupRetention != nil {
+		block[keyYearlyRetention] = []any{map[string]any{
+			keyRetention:     ltr.YearlyBackupRetention.Retention.Retention,
+			keyRetentionUnit: string(ltr.YearlyBackupRetention.Retention.RetentionUnit),
+			keyWeekOfYear:    ltr.YearlyBackupRetention.WeekOfYear,
+		}}
+	}
+
+	return []any{block}
+}
+
+// toLTRRetention converts a single SDK LTR retention into a schema block.
+func toLTRRetention(r *gqlsla.AzureSQLLTRRetention) []any {
+	if r == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyRetention:     r.Retention,
+		keyRetentionUnit: string(r.RetentionUnit),
 	}}
 }
 

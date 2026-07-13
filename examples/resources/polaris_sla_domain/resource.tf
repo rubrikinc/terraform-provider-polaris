@@ -104,3 +104,55 @@ resource "polaris_sla_domain" "with_cascading_archival" {
     }
   }
 }
+
+# Azure SQL Database V2 (Rubrik-managed) SLA
+# - Requires the CNP_AZURE_SQL_SLA_REVAMP feature
+# - Rubrik-managed backups: a snapshot schedule plus a backup location
+# - backup_location replaces the top-level archival block for Azure SQL
+resource "polaris_sla_domain" "azure_sql_v2" {
+  name         = "azure-sql-v2"
+  description  = "Rubrik-managed Azure SQL Database SLA"
+  object_types = ["AZURE_SQL_DATABASE_OBJECT_TYPE"]
+
+  hourly_schedule {
+    frequency      = 1
+    retention      = 1
+    retention_unit = "DAYS"
+  }
+
+  azure_sql_database_config {
+    log_retention = 7
+  }
+
+  backup_location {
+    archival_group_id = data.polaris_azure_archival_location.archival_location.id
+  }
+}
+
+# Azure SQL Database V1 (Azure-managed / long-term retention) SLA
+# - Requires the CNP_AZURE_SQL_SLA_REVAMP feature
+# - Azure-managed backups: ltr_config only, with no schedule and no backup location
+resource "polaris_sla_domain" "azure_sql_v1" {
+  name         = "azure-sql-v1"
+  description  = "Azure-managed (LTR) Azure SQL Database SLA"
+  object_types = ["AZURE_SQL_DATABASE_OBJECT_TYPE"]
+
+  azure_sql_database_config {
+    log_retention = 7
+    ltr_config {
+      weekly_retention {
+        retention      = 4
+        retention_unit = "WEEKS"
+      }
+      monthly_retention {
+        retention      = 12
+        retention_unit = "MONTHS"
+      }
+      yearly_retention {
+        retention      = 7
+        retention_unit = "YEARS"
+        week_of_year   = 1
+      }
+    }
+  }
+}

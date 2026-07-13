@@ -241,6 +241,58 @@ resource "polaris_sla_domain" "with_cascading_archival" {
     }
   }
 }
+
+# Azure SQL Database V2 (Rubrik-managed) SLA
+# - Requires the CNP_AZURE_SQL_SLA_REVAMP feature
+# - Rubrik-managed backups: a snapshot schedule plus a backup location
+# - backup_location replaces the top-level archival block for Azure SQL
+resource "polaris_sla_domain" "azure_sql_v2" {
+  name         = "azure-sql-v2"
+  description  = "Rubrik-managed Azure SQL Database SLA"
+  object_types = ["AZURE_SQL_DATABASE_OBJECT_TYPE"]
+
+  hourly_schedule {
+    frequency      = 1
+    retention      = 1
+    retention_unit = "DAYS"
+  }
+
+  azure_sql_database_config {
+    log_retention = 7
+  }
+
+  backup_location {
+    archival_group_id = data.polaris_azure_archival_location.archival_location.id
+  }
+}
+
+# Azure SQL Database V1 (Azure-managed / long-term retention) SLA
+# - Requires the CNP_AZURE_SQL_SLA_REVAMP feature
+# - Azure-managed backups: ltr_config only, with no schedule and no backup location
+resource "polaris_sla_domain" "azure_sql_v1" {
+  name         = "azure-sql-v1"
+  description  = "Azure-managed (LTR) Azure SQL Database SLA"
+  object_types = ["AZURE_SQL_DATABASE_OBJECT_TYPE"]
+
+  azure_sql_database_config {
+    log_retention = 7
+    ltr_config {
+      weekly_retention {
+        retention      = 4
+        retention_unit = "WEEKS"
+      }
+      monthly_retention {
+        retention      = 12
+        retention_unit = "MONTHS"
+      }
+      yearly_retention {
+        retention      = 7
+        retention_unit = "YEARS"
+        week_of_year   = 1
+      }
+    }
+  }
+}
 ```
 
 
@@ -260,8 +312,8 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 - `aws_dynamodb_config` (Block List, Max: 1) (see [below for nested schema](#nestedblock--aws_dynamodb_config))
 - `aws_rds_config` (Block List, Max: 1) AWS RDS continuous backups for point-in-time recovery. If continuous backup isn't specified, AWS provides 1 day of continuous backup by default for Aurora databases, which can be changed but not disable. (see [below for nested schema](#nestedblock--aws_rds_config))
 - `azure_blob_config` (Block List, Max: 1) Azure Blob Storage backup location for scheduled snapshots. To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days. (see [below for nested schema](#nestedblock--azure_blob_config))
-- `azure_sql_database_config` (Block List, Max: 1) Azure SQL Database continuous backups for point-in-time recovery. Continuous backups are stored in the source database. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_database_config))
-- `azure_sql_managed_instance_config` (Block List, Max: 1) Azure SQL MI log backups. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config))
+- `azure_sql_database_config` (Block List, Max: 1) Azure SQL Database continuous backups for point-in-time recovery. Continuous backups are stored in the source database. A V1 (Azure-managed) SLA also specifies `ltr_config`; a V2 (Rubrik-managed) SLA omits it and specifies a backup location and snapshot schedule. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_database_config))
+- `azure_sql_managed_instance_config` (Block List, Max: 1) Azure SQL MI log backups. A V1 (Azure-managed) SLA also specifies `ltr_config`; a V2 (Rubrik-managed) SLA omits it and specifies a backup location and snapshot schedule. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config))
 - `backup_location` (Block List) (see [below for nested schema](#nestedblock--backup_location))
 - `daily_schedule` (Block List, Max: 1) Take snapshots with frequency specified in days. (see [below for nested schema](#nestedblock--daily_schedule))
 - `db2_config` (Block List, Max: 1) Db2 database configuration. (see [below for nested schema](#nestedblock--db2_config))
@@ -292,6 +344,7 @@ resource "polaris_sla_domain" "with_cascading_archival" {
 
 ### Read-Only
 
+- `backup_type` (String) Identifies which system manages the SLA's Azure SQL backups: `NATIVE` for a V1 (Azure-managed / long-term retention) SLA, or the Rubrik-managed value for a V2 SLA. Read-only.
 - `id` (String) SLA Domain ID (UUID).
 
 <a id="nestedblock--archival"></a>
@@ -370,6 +423,47 @@ Required:
 
 - `log_retention` (Number) Log retention specifies for how long, in days, the continuous backups are kept.
 
+Optional:
+
+- `ltr_config` (Block List, Max: 1) Long-term retention (LTR) configuration for a V1 (Azure-managed) Azure SQL SLA. When set, the SLA manages Azure native LTR backups and must not specify a Rubrik backup location or snapshot schedule. When omitted, the SLA is a V2 (Rubrik-managed) SLA. (see [below for nested schema](#nestedblock--azure_sql_database_config--ltr_config))
+
+<a id="nestedblock--azure_sql_database_config--ltr_config"></a>
+### Nested Schema for `azure_sql_database_config.ltr_config`
+
+Optional:
+
+- `monthly_retention` (Block List, Max: 1) The monthly Azure SQL long-term retention. (see [below for nested schema](#nestedblock--azure_sql_database_config--ltr_config--monthly_retention))
+- `weekly_retention` (Block List, Max: 1) The weekly Azure SQL long-term retention. (see [below for nested schema](#nestedblock--azure_sql_database_config--ltr_config--weekly_retention))
+- `yearly_retention` (Block List, Max: 1) The yearly Azure SQL long-term retention. (see [below for nested schema](#nestedblock--azure_sql_database_config--ltr_config--yearly_retention))
+
+<a id="nestedblock--azure_sql_database_config--ltr_config--monthly_retention"></a>
+### Nested Schema for `azure_sql_database_config.ltr_config.monthly_retention`
+
+Required:
+
+- `retention` (Number) Retention value in the configured retention unit. Azure accepts 0, or 7 to 3650 days.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+
+
+<a id="nestedblock--azure_sql_database_config--ltr_config--weekly_retention"></a>
+### Nested Schema for `azure_sql_database_config.ltr_config.weekly_retention`
+
+Required:
+
+- `retention` (Number) Retention value in the configured retention unit. Azure accepts 0, or 7 to 3650 days.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+
+
+<a id="nestedblock--azure_sql_database_config--ltr_config--yearly_retention"></a>
+### Nested Schema for `azure_sql_database_config.ltr_config.yearly_retention`
+
+Required:
+
+- `retention` (Number) Retention value in the configured retention unit. Azure accepts 0, or 7 to 3650 days.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+- `week_of_year` (Number) The week of the year (1-52) to retain as the yearly backup.
+
+
 
 <a id="nestedblock--azure_sql_managed_instance_config"></a>
 ### Nested Schema for `azure_sql_managed_instance_config`
@@ -377,6 +471,48 @@ Required:
 Required:
 
 - `log_retention` (Number) Log retention specifies for how long, in days, the log backups are kept.
+
+Optional:
+
+- `ltr_config` (Block List, Max: 1) Long-term retention (LTR) configuration for a V1 (Azure-managed) Azure SQL SLA. When set, the SLA manages Azure native LTR backups and must not specify a Rubrik backup location or snapshot schedule. When omitted, the SLA is a V2 (Rubrik-managed) SLA. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config--ltr_config))
+
+<a id="nestedblock--azure_sql_managed_instance_config--ltr_config"></a>
+### Nested Schema for `azure_sql_managed_instance_config.ltr_config`
+
+Optional:
+
+- `monthly_retention` (Block List, Max: 1) The monthly Azure SQL long-term retention. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config--ltr_config--monthly_retention))
+- `weekly_retention` (Block List, Max: 1) The weekly Azure SQL long-term retention. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config--ltr_config--weekly_retention))
+- `yearly_retention` (Block List, Max: 1) The yearly Azure SQL long-term retention. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config--ltr_config--yearly_retention))
+
+<a id="nestedblock--azure_sql_managed_instance_config--ltr_config--monthly_retention"></a>
+### Nested Schema for `azure_sql_managed_instance_config.ltr_config.monthly_retention`
+
+Required:
+
+- `retention` (Number) Retention value in the configured retention unit. Azure accepts 0, or 7 to 3650 days.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+
+
+<a id="nestedblock--azure_sql_managed_instance_config--ltr_config--weekly_retention"></a>
+### Nested Schema for `azure_sql_managed_instance_config.ltr_config.weekly_retention`
+
+Required:
+
+- `retention` (Number) Retention value in the configured retention unit. Azure accepts 0, or 7 to 3650 days.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+
+
+<a id="nestedblock--azure_sql_managed_instance_config--ltr_config--yearly_retention"></a>
+### Nested Schema for `azure_sql_managed_instance_config.ltr_config.yearly_retention`
+
+Required:
+
+- `retention` (Number) Retention value in the configured retention unit. Azure accepts 0, or 7 to 3650 days.
+- `retention_unit` (String) Unit for the retention value. One of DAYS, WEEKS, MONTHS or YEARS.
+- `week_of_year` (Number) The week of the year (1-52) to retain as the yearly backup.
+
+
 
 
 <a id="nestedblock--backup_location"></a>
