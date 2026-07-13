@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
@@ -876,6 +877,63 @@ data "polaris_sla_domain" "default_by_name" {
 	name = polaris_sla_domain.default.name
 }
 `
+
+// TestFromOracleConfigRetainArchiveLogsIndefinitely verifies that setting
+// retain_archive_logs_indefinitely maps to the CDM sentinel of
+// HostLogRetention{Duration: -2, Unit: Minute}.
+func TestFromOracleConfigRetainArchiveLogsIndefinitely(t *testing.T) {
+	res := resourceSLADomain()
+
+	d := schema.TestResourceDataRaw(t, res.Schema, map[string]any{
+		keyOracleConfig: []any{
+			map[string]any{
+				keyFrequency:                     1,
+				keyFrequencyUnit:                 string(gqlsla.Days),
+				keyLogRetention:                  7,
+				keyLogRetentionUnit:              string(gqlsla.Days),
+				keyRetainArchiveLogsIndefinitely: true,
+			},
+		},
+	})
+
+	oracleConfig, err := fromOracleConfig(d)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if oracleConfig == nil {
+		t.Fatal("expected non-nil oracle config")
+	}
+	if got, want := oracleConfig.HostLogRetention.Duration, -2; got != want {
+		t.Errorf("HostLogRetention.Duration = %d, want %d", got, want)
+	}
+	if got, want := oracleConfig.HostLogRetention.Unit, gqlsla.Minute; got != want {
+		t.Errorf("HostLogRetention.Unit = %q, want %q", got, want)
+	}
+}
+
+// TestToOracleConfigRetainArchiveLogsIndefinitely verifies that the CDM
+// sentinel of HostLogRetention{Duration: -2} maps back to
+// retain_archive_logs_indefinitely=true with no host_log_retention key set.
+func TestToOracleConfigRetainArchiveLogsIndefinitely(t *testing.T) {
+	result := toOracleConfig(&gqlsla.OracleConfig{
+		HostLogRetention: gqlsla.RetentionDuration{
+			Duration: -2,
+			Unit:     gqlsla.Minute,
+		},
+	})
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(result))
+	}
+
+	config := result[0].(map[string]any)
+	if got, want := config[keyRetainArchiveLogsIndefinitely], true; got != want {
+		t.Errorf("%s = %v, want %v", keyRetainArchiveLogsIndefinitely, got, want)
+	}
+	if _, ok := config[keyHostLogRetention]; ok {
+		t.Errorf("expected %s to be absent, got %v", keyHostLogRetention, config[keyHostLogRetention])
+	}
+}
 
 // Acceptance test functions
 

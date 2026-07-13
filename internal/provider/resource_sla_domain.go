@@ -620,9 +620,10 @@ func resourceSLADomain() *schema.Resource {
 							ValidateFunc: validation.StringInSlice(gqlsla.AllRetentionUnitsAsStrings(), false),
 						},
 						keyRetainArchiveLogsIndefinitely: {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "When true, Oracle archive logs are retained indefinitely on the host and never deleted. Mutually exclusive with `host_log_retention`.",
+							Type:          schema.TypeBool,
+							Optional:      true,
+							ConflictsWith: []string{keyOracleConfig + ".0." + keyHostLogRetention},
+							Description:   "When true, Oracle archive logs are retained indefinitely on the host and never deleted. Mutually exclusive with `host_log_retention`.",
 						},
 					},
 				},
@@ -3467,9 +3468,7 @@ func fromOracleConfig(d *schema.ResourceData) (*gqlsla.OracleConfig, error) {
 	}
 
 	if retainIndefinitely, _ := config[keyRetainArchiveLogsIndefinitely].(bool); retainIndefinitely {
-		if oracleConfig.HostLogRetention.Duration > 0 {
-			return nil, fmt.Errorf("oracle_config: retain_archive_logs_indefinitely and host_log_retention are mutually exclusive")
-		}
+		// -2/Minute is a CDM-specific sentinel meaning "retain all archived redo logs indefinitely".
 		oracleConfig.HostLogRetention = gqlsla.RetentionDuration{
 			Duration: -2,
 			Unit:     gqlsla.Minute,
@@ -3495,6 +3494,7 @@ func toOracleConfig(config *gqlsla.OracleConfig) []any {
 
 	switch config.HostLogRetention.Duration {
 	case -2:
+		// -2 is a CDM-specific sentinel meaning "retain all archived redo logs indefinitely".
 		result[keyRetainArchiveLogsIndefinitely] = true
 	case 0:
 		// not set — leave absent
