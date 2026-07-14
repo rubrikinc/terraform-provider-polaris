@@ -7,35 +7,8 @@ description: |-
   organizations onboarded to RSC.
   RSC does not return the cloud type or the enabled feature blocks for
   onboarded organizations, so neither is populated in list results. cloud
-  defaults to PUBLIC unless supplied in the import identity (see below), and at
-  least one feature block must be declared on each organization in configuration
-  before applying.
-  Bulk Import
-  The list resource can be combined with an import block to bring existing
-  organizations under management. Each result carries the RSC organization ID in
-  its identity, used as both the for_each key and the import identity. Because
-  RSC does not return the cloud type, supply it via a variable keyed on the
-  organization native ID (native_id) for any non-public organization; native IDs
-  omitted from the map default to PUBLIC:
-  
-  variable "clouds" {
-    type        = map(string)
-    description = "Map of Azure DevOps organization native_id to cloud type (PUBLIC, CHINA or USGOV)."
-    default     = {}
-  }
-  
-  import {
-    for_each = list.polaris_azure_devops_organization.all.results
-    to       = polaris_azure_devops_organization.org[each.value.identity.id]
-    identity = {
-      id    = each.value.identity.id
-      cloud = lookup(var.clouds, each.value.resource.native_id, "PUBLIC")
-    }
-  }
-  
-  After generating configuration, declare at least one feature block on each
-  organization (features are not returned by RSC); the first apply reconciles them
-  into state.
+  defaults to PUBLIC unless supplied in the import identity (see below), and you
+  must add at least one feature block to each resource before applying.
 ---
 
 # polaris_azure_devops_organization (List Resource)
@@ -45,39 +18,8 @@ organizations onboarded to RSC.
 
 RSC does not return the `cloud` type or the enabled `feature` blocks for
 onboarded organizations, so neither is populated in list results. `cloud`
-defaults to `PUBLIC` unless supplied in the import identity (see below), and at
-least one `feature` block must be declared on each organization in configuration
-before applying.
-
-## Bulk Import
-
-The list resource can be combined with an `import` block to bring existing
-organizations under management. Each result carries the RSC organization ID in
-its identity, used as both the `for_each` key and the import identity. Because
-RSC does not return the cloud type, supply it via a variable keyed on the
-organization native ID (`native_id`) for any non-public organization; native IDs
-omitted from the map default to `PUBLIC`:
-
-```hcl
-variable "clouds" {
-  type        = map(string)
-  description = "Map of Azure DevOps organization native_id to cloud type (PUBLIC, CHINA or USGOV)."
-  default     = {}
-}
-
-import {
-  for_each = list.polaris_azure_devops_organization.all.results
-  to       = polaris_azure_devops_organization.org[each.value.identity.id]
-  identity = {
-    id    = each.value.identity.id
-    cloud = lookup(var.clouds, each.value.resource.native_id, "PUBLIC")
-  }
-}
-```
-
-After generating configuration, declare at least one `feature` block on each
-organization (features are not returned by RSC); the first apply reconciles them
-into state.
+defaults to `PUBLIC` unless supplied in the import identity (see below), and you
+must add at least one `feature` block to each resource before applying.
 
 ## Example Usage
 
