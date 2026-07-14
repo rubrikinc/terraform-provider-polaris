@@ -81,6 +81,7 @@ const (
 	keyNCDConfig                                    = "ncd_config"
 	keyOracleConfig                                 = "oracle_config"
 	keyPostgresDBClusterConfig                      = "postgres_db_cluster_config"
+	keyRetainArchiveLogsIndefinitely                = "retain_archive_logs_indefinitely"
 	keySapHanaConfig                                = "sap_hana_config"
 	keyStorageSnapshotConfig                        = "storage_snapshot_config"
 	keyBeforeTime                                   = "before_time"
