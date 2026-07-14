@@ -21,10 +21,12 @@ description: |-
 ### Required
 
 - `name` (String) Exact object name to search for.
-- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeResourceGroup`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.
+- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureDevOpsOrganization`, `AzureDevOpsProject`, `AzureDevOpsRepository`, `AzureNativeResourceGroup`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.
 
 ### Optional
 
+- `org_id` (String) RSC ID of the parent Azure DevOps organization (UUID). May be set when `object_type` is `AzureDevOpsProject` to disambiguate a project name shared across organizations; ignored for other object types.
+- `project_id` (String) RSC ID of the parent Azure DevOps project (UUID). May be set when `object_type` is `AzureDevOpsRepository` to disambiguate a repository name shared across projects; ignored for other object types.
 - `subscription_id` (String) RSC cloud account ID of the parent Azure subscription (UUID). Required when `object_type` is `AzureNativeResourceGroup`; ignored for other object types.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 

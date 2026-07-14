@@ -61,7 +61,28 @@ without replacing the service principal.
 -> **Note:** There is no way to verify if a service principal has been added to RSC
    using the UI. RSC tenants don't show up in the UI until the first subscription is
    added.
+
+-> **Note:** A tenant that needs both cloud native protection and Azure DevOps
+   protection declares two ´polaris_azure_service_principal´ resources with the same
+   ´tenant_domain´ but different ´use_case´ values. The credentials are stored in a
+   separate location per use case.
 `
+
+// Azure service principal use cases. These are the provider-facing values for
+// the use_case field; they are mapped to azure.AppUseCase before being sent to
+// RSC.
+const (
+	useCaseCloudNativeProtection = "CLOUD_NATIVE_PROTECTION"
+	useCaseAzureDevOps           = "AZURE_DEVOPS"
+)
+
+// azureAppUseCase maps the provider-facing use_case value to the SDK use case.
+func azureAppUseCase(useCase string) azure.AppUseCase {
+	if useCase == useCaseAzureDevOps {
+		return azure.AppUseCaseDevOps
+	}
+	return azure.AppUseCaseCNP
+}
 
 // resourceAzureServicePrincipal defines the schema for the Azure service
 // principal resource. Note that the delete function cannot remove the service
@@ -158,6 +179,17 @@ func resourceAzureServicePrincipal() *schema.Resource {
 					"be created.",
 				ValidateFunc: validation.IsUUID,
 			},
+			keyUseCase: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Default:  useCaseCloudNativeProtection,
+				Description: "What the service principal is registered for. One of `CLOUD_NATIVE_PROTECTION` " +
+					"(default) or `AZURE_DEVOPS`. The credentials are stored in a separate location per use case, " +
+					"so a tenant can have one service principal per use case. Changing this forces a new resource " +
+					"to be created.",
+				ValidateFunc: validation.StringInSlice([]string{useCaseCloudNativeProtection, useCaseAzureDevOps}, false),
+			},
 		},
 		SchemaVersion: 1,
 		StateUpgraders: []schema.StateUpgrader{{
@@ -199,7 +231,8 @@ func azureCreateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 		principal = azure.ServicePrincipal(appID, d.Get(keyAppName).(string), d.Get(keyAppSecret).(string), tenantID, tenantDomain)
 	}
 
-	appID, err := azure.Wrap(client).SetServicePrincipal(ctx, principal)
+	useCase := azureAppUseCase(d.Get(keyUseCase).(string))
+	appID, err := azure.Wrap(client).SetServicePrincipalForUseCase(ctx, principal, useCase)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -239,7 +272,8 @@ func azureUpdateServicePrincipal(ctx context.Context, d *schema.ResourceData, m 
 		}
 
 		principal := azure.ServicePrincipal(id, d.Get(keyAppName).(string), d.Get(keyAppSecret).(string), tenantID, d.Get(keyTenantDomain).(string))
-		if _, err := azure.Wrap(client).SetServicePrincipal(ctx, principal); err != nil {
+		useCase := azureAppUseCase(d.Get(keyUseCase).(string))
+		if _, err := azure.Wrap(client).SetServicePrincipalForUseCase(ctx, principal, useCase); err != nil {
 			return diag.FromErr(err)
 		}
 	}
