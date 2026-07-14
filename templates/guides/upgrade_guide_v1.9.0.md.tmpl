@@ -235,34 +235,19 @@ data "polaris_object" "repo" {
 }
 ```
 
-### Discovery and Bulk Import
+### Discovery and Import
 
-A new `polaris_azure_devops_organization` list resource lists onboarded Azure DevOps organizations, so you can discover
-them with `terraform query` or bring existing organizations under management with an `import` block:
+A new `polaris_azure_devops_organization` list resource lists onboarded Azure DevOps organizations. Declare it in a
+`.tfquery.hcl` file:
 
 ```terraform
-variable "clouds" {
-  type        = map(string)
-  description = "Map of Azure DevOps organization native_id to cloud type (PUBLIC, CHINA or USGOV)."
-  default     = {}
-}
-
 list "polaris_azure_devops_organization" "all" {
   provider = polaris
 }
-
-import {
-  for_each = list.polaris_azure_devops_organization.all.results
-  to       = polaris_azure_devops_organization.org[each.value.identity.id]
-  identity = {
-    id    = each.value.identity.id
-    cloud = lookup(var.clouds, each.value.resource.native_id, "PUBLIC")
-  }
-}
 ```
 
-RSC does not return the enabled `feature` blocks or the `cloud` type for onboarded organizations, so neither is
-populated in list results. After generating configuration, set at least one `feature` block on each organization before
-applying. The `cloud` type defaults to `PUBLIC` on import; for any non-public organization supply it in the import
-`identity` block, e.g. with a `var.clouds` map keyed on the organization `native_id` as shown above. For details,
-see the [polaris_azure_devops_organization list resource documentation](../list-resources/azure_devops_organization.md).
+Run `terraform query` to discover organizations, or `terraform query -generate-config-out=generated.tf` to also generate
+a `resource` block and a matching `import` block for each one. RSC does not return the `cloud` type or the enabled
+`feature` blocks, so the generated configuration imports every organization as `PUBLIC` with no features. Before
+applying, edit `generated.tf`: set `cloud` in each generated import identity to `CHINA` or `USGOV` for any non-public
+organization, and add at least one `feature` block to each resource.
