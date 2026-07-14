@@ -203,8 +203,7 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 
-	// Populate AWS features block with permission groups.
-	awsPermGroups, err := gqlaws.Wrap(client.GQL).AllPermissionsGroupsByFeature(ctx, aws.SupportedFeatures())
+	awsPermGroups, err := gqlaws.Wrap(client.GQL).AllPermissionsGroupsByFeature(ctx, aws.SupportedFeatures(), gqlaws.ServiceTypeNonBaaS)
 	if err != nil {
 		return diag.FromErr(err)
 	}
