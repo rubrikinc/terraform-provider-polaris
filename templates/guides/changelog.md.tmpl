@@ -19,6 +19,9 @@ page_title: "Changelog"
   finishes BaaS onboarding, re-completes onboarding when RSC raises a permission version, and disables the
   account's features on destroy.
   [[docs](../resources/aws_account_managed_stack.md)]
+* New data source added for `polaris_objects` which returns every RSC hierarchy object matching a given
+  `object_type`, without filtering by name. Only the `AzureNativeResourceGroup` object type is supported so far,
+  optionally scoped to a single subscription via `subscription_id`. [[docs](../data-sources/objects.md)]
 * Add support for the Azure SQL V1/V2 SLA model in the `polaris_sla_domain` resource and data source, gated on the
   `CNP_AZURE_SQL_SLA_REVAMP` feature: a new `ltr_config` block on `azure_sql_database_config` and
   `azure_sql_managed_instance_config`, and a computed `backup_type` attribute. The Azure SQL Database and Managed
