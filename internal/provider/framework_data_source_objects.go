@@ -152,19 +152,46 @@ func (d *objectsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	objectType := config.ObjectType.ValueString()
 	subIDStr := config.SubscriptionID.ValueString()
 
+	azureAPI := azure.Wrap(polarisClient)
+
+	// Both the azureNativeResourceGroups filter and each resource group's
+	// azureSubscriptionDetails.id use the native subscription FID, whereas the
+	// data source's subscription_id (input and output) is the RSC cloud account
+	// ID. List the native subscriptions once to translate between the two.
+	natives, err := azureAPI.NativeSubscriptions(ctx, "")
+	if err != nil {
+		res.Diagnostics.AddError("Failed to list Azure native subscriptions", err.Error())
+		return
+	}
+	fidByCloudAccount := make(map[uuid.UUID]uuid.UUID, len(natives))
+	cloudAccountByFID := make(map[string]string, len(natives))
+	for _, n := range natives {
+		fidByCloudAccount[n.CloudAccountID] = n.ID
+		cloudAccountByFID[n.ID.String()] = n.CloudAccountID.String()
+	}
+
 	var subIDs []uuid.UUID
 	if subIDStr != "" {
-		subID, err := uuid.Parse(subIDStr)
+		cloudAccountID, err := uuid.Parse(subIDStr)
 		if err != nil {
 			res.Diagnostics.AddError("Invalid subscription_id", err.Error())
 			return
 		}
-		subIDs = []uuid.UUID{subID}
+
+		// The filter matches on the native subscription FID, so translate the
+		// cloud account ID to its FID before scoping the lookup.
+		fid, ok := fidByCloudAccount[cloudAccountID]
+		if !ok {
+			res.Diagnostics.AddError("Unknown subscription_id",
+				fmt.Sprintf("no Azure native subscription found for RSC cloud account ID %s", cloudAccountID))
+			return
+		}
+		subIDs = []uuid.UUID{fid}
 	}
 
 	// Passing an empty nameSubstring disables the RSC substring filter, so
 	// every resource group in scope is returned.
-	rgs, err := azure.Wrap(polarisClient).NativeResourceGroups(ctx, subIDs, "")
+	rgs, err := azureAPI.NativeResourceGroups(ctx, subIDs, "")
 	if err != nil {
 		res.Diagnostics.AddError("Failed to read Azure native resource groups", err.Error())
 		return
@@ -180,14 +207,24 @@ func (d *objectsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	objectValues := make([]attr.Value, 0, len(rgs))
 	for _, rg := range rgs {
+		// azureSubscriptionDetails.id is the native subscription FID; map it
+		// back to the RSC cloud account ID so the output subscription_id matches
+		// the input and polaris_azure_subscription.id. Fall back to the raw
+		// value if the subscription is somehow not in the native subscription
+		// list.
+		subID := rg.Subscription.ID
+		if cloudAccount, ok := cloudAccountByFID[rg.Subscription.ID]; ok {
+			subID = cloudAccount
+		}
+
 		hash.Write([]byte(rg.ID))
 		hash.Write([]byte(rg.Name))
-		hash.Write([]byte(rg.Subscription.ID))
+		hash.Write([]byte(subID))
 
 		objectValue, diags := types.ObjectValue(objectAttrTypes(), map[string]attr.Value{
 			keyID:             types.StringValue(rg.ID),
 			keyName:           types.StringValue(rg.Name),
-			keySubscriptionID: types.StringValue(rg.Subscription.ID),
+			keySubscriptionID: types.StringValue(subID),
 		})
 		res.Diagnostics.Append(diags...)
 		if res.Diagnostics.HasError() {
