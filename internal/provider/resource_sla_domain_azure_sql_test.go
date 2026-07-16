@@ -35,13 +35,8 @@ import (
 func requireAzureSQLSLARevampFeatureFlag(t *testing.T) {
 	t.Helper()
 
-	credentials := os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE")
-	if credentials == "" {
-		t.Skip("RUBRIK_POLARIS_SERVICEACCOUNT_FILE not set")
-	}
-
 	ctx := context.Background()
-	c, err := newClient(ctx, credentials, polaris.CacheParams{})
+	c, err := newClient(ctx, "", polaris.CacheParams{})
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}
@@ -61,9 +56,6 @@ type azureSQLTestResource struct {
 
 func azureSQLTestConfig(resource azureSQLTestResource) testConfig {
 	return testConfig{
-		Provider: struct{ Credentials string }{
-			Credentials: os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE"),
-		},
 		Resource: resource,
 	}
 }
@@ -71,9 +63,7 @@ func azureSQLTestConfig(resource azureSQLTestResource) testConfig {
 // V1 (Azure-managed, long-term retention) Azure SQL Database SLA — carries
 // ltr_config, and no Rubrik snapshot schedule or backup location.
 const slaDomainAzureSQLV1Tmpl = `
-provider "polaris" {
-	credentials = "{{ .Provider.Credentials }}"
-}
+provider "polaris" {}
 
 resource "polaris_sla_domain" "azure_sql_v1" {
 	name         = "Test SLA Azure SQL V1"
@@ -107,9 +97,7 @@ data "polaris_sla_domain" "azure_sql_v1" {
 
 // V1 SLA combining the Azure SQL Database and Managed Instance object types.
 const slaDomainAzureSQLDbMiTmpl = `
-provider "polaris" {
-	credentials = "{{ .Provider.Credentials }}"
-}
+provider "polaris" {}
 
 resource "polaris_sla_domain" "azure_sql_db_mi" {
 	name         = "Test SLA Azure SQL DB and MI"
@@ -141,9 +129,7 @@ resource "polaris_sla_domain" "azure_sql_db_mi" {
 // V2 (Rubrik-managed) Azure SQL Database SLA — a snapshot schedule plus a
 // backup location, and no ltr_config.
 const slaDomainAzureSQLV2Tmpl = `
-provider "polaris" {
-	credentials = "{{ .Provider.Credentials }}"
-}
+provider "polaris" {}
 
 resource "polaris_sla_domain" "azure_sql_v2" {
 	name         = "Test SLA Azure SQL V2"
