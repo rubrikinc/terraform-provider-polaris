@@ -201,6 +201,15 @@ func (d *objectsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return cmp.Compare(a.ID, b.ID)
 	})
 
+	// RSC's azureNativeResourceGroups connection can return the same resource
+	// group on more than one page, especially while native discovery is still
+	// settling. Drop exact duplicates by object ID before building the Set — the
+	// framework hard-errors on duplicate Set elements. Keyed on ID (not name),
+	// so distinct resource groups that happen to share a name are preserved.
+	rgs = slices.CompactFunc(rgs, func(a, b gqlazure.NativeResourceGroup) bool {
+		return a.ID == b.ID
+	})
+
 	hash := sha256.New()
 	hash.Write([]byte(objectType))
 	hash.Write([]byte(subIDStr))
