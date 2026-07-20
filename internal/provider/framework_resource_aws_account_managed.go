@@ -306,9 +306,17 @@ func (r *awsAccountManagedResource) ModifyPlan(ctx context.Context, req resource
 	// Adding a feature changes the CloudFormation template and permission
 	// version. Mark those computed attributes unknown so apply can write the new
 	// values without a "provider produced inconsistent result" error.
+	//
+	// stack_name is deliberately NOT marked unknown: RSC reuses the same stack
+	// name across feature edits (CloudFormation stack names are immutable). It
+	// feeds aws_cloudformation_stack.name, which is ForceNew - marking it unknown
+	// makes Terraform replace the stack, which cascades into replacing the
+	// phase-2 polaris_aws_account_managed_stack resource. That destroy runs
+	// RemoveManagedAccount (tearing the account down) before phase-1's in-place
+	// update, which then re-creates the account under a new ID. Keeping stack_name
+	// stable lets the template change apply as an in-place stack update instead.
 	if added {
 		res.Diagnostics.Append(res.Plan.SetAttribute(ctx, path.Root(keyTemplateURL), types.StringUnknown())...)
-		res.Diagnostics.Append(res.Plan.SetAttribute(ctx, path.Root(keyStackName), types.StringUnknown())...)
 		res.Diagnostics.Append(res.Plan.SetAttribute(ctx, path.Root(keyCloudFormationURL), types.StringUnknown())...)
 		res.Diagnostics.Append(res.Plan.SetAttribute(ctx, path.Root(keyPermissionsVersion), types.StringUnknown())...)
 	}
