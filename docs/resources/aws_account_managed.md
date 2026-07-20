@@ -71,9 +71,9 @@ output "cloudformation_stack_name" {
 ### Optional
 
 - `cloud` (String) AWS cloud type. Only `STANDARD` is supported. Changing this forces a new resource to be created.
-- `features` (Set of String) RSC features to onboard. When omitted, all BaaS-supported features are used: `CLOUD_NATIVE_PROTECTION`, `RDS_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION` and `CLOUD_DISCOVERY`. `CLOUD_DISCOVERY` is a prerequisite for the protection features and must be included when `features` is set. Changing this forces a new resource to be created.
-- `name` (String) Account name. Derived from the AWS account when not specified.
-- `regions` (Set of String) AWS regions to protect. When omitted, all BaaS-supported regions are used. Changing this forces a new resource to be created.
+- `features` (Set of String) RSC features to onboard. When omitted, all BaaS-supported features are used: `CLOUD_NATIVE_PROTECTION`, `RDS_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION` and `CLOUD_DISCOVERY`. `CLOUD_DISCOVERY` is a prerequisite for the protection features and must be included when `features` is set. When omitted, the account tracks the current default set and newly released features are added in place. Adding a feature is applied in place (the CloudFormation stack is redeployed via the `polaris_aws_account_managed_stack` resource); removing a feature forces a new resource to be created.
+- `name` (String) Account name. Derived from the AWS account when not specified. Can be updated in place.
+- `regions` (Set of String) AWS regions to protect. When omitted, all BaaS-supported regions are used. Changing regions on an existing resource is not supported yet; recreate the resource to change them.
 
 ### Read-Only
 
