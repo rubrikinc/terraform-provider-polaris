@@ -512,9 +512,10 @@ func (r *gcpCloudClusterResource) Read(ctx context.Context, req resource.ReadReq
 func (r *gcpCloudClusterResource) Update(ctx context.Context, req resource.UpdateRequest, res *resource.UpdateResponse) {
 	tflog.Trace(ctx, "gcpCloudClusterResource.Update")
 
-	var plan, state gcpCloudClusterModel
+	var plan, state, config gcpCloudClusterModel
 	res.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	res.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	res.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if res.Diagnostics.HasError() {
 		return
 	}
@@ -533,11 +534,15 @@ func (r *gcpCloudClusterResource) Update(ctx context.Context, req resource.Updat
 	gqlClusterAPI := gqlcluster.Wrap(polarisClient.GQL)
 
 	planCC := plan.ClusterConfig[0]
+	configCC := config.ClusterConfig[0]
 
-	// DNS name servers and search domains are updated together.
-	dnsServers := setToStrings(ctx, planCC.DNSNameServers, &res.Diagnostics)
-	searchDomains := setToStrings(ctx, planCC.DNSSearchDomains, &res.Diagnostics)
-	ntpServers := setToStrings(ctx, planCC.NTPServers, &res.Diagnostics)
+	// Read the set-valued fields from the config: they are null (never unknown)
+	// there when omitted, so ElementsAs stays error-free for the Optional
+	// dns_search_domains. DNS name servers and search domains are updated together.
+	var dnsServers, searchDomains, ntpServers []string
+	res.Diagnostics.Append(configCC.DNSNameServers.ElementsAs(ctx, &dnsServers, false)...)
+	res.Diagnostics.Append(configCC.DNSSearchDomains.ElementsAs(ctx, &searchDomains, false)...)
+	res.Diagnostics.Append(configCC.NTPServers.ElementsAs(ctx, &ntpServers, false)...)
 	if res.Diagnostics.HasError() {
 		return
 	}
@@ -668,17 +673,17 @@ func (r *gcpCloudClusterResource) buildCreateInput(ctx context.Context, plan, co
 		}
 	}
 
-	serviceAccounts := make([]gqlcloudcluster.GcpServiceAccountInput, 0)
-	for _, sa := range setToStrings(ctx, vm.ServiceAccounts, &diags) {
-		serviceAccounts = append(serviceAccounts, gqlcloudcluster.GcpServiceAccountInput{
-			Email:  sa,
-			Scopes: []string{gcpServiceAccountScope},
-		})
-	}
+	// Read the set-valued fields from the config rather than the plan: they are
+	// null (never unknown) there when omitted, so ElementsAs stays error-free
+	// for the Optional dns_search_domains.
+	configCC := config.ClusterConfig[0]
+	configVM := config.VMConfig[0]
 
-	dnsNameServers := setToStrings(ctx, cc.DNSNameServers, &diags)
-	dnsSearchDomains := setToStrings(ctx, cc.DNSSearchDomains, &diags)
-	ntpServers := setToStrings(ctx, cc.NTPServers, &diags)
+	var serviceAccountEmails, dnsNameServers, dnsSearchDomains, ntpServers []string
+	diags.Append(configVM.ServiceAccounts.ElementsAs(ctx, &serviceAccountEmails, false)...)
+	diags.Append(configCC.DNSNameServers.ElementsAs(ctx, &dnsNameServers, false)...)
+	diags.Append(configCC.DNSSearchDomains.ElementsAs(ctx, &dnsSearchDomains, false)...)
+	diags.Append(configCC.NTPServers.ElementsAs(ctx, &ntpServers, false)...)
 	if diags.HasError() {
 		return gqlcloudcluster.CreateGcpClusterInput{}, diags
 	}
@@ -686,12 +691,18 @@ func (r *gcpCloudClusterResource) buildCreateInput(ctx context.Context, plan, co
 		dnsSearchDomains = []string{}
 	}
 
+	serviceAccounts := make([]gqlcloudcluster.GcpServiceAccountInput, 0, len(serviceAccountEmails))
+	for _, sa := range serviceAccountEmails {
+		serviceAccounts = append(serviceAccounts, gqlcloudcluster.GcpServiceAccountInput{
+			Email:  sa,
+			Scopes: []string{gcpServiceAccountScope},
+		})
+	}
+
 	var isAzResilient *bool
 	if azResilient {
 		isAzResilient = &azResilient
 	}
-
-	configCC := config.ClusterConfig[0]
 
 	input := gqlcloudcluster.CreateGcpClusterInput{
 		CloudAccountID:       cloudAccountID,
@@ -801,14 +812,4 @@ func (r *gcpCloudClusterResource) refreshExisting(ctx context.Context, polarisCl
 	model.VMConfig[0].CDMVersion = types.StringValue(cc.Version)
 
 	return false, diags
-}
-
-// setTostrings decodes a types.Set of strings into a []string.
-func setToStrings(ctx context.Context, set types.Set, diags *diag.Diagnostics) []string {
-	if set.IsNull() || set.IsUnknown() {
-		return nil
-	}
-	var out []string
-	diags.Append(set.ElementsAs(ctx, &out, false)...)
-	return out
 }
