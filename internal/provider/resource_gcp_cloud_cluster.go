@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,6 +51,9 @@ number of nodes, instance types, and network configuration.
 
 ~> **Note:** The GCP project must be onboarded to RSC with the Server and Apps
    feature enabled before creating a cloud cluster.
+
+~> **Note:** This resource requires **Terraform v1.11.0 or later** due to the use of write-only attributes for
+   ´admin_email´ and ´admin_password´.
 `
 
 // This resource uses a template for its documentation due to a bug in the TF
@@ -89,6 +93,13 @@ func resourceGcpCloudCluster() *schema.Resource {
 				Description:  "GCP zone to deploy the cluster in. Changing this forces a new resource to be created.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
+			keyAzResilient: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				ForceNew:    true,
+				Description: "Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` and `subnet` must be omitted. Requires at least three nodes and a region with at least three zones. Changing this forces a new resource to be created.",
+			},
 			keyClusterConfig: {
 				Type:        schema.TypeList,
 				Required:    true,
@@ -105,7 +116,7 @@ func resourceGcpCloudCluster() *schema.Resource {
 						keyAdminEmail: {
 							Type:         schema.TypeString,
 							Required:     true,
-							ForceNew:     true,
+							WriteOnly:    true,
 							Description:  "Email address for the cluster admin user. Changing this value will have no effect on the cluster.",
 							ValidateFunc: validateEmailAddress,
 						},
@@ -113,7 +124,7 @@ func resourceGcpCloudCluster() *schema.Resource {
 							Type:         schema.TypeString,
 							Required:     true,
 							Sensitive:    true,
-							ForceNew:     true,
+							WriteOnly:    true,
 							Description:  "Password for the cluster admin user. Changing this value will have no effect on the cluster.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
@@ -211,9 +222,14 @@ func resourceGcpCloudCluster() *schema.Resource {
 							Type:        schema.TypeString,
 							Required:    true,
 							ForceNew:    true,
-							Description: "GCP instance type for the cluster nodes. Changing this forces a new resource to be created. Supported values are `N2_STANDARD_16`, `N2_STANDARD_32`, `N2_STANDARD_64` and `N2_HIGHMEM_16`.",
+							Description: "GCP instance type for the cluster nodes. Changing this forces a new resource to be created. Supported values are `N2_STANDARD_8`, `N2_STANDARD_16`, `N2_HIGHMEM_16`, `N2D_STANDARD_8`, `N2D_STANDARD_16` and `N2D_HIGHMEM_16`. The set of instance types actually available depends on the selected CDM version.",
 							ValidateFunc: validation.StringInSlice([]string{
-								"N2_STANDARD_16", "N2_STANDARD_32", "N2_STANDARD_64", "N2_HIGHMEM_16",
+								string(gqlcloudcluster.GcpInstanceTypeN2Standard8),
+								string(gqlcloudcluster.GcpInstanceTypeN2Standard16),
+								string(gqlcloudcluster.GcpInstanceTypeN2Highmem16),
+								string(gqlcloudcluster.GcpInstanceTypeN2DStandard8),
+								string(gqlcloudcluster.GcpInstanceTypeN2DStandard16),
+								string(gqlcloudcluster.GcpInstanceTypeN2DHighmem16),
 							}, false),
 						},
 						keyNetwork: {
@@ -225,9 +241,9 @@ func resourceGcpCloudCluster() *schema.Resource {
 						},
 						keySubnet: {
 							Type:         schema.TypeString,
-							Required:     true,
+							Optional:     true,
 							ForceNew:     true,
-							Description:  "GCP subnet name for the cluster nodes. Changing this forces a new resource to be created.",
+							Description:  "GCP subnet name for the cluster nodes. Required when `az_resilient` is false; omit it and use `subnet_az_config` when `az_resilient` is true. Changing this forces a new resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyHostProject: {
@@ -235,6 +251,30 @@ func resourceGcpCloudCluster() *schema.Resource {
 							Optional:    true,
 							ForceNew:    true,
 							Description: "GCP host project for shared VPC. Changing this forces a new resource to be created.",
+						},
+						keySubnetAzConfigs: {
+							Type:        schema.TypeList,
+							Optional:    true,
+							ForceNew:    true,
+							Description: "Subnet and availability zone pairs for Multi-AZ deployments. Required when `az_resilient` is true. Each block specifies a subnet and its availability zone; the network and host project are taken from the `network` and `host_project` fields. Changing this forces a new resource to be created.",
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									keyAvailabilityZone: {
+										Type:         schema.TypeString,
+										Required:     true,
+										ForceNew:     true,
+										Description:  "Availability zone name, e.g. `us-west1-a`.",
+										ValidateFunc: validation.StringIsNotWhiteSpace,
+									},
+									keySubnet: {
+										Type:         schema.TypeString,
+										Required:     true,
+										ForceNew:     true,
+										Description:  "GCP subnet name for this availability zone.",
+										ValidateFunc: validation.StringIsNotWhiteSpace,
+									},
+								},
+							},
 						},
 						keyServiceAccounts: {
 							Type: schema.TypeSet,
@@ -244,18 +284,6 @@ func resourceGcpCloudCluster() *schema.Resource {
 							Required:    true,
 							ForceNew:    true,
 							Description: "GCP service account emails for the cluster nodes. Changing this forces a new resource to be created.",
-						},
-						keyVMType: {
-							Type:        schema.TypeString,
-							Optional:    true,
-							ForceNew:    true,
-							Default:     "DENSE",
-							Description: "VM type for the cluster. Changing this forces a new resource to be created. Possible values are `STANDARD`, `DENSE` and `EXTRA_DENSE`. `DENSE` is recommended for CCES.",
-							ValidateFunc: validation.StringInSlice([]string{
-								string(gqlcloudcluster.CCVmConfigStandard),
-								string(gqlcloudcluster.CCVmConfigDense),
-								string(gqlcloudcluster.CCVmConfigExtraDense),
-							}, false),
 						},
 						keyDeleteProtection: {
 							Type:        schema.TypeBool,
@@ -267,6 +295,36 @@ func resourceGcpCloudCluster() *schema.Resource {
 					},
 				},
 			},
+		},
+		CustomizeDiff: func(ctx context.Context, diff *schema.ResourceDiff, meta any) error {
+			vmConfigList := diff.Get(keyVMConfig).([]any)
+			if len(vmConfigList) == 0 {
+				return nil
+			}
+			vmConfigMap := vmConfigList[0].(map[string]any)
+
+			hasSubnetAzConfigs := false
+			if configs, ok := vmConfigMap[keySubnetAzConfigs]; ok && len(configs.([]any)) > 0 {
+				hasSubnetAzConfigs = true
+			}
+			hasSubnet := vmConfigMap[keySubnet] != ""
+
+			if diff.Get(keyAzResilient).(bool) {
+				if !hasSubnetAzConfigs {
+					return fmt.Errorf("%s is required in %s when %s is true", keySubnetAzConfigs, keyVMConfig, keyAzResilient)
+				}
+				if hasSubnet {
+					return fmt.Errorf("%s cannot be specified in %s when %s is true, use %s instead", keySubnet, keyVMConfig, keyAzResilient, keySubnetAzConfigs)
+				}
+			} else {
+				if hasSubnetAzConfigs {
+					return fmt.Errorf("%s cannot be specified in %s when %s is false", keySubnetAzConfigs, keyVMConfig, keyAzResilient)
+				}
+				if !hasSubnet {
+					return fmt.Errorf("%s is required in %s when %s is false", keySubnet, keyVMConfig, keyAzResilient)
+				}
+			}
+			return nil
 		},
 		Timeouts: &schema.ResourceTimeout{
 			Create:  schema.DefaultTimeout(60 * time.Minute),
@@ -304,10 +362,35 @@ func gcpCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 
 	// Extract network configuration
 	network := vmConfigMap[keyNetwork].(string)
-	subnet := vmConfigMap[keySubnet].(string)
 	hostProject := vmConfigMap[keyHostProject].(string)
+	azResilient := d.Get(keyAzResilient).(bool)
 
-	// Build networkConfig by replicating the single subnet config for numNodes times
+	// Build the per-zone subnet configs for Multi-AZ deployments.
+	var subnetAzConfigs []gqlcloudcluster.SubnetAzConfig
+	for _, item := range vmConfigMap[keySubnetAzConfigs].([]any) {
+		configMap := item.(map[string]any)
+		subnetAzConfigs = append(subnetAzConfigs, gqlcloudcluster.SubnetAzConfig{
+			AvailabilityZone: configMap[keyAvailabilityZone].(string),
+			Subnet:           configMap[keySubnet].(string),
+		})
+	}
+
+	// Only send isAzResilient when true, matching the RSC UI which omits the
+	// field for single-AZ clusters.
+	var isAzResilient *bool
+	if azResilient {
+		isAzResilient = &azResilient
+	}
+
+	// The backend requires networkConfig to be populated in both modes. For a
+	// Multi-AZ cluster the base subnet comes from the first subnet_az_config
+	// entry (network and host project are shared); otherwise it is the single
+	// subnet field. The SDK fans networkConfig[0] out to one entry per node.
+	subnet := vmConfigMap[keySubnet].(string)
+	if azResilient && len(subnetAzConfigs) > 0 {
+		subnet = subnetAzConfigs[0].Subnet
+	}
+
 	networkConfig := make([]gqlcloudcluster.GcpSubnetInput, numNodes)
 	for i := 0; i < numNodes; i++ {
 		networkConfig[i] = gqlcloudcluster.GcpSubnetInput{
@@ -353,18 +436,22 @@ func gcpCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		gqlcloudcluster.AllChecks,
 	}
 
-	vmType := gqlcloudcluster.VmConfigType(vmConfigMap[keyVMType].(string))
-
 	gcpEsConfig := gqlcloudcluster.GcpEsConfigInput{
 		BucketName:         clusterConfigMap[keyBucketName].(string),
 		Region:             region,
 		ShouldCreateBucket: false,
 	}
 
+	// WriteOnly fields are nulled in the planned state, so we must read
+	// them from the raw config.
+	rawConfig := d.GetRawConfig()
+	adminEmail := rawConfig.GetAttr(keyClusterConfig).AsValueSlice()[0].GetAttr(keyAdminEmail).AsString()
+	adminPassword := rawConfig.GetAttr(keyClusterConfig).AsValueSlice()[0].GetAttr(keyAdminPassword).AsString()
+
 	clusterConfig := gqlcloudcluster.GcpClusterConfig{
 		ClusterName:      clusterConfigMap[keyClusterName].(string),
-		UserEmail:        clusterConfigMap[keyAdminEmail].(string),
-		AdminPassword:    secret.String(clusterConfigMap[keyAdminPassword].(string)),
+		UserEmail:        adminEmail,
+		AdminPassword:    secret.String(adminPassword),
 		DNSNameServers:   dnsNameServers,
 		DNSSearchDomains: dnsSearchDomains,
 		NTPServers:       ntpServers,
@@ -377,7 +464,7 @@ func gcpCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		InstanceType:     gqlcloudcluster.GcpCCInstanceType(vmConfigMap[keyInstanceType].(string)),
 		NetworkConfig:    networkConfig,
 		ServiceAccounts:  serviceAccounts,
-		VMType:           vmType,
+		SubnetAzConfigs:  subnetAzConfigs,
 		DeleteProtection: vmConfigMap[keyDeleteProtection].(bool),
 	}
 
@@ -385,7 +472,9 @@ func gcpCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		CloudAccountID:       cloudAccountID,
 		ClusterConfig:        clusterConfig,
 		IsEsType:             true,
+		IsAzResilient:        isAzResilient,
 		KeepClusterOnFailure: clusterConfigMap[keyKeepClusterOnFailure].(bool),
+		Region:               region,
 		Validations:          validations,
 		VMConfig:             vmConfig,
 		Zone:                 zone,

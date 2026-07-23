@@ -1,19 +1,47 @@
 ---
-page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+page_title: "polaris_gcp_cloud_cluster Resource - terraform-provider-polaris"
 subcategory: ""
 description: |-
-  {{.Description}}
+  
+The `polaris_gcp_cloud_cluster` resource creates a GCP cloud cluster using RSC.
+
+This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage
+in GCP using the specified configuration. The cluster will be deployed with the specified
+number of nodes, instance types, and network configuration.
+
+~> **Note:** This resource creates actual GCP infrastructure. Destroying the
+   resource will attempt to clean up the created resources, but manual cleanup
+   may be required.
+
+~> **Note:** The GCP project must be onboarded to RSC with the Server and Apps
+   feature enabled before creating a cloud cluster.
+
+~> **Note:** This resource requires **Terraform v1.11.0 or later** due to the use of write-only attributes for
+   `admin_email` and `admin_password`.
+
 ---
 
-# {{.Name}} ({{.Type}})
+# polaris_gcp_cloud_cluster (Resource)
 
-{{.Description}}
 
-{{if .HasExample}}
-## Example Usage
+The `polaris_gcp_cloud_cluster` resource creates a GCP cloud cluster using RSC.
 
-{{tffile .ExampleFile}}
-{{end}}
+This resource creates a Rubrik Cloud Data Management (CDM) cluster with elastic storage
+in GCP using the specified configuration. The cluster will be deployed with the specified
+number of nodes, instance types, and network configuration.
+
+~> **Note:** This resource creates actual GCP infrastructure. Destroying the
+   resource will attempt to clean up the created resources, but manual cleanup
+   may be required.
+
+~> **Note:** The GCP project must be onboarded to RSC with the Server and Apps
+   feature enabled before creating a cloud cluster.
+
+~> **Note:** This resource requires **Terraform v1.11.0 or later** due to the use of write-only attributes for
+   `admin_email` and `admin_password`.
+
+
+
 ## Schema
 
 ### Required
