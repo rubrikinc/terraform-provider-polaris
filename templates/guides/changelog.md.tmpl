@@ -4,6 +4,19 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.9.1
+* New resource added for `polaris_gcp_cloud_cluster` which creates a Rubrik Cloud Data Management (CDM) cluster
+  with elastic storage (CCES) in GCP using RSC. The target GCP project must be onboarded to RSC with the
+  `SERVERS_AND_APPS` feature enabled before creating a cloud cluster. The `admin_email` and `admin_password`
+  fields are write-only, which requires Terraform v1.11.0 or later.
+  [[docs](../resources/gcp_cloud_cluster.md)]
+* Add support for Multi-AZ resiliency in the `polaris_gcp_cloud_cluster` resource. Set `az_resilient` to true and
+  provide a `subnet_az_config` block per availability zone. Requires at least three nodes and a region with at
+  least three zones. [[docs](../resources/gcp_cloud_cluster.md)]
+* New data source added for `polaris_gcp_service_accounts` which returns the GCP service accounts RSC has
+  discovered for a cloud account, for use with the `polaris_gcp_cloud_cluster` resource.
+  [[docs](../data-sources/gcp_service_accounts.md)]
+
 ## v1.9.0
 * **Breaking Change:** When the `CNP_AZURE_SQL_SLA_REVAMP` feature is enabled, a V2 (Rubrik-managed) Azure SQL
   Database SLA in the `polaris_sla_domain` resource must specify its backup location with a `backup_location` block
