@@ -440,6 +440,7 @@ const (
 	keyThreshold                                    = "threshold"
 	keyThresholdUnit                                = "threshold_unit"
 	keyTimeout                                      = "timeout"
+	keyTimeouts                                     = "timeouts"
 	keyTimestamp                                    = "timestamp"
 	keyTimezone                                     = "timezone"
 	keyTokenCache                                   = "token_cache"
