@@ -4,9 +4,10 @@ page_title: "polaris_azure_devops_script Data Source - terraform-provider-polari
 subcategory: ""
 description: |-
   The polaris_azure_devops_script data source generates the Azure DevOps
-  onboarding scripts for one or more organizations. Run the generated script
-  against the Azure DevOps organization to create the Rubrik group, grant the
-  Rubrik service principal read access, and assign a Basic license.
+  onboarding scripts — a bash and a PowerShell variant — for one or more
+  organizations. Run the variant that matches your environment against each
+  target organization to create the Rubrik group, grant the Rubrik service
+  principal read access, and assign a Basic license.
   ~> Warning: The Azure AD tenant and service principal referenced by
   tenant_domain must already be onboarded to RSC for the Azure DevOps use case.
   Reading this data source fails if the tenant has not been onboarded.
@@ -14,6 +15,13 @@ description: |-
   with the Azure CLI signed in (az login) as a Project Collection Administrator
   in each target organization; the script mints a short-lived Azure DevOps token
   from that az session, so no personal access token is required.
+  ~> Note: Running the script is an out-of-band step by design. To have
+  Terraform run it for you, a null_resource with a local-exec provisioner is
+  one option; add a depends_on from the polaris_azure_devops_organization
+  resource so the script runs before onboarding. This runs the script on the
+  machine executing Terraform, which must be signed in to the Azure CLI as a
+  Project Collection Administrator. See the azure_devops example module in the
+  terraform-provider-polaris-examples repository for a complete configuration.
   Permission Groups
   Following is a list of features and their applicable permission groups. These
   are used when specifying the feature block.
@@ -26,9 +34,10 @@ description: |-
 # polaris_azure_devops_script (Data Source)
 
 The `polaris_azure_devops_script` data source generates the Azure DevOps
-onboarding scripts for one or more organizations. Run the generated script
-against the Azure DevOps organization to create the Rubrik group, grant the
-Rubrik service principal read access, and assign a Basic license.
+onboarding scripts — a bash and a PowerShell variant — for one or more
+organizations. Run the variant that matches your environment against each
+target organization to create the Rubrik group, grant the Rubrik service
+principal read access, and assign a Basic license.
 
 ~> **Warning:** The Azure AD tenant and service principal referenced by
 `tenant_domain` must already be onboarded to RSC for the Azure DevOps use case.
@@ -38,6 +47,14 @@ The provider does not run the script — it only generates it. Run it out of ban
 with the Azure CLI signed in (`az login`) as a Project Collection Administrator
 in each target organization; the script mints a short-lived Azure DevOps token
 from that `az` session, so no personal access token is required.
+
+~> **Note:** Running the script is an out-of-band step by design. To have
+Terraform run it for you, a `null_resource` with a `local-exec` provisioner is
+one option; add a `depends_on` from the `polaris_azure_devops_organization`
+resource so the script runs before onboarding. This runs the script on the
+machine executing Terraform, which must be signed in to the Azure CLI as a
+Project Collection Administrator. See the `azure_devops` example module in the
+`terraform-provider-polaris-examples` repository for a complete configuration.
 
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These

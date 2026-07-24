@@ -63,8 +63,8 @@ customer-supplied application (non-OAuth). Onboarding has three steps that map t
 
 1. Register the customer application for the Azure DevOps use case with a `polaris_azure_service_principal` resource,
    setting the new `use_case = "AZURE_DEVOPS"` field.
-2. Generate the onboarding scripts with the `polaris_azure_devops_script` data source and run them against the
-   organization out of band. The provider does not run the scripts — run each one with the Azure CLI signed in
+2. Generate the onboarding script with the `polaris_azure_devops_script` data source and run it against the
+   organization out of band. The provider does not run the script — run it with the Azure CLI signed in
    (`az login`) as a Project Collection Administrator in the organization; the script mints a short-lived Azure DevOps
    token from that session, so no personal access token is required.
 3. Onboard the organization with the `polaris_azure_devops_organization` resource.
@@ -116,6 +116,14 @@ native protection (the default) or Azure DevOps. Credentials are stored separate
 both declares one service principal per use case. Omitting the field preserves the existing cloud native protection
 behavior, so existing service principal configurations are unaffected.
 
+~> **Note:** Running the onboarding script is an out-of-band step by design — the provider does not execute it. To have
+Terraform run it for you, a `null_resource` with a `local-exec` provisioner is one option: set its `triggers` to the
+`polaris_azure_devops_permissions` data source `id`s so it re-runs when the required permissions change, and add a
+`depends_on` from the `polaris_azure_devops_organization` resource so the script runs before onboarding. This runs the
+script on the machine executing Terraform, which must be signed in to the Azure CLI as a Project Collection
+Administrator. See the `azure_devops` example module in the `terraform-provider-polaris-examples` repository for a
+complete configuration.
+
 ### Updating Permissions
 
 The permissions RSC requires for an Azure DevOps feature can change over time. The `polaris_azure_devops_permissions`
@@ -134,13 +142,32 @@ version changes.
 
 ### Reading Azure DevOps Objects
 
-Three new data sources read onboarded Azure DevOps objects by RSC ID: `polaris_azure_devops_organization`,
-`polaris_azure_devops_project` and `polaris_azure_devops_repository`.
+Three new data sources read onboarded Azure DevOps objects: `polaris_azure_devops_organization` (by RSC `id` or
+`native_id`), `polaris_azure_devops_project` and `polaris_azure_devops_repository` (each by RSC `id` or `name`).
+
+Each exposes the object's RSC ID as its `id` attribute, so it can be assigned an SLA Domain with the
+`polaris_sla_domain_assignment` resource:
+
+```terraform
+data "polaris_azure_devops_repository" "repo" {
+  name = "my-repo"
+}
+
+data "polaris_sla_domain" "gold" {
+  name = "gold"
+}
+
+resource "polaris_sla_domain_assignment" "repo" {
+  sla_domain_id = data.polaris_sla_domain.gold.id
+  object_ids    = [data.polaris_azure_devops_repository.repo.id]
+}
+```
 
 The `polaris_object` data source also gains support for the `AzureDevOpsOrganization`, `AzureDevOpsProject` and
 `AzureDevOpsRepository` object types, resolving an object to its RSC ID by name for use with the
 `polaris_sla_domain_assignment` resource. Because project and repository names are only unique within their parent, set
-the optional `org_id` (for a project) or `project_id` (for a repository) to disambiguate a name shared across parents:
+the optional `org_id` (for a project) or `org_id` and/or `project_id` (for a repository) to disambiguate a name shared
+across parents:
 
 ```terraform
 data "polaris_object" "repo" {
@@ -162,7 +189,6 @@ list "polaris_azure_devops_organization" "all" {
 ```
 
 Run `terraform query` to discover organizations, or `terraform query -generate-config-out=generated.tf` to also generate
-a `resource` block and a matching `import` block for each one. RSC does not return the `cloud` type or the enabled
-`feature` blocks, so the generated configuration imports every organization as `PUBLIC` with no features. Before
-applying, edit `generated.tf`: set `cloud` in each generated import identity to `CHINA` or `USGOV` for any non-public
-organization, and add at least one `feature` block to each resource.
+a `resource` block and a matching `import` block for each one. The per-feature `permissions` signal and the
+`delete_snapshots_on_destroy` lifecycle setting are not stored in RSC and are left null; before applying, wire each
+feature's `permissions` field to a `polaris_azure_devops_permissions` data source.
