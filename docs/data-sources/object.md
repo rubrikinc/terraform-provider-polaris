@@ -9,9 +9,9 @@ description: |-
   AwsNativeAccount - AWS Native AccountAwsNativeEbsVolume - AWS Native EBS VolumeAwsNativeEc2Instance - AWS Native EC2 InstanceAwsNativeRdsInstance - AWS Native RDS InstanceAzureDevOpsOrganization - Azure DevOps OrganizationAzureDevOpsProject - Azure DevOps ProjectAzureDevOpsRepository - Azure DevOps RepositoryAzureNativeResourceGroup - Azure Native Resource Group (requires subscription_id)AzureNativeSubscription - Azure Native SubscriptionAzureNativeVirtualMachine - Azure Native Virtual Machine
   ~> Note: Azure DevOps project and repository names are only unique within
   their parent (an organization and a project, respectively). When a name is
-  shared across parents, set org_id (for AzureDevOpsProject) or project_id
-  (for AzureDevOpsRepository) to disambiguate; otherwise the lookup returns a
-  "multiple objects found" error.
+  shared across parents, set org_id (for AzureDevOpsProject) or org_id
+  and/or project_id (for AzureDevOpsRepository) to disambiguate; otherwise the
+  lookup returns a "multiple objects found" error.
 ---
 
 # polaris_object (Data Source)
@@ -34,9 +34,9 @@ Supported object types:
 
 ~> **Note:** Azure DevOps project and repository names are only unique within
 their parent (an organization and a project, respectively). When a name is
-shared across parents, set `org_id` (for `AzureDevOpsProject`) or `project_id`
-(for `AzureDevOpsRepository`) to disambiguate; otherwise the lookup returns a
-"multiple objects found" error.
+shared across parents, set `org_id` (for `AzureDevOpsProject`) or `org_id`
+and/or `project_id` (for `AzureDevOpsRepository`) to disambiguate; otherwise the
+lookup returns a "multiple objects found" error.
 
 
 ## Example Usage
@@ -76,8 +76,8 @@ data "polaris_object" "project" {
 
 ### Optional
 
-- `org_id` (String) RSC ID of the parent Azure DevOps organization (UUID). May be set when `object_type` is `AzureDevOpsProject` to disambiguate a project name shared across organizations; ignored for other object types.
-- `project_id` (String) RSC ID of the parent Azure DevOps project (UUID). May be set when `object_type` is `AzureDevOpsRepository` to disambiguate a repository name shared across projects; ignored for other object types.
+- `org_id` (String) RSC ID of the parent Azure DevOps organization (UUID). May be set when `object_type` is `AzureDevOpsProject` to disambiguate a project name shared across organizations, or when `object_type` is `AzureDevOpsRepository` to disambiguate a repository name shared across projects. Ignored for other object types.
+- `project_id` (String) RSC ID of the parent Azure DevOps project (UUID). May be set when `object_type` is `AzureDevOpsRepository` to disambiguate a repository name shared across projects. Ignored for other object types.
 - `subscription_id` (String) RSC cloud account ID of the parent Azure subscription (UUID). Required when `object_type` is `AzureNativeResourceGroup`; ignored for other object types.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 

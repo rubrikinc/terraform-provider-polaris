@@ -146,8 +146,7 @@ func (d *azureDevOpsProjectDataSource) Read(ctx context.Context, req datasource.
 	}
 
 	var project gqldevops.AzureProject
-	switch {
-	case !config.ID.IsNull():
+	if !config.ID.IsNull() {
 		id, err := uuid.Parse(config.ID.ValueString())
 		if err != nil {
 			res.Diagnostics.AddError("Invalid project ID", err.Error())
@@ -158,26 +157,20 @@ func (d *azureDevOpsProjectDataSource) Read(ctx context.Context, req datasource.
 			res.Diagnostics.AddError("Failed to read Azure DevOps project", err.Error())
 			return
 		}
-	case !config.Name.IsNull():
+	} else {
 		name := config.Name.ValueString()
-		activeFilters := activeObjectFilters()
-		objects, err := hierarchy.ObjectsByName[hierarchy.AzureDevOpsProject](ctx, hierarchy.Wrap(polarisClient.GQL), name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		candidates, err := devops.Wrap(polarisClient).AzureProjectsByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
 			res.Diagnostics.AddError("Failed to look up Azure DevOps project", err.Error())
 			return
 		}
 
-		// Project names are only unique within an organization, so an
-		// exact-name lookup can return projects from multiple organizations.
-		// Resolve each candidate and, when org_id is set, keep only the one in
-		// that organization.
+		// The exact name match is done server-side. Project names are only
+		// unique within an organization, so narrow to that organization when
+		// org_id is set.
 		var matches []gqldevops.AzureProject
-		for _, obj := range objects {
-			candidate, err := devops.Wrap(polarisClient).AzureProjectByID(ctx, obj.Object.ID)
-			if err != nil {
-				res.Diagnostics.AddError("Failed to read Azure DevOps project", err.Error())
-				return
-			}
+		for _, candidate := range candidates {
 			if !config.OrgID.IsNull() && candidate.OrgID.String() != config.OrgID.ValueString() {
 				continue
 			}
@@ -186,7 +179,7 @@ func (d *azureDevOpsProjectDataSource) Read(ctx context.Context, req datasource.
 
 		switch len(matches) {
 		case 0:
-			res.Diagnostics.AddError("Azure DevOps project not found", "no project with name "+name)
+			res.Diagnostics.AddError("Azure DevOps project not found", fmt.Sprintf("no project with name %q", name))
 			return
 		case 1:
 			project = matches[0]

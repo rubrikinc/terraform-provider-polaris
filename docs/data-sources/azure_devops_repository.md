@@ -7,8 +7,8 @@ description: |-
   repository from RSC. Look it up by id or by name. The repository is the
   snappable object.
   Repository names are only unique within a project. When looking up by name,
-  set project_id to disambiguate a name shared across projects; without it a
-  name matching more than one repository is an error.
+  set org_id and/or project_id to disambiguate a name shared across projects;
+  without them a name matching more than one repository is an error.
 ---
 
 # polaris_azure_devops_repository (Data Source)
@@ -18,8 +18,8 @@ repository from RSC. Look it up by `id` or by `name`. The repository is the
 snappable object.
 
 Repository names are only unique within a project. When looking up by `name`,
-set `project_id` to disambiguate a name shared across projects; without it a
-name matching more than one repository is an error.
+set `org_id` and/or `project_id` to disambiguate a name shared across projects;
+without them a name matching more than one repository is an error.
 
 ## Example Usage
 
@@ -42,11 +42,11 @@ data "polaris_azure_devops_repository" "by_id" {
 
 - `id` (String) RSC repository ID (UUID). Exactly one of `id` or `name` must be set.
 - `name` (String) Repository name. Exactly one of `id` or `name` must be set.
+- `org_id` (String) RSC ID of the organization the repository belongs to. May be set when looking up by `name` to disambiguate a repository name shared across projects.
 - `project_id` (String) RSC ID of the project the repository belongs to. May be set when looking up by `name` to disambiguate a repository name shared across projects.
 
 ### Read-Only
 
-- `org_id` (String) RSC ID of the organization the repository belongs to.
 - `org_name` (String) Name of the organization the repository belongs to.
 - `project_name` (String) Name of the project the repository belongs to.
 - `size` (Number) Repository size in bytes.

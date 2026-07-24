@@ -41,7 +41,9 @@ import (
 
 const dataSourceAzureDevOpsOrganizationDescription = `
 The ´polaris_azure_devops_organization´ data source reads an onboarded Azure
-DevOps organization from RSC. Look it up by ´id´ or by ´native_id´.
+DevOps organization from RSC. Look it up by ´id´ or by ´native_id´. The
+´native_id´ is the Azure DevOps organization name shown in the organization's
+URL (e.g. ´my-org´ in https://dev.azure.com/my-org).
 `
 
 var (
@@ -54,13 +56,20 @@ type azureDevOpsOrganizationDataSource struct {
 }
 
 type azureDevOpsOrganizationDataSourceModel struct {
-	ID               types.String `tfsdk:"id"`
-	NativeID         types.String `tfsdk:"native_id"`
-	TenantDomain     types.String `tfsdk:"tenant_domain"`
-	ConnectionStatus types.String `tfsdk:"connection_status"`
-	ProjectCount     types.Int64  `tfsdk:"project_count"`
-	RepoCount        types.Int64  `tfsdk:"repo_count"`
-	LastRefreshTime  types.String `tfsdk:"last_refresh_time"`
+	ID                           types.String `tfsdk:"id"`
+	NativeID                     types.String `tfsdk:"native_id"`
+	TenantDomain                 types.String `tfsdk:"tenant_domain"`
+	Cloud                        types.String `tfsdk:"cloud"`
+	Feature                      types.Set    `tfsdk:"feature"`
+	ExocomputeHostType           types.String `tfsdk:"exocompute_host_type"`
+	StorageType                  types.String `tfsdk:"storage_type"`
+	ArchivalLocationID           types.String `tfsdk:"archival_location_id"`
+	ExocomputeHostCloudAccountID types.String `tfsdk:"exocompute_host_cloud_account_id"`
+	ExocomputeRegion             types.String `tfsdk:"exocompute_region"`
+	ConnectionStatus             types.String `tfsdk:"connection_status"`
+	ProjectCount                 types.Int64  `tfsdk:"project_count"`
+	RepoCount                    types.Int64  `tfsdk:"repo_count"`
+	LastRefreshTime              types.String `tfsdk:"last_refresh_time"`
 }
 
 func newAzureDevOpsOrganizationDataSource() datasource.DataSource {
@@ -91,12 +100,53 @@ func (d *azureDevOpsOrganizationDataSource) Schema(ctx context.Context, _ dataso
 					stringvalidator.ExactlyOneOf(path.MatchRoot(keyID)),
 				},
 				Description: "Azure DevOps organization native identifier. This is the organization name " +
-					"visible in the Azure DevOps URL (e.g., \"my-org\" from https://dev.azure.com/my-org). " +
+					"visible in the Azure DevOps URL (e.g., `my-org` from https://dev.azure.com/my-org). " +
 					"Exactly one of `id` or `native_id` must be set.",
 			},
 			keyTenantDomain: schema.StringAttribute{
 				Computed:    true,
 				Description: "Azure AD tenant primary domain.",
+			},
+			keyCloud: schema.StringAttribute{
+				Computed:    true,
+				Description: "Azure cloud type.",
+			},
+			keyFeature: schema.SetNestedAttribute{
+				Computed:    true,
+				Description: "RSC features enabled for the organization, with their permission groups.",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						keyName: schema.StringAttribute{
+							Computed:    true,
+							Description: "Feature name.",
+						},
+						keyPermissionGroups: schema.SetAttribute{
+							Computed:    true,
+							ElementType: types.StringType,
+							Description: "Permission groups enabled for the feature.",
+						},
+					},
+				},
+			},
+			keyExocomputeHostType: schema.StringAttribute{
+				Computed:    true,
+				Description: "Type of exocompute host.",
+			},
+			keyStorageType: schema.StringAttribute{
+				Computed:    true,
+				Description: "Type of backup storage.",
+			},
+			keyArchivalLocationID: schema.StringAttribute{
+				Computed:    true,
+				Description: "Archival location ID for backups. Set when `storage_type` is `BYOS`.",
+			},
+			keyExocomputeHostCloudAccountID: schema.StringAttribute{
+				Computed:    true,
+				Description: "RSC cloud account ID providing exocompute. Set when `exocompute_host_type` is `CUSTOMER_HOST`.",
+			},
+			keyExocomputeRegion: schema.StringAttribute{
+				Computed:    true,
+				Description: "Azure region for Rubrik-hosted exocompute. Set when `exocompute_host_type` is `RUBRIK_HOST`.",
 			},
 			keyConnectionStatus: schema.StringAttribute{
 				Computed:    true,
@@ -142,52 +192,91 @@ func (d *azureDevOpsOrganizationDataSource) Read(ctx context.Context, req dataso
 		return
 	}
 
-	var id uuid.UUID
-	switch {
-	case !config.ID.IsNull():
-		id, err = uuid.Parse(config.ID.ValueString())
+	var org gqldevops.AzureOrganization
+	if !config.ID.IsNull() {
+		id, err := uuid.Parse(config.ID.ValueString())
 		if err != nil {
 			res.Diagnostics.AddError("Invalid organization ID", err.Error())
 			return
 		}
-	case !config.NativeID.IsNull():
+		org, err = devops.Wrap(polarisClient).AzureOrganizationByID(ctx, id)
+		if err != nil {
+			res.Diagnostics.AddError("Failed to read Azure DevOps organization", err.Error())
+			return
+		}
+	} else {
 		nativeID := config.NativeID.ValueString()
-		activeFilters := activeObjectFilters()
-		objects, err := hierarchy.ObjectsByName[hierarchy.AzureDevOpsOrganization](ctx, hierarchy.Wrap(polarisClient.GQL), nativeID, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+
+		// The exact-match filter applies to the organization's name, which
+		// equals its native ID, so the lookup resolves the native ID
+		// server-side.
+		candidates, err := devops.Wrap(polarisClient).AzureOrganizationsByName(ctx, nativeID,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{nativeID}})...)
 		if err != nil {
 			res.Diagnostics.AddError("Failed to look up Azure DevOps organization", err.Error())
 			return
 		}
-		var ids []uuid.UUID
-		for _, obj := range objects {
-			ids = append(ids, obj.Object.ID)
-		}
-		switch len(ids) {
+
+		switch len(candidates) {
 		case 0:
-			res.Diagnostics.AddError("Azure DevOps organization not found", "no organization with native ID "+nativeID)
+			res.Diagnostics.AddError("Azure DevOps organization not found", fmt.Sprintf("no organization with native ID %q", nativeID))
 			return
 		case 1:
-			id = ids[0]
+			org = candidates[0]
 		default:
 			res.Diagnostics.AddError("Multiple Azure DevOps organizations found",
-				fmt.Sprintf("%d organizations have native ID %q; look up by id instead", len(ids), nativeID))
+				fmt.Sprintf("%d organizations have native ID %q; look up by id instead", len(candidates), nativeID))
 			return
 		}
-	}
-
-	org, err := devops.Wrap(polarisClient).AzureOrganizationByID(ctx, id)
-	if err != nil {
-		res.Diagnostics.AddError("Failed to read Azure DevOps organization", err.Error())
-		return
 	}
 
 	config.ID = types.StringValue(org.ID.String())
 	config.NativeID = types.StringValue(org.NativeID)
 	config.TenantDomain = types.StringValue(org.TenantDomain)
+	config.Cloud = types.StringValue(fromAzureCloud(org.Cloud))
 	config.ConnectionStatus = types.StringValue(string(org.ConnectionStatus))
 	config.ProjectCount = types.Int64Value(int64(org.ProjectCount))
 	config.RepoCount = types.Int64Value(int64(org.RepoCount))
 	config.LastRefreshTime = lastRefreshTime(org)
+
+	// RUBRIK_HOST carries an exocompute region, CUSTOMER_HOST carries an
+	// exocompute cloud account.
+	config.ExocomputeHostType = types.StringValue(string(org.RepoHostType))
+	switch org.RepoHostType {
+	case gqldevops.HostTypeRubrik:
+		if org.RubrikHostedExocompute != nil {
+			config.ExocomputeRegion = types.StringValue(org.RubrikHostedExocompute.Region.Name())
+		}
+		config.ExocomputeHostCloudAccountID = types.StringNull()
+	case gqldevops.HostTypeCustomer:
+		if org.CloudNativeExocompute != nil {
+			config.ExocomputeHostCloudAccountID = types.StringValue(org.CloudNativeExocompute.ID.String())
+		}
+		config.ExocomputeRegion = types.StringNull()
+	}
+
+	// BYOS carries a backup location, RCV auto-provisions storage and takes no
+	// backup location.
+	if org.BackupLocation != nil && org.BackupLocation.StorageType == gqldevops.StorageTypeBYOS {
+		config.StorageType = types.StringValue(string(gqldevops.StorageTypeBYOS))
+		config.ArchivalLocationID = types.StringValue(org.BackupLocation.ArchivalGroupID.String())
+	} else {
+		config.StorageType = types.StringValue(string(gqldevops.StorageTypeRCV))
+		config.ArchivalLocationID = types.StringNull()
+	}
+
+	// Read the organizations current features and permission groups.
+	perms, err := devops.Wrap(polarisClient).ListOrgPermissions(ctx, org.ID)
+	if err != nil {
+		res.Diagnostics.AddError("Failed to read Azure DevOps organization permissions", err.Error())
+		return
+	}
+	featureSet, diags := fromFeatures(perms.ToFeatures())
+	res.Diagnostics.Append(diags...)
+	if res.Diagnostics.HasError() {
+		return
+	}
+	config.Feature = featureSet
 
 	res.Diagnostics.Append(res.State.Set(ctx, config)...)
 }
