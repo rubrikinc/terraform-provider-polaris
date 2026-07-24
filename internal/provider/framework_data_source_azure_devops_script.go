@@ -24,7 +24,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -44,6 +44,10 @@ onboarding scripts for one or more organizations. Run the generated script
 against the Azure DevOps organization to create the Rubrik group, grant the
 Rubrik service principal read access, and assign a Basic license.
 
+~> **Warning:** The Azure AD tenant and service principal referenced by
+´tenant_domain´ must already be onboarded to RSC for the Azure DevOps use case.
+Reading this data source fails if the tenant has not been onboarded.
+
 The provider does not run the script — it only generates it. Run it out of band
 with the Azure CLI signed in (´az login´) as a Project Collection Administrator
 in each target organization; the script mints a short-lived Azure DevOps token
@@ -53,26 +57,11 @@ from that ´az´ session, so no personal access token is required.
 Following is a list of features and their applicable permission groups. These
 are used when specifying the ´feature´ block.
 
-´AZURE_DEVOPS_PROTECTION´
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the
-    feature.
-
 ´AZURE_DEVOPS_REPOSITORY_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
   * ´RECOVERY´ - Represents the set of permissions required for all recovery
     operations.
-
-´AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION´
-  * ´BASIC´ - Represents the basic set of permissions required to onboard the
-    feature.
-  * ´RECOVERY´ - Represents the set of permissions required for all recovery
-    operations.
-
-~> **Note:** The scripts are surfaced decoded (plain text). They embed no
-   secrets — the Azure DevOps token is minted at runtime from your ´az´ session
-   — but review them before running, as they create groups and grant the Rubrik
-   service principal access in your organization.
 `
 
 var (
@@ -122,8 +111,9 @@ func (d *azureDevOpsScriptDataSource) Schema(ctx context.Context, _ datasource.S
 				},
 			},
 			keyCloud: schema.StringAttribute{
-				Optional:    true,
-				Description: "Azure cloud type. One of `PUBLIC` (default), `CHINA` or `USGOV`.",
+				Optional: true,
+				Description: fmt.Sprintf("Azure cloud type. %s. Default value is `PUBLIC`.",
+					possibleValues([]string{cloudTypePublic, cloudTypeChina, cloudTypeUSGov})),
 				Validators: []validator.String{
 					stringvalidator.OneOf(cloudTypePublic, cloudTypeChina, cloudTypeUSGov),
 				},
@@ -163,10 +153,14 @@ func (d *azureDevOpsScriptDataSource) Schema(ctx context.Context, _ datasource.S
 							},
 						},
 						keyPermissionGroups: schema.SetAttribute{
-							Optional:    true,
+							Required:    true,
 							ElementType: types.StringType,
-							Description: "Permission groups to enable for the feature. Empty enables all of the " +
-								"feature's groups. See the data source description for the groups each feature supports.",
+							Description: fmt.Sprintf("Permission groups to enable for the feature. At least one is "+
+								"required. %s.", possibleValues(devops.AzureSupportedPermissionGroupNames())),
+							Validators: []validator.Set{
+								setvalidator.SizeAtLeast(1),
+								setvalidator.ValueStringsAre(stringvalidator.OneOf(devops.AzureSupportedPermissionGroupNames()...)),
+							},
 						},
 					},
 				},
@@ -213,7 +207,7 @@ func (d *azureDevOpsScriptDataSource) Read(ctx context.Context, req datasource.R
 
 	script, err := devops.Wrap(polarisClient).GenerateAzureOnboardingScript(ctx, gqldevops.GenerateAzureOnboardingScriptParams{
 		TenantDomain:          config.TenantDomain.ValueString(),
-		Cloud:                 azureDevOpsCloud(config.Cloud.ValueString()),
+		Cloud:                 toAzureCloud(config.Cloud.ValueString()),
 		Features:              features,
 		OrganizationNativeIDs: orgNativeIDs,
 	})
@@ -234,7 +228,7 @@ func (d *azureDevOpsScriptDataSource) Read(ctx context.Context, req datasource.R
 	}
 
 	sum := sha256.Sum256(append(bashScript, powershellScript...))
-	config.ID = types.StringValue(hex.EncodeToString(sum[:]))
+	config.ID = types.StringValue(fmt.Sprintf("%x", sum[:]))
 	config.BashScript = types.StringValue(string(bashScript))
 	config.PowershellScript = types.StringValue(string(powershellScript))
 

@@ -22,6 +22,8 @@ package provider
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/list"
@@ -139,6 +141,7 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 		newAzureDevOpsOrganizationDataSource,
 		newAzureDevOpsProjectDataSource,
 		newAzureDevOpsRepositoryDataSource,
+		newAzureDevOpsPermissionsDataSource,
 		newAzureDevOpsScriptDataSource,
 		newAzurePermissionGroupsDataSource,
 		newFeatureFlagDataSource,
@@ -158,5 +161,28 @@ func (p *FrameworkProvider) ListResources(ctx context.Context) []func() list.Lis
 		newCustomRoleListResource,
 		newSSOGroupListResource,
 		newUserListResource,
+	}
+}
+
+// possibleValues returns a sentence describing the allowed values for use in an
+// attribute description. Each value is backtick-quoted and the last two are
+// joined by "and". An empty slice returns the empty string.
+func possibleValues[T ~string](values []T) string {
+	switch l := len(values); l {
+	case 0:
+		return ""
+	case 1:
+		return "Possible value is `" + string(values[0]) + "`"
+	default:
+		var sb strings.Builder
+		for i := range values {
+			if i == l-1 {
+				sb.WriteString(" and `" + string(values[i]) + "`")
+			} else {
+				sb.WriteString(", `" + string(values[i]) + "`")
+			}
+		}
+
+		return fmt.Sprintf("Possible values are %s", sb.String()[2:])
 	}
 }

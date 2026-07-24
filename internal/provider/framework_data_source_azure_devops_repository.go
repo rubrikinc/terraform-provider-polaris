@@ -44,8 +44,8 @@ repository from RSC. Look it up by ´id´ or by ´name´. The repository is the
 snappable object.
 
 Repository names are only unique within a project. When looking up by ´name´,
-set ´project_id´ to disambiguate a name shared across projects; without it a
-name matching more than one repository is an error.
+set ´org_id´ and/or ´project_id´ to disambiguate a name shared across projects;
+without them a name matching more than one repository is an error.
 `
 
 var (
@@ -98,8 +98,10 @@ func (d *azureDevOpsRepositoryDataSource) Schema(ctx context.Context, _ datasour
 				Description: "Repository name. Exactly one of `id` or `name` must be set.",
 			},
 			keyOrgID: schema.StringAttribute{
-				Computed:    true,
-				Description: "RSC ID of the organization the repository belongs to.",
+				Optional: true,
+				Computed: true,
+				Description: "RSC ID of the organization the repository belongs to. May be set when looking up by " +
+					"`name` to disambiguate a repository name shared across projects.",
 			},
 			keyOrgName: schema.StringAttribute{
 				Computed:    true,
@@ -152,8 +154,7 @@ func (d *azureDevOpsRepositoryDataSource) Read(ctx context.Context, req datasour
 	}
 
 	var repo gqldevops.AzureRepository
-	switch {
-	case !config.ID.IsNull():
+	if !config.ID.IsNull() {
 		id, err := uuid.Parse(config.ID.ValueString())
 		if err != nil {
 			res.Diagnostics.AddError("Invalid repository ID", err.Error())
@@ -164,25 +165,22 @@ func (d *azureDevOpsRepositoryDataSource) Read(ctx context.Context, req datasour
 			res.Diagnostics.AddError("Failed to read Azure DevOps repository", err.Error())
 			return
 		}
-	case !config.Name.IsNull():
+	} else {
 		name := config.Name.ValueString()
-		activeFilters := activeObjectFilters()
-		objects, err := hierarchy.ObjectsByName[hierarchy.AzureDevOpsRepository](ctx, hierarchy.Wrap(polarisClient.GQL), name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		candidates, err := devops.Wrap(polarisClient).AzureRepositoriesByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
 			res.Diagnostics.AddError("Failed to look up Azure DevOps repository", err.Error())
 			return
 		}
 
-		// Repository names are only unique within a project, so an exact-name
-		// lookup can return repositories from multiple projects. Resolve each
-		// candidate and, when project_id is set, keep only the one in that
-		// project.
+		// The exact name match is done server-side. Repository names are only
+		// unique within a project, so narrow to that organization and project
+		// when org_id and/or project_id are set.
 		var matches []gqldevops.AzureRepository
-		for _, obj := range objects {
-			candidate, err := devops.Wrap(polarisClient).AzureRepositoryByID(ctx, obj.Object.ID)
-			if err != nil {
-				res.Diagnostics.AddError("Failed to read Azure DevOps repository", err.Error())
-				return
+		for _, candidate := range candidates {
+			if !config.OrgID.IsNull() && candidate.OrgID.String() != config.OrgID.ValueString() {
+				continue
 			}
 			if !config.ProjectID.IsNull() && candidate.ProjectID.String() != config.ProjectID.ValueString() {
 				continue
@@ -192,13 +190,13 @@ func (d *azureDevOpsRepositoryDataSource) Read(ctx context.Context, req datasour
 
 		switch len(matches) {
 		case 0:
-			res.Diagnostics.AddError("Azure DevOps repository not found", "no repository with name "+name)
+			res.Diagnostics.AddError("Azure DevOps repository not found", fmt.Sprintf("no repository with name %q", name))
 			return
 		case 1:
 			repo = matches[0]
 		default:
 			res.Diagnostics.AddError("Multiple Azure DevOps repositories found",
-				fmt.Sprintf("%d repositories are named %q; set project_id to disambiguate", len(matches), name))
+				fmt.Sprintf("%d repositories are named %q; set org_id and/or project_id to disambiguate", len(matches), name))
 			return
 		}
 	}

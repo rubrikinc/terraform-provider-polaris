@@ -4,13 +4,17 @@ page_title: "polaris_azure_devops_organization Data Source - terraform-provider-
 subcategory: ""
 description: |-
   The polaris_azure_devops_organization data source reads an onboarded Azure
-  DevOps organization from RSC. Look it up by id or by native_id.
+  DevOps organization from RSC. Look it up by id or by native_id. The
+  native_id is the Azure DevOps organization name shown in the organization's
+  URL (e.g. my-org in https://dev.azure.com/my-org).
 ---
 
 # polaris_azure_devops_organization (Data Source)
 
 The `polaris_azure_devops_organization` data source reads an onboarded Azure
-DevOps organization from RSC. Look it up by `id` or by `native_id`.
+DevOps organization from RSC. Look it up by `id` or by `native_id`. The
+`native_id` is the Azure DevOps organization name shown in the organization's
+URL (e.g. `my-org` in https://dev.azure.com/my-org).
 
 ## Example Usage
 
@@ -32,12 +36,27 @@ data "polaris_azure_devops_organization" "by_id" {
 ### Optional
 
 - `id` (String) RSC organization ID (UUID). Exactly one of `id` or `native_id` must be set.
-- `native_id` (String) Azure DevOps organization native identifier. This is the organization name visible in the Azure DevOps URL (e.g., "my-org" from https://dev.azure.com/my-org). Exactly one of `id` or `native_id` must be set.
+- `native_id` (String) Azure DevOps organization native identifier. This is the organization name visible in the Azure DevOps URL (e.g., `my-org` from https://dev.azure.com/my-org). Exactly one of `id` or `native_id` must be set.
 
 ### Read-Only
 
+- `archival_location_id` (String) Archival location ID for backups. Set when `storage_type` is `BYOS`.
+- `cloud` (String) Azure cloud type.
 - `connection_status` (String) Connection status of the organization.
+- `exocompute_host_cloud_account_id` (String) RSC cloud account ID providing exocompute. Set when `exocompute_host_type` is `CUSTOMER_HOST`.
+- `exocompute_host_type` (String) Type of exocompute host.
+- `exocompute_region` (String) Azure region for Rubrik-hosted exocompute. Set when `exocompute_host_type` is `RUBRIK_HOST`.
+- `feature` (Attributes Set) RSC features enabled for the organization, with their permission groups. (see [below for nested schema](#nestedatt--feature))
 - `last_refresh_time` (String) Time the organization was last refreshed (RFC3339).
 - `project_count` (Number) Number of projects in the organization.
 - `repo_count` (Number) Number of repositories in the organization.
+- `storage_type` (String) Type of backup storage.
 - `tenant_domain` (String) Azure AD tenant primary domain.
+
+<a id="nestedatt--feature"></a>
+### Nested Schema for `feature`
+
+Read-Only:
+
+- `name` (String) Feature name.
+- `permission_groups` (Set of String) Permission groups enabled for the feature.

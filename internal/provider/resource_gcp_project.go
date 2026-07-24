@@ -477,11 +477,6 @@ func toGCPFeatureResourceWithPermissionsAndStatus(feature core.Feature, permissi
 	}
 }
 
-type featureWithPermissions struct {
-	core.Feature
-	permissions string
-}
-
 // add, remove and update perms.
 func diffGCPFeatureResource(d *schema.ResourceData) ([]core.Feature, []core.Feature, []core.Feature) {
 	oldResource, newResource := d.GetChange(keyFeature)

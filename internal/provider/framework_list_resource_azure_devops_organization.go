@@ -29,19 +29,21 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/devops"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
 const listResourceAzureDevOpsOrganizationDescription = `
 The ´polaris_azure_devops_organization´ list resource lists Azure DevOps
-organizations onboarded to RSC.
+organizations onboarded to RSC. Results can be filtered by ´native_id´, the
+Azure DevOps organization name shown in the organization's URL (e.g. ´my-org´
+in https://dev.azure.com/my-org).
 
-RSC does not return the ´cloud´ type or the enabled ´feature´ blocks for
-onboarded organizations, so neither is populated in list results. ´cloud´
-defaults to ´PUBLIC´ unless supplied in the import identity (see below), and you
-must add at least one ´feature´ block to each resource before applying.
+The ´delete_snapshots_on_destroy´ lifecycle setting is not returned by RSC and
+is left null in list results; it defaults to ´false´ on the resource.
+
+The ´permissions´ field on each feature block is a client-side signal not
+stored in RSC and is left null in list results.
 `
 
 var (
@@ -75,8 +77,9 @@ func (r *azureDevOpsOrganizationListResource) ListResourceConfigSchema(ctx conte
 		Attributes: map[string]listschema.Attribute{
 			keyNativeID: listschema.StringAttribute{
 				Optional: true,
-				Description: "Filter organizations by native ID. The native ID is the organization name " +
-					"visible in the Azure DevOps URL. Matches the organization whose native ID equals the " +
+				Description: "Filter organizations by native ID. The native ID is the Azure DevOps " +
+					"organization name shown in the organization's URL (e.g., `my-org` from " +
+					"https://dev.azure.com/my-org). Matches the organization whose native ID equals the " +
 					"given value.",
 			},
 		},
@@ -109,12 +112,12 @@ func (r *azureDevOpsOrganizationListResource) List(ctx context.Context, req list
 		return
 	}
 
-	// Enumerate the organizations via the hierarchy inventory to build the result
-	// identities. This is a lightweight id/name walk; full organization detail is
-	// only fetched below when the caller requests the resource. For organizations
-	// the hierarchy name equals the native ID.
-	activeFilters := activeObjectFilters()
-	objects, err := hierarchy.ObjectsByType[hierarchy.AzureDevOpsOrganization](ctx, hierarchy.Wrap(polarisClient.GQL), hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+	// Enumerate the organizations via the hierarchy inventory to build the
+	// result identities. This is a lightweight id/name walk; full organization
+	// detail is only fetched below when the caller requests the resource. For
+	// organizations the hierarchy name equals the native ID.
+	objects, err := hierarchy.ObjectsByType[hierarchy.AzureDevOpsOrganization](ctx, hierarchy.Wrap(polarisClient.GQL),
+		hierarchy.WorkloadAllSubHierarchyType, activeObjectFilters()...)
 	if err != nil {
 		diags.AddError("Failed to list Azure DevOps organizations", err.Error())
 		stream.Results = list.ListResultsStreamDiagnostics(diags)
@@ -151,16 +154,27 @@ func (r *azureDevOpsOrganizationListResource) List(ctx context.Context, req list
 					push(result)
 					return
 				}
-
-				// native_id, tenant_domain and the host/storage fields are
-				// populated by setStateFromOrg. cloud and the feature blocks are
-				// input-only and not returned by RSC, so they are left null in the
-				// result; declare them in config after generating it.
-				model := azureDevOpsOrganizationModel{
-					Feature:                  types.SetNull(types.ObjectType{AttrTypes: azureDevOpsFeatureAttrTypes()}),
-					DeleteSnapshotsOnDestroy: types.BoolNull(),
+				perms, err := devops.Wrap(polarisClient).ListOrgPermissions(ctx, obj.Object.ID)
+				if err != nil {
+					result.Diagnostics.AddError("Failed to read Azure DevOps organization permissions", err.Error())
+					push(result)
+					return
 				}
-				setStateFromOrg(&model, org)
+
+				featureSet, diags := fromFeaturesWithPermissions(attachPermissions(perms.ToFeatures(), nil))
+				result.Diagnostics.Append(diags...)
+				if result.Diagnostics.HasError() {
+					push(result)
+					return
+				}
+
+				// The delete_snapshots_on_destroy lifecycle setting is not
+				// returned by RSC and is left null.
+				model := azureDevOpsOrganizationModel{
+					DeleteSnapshotsOnDestroy: types.BoolNull(),
+					Feature:                  featureSet,
+				}
+				fromAzureOrganization(&model, org)
 
 				result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
 				if result.Diagnostics.HasError() {

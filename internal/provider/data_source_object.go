@@ -53,9 +53,9 @@ Supported object types:
 
 ~> **Note:** Azure DevOps project and repository names are only unique within
 their parent (an organization and a project, respectively). When a name is
-shared across parents, set ´org_id´ (for ´AzureDevOpsProject´) or ´project_id´
-(for ´AzureDevOpsRepository´) to disambiguate; otherwise the lookup returns a
-"multiple objects found" error.
+shared across parents, set ´org_id´ (for ´AzureDevOpsProject´) or ´org_id´
+and/or ´project_id´ (for ´AzureDevOpsRepository´) to disambiguate; otherwise the
+lookup returns a "multiple objects found" error.
 `
 
 func dataSourceObject() *schema.Resource {
@@ -114,7 +114,8 @@ func dataSourceObject() *schema.Resource {
 				Optional: true,
 				Description: "RSC ID of the parent Azure DevOps organization (UUID). May be set when " +
 					"`object_type` is `AzureDevOpsProject` to disambiguate a project name shared across " +
-					"organizations; ignored for other object types.",
+					"organizations, or when `object_type` is `AzureDevOpsRepository` to disambiguate a " +
+					"repository name shared across projects; ignored for other object types.",
 				ValidateFunc: validation.IsUUID,
 			},
 			keyProjectID: {
@@ -229,59 +230,68 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 			objects = append(objects, r.Object)
 		}
 	case hierarchy.ObjectType("AzureDevOpsOrganization"):
-		results, err := hierarchy.ObjectsByName[hierarchy.AzureDevOpsOrganization](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		// The inventory query returns a 500 error for some Azure DevOps object
+		// types, so route through the dedicated DevOps queries instead.
+		orgs, err := devops.Wrap(client).AzureOrganizationsByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		for _, r := range results {
-			objects = append(objects, r.Object)
+		for _, org := range orgs {
+			objects = append(objects, hierarchy.Object{
+				ID:         org.ID,
+				Name:       org.Name,
+				ObjectType: hierarchy.ObjectType(org.ObjectType),
+			})
 		}
 	case hierarchy.ObjectType("AzureDevOpsProject"):
-		results, err := hierarchy.ObjectsByName[hierarchy.AzureDevOpsProject](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		// The inventory query returns a 500 error for some Azure DevOps object
+		// types, so route through the dedicated DevOps queries instead.
+		projects, err := devops.Wrap(client).AzureProjectsByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		// Project names are only unique within an organization, so an
-		// exact-name lookup can return projects from multiple organizations.
-		// When org_id is set, resolve each candidate and keep only the one in
-		// that organization.
+		// Project names are only unique within an organization, so when org_id
+		// is set, narrow to that organization.
 		orgID := d.Get(keyOrgID).(string)
-		for _, r := range results {
-			if orgID != "" {
-				project, err := devops.Wrap(client).AzureProjectByID(ctx, r.Object.ID)
-				if err != nil {
-					return diag.FromErr(err)
-				}
-				if project.OrgID.String() != orgID {
-					continue
-				}
+		for _, project := range projects {
+			if orgID != "" && project.OrgID.String() != orgID {
+				continue
 			}
-			objects = append(objects, r.Object)
+			objects = append(objects, hierarchy.Object{
+				ID:         project.ID,
+				Name:       project.Name,
+				ObjectType: hierarchy.ObjectType(project.ObjectType),
+			})
 		}
 	case hierarchy.ObjectType("AzureDevOpsRepository"):
-		results, err := hierarchy.ObjectsByName[hierarchy.AzureDevOpsRepository](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		// The inventory query returns a 500 error for some Azure DevOps object
+		// types, so route through the dedicated DevOps queries instead.
+		repos, err := devops.Wrap(client).AzureRepositoriesByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		// Repository names are only unique within a project, so an exact-name
-		// lookup can return repositories from multiple projects. When
-		// project_id is set, resolve each candidate and keep only the one in
-		// that project.
+		// Repository names are only unique within a project, so when org_id
+		// and/or project_id are set, narrow to that organization and project.
+		orgID := d.Get(keyOrgID).(string)
 		projectID := d.Get(keyProjectID).(string)
-		for _, r := range results {
-			if projectID != "" {
-				repo, err := devops.Wrap(client).AzureRepositoryByID(ctx, r.Object.ID)
-				if err != nil {
-					return diag.FromErr(err)
-				}
-				if repo.ProjectID.String() != projectID {
-					continue
-				}
+		for _, repo := range repos {
+			if orgID != "" && repo.OrgID.String() != orgID {
+				continue
 			}
-			objects = append(objects, r.Object)
+			if projectID != "" && repo.ProjectID.String() != projectID {
+				continue
+			}
+			objects = append(objects, hierarchy.Object{
+				ID:         repo.ID,
+				Name:       repo.Name,
+				ObjectType: hierarchy.ObjectType(repo.ObjectType),
+			})
 		}
 	case hierarchy.ObjectType("AzureNativeSubscription"):
 		// Container-level type: same feature-status strategy as AwsNativeAccount.
@@ -351,14 +361,7 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 		return diag.Errorf("no object found with name %q and type %q", name, objectType)
 	}
 	if len(objects) > 1 {
-		switch objectType {
-		case hierarchy.ObjectType("AzureDevOpsProject"):
-			return diag.Errorf("multiple objects found with name %q and type %q; set org_id to disambiguate", name, objectType)
-		case hierarchy.ObjectType("AzureDevOpsRepository"):
-			return diag.Errorf("multiple objects found with name %q and type %q; set project_id to disambiguate", name, objectType)
-		default:
-			return diag.Errorf("multiple objects found with name %q and type %q", name, objectType)
-		}
+		return diag.Errorf("multiple objects found with name %q and type %q", name, objectType)
 	}
 
 	d.SetId(objects[0].ID.String())
@@ -368,13 +371,12 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 
 // activeObjectFilters returns the server-side hierarchy filters that exclude
 // inactive workload objects: relics, ghosts, and inactive or archived objects.
-// Workload objects do not carry RSC feature-status metadata, so activity is
-// determined via these filters rather than by inspecting a feature list.
-func activeObjectFilters() []hierarchy.Filter {
-	return []hierarchy.Filter{
+// Any additional filters passed in are appended to the returned set.
+func activeObjectFilters(filters ...hierarchy.Filter) []hierarchy.Filter {
+	return append([]hierarchy.Filter{
 		{Field: "IS_RELIC", Texts: []string{"false"}},
 		{Field: "IS_GHOST", Texts: []string{"false"}},
 		{Field: "IS_ACTIVE", Texts: []string{"true"}},
 		{Field: "IS_ARCHIVED", Texts: []string{"false"}},
-	}
+	}, filters...)
 }

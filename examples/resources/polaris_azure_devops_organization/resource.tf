@@ -10,16 +10,21 @@ resource "polaris_azure_service_principal" "devops" {
   use_case      = "AZURE_DEVOPS"
 }
 
+# Look up the permissions RSC requires for the feature. Wire its id into the
+# feature's permissions field to track permission changes.
+data "polaris_azure_devops_permissions" "repo" {
+  feature           = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+  permission_groups = ["BASIC", "RECOVERY"]
+}
+
 # Generate the onboarding script for the organization.
 data "polaris_azure_devops_script" "onboard" {
   tenant_domain  = polaris_azure_service_principal.devops.tenant_domain
   org_native_ids = ["my-org"]
 
   feature {
-    name = "AZURE_DEVOPS_PROTECTION"
-  }
-  feature {
-    name = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+    name              = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+    permission_groups = ["BASIC", "RECOVERY"]
   }
 }
 
@@ -28,7 +33,7 @@ data "polaris_azure_devops_script" "onboard" {
 # polaris_azure_devops_script data source for how to run it.
 
 # Onboard the organization to RSC using Rubrik-hosted exocompute and Rubrik
-# Cloud Vault storage.
+# Cloud Vault storage. cloud is optional and defaults to PUBLIC.
 resource "polaris_azure_devops_organization" "org" {
   native_id            = "my-org"
   tenant_domain        = polaris_azure_service_principal.devops.tenant_domain
@@ -37,10 +42,9 @@ resource "polaris_azure_devops_organization" "org" {
   exocompute_region    = "eastus"
 
   feature {
-    name = "AZURE_DEVOPS_PROTECTION"
-  }
-  feature {
-    name = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+    name              = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+    permission_groups = ["BASIC", "RECOVERY"]
+    permissions       = data.polaris_azure_devops_permissions.repo.id
   }
 
   depends_on = [polaris_azure_service_principal.devops]

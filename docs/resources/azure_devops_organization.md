@@ -12,40 +12,39 @@ description: |-
   The provider does not run the script; see that data source for how to run it.
   Each resource instance manages a single organization. Manage multiple
   organizations with multiple instances or for_each.
+  ~> Warning: Changing cloud, native_id or tenant_domain forces the
+  organization to be replaced: it is destroyed and re-onboarded, which runs the
+  destroy step and therefore honours delete_snapshots_on_destroy. A
+  permission_groups change does not — re-run the onboarding script against the
+  organization to grant the new permissions before applying. See
+  delete_snapshots_on_destroy for details.
+  ~> Note: Set each feature's permissions field to the id of a
+  polaris_azure_devops_permissions data source. When RSC changes the permissions
+  required for the feature the id changes, and applying the change notifies RSC
+  that the updated permissions have been granted. Re-run the onboarding script
+  against the organization to grant them before applying.
+  Supported Configurations
+  The storage_type and exocompute_host_type can only be combined in the ways
+  listed below. Any other combination is rejected with an error explaining what
+  is allowed.
+  Onboarding supports:
+  BYOS storage with CUSTOMER_HOST exocompute.BYOS storage with RUBRIK_HOST exocompute.RCV storage with RUBRIK_HOST exocompute.
+  The only host type transition supported on an existing organization is
+  CUSTOMER_HOST to RUBRIK_HOST, which requires exocompute_region to be set.
+  Any other host or storage type change requires re-onboarding the organization
+  (destroy and re-create).
+  In-place field updates are supported for:
+  BYOS + CUSTOMER_HOST: archival_location_id and
+  exocompute_host_cloud_account_id.BYOS + RUBRIK_HOST: archival_location_id.
+  Any other field update requires re-onboarding the organization. RCV
+  organizations are immutable apart from their feature permission groups.
   Permission Groups
   Following is a list of features and their applicable permission groups. These
   are used when specifying the feature block.
-  AZURE_DEVOPS_PROTECTION
-  BASIC - Represents the basic set of permissions required to onboard the
-  feature.
   AZURE_DEVOPS_REPOSITORY_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the
   feature.RECOVERY - Represents the set of permissions required for all recovery
   operations.
-  AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION
-  BASIC - Represents the basic set of permissions required to onboard the
-  feature.RECOVERY - Represents the set of permissions required for all recovery
-  operations.
-  Import
-  RSC does not return the cloud type or the enabled feature blocks for an
-  onboarded organization, so neither can be read back on import.
-  Import by RSC organization ID (UUID). Because cloud is not returned, supply it
-  in the identity block of an import block so the imported state is not
-  mislabeled (omit it to default to PUBLIC):
-  
-  import {
-    to = polaris_azure_devops_organization.org
-    identity = {
-      id    = "a1b2c3d4-1234-4c5b-9abc-0123456789ab"
-      cloud = "CHINA"
-    }
-  }
-  
-  The plain string ID form (terraform import ... <id>) is also accepted and
-  defaults cloud to PUBLIC.
-  feature blocks cannot be imported. After import, declare the organization's
-  feature blocks in configuration; the first apply writes them into state and
-  subsequent plans are clean.
 ---
 
 # polaris_azure_devops_organization (Resource)
@@ -62,51 +61,51 @@ The provider does not run the script; see that data source for how to run it.
 Each resource instance manages a single organization. Manage multiple
 organizations with multiple instances or `for_each`.
 
+~> **Warning:** Changing `cloud`, `native_id` or `tenant_domain` forces the
+organization to be replaced: it is destroyed and re-onboarded, which runs the
+destroy step and therefore honours `delete_snapshots_on_destroy`. A
+`permission_groups` change does not — re-run the onboarding script against the
+organization to grant the new permissions before applying. See
+`delete_snapshots_on_destroy` for details.
+
+~> **Note:** Set each feature's `permissions` field to the `id` of a
+`polaris_azure_devops_permissions` data source. When RSC changes the permissions
+required for the feature the `id` changes, and applying the change notifies RSC
+that the updated permissions have been granted. Re-run the onboarding script
+against the organization to grant them before applying.
+
+## Supported Configurations
+The `storage_type` and `exocompute_host_type` can only be combined in the ways
+listed below. Any other combination is rejected with an error explaining what
+is allowed.
+
+Onboarding supports:
+  * `BYOS` storage with `CUSTOMER_HOST` exocompute.
+  * `BYOS` storage with `RUBRIK_HOST` exocompute.
+  * `RCV` storage with `RUBRIK_HOST` exocompute.
+
+The only host type transition supported on an existing organization is
+`CUSTOMER_HOST` to `RUBRIK_HOST`, which requires `exocompute_region` to be set.
+Any other host or storage type change requires re-onboarding the organization
+(destroy and re-create).
+
+In-place field updates are supported for:
+  * `BYOS` + `CUSTOMER_HOST`: `archival_location_id` and
+    `exocompute_host_cloud_account_id`.
+  * `BYOS` + `RUBRIK_HOST`: `archival_location_id`.
+
+Any other field update requires re-onboarding the organization. `RCV`
+organizations are immutable apart from their `feature` permission groups.
+
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the `feature` block.
-
-`AZURE_DEVOPS_PROTECTION`
-  * `BASIC` - Represents the basic set of permissions required to onboard the
-    feature.
 
 `AZURE_DEVOPS_REPOSITORY_PROTECTION`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
   * `RECOVERY` - Represents the set of permissions required for all recovery
     operations.
-
-`AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION`
-  * `BASIC` - Represents the basic set of permissions required to onboard the
-    feature.
-  * `RECOVERY` - Represents the set of permissions required for all recovery
-    operations.
-
-## Import
-
-RSC does not return the `cloud` type or the enabled `feature` blocks for an
-onboarded organization, so neither can be read back on import.
-
-Import by RSC organization ID (UUID). Because `cloud` is not returned, supply it
-in the `identity` block of an `import` block so the imported state is not
-mislabeled (omit it to default to `PUBLIC`):
-
-```terraform
-import {
-  to = polaris_azure_devops_organization.org
-  identity = {
-    id    = "a1b2c3d4-1234-4c5b-9abc-0123456789ab"
-    cloud = "CHINA"
-  }
-}
-```
-
-The plain string ID form (`terraform import ... <id>`) is also accepted and
-defaults `cloud` to `PUBLIC`.
-
-`feature` blocks cannot be imported. After import, declare the organization's
-feature blocks in configuration; the first `apply` writes them into state and
-subsequent plans are clean.
 
 ## Example Usage
 
@@ -123,16 +122,21 @@ resource "polaris_azure_service_principal" "devops" {
   use_case      = "AZURE_DEVOPS"
 }
 
+# Look up the permissions RSC requires for the feature. Wire its id into the
+# feature's permissions field to track permission changes.
+data "polaris_azure_devops_permissions" "repo" {
+  feature           = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+  permission_groups = ["BASIC", "RECOVERY"]
+}
+
 # Generate the onboarding script for the organization.
 data "polaris_azure_devops_script" "onboard" {
   tenant_domain  = polaris_azure_service_principal.devops.tenant_domain
   org_native_ids = ["my-org"]
 
   feature {
-    name = "AZURE_DEVOPS_PROTECTION"
-  }
-  feature {
-    name = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+    name              = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+    permission_groups = ["BASIC", "RECOVERY"]
   }
 }
 
@@ -141,7 +145,7 @@ data "polaris_azure_devops_script" "onboard" {
 # polaris_azure_devops_script data source for how to run it.
 
 # Onboard the organization to RSC using Rubrik-hosted exocompute and Rubrik
-# Cloud Vault storage.
+# Cloud Vault storage. cloud is optional and defaults to PUBLIC.
 resource "polaris_azure_devops_organization" "org" {
   native_id            = "my-org"
   tenant_domain        = polaris_azure_service_principal.devops.tenant_domain
@@ -150,10 +154,9 @@ resource "polaris_azure_devops_organization" "org" {
   exocompute_region    = "eastus"
 
   feature {
-    name = "AZURE_DEVOPS_PROTECTION"
-  }
-  feature {
-    name = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+    name              = "AZURE_DEVOPS_REPOSITORY_PROTECTION"
+    permission_groups = ["BASIC", "RECOVERY"]
+    permissions       = data.polaris_azure_devops_permissions.repo.id
   }
 
   depends_on = [polaris_azure_service_principal.devops]
@@ -165,19 +168,19 @@ resource "polaris_azure_devops_organization" "org" {
 
 ### Required
 
-- `exocompute_host_type` (String) Type of exocompute host. One of `CUSTOMER_HOST` (requires `exocompute_host_cloud_account_id`) or `RUBRIK_HOST` (requires `exocompute_region`).
+- `exocompute_host_type` (String) Type of exocompute host. Possible values are `CUSTOMER_HOST` and `RUBRIK_HOST`. `CUSTOMER_HOST` requires `exocompute_host_cloud_account_id`; `RUBRIK_HOST` requires `exocompute_region`.
 - `native_id` (String) Azure DevOps organization native identifier. This is the organization name visible in the Azure DevOps URL (e.g., "my-org" from https://dev.azure.com/my-org). Changing this forces a new resource to be created.
-- `storage_type` (String) Type of backup storage. One of `BYOS` (Bring Your Own Storage, requires `archival_location_id`) or `RCV` (Rubrik Cloud Vault, auto-provisioned).
+- `storage_type` (String) Type of backup storage. Possible values are `BYOS` and `RCV`. `BYOS` (Bring Your Own Storage) requires `archival_location_id`; `RCV` (Rubrik Cloud Vault) is auto-provisioned.
 - `tenant_domain` (String) Azure AD tenant primary domain. Changing this forces a new resource to be created.
 
 ### Optional
 
 - `archival_location_id` (String) Archival location ID for backups. Required when `storage_type` is `BYOS`.
-- `cloud` (String) Azure cloud type. One of `PUBLIC` (default), `CHINA` or `USGOV`. Changing this forces a new resource to be created. RSC does not return the cloud type, so it is never refreshed from RSC and drift is not detected; on import, supply it via the identity block.
-- `delete_snapshots_on_destroy` (Boolean) Delete the organization's snapshots when the resource is destroyed.
+- `cloud` (String) Azure cloud type. Possible value is `PUBLIC`. Default value is `PUBLIC`. Changing it forces a new resource to be created.
+- `delete_snapshots_on_destroy` (Boolean) Delete the organization's snapshots when the resource is destroyed. Default value is `false`.
 - `exocompute_host_cloud_account_id` (String) RSC cloud account ID providing exocompute. Required when `exocompute_host_type` is `CUSTOMER_HOST`.
 - `exocompute_region` (String) Azure region for Rubrik-hosted exocompute (e.g. `eastus`). Required when `exocompute_host_type` is `RUBRIK_HOST`.
-- `feature` (Block Set) RSC features to enable for the organization. At least one is required. Features are set only at onboarding: RSC does not return them and they cannot be updated, so they are never refreshed and drift is not detected. Declare them in configuration, including after import (an imported organization has no feature blocks until you add them). (see [below for nested schema](#nestedblock--feature))
+- `feature` (Block Set) RSC features to enable for the organization. At least one is required when onboarding. (see [below for nested schema](#nestedblock--feature))
 
 ### Read-Only
 
@@ -192,11 +195,12 @@ resource "polaris_azure_devops_organization" "org" {
 
 Required:
 
-- `name` (String) Feature name. One of `AZURE_DEVOPS_PROTECTION`, `AZURE_DEVOPS_REPOSITORY_PROTECTION` or `AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION`.
+- `name` (String) Feature name. Possible value is `AZURE_DEVOPS_REPOSITORY_PROTECTION`.
+- `permission_groups` (Set of String) Permission groups to enable for the feature. At least one is required. Possible values are `BASIC` and `RECOVERY`. Re-run the onboarding script against the organization to grant the new permissions before applying a change.
 
 Optional:
 
-- `permission_groups` (Set of String) Permission groups to enable for the feature. Empty enables all of the feature's groups. See the resource description for the groups each feature supports. Like `feature`, this is not returned by RSC and drift is not detected.
+- `permissions` (String) Permissions updated signal. When this field changes, the provider will notify RSC that the permissions for the feature have been updated. Use this field with the `polaris_azure_devops_permissions` data source.
 
 ## Import
 
@@ -205,13 +209,11 @@ Import is supported using the following syntax:
 In Terraform v1.12.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `identity` attribute, for example:
 
 ```terraform
-# RSC does not return the cloud type on import. Supply it in the identity block
-# so the imported state is not mislabeled (omit it to default to PUBLIC).
+# Import by RSC organization ID.
 import {
   to = polaris_azure_devops_organization.org
   identity = {
-    id    = "a1b2c3d4-1234-4c5b-9abc-0123456789ab"
-    cloud = "USGOV"
+    id = "a1b2c3d4-1234-4c5b-9abc-0123456789ab"
   }
 }
 ```
@@ -223,15 +225,10 @@ import {
 
 - `id` (String) RSC organization ID (UUID).
 
-#### Optional
-
-- `cloud` (String) Azure cloud type the organization was onboarded with. One of `PUBLIC` (default), `CHINA` or `USGOV`. RSC does not return the cloud type, so the value is stored as provided and not verified; omit it to default to `PUBLIC`.
-
 In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
 
 ```terraform
-# The plain string ID form defaults cloud to PUBLIC. Use import-by-identity.tf
-# instead to onboard a non-public organization.
+# Import by RSC organization ID (plain string form).
 import {
   to = polaris_azure_devops_organization.org
   id = "a1b2c3d4-1234-4c5b-9abc-0123456789ab"

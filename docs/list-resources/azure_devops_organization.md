@@ -4,22 +4,27 @@ page_title: "polaris_azure_devops_organization List Resource - terraform-provide
 subcategory: ""
 description: |-
   The polaris_azure_devops_organization list resource lists Azure DevOps
-  organizations onboarded to RSC.
-  RSC does not return the cloud type or the enabled feature blocks for
-  onboarded organizations, so neither is populated in list results. cloud
-  defaults to PUBLIC unless supplied in the import identity (see below), and you
-  must add at least one feature block to each resource before applying.
+  organizations onboarded to RSC. Results can be filtered by native_id, the
+  Azure DevOps organization name shown in the organization's URL (e.g. my-org
+  in https://dev.azure.com/my-org).
+  The delete_snapshots_on_destroy lifecycle setting is not returned by RSC and
+  is left null in list results; it defaults to false on the resource.
+  The permissions field on each feature block is a client-side signal not
+  stored in RSC and is left null in list results.
 ---
 
 # polaris_azure_devops_organization (List Resource)
 
 The `polaris_azure_devops_organization` list resource lists Azure DevOps
-organizations onboarded to RSC.
+organizations onboarded to RSC. Results can be filtered by `native_id`, the
+Azure DevOps organization name shown in the organization's URL (e.g. `my-org`
+in https://dev.azure.com/my-org).
 
-RSC does not return the `cloud` type or the enabled `feature` blocks for
-onboarded organizations, so neither is populated in list results. `cloud`
-defaults to `PUBLIC` unless supplied in the import identity (see below), and you
-must add at least one `feature` block to each resource before applying.
+The `delete_snapshots_on_destroy` lifecycle setting is not returned by RSC and
+is left null in list results; it defaults to `false` on the resource.
+
+The `permissions` field on each feature block is a client-side signal not
+stored in RSC and is left null in list results.
 
 ## Example Usage
 
@@ -42,4 +47,4 @@ list "polaris_azure_devops_organization" "by_native_id" {
 
 ### Optional
 
-- `native_id` (String) Filter organizations by native ID. The native ID is the organization name visible in the Azure DevOps URL. Matches the organization whose native ID equals the given value.
+- `native_id` (String) Filter organizations by native ID. The native ID is the Azure DevOps organization name shown in the organization's URL (e.g., `my-org` from https://dev.azure.com/my-org). Matches the organization whose native ID equals the given value.

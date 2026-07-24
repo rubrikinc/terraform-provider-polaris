@@ -4,15 +4,7 @@ page_title: "Changelog"
 
 # Changelog
 
-## v1.9.0
-* **Breaking Change:** When the `CNP_AZURE_SQL_SLA_REVAMP` feature is enabled, a V2 (Rubrik-managed) Azure SQL
-  Database SLA in the `polaris_sla_domain` resource must specify its backup location with a `backup_location` block
-  instead of the top-level `archival` block. Accounts without the feature enabled are unaffected. See the
-  [v1.9.0 upgrade guide](upgrade_guide_v1.9.0.md).
-* Add support for the Azure SQL V1/V2 SLA model in the `polaris_sla_domain` resource and data source, gated on the
-  `CNP_AZURE_SQL_SLA_REVAMP` feature: a new `ltr_config` block on `azure_sql_database_config` and
-  `azure_sql_managed_instance_config`, and a computed `backup_type` attribute. The Azure SQL Database and Managed
-  Instance object types may now be combined in a single SLA. [[docs](../resources/sla_domain.md)]
+## v1.9.1
 * New resource added for `polaris_azure_devops_organization` which onboards an Azure DevOps organization to RSC
   using a customer-supplied application (non-OAuth). [[docs](../resources/azure_devops_organization.md)]
 * New data source added for `polaris_azure_devops_script` which generates the Azure DevOps onboarding scripts to run
@@ -23,6 +15,9 @@ page_title: "Changelog"
   [[docs](../data-sources/azure_devops_project.md)]
 * New data source added for `polaris_azure_devops_repository` which reads an Azure DevOps repository.
   [[docs](../data-sources/azure_devops_repository.md)]
+* New data source added for `polaris_azure_devops_permissions` which returns the permissions RSC requires for an
+  Azure DevOps feature and its permission groups, along with the version of each permission group.
+  [[docs](../data-sources/azure_devops_permissions.md)]
 * New list resource added for `polaris_azure_devops_organization` which lists onboarded Azure DevOps organizations
   for discovery and bulk import. [[docs](../list-resources/azure_devops_organization.md)]
 * Add support for `use_case` in the `polaris_azure_service_principal` resource, selecting whether the service
@@ -31,6 +26,16 @@ page_title: "Changelog"
 * Add support for the `AzureDevOpsOrganization`, `AzureDevOpsProject` and `AzureDevOpsRepository` object types in
   the `polaris_object` data source, resolving an Azure DevOps object to its RSC ID by name for use with the
   `polaris_sla_domain_assignment` resource. [[docs](../data-sources/object.md)]
+
+## v1.9.0
+* **Breaking Change:** When the `CNP_AZURE_SQL_SLA_REVAMP` feature is enabled, a V2 (Rubrik-managed) Azure SQL
+  Database SLA in the `polaris_sla_domain` resource must specify its backup location with a `backup_location` block
+  instead of the top-level `archival` block. Accounts without the feature enabled are unaffected. See the
+  [v1.9.0 upgrade guide](upgrade_guide_v1.9.0.md).
+* Add support for the Azure SQL V1/V2 SLA model in the `polaris_sla_domain` resource and data source, gated on the
+  `CNP_AZURE_SQL_SLA_REVAMP` feature: a new `ltr_config` block on `azure_sql_database_config` and
+  `azure_sql_managed_instance_config`, and a computed `backup_type` attribute. The Azure SQL Database and Managed
+  Instance object types may now be combined in a single SLA. [[docs](../resources/sla_domain.md)]
 
 ## v1.8.2
 * **Breaking Change:** The `polaris_custom_role` resource now requires the `VIEW_CLUSTER_REFERENCE` permission
