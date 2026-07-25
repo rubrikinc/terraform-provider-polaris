@@ -21,6 +21,7 @@
 package provider
 
 import (
+	"context"
 	"regexp"
 	"testing"
 
@@ -28,9 +29,30 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
+// requireAzureDevOpsFeatureFlag skips the test if the Azure DevOps protection
+// feature is not enabled for the account.
+func requireAzureDevOpsFeatureFlag(t *testing.T) {
+	t.Helper()
+
+	ctx := context.Background()
+	c, err := newClient(ctx, "", polaris.CacheParams{})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	const azureDevOps = core.FeatureFlagName("AZURE_DEVOPS_PROTECTION_ENABLED")
+	if !c.flag(ctx, azureDevOps) {
+		t.Skipf("feature flag %s is not enabled", azureDevOps)
+	}
+}
+
 func TestAccAzureDevOpsPermissionsDataSource(t *testing.T) {
+	requireAzureDevOpsFeatureFlag(t)
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: protoV6ProviderFactories,
 		Steps: []resource.TestStep{{
