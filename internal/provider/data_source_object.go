@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/devops"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
@@ -43,9 +44,18 @@ Supported object types:
   * ´AwsNativeEbsVolume´ - AWS Native EBS Volume
   * ´AwsNativeEc2Instance´ - AWS Native EC2 Instance
   * ´AwsNativeRdsInstance´ - AWS Native RDS Instance
+  * ´AzureDevOpsOrganization´ - Azure DevOps Organization
+  * ´AzureDevOpsProject´ - Azure DevOps Project
+  * ´AzureDevOpsRepository´ - Azure DevOps Repository
   * ´AzureNativeResourceGroup´ - Azure Native Resource Group (requires ´subscription_id´)
   * ´AzureNativeSubscription´ - Azure Native Subscription
   * ´AzureNativeVirtualMachine´ - Azure Native Virtual Machine
+
+~> **Note:** Azure DevOps project and repository names are only unique within
+their parent (an organization and a project, respectively). When a name is
+shared across parents, set ´org_id´ (for ´AzureDevOpsProject´) or ´org_id´
+and/or ´project_id´ (for ´AzureDevOpsRepository´) to disambiguate; otherwise the
+lookup returns a "multiple objects found" error.
 `
 
 func dataSourceObject() *schema.Resource {
@@ -73,23 +83,47 @@ func dataSourceObject() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyObjectType: {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureNativeResourceGroup`, `AzureNativeSubscription` and `AzureNativeVirtualMachine`.",
+				Type:     schema.TypeString,
+				Required: true,
+				Description: "Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, " +
+					"`AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureDevOpsOrganization`, " +
+					"`AzureDevOpsProject`, `AzureDevOpsRepository`, `AzureNativeResourceGroup`, " +
+					"`AzureNativeSubscription` and `AzureNativeVirtualMachine`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"AwsNativeAccount",
 					"AwsNativeEbsVolume",
 					"AwsNativeEc2Instance",
 					"AwsNativeRdsInstance",
+					"AzureDevOpsOrganization",
+					"AzureDevOpsProject",
+					"AzureDevOpsRepository",
 					"AzureNativeResourceGroup",
 					"AzureNativeSubscription",
 					"AzureNativeVirtualMachine",
 				}, false),
 			},
 			keySubscriptionID: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Description:  "RSC cloud account ID of the parent Azure subscription (UUID). Required when `object_type` is `AzureNativeResourceGroup`; ignored for other object types.",
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "RSC cloud account ID of the parent Azure subscription (UUID). Required when " +
+					"`object_type` is `AzureNativeResourceGroup`; ignored for other object types.",
+				ValidateFunc: validation.IsUUID,
+			},
+			keyOrgID: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "RSC ID of the parent Azure DevOps organization (UUID). May be set when " +
+					"`object_type` is `AzureDevOpsProject` to disambiguate a project name shared across " +
+					"organizations, or when `object_type` is `AzureDevOpsRepository` to disambiguate a " +
+					"repository name shared across projects; ignored for other object types.",
+				ValidateFunc: validation.IsUUID,
+			},
+			keyProjectID: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "RSC ID of the parent Azure DevOps project (UUID). May be set when `object_type` is " +
+					"`AzureDevOpsRepository` to disambiguate a repository name shared across projects; ignored for " +
+					"other object types.",
 				ValidateFunc: validation.IsUUID,
 			},
 		},
@@ -113,12 +147,7 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 	// (e.g. AwsNativeAccount, AzureNativeSubscription), workload objects do not
 	// carry RSC feature-status metadata, so activity is determined via these
 	// server-side filters rather than inspecting the returned feature list.
-	activeFilters := []hierarchy.Filter{
-		{Field: "IS_RELIC", Texts: []string{"false"}},
-		{Field: "IS_GHOST", Texts: []string{"false"}},
-		{Field: "IS_ACTIVE", Texts: []string{"true"}},
-		{Field: "IS_ARCHIVED", Texts: []string{"false"}},
-	}
+	activeFilters := activeObjectFilters()
 
 	var objects []hierarchy.Object
 	switch objectType {
@@ -200,6 +229,70 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 		for _, r := range results {
 			objects = append(objects, r.Object)
 		}
+	case hierarchy.ObjectType("AzureDevOpsOrganization"):
+		// The inventory query returns a 500 error for some Azure DevOps object
+		// types, so route through the dedicated DevOps queries instead.
+		orgs, err := devops.Wrap(client).AzureOrganizationsByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, org := range orgs {
+			objects = append(objects, hierarchy.Object{
+				ID:         org.ID,
+				Name:       org.Name,
+				ObjectType: hierarchy.ObjectType(org.ObjectType),
+			})
+		}
+	case hierarchy.ObjectType("AzureDevOpsProject"):
+		// The inventory query returns a 500 error for some Azure DevOps object
+		// types, so route through the dedicated DevOps queries instead.
+		projects, err := devops.Wrap(client).AzureProjectsByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		// Project names are only unique within an organization, so when org_id
+		// is set, narrow to that organization.
+		orgID := d.Get(keyOrgID).(string)
+		for _, project := range projects {
+			if orgID != "" && project.OrgID.String() != orgID {
+				continue
+			}
+			objects = append(objects, hierarchy.Object{
+				ID:         project.ID,
+				Name:       project.Name,
+				ObjectType: hierarchy.ObjectType(project.ObjectType),
+			})
+		}
+	case hierarchy.ObjectType("AzureDevOpsRepository"):
+		// The inventory query returns a 500 error for some Azure DevOps object
+		// types, so route through the dedicated DevOps queries instead.
+		repos, err := devops.Wrap(client).AzureRepositoriesByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		// Repository names are only unique within a project, so when org_id
+		// and/or project_id are set, narrow to that organization and project.
+		orgID := d.Get(keyOrgID).(string)
+		projectID := d.Get(keyProjectID).(string)
+		for _, repo := range repos {
+			if orgID != "" && repo.OrgID.String() != orgID {
+				continue
+			}
+			if projectID != "" && repo.ProjectID.String() != projectID {
+				continue
+			}
+			objects = append(objects, hierarchy.Object{
+				ID:         repo.ID,
+				Name:       repo.Name,
+				ObjectType: hierarchy.ObjectType(repo.ObjectType),
+			})
+		}
 	case hierarchy.ObjectType("AzureNativeSubscription"):
 		// Container-level type: same feature-status strategy as AwsNativeAccount.
 		results, err := hierarchy.ObjectsByName[hierarchy.AzureNativeSubscription](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType)
@@ -274,4 +367,16 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 	d.SetId(objects[0].ID.String())
 
 	return nil
+}
+
+// activeObjectFilters returns the server-side hierarchy filters that exclude
+// inactive workload objects: relics, ghosts, and inactive or archived objects.
+// Any additional filters passed in are appended to the returned set.
+func activeObjectFilters(filters ...hierarchy.Filter) []hierarchy.Filter {
+	return append([]hierarchy.Filter{
+		{Field: "IS_RELIC", Texts: []string{"false"}},
+		{Field: "IS_GHOST", Texts: []string{"false"}},
+		{Field: "IS_ACTIVE", Texts: []string{"true"}},
+		{Field: "IS_ARCHIVED", Texts: []string{"false"}},
+	}, filters...)
 }

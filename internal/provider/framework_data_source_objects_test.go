@@ -77,7 +77,7 @@ data "polaris_objects" "all_subscriptions" {
 }
 `
 
-func TestAccPolarisObjectsDataSource_azureResourceGroup(t *testing.T) {
+func TestAccAzureResourceGroupObjectsDataSource(t *testing.T) {
 	config, subscription, err := loadAzureTestConfig()
 	if err != nil {
 		t.Fatal(err)
