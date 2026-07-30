@@ -129,15 +129,19 @@ type gcpClusterConfigModel struct {
 }
 
 type gcpVMConfigModel struct {
-	CDMVersion       types.String             `tfsdk:"cdm_version"`
-	CDMProduct       types.String             `tfsdk:"cdm_product"`
-	InstanceType     types.String             `tfsdk:"instance_type"`
-	Network          types.String             `tfsdk:"network"`
-	Subnet           types.String             `tfsdk:"subnet"`
-	HostProject      types.String             `tfsdk:"host_project"`
-	ServiceAccounts  types.Set                `tfsdk:"service_accounts"`
-	SubnetAzConfig   []gcpSubnetAzConfigModel `tfsdk:"subnet_az_config"`
-	DeleteProtection types.Bool               `tfsdk:"delete_protection"`
+	CDMVersion      types.String `tfsdk:"cdm_version"`
+	CDMProduct      types.String `tfsdk:"cdm_product"`
+	InstanceType    types.String `tfsdk:"instance_type"`
+	Network         types.String `tfsdk:"network"`
+	Subnet          types.String `tfsdk:"subnet"`
+	HostProject     types.String `tfsdk:"host_project"`
+	ServiceAccounts types.Set    `tfsdk:"service_accounts"`
+	// SubnetAzConfig is a types.List (not []gcpSubnetAzConfigModel) so it can hold
+	// an unknown value: it is commonly built from a dynamic block whose for_each
+	// derives from a data source, which is unknown until the data source is read.
+	// A Go slice target cannot decode an unknown and would fail ValidateConfig.
+	SubnetAzConfig   types.List `tfsdk:"subnet_az_config"`
+	DeleteProtection types.Bool `tfsdk:"delete_protection"`
 }
 
 type gcpSubnetAzConfigModel struct {
@@ -404,14 +408,16 @@ func validateGcpCloudClusterConfig(config gcpCloudClusterModel) diag.Diagnostics
 	}
 	azResilient := config.AZResilient.ValueBool()
 
-	// The number of subnet_az_config blocks is always known at plan time. subnet
-	// is only conclusive once known.
-	hasSubnetAzConfigs := len(vm.SubnetAzConfig) > 0
+	// subnet and subnet_az_config are only conclusive once known. subnet_az_config
+	// is frequently built from a data-source-driven dynamic block, so it can be
+	// unknown at validate time.
+	subnetAzKnown := !vm.SubnetAzConfig.IsUnknown()
+	hasSubnetAzConfigs := subnetAzKnown && !vm.SubnetAzConfig.IsNull() && len(vm.SubnetAzConfig.Elements()) > 0
 	subnetKnown := !vm.Subnet.IsUnknown()
 	hasSubnet := subnetKnown && vm.Subnet.ValueString() != ""
 
 	if azResilient {
-		if !hasSubnetAzConfigs {
+		if subnetAzKnown && !hasSubnetAzConfigs {
 			diags.AddAttributeError(path.Root(keyVMConfig), "subnet_az_config required",
 				"`subnet_az_config` is required in `vm_config` when `az_resilient` is true.")
 		}
@@ -697,8 +703,15 @@ func (r *gcpCloudClusterResource) buildCreateInput(ctx context.Context, plan, co
 	numNodes := int(cc.NumNodes.ValueInt64())
 	azResilient := plan.AZResilient.ValueBool()
 
+	var subnetAzModels []gcpSubnetAzConfigModel
+	if !vm.SubnetAzConfig.IsNull() && !vm.SubnetAzConfig.IsUnknown() {
+		diags.Append(vm.SubnetAzConfig.ElementsAs(ctx, &subnetAzModels, false)...)
+		if diags.HasError() {
+			return gqlcloudcluster.CreateGcpClusterInput{}, diags
+		}
+	}
 	var subnetAzConfigs []gqlcloudcluster.SubnetAzConfig
-	for _, az := range vm.SubnetAzConfig {
+	for _, az := range subnetAzModels {
 		subnetAzConfigs = append(subnetAzConfigs, gqlcloudcluster.SubnetAzConfig{
 			AvailabilityZone: az.AvailabilityZone.ValueString(),
 			Subnet:           az.Subnet.ValueString(),
