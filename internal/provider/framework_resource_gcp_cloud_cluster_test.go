@@ -47,10 +47,14 @@ func TestValidateGcpCloudClusterConfig(t *testing.T) {
 	nullList := types.ListNull(subnetAzObjType)
 	unknownList := types.ListUnknown(subnetAzObjType)
 
+	zone := types.StringValue("us-west1-a")
+	noZone := types.StringNull()
+
 	// model builds a config with the fields validateGcpCloudClusterConfig reads.
-	model := func(azResilient types.Bool, subnet types.String, numNodes types.Int64, subnetAz types.List) gcpCloudClusterModel {
+	model := func(azResilient types.Bool, zone, subnet types.String, numNodes types.Int64, subnetAz types.List) gcpCloudClusterModel {
 		return gcpCloudClusterModel{
 			AZResilient:   azResilient,
+			Zone:          zone,
 			ClusterConfig: []gcpClusterConfigModel{{NumNodes: numNodes}},
 			VMConfig:      []gcpVMConfigModel{{Subnet: subnet, SubnetAzConfig: subnetAz}},
 		}
@@ -62,58 +66,63 @@ func TestValidateGcpCloudClusterConfig(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name:      "single-AZ with subnet is valid",
-			config:    model(types.BoolValue(false), types.StringValue("subnet-a"), types.Int64Value(1), nullList),
+			name:      "single-AZ with subnet and zone is valid",
+			config:    model(types.BoolValue(false), zone, types.StringValue("subnet-a"), types.Int64Value(1), nullList),
 			wantError: false,
 		},
 		{
+			name:      "single-AZ without zone is rejected",
+			config:    model(types.BoolValue(false), noZone, types.StringValue("subnet-a"), types.Int64Value(1), nullList),
+			wantError: true,
+		},
+		{
 			name:      "single-AZ without subnet is rejected",
-			config:    model(types.BoolValue(false), types.StringValue(""), types.Int64Value(1), nullList),
+			config:    model(types.BoolValue(false), zone, types.StringValue(""), types.Int64Value(1), nullList),
 			wantError: true,
 		},
 		{
 			name:      "single-AZ with subnet_az_config is rejected",
-			config:    model(types.BoolValue(false), types.StringValue("subnet-a"), types.Int64Value(1), azList),
+			config:    model(types.BoolValue(false), zone, types.StringValue("subnet-a"), types.Int64Value(1), azList),
 			wantError: true,
 		},
 		{
-			name:      "multi-AZ with three nodes and az configs is valid",
-			config:    model(types.BoolValue(true), types.StringNull(), types.Int64Value(3), azList),
+			name:      "multi-AZ with three nodes and az configs and no zone is valid",
+			config:    model(types.BoolValue(true), noZone, types.StringNull(), types.Int64Value(3), azList),
 			wantError: false,
 		},
 		{
 			name:      "multi-AZ without az configs is rejected",
-			config:    model(types.BoolValue(true), types.StringNull(), types.Int64Value(3), nullList),
+			config:    model(types.BoolValue(true), noZone, types.StringNull(), types.Int64Value(3), nullList),
 			wantError: true,
 		},
 		{
 			name:      "multi-AZ with subnet is rejected",
-			config:    model(types.BoolValue(true), types.StringValue("subnet-a"), types.Int64Value(3), azList),
+			config:    model(types.BoolValue(true), noZone, types.StringValue("subnet-a"), types.Int64Value(3), azList),
 			wantError: true,
 		},
 		{
 			name:      "multi-AZ with fewer than three nodes is rejected",
-			config:    model(types.BoolValue(true), types.StringNull(), types.Int64Value(2), azList),
+			config:    model(types.BoolValue(true), noZone, types.StringNull(), types.Int64Value(2), azList),
 			wantError: true,
 		},
 		{
 			name:      "unknown az_resilient skips validation",
-			config:    model(types.BoolUnknown(), types.StringValue(""), types.Int64Value(1), nullList),
+			config:    model(types.BoolUnknown(), noZone, types.StringValue(""), types.Int64Value(1), nullList),
 			wantError: false,
 		},
 		{
 			name:      "unknown subnet skips the subnet-required check",
-			config:    model(types.BoolValue(false), types.StringUnknown(), types.Int64Value(1), nullList),
+			config:    model(types.BoolValue(false), zone, types.StringUnknown(), types.Int64Value(1), nullList),
 			wantError: false,
 		},
 		{
 			name:      "unknown num_nodes skips the multi-AZ node check",
-			config:    model(types.BoolValue(true), types.StringNull(), types.Int64Unknown(), azList),
+			config:    model(types.BoolValue(true), noZone, types.StringNull(), types.Int64Unknown(), azList),
 			wantError: false,
 		},
 		{
 			name:      "unknown subnet_az_config skips the either-or check",
-			config:    model(types.BoolValue(true), types.StringNull(), types.Int64Value(3), unknownList),
+			config:    model(types.BoolValue(true), noZone, types.StringNull(), types.Int64Value(3), unknownList),
 			wantError: false,
 		},
 	}

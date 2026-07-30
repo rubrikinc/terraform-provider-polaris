@@ -22,12 +22,12 @@ description: |-
 - `cluster_config` (Block List, Min: 1, Max: 1) Configuration for the cloud cluster. (see [below for nested schema](#nestedblock--cluster_config))
 - `region` (String) GCP region to deploy the cluster in. Changing this forces a new resource to be created.
 - `vm_config` (Block List, Min: 1, Max: 1) VM configuration for the cluster nodes. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--vm_config))
-- `zone` (String) GCP zone to deploy the cluster in. Changing this forces a new resource to be created.
 
 ### Optional
 
 - `az_resilient` (Boolean) Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` and `subnet` must be omitted. Requires at least three nodes and a region with at least three zones. Changing this forces a new resource to be created.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `zone` (String) GCP zone to deploy the cluster in. Required when `az_resilient` is false. When `az_resilient` is true it may be omitted and defaults to the first `subnet_az_config` availability zone. Changing this forces a new resource to be created.
 
 ### Read-Only
 

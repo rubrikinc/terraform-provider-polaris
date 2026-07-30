@@ -191,9 +191,10 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 				Validators:    []validator.String{isNotWhiteSpace()},
 			},
 			keyZone: schema.StringAttribute{
-				Required:      true,
-				Description:   "GCP zone to deploy the cluster in. Changing this forces a new resource to be created.",
-				PlanModifiers: requiresReplaceStr,
+				Optional:      true,
+				Computed:      true,
+				Description:   "GCP zone to deploy the cluster in. Required when `az_resilient` is false. When `az_resilient` is true it may be omitted and defaults to the first `subnet_az_config` availability zone. Changing this forces a new resource to be created.",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
 				Validators:    []validator.String{isNotWhiteSpace()},
 			},
 			keyAzResilient: schema.BoolAttribute{
@@ -438,6 +439,12 @@ func validateGcpCloudClusterConfig(config gcpCloudClusterModel) diag.Diagnostics
 			diags.AddAttributeError(path.Root(keyVMConfig), "subnet required",
 				"`subnet` is required in `vm_config` when `az_resilient` is false.")
 		}
+		// zone is only derived from subnet_az_config in Multi-AZ mode, so it must
+		// be set for single-AZ clusters.
+		if config.Zone.IsNull() {
+			diags.AddAttributeError(path.Root(keyZone), "zone required",
+				"`zone` is required when `az_resilient` is false.")
+		}
 	}
 
 	return diags
@@ -497,6 +504,9 @@ func (r *gcpCloudClusterResource) Create(ctx context.Context, req resource.Creat
 
 	plan.ID = types.StringValue(gcpCluster.ID.String())
 	plan.VMConfig[0].CDMProduct = types.StringValue(gcpCluster.CdmProduct)
+	// zone is Computed and may have been derived from subnet_az_config, so record
+	// the resolved value in state.
+	plan.Zone = types.StringValue(input.Zone)
 
 	// Read back to populate computed fields. A failed readback must not fail the
 	// create; the cluster exists and a plan diff on the next run is acceptable.
@@ -726,6 +736,13 @@ func (r *gcpCloudClusterResource) buildCreateInput(ctx context.Context, plan, co
 	if azResilient && len(subnetAzConfigs) > 0 {
 		subnet = subnetAzConfigs[0].Subnet
 	}
+
+	// zone defaults to the first subnet_az_config availability zone for a
+	// Multi-AZ cluster when the caller omits it, matching the RSC UI.
+	zone := plan.Zone.ValueString()
+	if azResilient && zone == "" && len(subnetAzConfigs) > 0 {
+		zone = subnetAzConfigs[0].AvailabilityZone
+	}
 	networkConfig := make([]gqlcloudcluster.GcpSubnetInput, numNodes)
 	for i := 0; i < numNodes; i++ {
 		networkConfig[i] = gqlcloudcluster.GcpSubnetInput{
@@ -769,7 +786,7 @@ func (r *gcpCloudClusterResource) buildCreateInput(ctx context.Context, plan, co
 		IsAzResilient:        isAzResilient,
 		KeepClusterOnFailure: cc.KeepClusterOnFailure.ValueBool(),
 		Region:               region,
-		Zone:                 plan.Zone.ValueString(),
+		Zone:                 zone,
 		Validations:          []gqlcloudcluster.ClusterCreateValidations{gqlcloudcluster.AllChecks},
 		ClusterConfig: gqlcloudcluster.GcpClusterConfig{
 			ClusterName:      cc.ClusterName.ValueString(),
