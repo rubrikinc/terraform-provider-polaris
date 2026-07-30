@@ -22,10 +22,12 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -55,6 +57,22 @@ const gcpServiceAccountScope = "https://www.googleapis.com/auth/cloud-platform"
 
 const defaultGCPCloudClusterCreateTimeout = 60 * time.Minute
 
+// minMultiAzNodes is the minimum node count required for a Multi-AZ cluster.
+const minMultiAzNodes = 3
+
+// gcpCloudClusterInstanceTypes are the GCP instance types accepted by the
+// instance_type attribute. The backend further restricts the set per CDM
+// version; this is the superset the provider allows at plan time. It drives both
+// the OneOf validator and the attribute description so they cannot drift.
+var gcpCloudClusterInstanceTypes = []gqlcloudcluster.GcpCCInstanceType{
+	gqlcloudcluster.GcpInstanceTypeN2Standard8,
+	gqlcloudcluster.GcpInstanceTypeN2Standard16,
+	gqlcloudcluster.GcpInstanceTypeN2Highmem16,
+	gqlcloudcluster.GcpInstanceTypeN2DStandard8,
+	gqlcloudcluster.GcpInstanceTypeN2DStandard16,
+	gqlcloudcluster.GcpInstanceTypeN2DHighmem16,
+}
+
 const resourceGCPCloudClusterDescription = `
 The ´polaris_gcp_cloud_cluster´ resource creates a GCP cloud cluster using RSC.
 
@@ -66,7 +84,7 @@ number of nodes, instance types, and network configuration.
    resource will attempt to clean up the created resources, but manual cleanup
    may be required.
 
-~> **Note:** The GCP project must be onboarded to RSC with the Server and Apps
+~> **Note:** The GCP project must be onboarded to RSC with the ´SERVERS_AND_APPS´
    feature enabled before creating a cloud cluster.
 
 ~> **Note:** This resource requires **Terraform v1.11.0 or later** due to the use of write-only attributes for
@@ -141,6 +159,11 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 
 	requiresReplaceStr := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 
+	instanceTypeValues := make([]string, len(gcpCloudClusterInstanceTypes))
+	for i, t := range gcpCloudClusterInstanceTypes {
+		instanceTypeValues[i] = string(t)
+	}
+
 	res.Schema = schema.Schema{
 		Description: description(resourceGCPCloudClusterDescription),
 		Attributes: map[string]schema.Attribute{
@@ -205,8 +228,9 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 						},
 						keyNumNodes: schema.Int64Attribute{
 							Required:      true,
-							Description:   "Number of nodes in the cluster. Changing this forces a new resource to be created.",
+							Description:   "Number of nodes in the cluster. Must be at least 3 when `az_resilient` is true. Changing this forces a new resource to be created.",
 							PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+							Validators:    []validator.Int64{int64validator.AtLeast(1)},
 						},
 						keyDNSNameServers: schema.SetAttribute{
 							ElementType: types.StringType,
@@ -278,16 +302,10 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 							Description: "CDM Product Code. This is a read-only field and computed based on the CDM version.",
 						},
 						keyInstanceType: schema.StringAttribute{
-							Required:    true,
-							Description: "GCP instance type for the cluster nodes. Changing this forces a new resource to be created. Supported values are `N2_STANDARD_8`, `N2_STANDARD_16`, `N2_HIGHMEM_16`, `N2D_STANDARD_8`, `N2D_STANDARD_16` and `N2D_HIGHMEM_16`. The set of instance types actually available depends on the selected CDM version.",
-							Validators: []validator.String{stringvalidator.OneOf(
-								string(gqlcloudcluster.GcpInstanceTypeN2Standard8),
-								string(gqlcloudcluster.GcpInstanceTypeN2Standard16),
-								string(gqlcloudcluster.GcpInstanceTypeN2Highmem16),
-								string(gqlcloudcluster.GcpInstanceTypeN2DStandard8),
-								string(gqlcloudcluster.GcpInstanceTypeN2DStandard16),
-								string(gqlcloudcluster.GcpInstanceTypeN2DHighmem16),
-							)},
+							Required: true,
+							Description: fmt.Sprintf("GCP instance type for the cluster nodes. Changing this forces a new resource to be created. %s. "+
+								"The set of instance types actually available depends on the selected CDM version.", possibleValues(gcpCloudClusterInstanceTypes)),
+							Validators: []validator.String{stringvalidator.OneOf(instanceTypeValues...)},
 						},
 						keyNetwork: schema.StringAttribute{
 							Required:    true,
@@ -337,11 +355,10 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 					},
 				},
 			},
+			// Only Create is wired up (the create/read-back is the long-running
+			// step); don't advertise timeouts the resource doesn't apply.
 			keyTimeouts: timeouts.Block(ctx, timeouts.Opts{
 				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
 			}),
 		},
 	}
@@ -360,19 +377,34 @@ func (r *gcpCloudClusterResource) ValidateConfig(ctx context.Context, req resour
 }
 
 // validateGcpCloudClusterConfig holds the plan-time, client-free validation
-// rules: the az_resilient / subnet / subnet_az_config either-or.
+// rules: the az_resilient / subnet / subnet_az_config either-or, and the
+// Multi-AZ minimum node count.
+//
+// Checks are skipped for any value that is unknown at plan time (an unresolved
+// reference known only after apply), because reading it would yield a zero
+// value and reject an otherwise-valid config.
 func validateGcpCloudClusterConfig(config gcpCloudClusterModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	if len(config.VMConfig) == 0 {
+	if len(config.VMConfig) == 0 || len(config.ClusterConfig) == 0 {
 		return diags
 	}
 	vm := config.VMConfig[0]
 
-	hasSubnetAzConfigs := len(vm.SubnetAzConfig) > 0
-	hasSubnet := vm.Subnet.ValueString() != ""
+	// az_resilient decides which subnet form is required, so nothing here is
+	// conclusive until it is known.
+	if config.AZResilient.IsUnknown() {
+		return diags
+	}
+	azResilient := config.AZResilient.ValueBool()
 
-	if config.AZResilient.ValueBool() {
+	// The number of subnet_az_config blocks is always known at plan time. subnet
+	// is only conclusive once known.
+	hasSubnetAzConfigs := len(vm.SubnetAzConfig) > 0
+	subnetKnown := !vm.Subnet.IsUnknown()
+	hasSubnet := subnetKnown && vm.Subnet.ValueString() != ""
+
+	if azResilient {
 		if !hasSubnetAzConfigs {
 			diags.AddAttributeError(path.Root(keyVMConfig), "subnet_az_config required",
 				"`subnet_az_config` is required in `vm_config` when `az_resilient` is true.")
@@ -381,12 +413,16 @@ func validateGcpCloudClusterConfig(config gcpCloudClusterModel) diag.Diagnostics
 			diags.AddAttributeError(path.Root(keyVMConfig), "subnet not allowed",
 				"`subnet` cannot be specified in `vm_config` when `az_resilient` is true, use `subnet_az_config` instead.")
 		}
+		if n := config.ClusterConfig[0].NumNodes; !n.IsUnknown() && !n.IsNull() && n.ValueInt64() < minMultiAzNodes {
+			diags.AddAttributeError(path.Root(keyClusterConfig), "num_nodes too low",
+				fmt.Sprintf("`num_nodes` must be at least %d when `az_resilient` is true.", minMultiAzNodes))
+		}
 	} else {
 		if hasSubnetAzConfigs {
 			diags.AddAttributeError(path.Root(keyVMConfig), "subnet_az_config not allowed",
 				"`subnet_az_config` cannot be specified in `vm_config` when `az_resilient` is false.")
 		}
-		if !hasSubnet {
+		if subnetKnown && !hasSubnet {
 			diags.AddAttributeError(path.Root(keyVMConfig), "subnet required",
 				"`subnet` is required in `vm_config` when `az_resilient` is false.")
 		}
@@ -512,10 +548,9 @@ func (r *gcpCloudClusterResource) Read(ctx context.Context, req resource.ReadReq
 func (r *gcpCloudClusterResource) Update(ctx context.Context, req resource.UpdateRequest, res *resource.UpdateResponse) {
 	tflog.Trace(ctx, "gcpCloudClusterResource.Update")
 
-	var plan, state, config gcpCloudClusterModel
+	var plan, state gcpCloudClusterModel
 	res.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	res.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	res.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if res.Diagnostics.HasError() {
 		return
 	}
@@ -534,15 +569,11 @@ func (r *gcpCloudClusterResource) Update(ctx context.Context, req resource.Updat
 	gqlClusterAPI := gqlcluster.Wrap(polarisClient.GQL)
 
 	planCC := plan.ClusterConfig[0]
-	configCC := config.ClusterConfig[0]
 
-	// Read the set-valued fields from the config: they are null (never unknown)
-	// there when omitted, so ElementsAs stays error-free for the Optional
-	// dns_search_domains. DNS name servers and search domains are updated together.
-	var dnsServers, searchDomains, ntpServers []string
-	res.Diagnostics.Append(configCC.DNSNameServers.ElementsAs(ctx, &dnsServers, false)...)
-	res.Diagnostics.Append(configCC.DNSSearchDomains.ElementsAs(ctx, &searchDomains, false)...)
-	res.Diagnostics.Append(configCC.NTPServers.ElementsAs(ctx, &ntpServers, false)...)
+	// DNS name servers and search domains are updated together.
+	dnsServers := decodeStringSetOrNil(ctx, planCC.DNSNameServers, &res.Diagnostics)
+	searchDomains := decodeStringSetOrNil(ctx, planCC.DNSSearchDomains, &res.Diagnostics)
+	ntpServers := decodeStringSetOrNil(ctx, planCC.NTPServers, &res.Diagnostics)
 	if res.Diagnostics.HasError() {
 		return
 	}
@@ -673,17 +704,10 @@ func (r *gcpCloudClusterResource) buildCreateInput(ctx context.Context, plan, co
 		}
 	}
 
-	// Read the set-valued fields from the config rather than the plan: they are
-	// null (never unknown) there when omitted, so ElementsAs stays error-free
-	// for the Optional dns_search_domains.
-	configCC := config.ClusterConfig[0]
-	configVM := config.VMConfig[0]
-
-	var serviceAccountEmails, dnsNameServers, dnsSearchDomains, ntpServers []string
-	diags.Append(configVM.ServiceAccounts.ElementsAs(ctx, &serviceAccountEmails, false)...)
-	diags.Append(configCC.DNSNameServers.ElementsAs(ctx, &dnsNameServers, false)...)
-	diags.Append(configCC.DNSSearchDomains.ElementsAs(ctx, &dnsSearchDomains, false)...)
-	diags.Append(configCC.NTPServers.ElementsAs(ctx, &ntpServers, false)...)
+	serviceAccountEmails := decodeStringSetOrNil(ctx, vm.ServiceAccounts, &diags)
+	dnsNameServers := decodeStringSetOrNil(ctx, cc.DNSNameServers, &diags)
+	dnsSearchDomains := decodeStringSetOrNil(ctx, cc.DNSSearchDomains, &diags)
+	ntpServers := decodeStringSetOrNil(ctx, cc.NTPServers, &diags)
 	if diags.HasError() {
 		return gqlcloudcluster.CreateGcpClusterInput{}, diags
 	}
@@ -698,6 +722,9 @@ func (r *gcpCloudClusterResource) buildCreateInput(ctx context.Context, plan, co
 			Scopes: []string{gcpServiceAccountScope},
 		})
 	}
+
+	// admin_email and admin_password are write-only, so read them from the config.
+	configCC := config.ClusterConfig[0]
 
 	var isAzResilient *bool
 	if azResilient {

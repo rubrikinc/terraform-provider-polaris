@@ -45,7 +45,7 @@ Required:
 - `dns_name_servers` (Set of String) DNS name servers for the cluster.
 - `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure (can be useful for troubleshooting). Changing this forces a new resource to be created.
 - `ntp_servers` (Set of String) NTP servers for the cluster.
-- `num_nodes` (Number) Number of nodes in the cluster. Changing this forces a new resource to be created.
+- `num_nodes` (Number) Number of nodes in the cluster. Must be at least 3 when `az_resilient` is true. Changing this forces a new resource to be created.
 
 Optional:
 
@@ -61,7 +61,7 @@ Optional:
 Required:
 
 - `cdm_version` (String) CDM version to use. Changing this forces a new resource to be created.
-- `instance_type` (String) GCP instance type for the cluster nodes. Changing this forces a new resource to be created. Supported values are `N2_STANDARD_8`, `N2_STANDARD_16`, `N2_HIGHMEM_16`, `N2D_STANDARD_8`, `N2D_STANDARD_16` and `N2D_HIGHMEM_16`. The set of instance types actually available depends on the selected CDM version.
+- `instance_type` (String) GCP instance type for the cluster nodes. Changing this forces a new resource to be created. Possible values are `N2_STANDARD_8`, `N2_STANDARD_16`, `N2_HIGHMEM_16`, `N2D_STANDARD_8`, `N2D_STANDARD_16` and `N2D_HIGHMEM_16`. The set of instance types actually available depends on the selected CDM version.
 - `network` (String) GCP network name for the cluster nodes. Changing this forces a new resource to be created.
 - `service_accounts` (Set of String) GCP service account emails for the cluster nodes. Changing this forces a new resource to be created.
 
@@ -91,6 +91,3 @@ Required:
 Optional:
 
 - `create` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
-- `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
-- `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
-- `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
