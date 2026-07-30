@@ -13,9 +13,6 @@ page_title: "Changelog"
 * Add support for Multi-AZ resiliency in the `polaris_gcp_cloud_cluster` resource. Set `az_resilient` to true and
   provide a `subnet_az_config` block per availability zone. Requires at least three nodes and a region with at
   least three zones. [[docs](../resources/gcp_cloud_cluster.md)]
-* New data source added for `polaris_gcp_service_accounts` which returns the GCP service accounts RSC has
-  discovered for a cloud account, for use with the `polaris_gcp_cloud_cluster` resource.
-  [[docs](../data-sources/gcp_service_accounts.md)]
 * New data source added for `polaris_gcp_regions` which returns the GCP regions and their availability zones
   RSC supports for a cloud account, for use with the `polaris_gcp_cloud_cluster` resource.
   [[docs](../data-sources/gcp_regions.md)]

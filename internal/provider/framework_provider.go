@@ -141,7 +141,6 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 		newAzurePermissionGroupsDataSource,
 		newFeatureFlagDataSource,
 		newGcpRegionsDataSource,
-		newGcpServiceAccountsDataSource,
 		newIdentityProviderDataSource,
 		newObjectsDataSource,
 		newRoleDataSource,
