@@ -482,4 +482,5 @@ const (
 	keyYearlySchedule                               = "yearly_schedule"
 	keyYearStartMonth                               = "year_start_month"
 	keyZone                                         = "zone"
+	keyZones                                        = "zones"
 )
