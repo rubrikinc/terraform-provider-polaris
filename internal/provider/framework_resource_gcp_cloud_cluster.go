@@ -40,6 +40,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -158,6 +159,7 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 	tflog.Trace(ctx, "gcpCloudClusterResource.Schema")
 
 	requiresReplaceStr := []planmodifier.String{stringplanmodifier.RequiresReplace()}
+	useStateStr := []planmodifier.String{stringplanmodifier.UseStateForUnknown()}
 
 	instanceTypeValues := make([]string, len(gcpCloudClusterInstanceTypes))
 	for i, t := range gcpCloudClusterInstanceTypes {
@@ -239,10 +241,11 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 							Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
 						},
 						keyDNSSearchDomains: schema.SetAttribute{
-							ElementType: types.StringType,
-							Optional:    true,
-							Computed:    true,
-							Description: "DNS search domains for the cluster.",
+							ElementType:   types.StringType,
+							Optional:      true,
+							Computed:      true,
+							Description:   "DNS search domains for the cluster.",
+							PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 						},
 						keyNTPServers: schema.SetAttribute{
 							ElementType: types.StringType,
@@ -268,16 +271,18 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 							Description: "Whether to force delete the cluster on destroy.",
 						},
 						keyTimezone: schema.StringAttribute{
-							Optional:    true,
-							Computed:    true,
-							Description: "Timezone for the cluster using IANA standard format e.g. America/Los_Angeles, Europe/Paris, etc.",
-							Validators:  []validator.String{isNotWhiteSpace()},
+							Optional:      true,
+							Computed:      true,
+							Description:   "Timezone for the cluster using IANA standard format e.g. America/Los_Angeles, Europe/Paris, etc.",
+							PlanModifiers: useStateStr,
+							Validators:    []validator.String{isNotWhiteSpace()},
 						},
 						keyLocation: schema.StringAttribute{
-							Optional:    true,
-							Computed:    true,
-							Description: "Location for the cluster. This is free text, RSC will map it to the closest possible location e.g. Palo Alto, CA.",
-							Validators:  []validator.String{isNotWhiteSpace()},
+							Optional:      true,
+							Computed:      true,
+							Description:   "Location for the cluster. This is free text, RSC will map it to the closest possible location e.g. Palo Alto, CA.",
+							PlanModifiers: useStateStr,
+							Validators:    []validator.String{isNotWhiteSpace()},
 						},
 					},
 				},
@@ -298,8 +303,9 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 							Validators:  []validator.String{isNotWhiteSpace()},
 						},
 						keyCDMProduct: schema.StringAttribute{
-							Computed:    true,
-							Description: "CDM Product Code. This is a read-only field and computed based on the CDM version.",
+							Computed:      true,
+							Description:   "CDM Product Code. This is a read-only field and computed based on the CDM version.",
+							PlanModifiers: useStateStr,
 						},
 						keyInstanceType: schema.StringAttribute{
 							Required: true,
@@ -569,52 +575,65 @@ func (r *gcpCloudClusterResource) Update(ctx context.Context, req resource.Updat
 	gqlClusterAPI := gqlcluster.Wrap(polarisClient.GQL)
 
 	planCC := plan.ClusterConfig[0]
+	stateCC := state.ClusterConfig[0]
+
+	// Only call each update API when its fields actually changed. Calling them
+	// unconditionally sends no-op updates that the backend can reject.
 
 	// DNS name servers and search domains are updated together.
-	dnsServers := decodeStringSetOrNil(ctx, planCC.DNSNameServers, &res.Diagnostics)
-	searchDomains := decodeStringSetOrNil(ctx, planCC.DNSSearchDomains, &res.Diagnostics)
-	ntpServers := decodeStringSetOrNil(ctx, planCC.NTPServers, &res.Diagnostics)
-	if res.Diagnostics.HasError() {
-		return
-	}
-
-	if err := gqlClusterAPI.UpdateDNSServersAndSearchDomains(ctx, gqlcluster.UpdateDNSServersAndSearchDomainsInput{
-		ClusterID:     clusterID,
-		DNSServers:    dnsServers,
-		SearchDomains: searchDomains,
-	}); err != nil {
-		res.Diagnostics.AddError("Failed to update DNS servers and search domains", err.Error())
-		return
-	}
-
-	ntpInput := gqlcluster.UpdateClusterNTPServersInput{ClusterID: clusterID}
-	for _, ntp := range ntpServers {
-		ntpInput.Servers = append(ntpInput.Servers, struct {
-			Server       string                      `json:"server"`
-			SymmetricKey *gqlcluster.NTPSymmetricKey `json:"symmetricKey,omitempty"`
-		}{Server: ntp})
-	}
-	if err := gqlClusterAPI.UpdateNTPServers(ctx, ntpInput); err != nil {
-		res.Diagnostics.AddError("Failed to update NTP servers", err.Error())
-		return
-	}
-
-	var parsedTimezone gqlcluster.Timezone
-	if tz := planCC.Timezone.ValueString(); tz != "" {
-		parsedTimezone, err = gqlcluster.ParseTimeZone(tz)
-		if err != nil {
-			res.Diagnostics.AddError("Invalid timezone", err.Error())
+	if !planCC.DNSNameServers.Equal(stateCC.DNSNameServers) || !planCC.DNSSearchDomains.Equal(stateCC.DNSSearchDomains) {
+		dnsServers := decodeStringSetOrNil(ctx, planCC.DNSNameServers, &res.Diagnostics)
+		searchDomains := decodeStringSetOrNil(ctx, planCC.DNSSearchDomains, &res.Diagnostics)
+		if res.Diagnostics.HasError() {
+			return
+		}
+		if err := gqlClusterAPI.UpdateDNSServersAndSearchDomains(ctx, gqlcluster.UpdateDNSServersAndSearchDomainsInput{
+			ClusterID:     clusterID,
+			DNSServers:    dnsServers,
+			SearchDomains: searchDomains,
+		}); err != nil {
+			res.Diagnostics.AddError("Failed to update DNS servers and search domains", err.Error())
 			return
 		}
 	}
-	if _, err := gqlClusterAPI.UpdateSettings(ctx, gqlcluster.UpdatedSettings{
-		ClusterID: clusterID,
-		Name:      planCC.ClusterName.ValueString(),
-		Timezone:  parsedTimezone,
-		Address:   planCC.Location.ValueString(),
-	}); err != nil {
-		res.Diagnostics.AddError("Failed to update cluster settings", err.Error())
-		return
+
+	if !planCC.NTPServers.Equal(stateCC.NTPServers) {
+		ntpServers := decodeStringSetOrNil(ctx, planCC.NTPServers, &res.Diagnostics)
+		if res.Diagnostics.HasError() {
+			return
+		}
+		ntpInput := gqlcluster.UpdateClusterNTPServersInput{ClusterID: clusterID}
+		for _, ntp := range ntpServers {
+			ntpInput.Servers = append(ntpInput.Servers, struct {
+				Server       string                      `json:"server"`
+				SymmetricKey *gqlcluster.NTPSymmetricKey `json:"symmetricKey,omitempty"`
+			}{Server: ntp})
+		}
+		if err := gqlClusterAPI.UpdateNTPServers(ctx, ntpInput); err != nil {
+			res.Diagnostics.AddError("Failed to update NTP servers", err.Error())
+			return
+		}
+	}
+
+	// Cluster name, timezone and location are updated together via one API.
+	if !planCC.ClusterName.Equal(stateCC.ClusterName) || !planCC.Timezone.Equal(stateCC.Timezone) || !planCC.Location.Equal(stateCC.Location) {
+		var parsedTimezone gqlcluster.Timezone
+		if tz := planCC.Timezone.ValueString(); tz != "" {
+			parsedTimezone, err = gqlcluster.ParseTimeZone(tz)
+			if err != nil {
+				res.Diagnostics.AddError("Invalid timezone", err.Error())
+				return
+			}
+		}
+		if _, err := gqlClusterAPI.UpdateSettings(ctx, gqlcluster.UpdatedSettings{
+			ClusterID: clusterID,
+			Name:      planCC.ClusterName.ValueString(),
+			Timezone:  parsedTimezone,
+			Address:   planCC.Location.ValueString(),
+		}); err != nil {
+			res.Diagnostics.AddError("Failed to update cluster settings", err.Error())
+			return
+		}
 	}
 
 	if diags := r.refresh(ctx, polarisClient, &plan); diags.HasError() {
