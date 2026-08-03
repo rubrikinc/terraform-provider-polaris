@@ -4,17 +4,21 @@ page_title: "polaris_azure_devops_organization Data Source - terraform-provider-
 subcategory: ""
 description: |-
   The polaris_azure_devops_organization data source reads an onboarded Azure
-  DevOps organization from RSC. Look it up by id or by native_id. The
+  DevOps organization from RSC. Look it up by id, name, or native_id. The
   native_id is the Azure DevOps organization name shown in the organization's
-  URL (e.g. my-org in https://dev.azure.com/my-org).
+  URL (e.g. my-org in https://dev.azure.com/my-org). For an Azure DevOps
+  organization, name and native_id are the same value, so either can be used
+  for the lookup.
 ---
 
 # polaris_azure_devops_organization (Data Source)
 
 The `polaris_azure_devops_organization` data source reads an onboarded Azure
-DevOps organization from RSC. Look it up by `id` or by `native_id`. The
+DevOps organization from RSC. Look it up by `id`, `name`, or `native_id`. The
 `native_id` is the Azure DevOps organization name shown in the organization's
-URL (e.g. `my-org` in https://dev.azure.com/my-org).
+URL (e.g. `my-org` in https://dev.azure.com/my-org). For an Azure DevOps
+organization, `name` and `native_id` are the same value, so either can be used
+for the lookup.
 
 ## Example Usage
 
@@ -22,6 +26,11 @@ URL (e.g. `my-org` in https://dev.azure.com/my-org).
 # Look up an onboarded Azure DevOps organization by native ID.
 data "polaris_azure_devops_organization" "org" {
   native_id = "my-org"
+}
+
+# Look up by name.
+data "polaris_azure_devops_organization" "by_name" {
+  name = "my-org"
 }
 
 # Look up by RSC organization ID.
@@ -35,8 +44,9 @@ data "polaris_azure_devops_organization" "by_id" {
 
 ### Optional
 
-- `id` (String) RSC organization ID (UUID). Exactly one of `id` or `native_id` must be set.
-- `native_id` (String) Azure DevOps organization native identifier. This is the organization name visible in the Azure DevOps URL (e.g., `my-org` from https://dev.azure.com/my-org). Exactly one of `id` or `native_id` must be set.
+- `id` (String) RSC organization ID (UUID). Exactly one of `id`, `name`, or `native_id` must be set.
+- `name` (String) Azure DevOps organization name. This is the organization name visible in the Azure DevOps URL (e.g., `my-org` from https://dev.azure.com/my-org). Exactly one of `id`, `name`, or `native_id` must be set.
+- `native_id` (String) Azure DevOps organization native identifier. This is the organization name visible in the Azure DevOps URL (e.g., `my-org` from https://dev.azure.com/my-org). Exactly one of `id`, `name`, or `native_id` must be set.
 
 ### Read-Only
 

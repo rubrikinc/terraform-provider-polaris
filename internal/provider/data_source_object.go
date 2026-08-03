@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,15 +51,32 @@ Supported object types:
   * ´AzureNativeResourceGroup´ - Azure Native Resource Group (requires ´subscription_id´)
   * ´AzureNativeSubscription´ - Azure Native Subscription
   * ´AzureNativeVirtualMachine´ - Azure Native Virtual Machine
+  * ´GitHubOrganization´ - GitHub Organization
+  * ´GitHubRepository´ - GitHub Repository
 
-~> **Note:** Azure DevOps project and repository names are only unique within
-their parent (an organization and a project, respectively). When a name is
-shared across parents, set ´org_id´ (for ´AzureDevOpsProject´) or ´org_id´
-and/or ´project_id´ (for ´AzureDevOpsRepository´) to disambiguate; otherwise the
-lookup returns a "multiple objects found" error.
+~> **Note:** Azure DevOps project and repository names, and GitHub repository
+names, are only unique within their parent. When a name is shared across
+parents, set ´org_id´ (for ´AzureDevOpsProject´ or ´GitHubRepository´) or
+´org_id´ and/or ´project_id´ (for ´AzureDevOpsRepository´) to disambiguate;
+otherwise the lookup returns a "multiple objects found" error.
 `
 
 func dataSourceObject() *schema.Resource {
+	objectTypes := []string{
+		"AwsNativeAccount",
+		"AwsNativeEbsVolume",
+		"AwsNativeEc2Instance",
+		"AwsNativeRdsInstance",
+		"AzureDevOpsOrganization",
+		"AzureDevOpsProject",
+		"AzureDevOpsRepository",
+		"AzureNativeResourceGroup",
+		"AzureNativeSubscription",
+		"AzureNativeVirtualMachine",
+		"GitHubOrganization",
+		"GitHubRepository",
+	}
+
 	return &schema.Resource{
 		ReadContext: objectRead,
 
@@ -83,24 +101,10 @@ func dataSourceObject() *schema.Resource {
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyObjectType: {
-				Type:     schema.TypeString,
-				Required: true,
-				Description: "Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, " +
-					"`AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureDevOpsOrganization`, " +
-					"`AzureDevOpsProject`, `AzureDevOpsRepository`, `AzureNativeResourceGroup`, " +
-					"`AzureNativeSubscription` and `AzureNativeVirtualMachine`.",
-				ValidateFunc: validation.StringInSlice([]string{
-					"AwsNativeAccount",
-					"AwsNativeEbsVolume",
-					"AwsNativeEc2Instance",
-					"AwsNativeRdsInstance",
-					"AzureDevOpsOrganization",
-					"AzureDevOpsProject",
-					"AzureDevOpsRepository",
-					"AzureNativeResourceGroup",
-					"AzureNativeSubscription",
-					"AzureNativeVirtualMachine",
-				}, false),
+				Type:         schema.TypeString,
+				Required:     true,
+				Description:  fmt.Sprintf("Object type. %s.", possibleValues(objectTypes)),
+				ValidateFunc: validation.StringInSlice(objectTypes, false),
 			},
 			keySubscriptionID: {
 				Type:     schema.TypeString,
@@ -112,10 +116,11 @@ func dataSourceObject() *schema.Resource {
 			keyOrgID: {
 				Type:     schema.TypeString,
 				Optional: true,
-				Description: "RSC ID of the parent Azure DevOps organization (UUID). May be set when " +
-					"`object_type` is `AzureDevOpsProject` to disambiguate a project name shared across " +
-					"organizations, or when `object_type` is `AzureDevOpsRepository` to disambiguate a " +
-					"repository name shared across projects; ignored for other object types.",
+				Description: "RSC ID of the parent organization (UUID). May be set when `object_type` is " +
+					"`AzureDevOpsProject` to disambiguate a project name shared across organizations, when " +
+					"`object_type` is `AzureDevOpsRepository` to disambiguate a repository name shared across " +
+					"projects, or when `object_type` is `GitHubRepository` to disambiguate a repository name " +
+					"shared across organizations; ignored for other object types.",
 				ValidateFunc: validation.IsUUID,
 			},
 			keyProjectID: {
@@ -230,8 +235,6 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 			objects = append(objects, r.Object)
 		}
 	case hierarchy.ObjectType("AzureDevOpsOrganization"):
-		// The inventory query returns a 500 error for some Azure DevOps object
-		// types, so route through the dedicated DevOps queries instead.
 		orgs, err := devops.Wrap(client).AzureOrganizationsByName(ctx, name,
 			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
@@ -246,8 +249,6 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 			})
 		}
 	case hierarchy.ObjectType("AzureDevOpsProject"):
-		// The inventory query returns a 500 error for some Azure DevOps object
-		// types, so route through the dedicated DevOps queries instead.
 		projects, err := devops.Wrap(client).AzureProjectsByName(ctx, name,
 			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
@@ -268,8 +269,6 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 			})
 		}
 	case hierarchy.ObjectType("AzureDevOpsRepository"):
-		// The inventory query returns a 500 error for some Azure DevOps object
-		// types, so route through the dedicated DevOps queries instead.
 		repos, err := devops.Wrap(client).AzureRepositoriesByName(ctx, name,
 			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
@@ -285,6 +284,40 @@ func objectRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagnos
 				continue
 			}
 			if projectID != "" && repo.ProjectID.String() != projectID {
+				continue
+			}
+			objects = append(objects, hierarchy.Object{
+				ID:         repo.ID,
+				Name:       repo.Name,
+				ObjectType: hierarchy.ObjectType(repo.ObjectType),
+			})
+		}
+	case hierarchy.ObjectType("GitHubOrganization"):
+		orgs, err := devops.Wrap(client).GitHubOrganizationsByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		for _, org := range orgs {
+			objects = append(objects, hierarchy.Object{
+				ID:         org.ID,
+				Name:       org.Name,
+				ObjectType: hierarchy.ObjectType(org.ObjectType),
+			})
+		}
+	case hierarchy.ObjectType("GitHubRepository"):
+		repos, err := devops.Wrap(client).GitHubRepositoriesByName(ctx, name,
+			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		// Repository names are only unique within an organization, so when
+		// org_id is set, narrow to that organization.
+		orgID := d.Get(keyOrgID).(string)
+		for _, repo := range repos {
+			if orgID != "" && repo.OrgID.String() != orgID {
 				continue
 			}
 			objects = append(objects, hierarchy.Object{
