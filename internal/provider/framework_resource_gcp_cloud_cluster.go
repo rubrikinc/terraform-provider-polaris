@@ -129,19 +129,19 @@ type gcpClusterConfigModel struct {
 }
 
 type gcpVMConfigModel struct {
-	CDMVersion       types.String `tfsdk:"cdm_version"`
-	CDMProduct       types.String `tfsdk:"cdm_product"`
-	InstanceType     types.String `tfsdk:"instance_type"`
-	Network          types.String `tfsdk:"network"`
-	Subnet           types.String `tfsdk:"subnet"`
-	HostProject      types.String `tfsdk:"host_project"`
-	ServiceAccounts types.Set `tfsdk:"service_accounts"`
+	CDMVersion      types.String `tfsdk:"cdm_version"`
+	CDMProduct      types.String `tfsdk:"cdm_product"`
+	InstanceType    types.String `tfsdk:"instance_type"`
+	Network         types.String `tfsdk:"network"`
+	Subnet          types.String `tfsdk:"subnet"`
+	HostProject     types.String `tfsdk:"host_project"`
+	ServiceAccounts types.Set    `tfsdk:"service_accounts"`
 	// SubnetAzConfig is a types.List (not []gcpSubnetAzConfigModel) so it can hold
 	// an unknown value: it is commonly built from a dynamic block whose for_each
 	// derives from a data source, which is unknown until the data source is read.
 	// A Go slice target cannot decode an unknown and would fail ValidateConfig.
 	SubnetAzConfig   types.List `tfsdk:"subnet_az_config"`
-	DeleteProtection types.Bool   `tfsdk:"delete_protection"`
+	DeleteProtection types.Bool `tfsdk:"delete_protection"`
 }
 
 type gcpSubnetAzConfigModel struct {
