@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -158,4 +159,53 @@ func loadGCPTestConf() (testGCPProject, error) {
 	}
 
 	return project, nil
+}
+
+func TestPossibleValues(t *testing.T) {
+	tests := []struct {
+		name   string
+		values []string
+		want   string
+	}{
+		{
+			name:   "Empty",
+			values: nil,
+			want:   "",
+		},
+		{
+			name:   "One",
+			values: []string{"A"},
+			want:   "Possible value is `A`",
+		},
+		{
+			name:   "Two",
+			values: []string{"A", "B"},
+			want:   "Possible values are `A` and `B`",
+		},
+		{
+			name:   "Three",
+			values: []string{"A", "B", "C"},
+			want:   "Possible values are `A`, `B` and `C`",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := possibleValues(tc.values); got != tc.want {
+				t.Errorf("possibleValues(%q) = %q, want %q", tc.values, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestPossibleValuesNamedStringType exercises the ~string constraint with a
+// defined string type, which is how the helper is used with SDK values such as
+// permission group and feature names.
+func TestPossibleValuesNamedStringType(t *testing.T) {
+	type group string
+
+	got := possibleValues([]group{"A", "B"})
+	if want := "Possible values are `A` and `B`"; got != want {
+		t.Errorf("possibleValues = %q, want %q", got, want)
+	}
 }

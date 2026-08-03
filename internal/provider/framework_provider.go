@@ -128,6 +128,7 @@ func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Res
 	return []func() resource.Resource{
 		newAwsAccountManagedResource,
 		newAwsAccountManagedStackResource,
+		newAzureDevOpsOrganizationResource,
 		newCustomRoleResource,
 		newGcpCloudClusterResource,
 		newRoleAssignmentResource,
@@ -141,6 +142,11 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 
 	return []func() datasource.DataSource{
 		newAwsPermissionGroupsDataSource,
+		newAzureDevOpsOrganizationDataSource,
+		newAzureDevOpsProjectDataSource,
+		newAzureDevOpsRepositoryDataSource,
+		newAzureDevOpsPermissionsDataSource,
+		newAzureDevOpsScriptDataSource,
 		newAzurePermissionGroupsDataSource,
 		newFeatureFlagDataSource,
 		newGcpRegionsDataSource,
@@ -157,6 +163,7 @@ func (p *FrameworkProvider) ListResources(ctx context.Context) []func() list.Lis
 	tflog.Trace(ctx, "FrameworkProvider.ListResources")
 
 	return []func() list.ListResource{
+		newAzureDevOpsOrganizationListResource,
 		newCustomRoleListResource,
 		newSSOGroupListResource,
 		newUserListResource,

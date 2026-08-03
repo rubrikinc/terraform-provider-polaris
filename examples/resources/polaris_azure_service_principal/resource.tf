@@ -19,3 +19,15 @@ resource "polaris_azure_service_principal" "default" {
   tenant_domain = "mydomain.onmicrosoft.com"
   tenant_id     = "2bfdaef8-c76b-11eb-8d3d-4706c14a88f0"
 }
+
+# For Azure DevOps. The credentials are stored separately per use case, so the
+# same tenant can have both a cloud native protection and an Azure DevOps
+# service principal.
+resource "polaris_azure_service_principal" "devops" {
+  app_id        = "25c2b42a-c76b-11eb-9767-6ff6b5b7e72b"
+  app_name      = "My DevOps App"
+  app_secret    = "<my-apps-secret>"
+  tenant_domain = "mydomain.onmicrosoft.com"
+  tenant_id     = "2bfdaef8-c76b-11eb-8d3d-4706c14a88f0"
+  use_case      = "AZURE_DEVOPS"
+}
