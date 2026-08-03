@@ -129,19 +129,19 @@ type gcpClusterConfigModel struct {
 }
 
 type gcpVMConfigModel struct {
-	CDMVersion      types.String `tfsdk:"cdm_version"`
-	CDMProduct      types.String `tfsdk:"cdm_product"`
-	InstanceType    types.String `tfsdk:"instance_type"`
-	Network         types.String `tfsdk:"network"`
-	Subnet          types.String `tfsdk:"subnet"`
-	HostProject     types.String `tfsdk:"host_project"`
-	ServiceAccounts types.Set    `tfsdk:"service_accounts"`
+	CDMVersion       types.String `tfsdk:"cdm_version"`
+	CDMProduct       types.String `tfsdk:"cdm_product"`
+	InstanceType     types.String `tfsdk:"instance_type"`
+	Network          types.String `tfsdk:"network"`
+	Subnet           types.String `tfsdk:"subnet"`
+	HostProject      types.String `tfsdk:"host_project"`
+	ServiceAccounts types.Set `tfsdk:"service_accounts"`
 	// SubnetAzConfig is a types.List (not []gcpSubnetAzConfigModel) so it can hold
 	// an unknown value: it is commonly built from a dynamic block whose for_each
 	// derives from a data source, which is unknown until the data source is read.
 	// A Go slice target cannot decode an unknown and would fail ValidateConfig.
 	SubnetAzConfig   types.List `tfsdk:"subnet_az_config"`
-	DeleteProtection types.Bool `tfsdk:"delete_protection"`
+	DeleteProtection types.Bool   `tfsdk:"delete_protection"`
 }
 
 type gcpSubnetAzConfigModel struct {
@@ -366,8 +366,6 @@ func (r *gcpCloudClusterResource) Schema(ctx context.Context, _ resource.SchemaR
 					},
 				},
 			},
-			// Only Create is wired up (the create/read-back is the long-running
-			// step); don't advertise timeouts the resource doesn't apply.
 			keyTimeouts: timeouts.Block(ctx, timeouts.Opts{
 				Create: true,
 			}),
@@ -450,6 +448,27 @@ func validateGcpCloudClusterConfig(config gcpCloudClusterModel) diag.Diagnostics
 	return diags
 }
 
+// checkGcpCloudClusterBlocks verifies that the single-instance cluster_config
+// and vm_config blocks are present before the rest of the resource indexes
+// them. The schema validators guarantee exactly one of each in the
+// configuration, but a model decoded from state carries no such guarantee, so
+// without this a state file modified outside of Terraform would panic the
+// provider instead of reporting an error.
+func checkGcpCloudClusterBlocks(model gcpCloudClusterModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	if len(model.ClusterConfig) == 0 {
+		diags.AddAttributeError(path.Root(keyClusterConfig), "Missing cluster_config block",
+			"Exactly one `cluster_config` block is required. If the configuration has one, the state may have been modified outside of Terraform.")
+	}
+	if len(model.VMConfig) == 0 {
+		diags.AddAttributeError(path.Root(keyVMConfig), "Missing vm_config block",
+			"Exactly one `vm_config` block is required. If the configuration has one, the state may have been modified outside of Terraform.")
+	}
+
+	return diags
+}
+
 func (r *gcpCloudClusterResource) Configure(ctx context.Context, req resource.ConfigureRequest, res *resource.ConfigureResponse) {
 	tflog.Trace(ctx, "gcpCloudClusterResource.Configure")
 
@@ -476,6 +495,12 @@ func (r *gcpCloudClusterResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
+	res.Diagnostics.Append(checkGcpCloudClusterBlocks(plan)...)
+	res.Diagnostics.Append(checkGcpCloudClusterBlocks(config)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
+
 	timeout, diags := plan.Timeouts.Create(ctx, defaultGCPCloudClusterCreateTimeout)
 	res.Diagnostics.Append(diags...)
 	if res.Diagnostics.HasError() {
@@ -496,7 +521,12 @@ func (r *gcpCloudClusterResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	gcpCluster, err := cloudcluster.Wrap(polarisClient).CreateGcpCloudCluster(ctx, input, true)
+	// useLatestCdmVersion is false so the configured cdm_version is honoured
+	// exactly. With it true the SDK matches the version flagged latest and
+	// silently deploys that instead, which would make cdm_version a hint rather
+	// than the pin its Required schema implies. An unavailable version now fails
+	// the create with a clear error instead.
+	gcpCluster, err := cloudcluster.Wrap(polarisClient).CreateGcpCloudCluster(ctx, input, false)
 	if err != nil {
 		res.Diagnostics.AddError("Failed to create GCP cloud cluster", err.Error())
 		return
@@ -508,6 +538,11 @@ func (r *gcpCloudClusterResource) Create(ctx context.Context, req resource.Creat
 	// the resolved value in state.
 	plan.Zone = types.StringValue(input.Zone)
 
+	// timezone and location are not part of the create API. Capture what the
+	// configuration asked for before the readback overwrites both with the
+	// values the newly created cluster came up with.
+	cfgTimezone, cfgLocation := plan.ClusterConfig[0].Timezone, plan.ClusterConfig[0].Location
+
 	// Read back to populate computed fields. A failed readback must not fail the
 	// create; the cluster exists and a plan diff on the next run is acceptable.
 	if diags := r.refresh(ctx, polarisClient, &plan); diags.HasError() {
@@ -518,10 +553,38 @@ func (r *gcpCloudClusterResource) Create(ctx context.Context, req resource.Creat
 		}
 	}
 
+	cc := &plan.ClusterConfig[0]
+
+	// The create API cannot set the timezone or the location, so they are
+	// applied with a settings update once the cluster exists. Both are
+	// Optional+Computed, an unknown value means the configuration didn't
+	// specify one and the cluster default is kept.
+	if !cfgTimezone.IsUnknown() || !cfgLocation.IsUnknown() {
+		// The settings mutation writes name, timezone and location together, so
+		// whatever the configuration doesn't specify is passed back unchanged
+		// from the readback.
+		timezone, location := cc.Timezone.ValueString(), cc.Location.ValueString()
+		if !cfgTimezone.IsUnknown() {
+			timezone = cfgTimezone.ValueString()
+		}
+		if !cfgLocation.IsUnknown() {
+			location = cfgLocation.ValueString()
+		}
+
+		// A failure here must not discard the cluster. The error is reported but
+		// state is still saved below, leaving the drift for the next apply to
+		// correct through Update.
+		diags := updateClusterSettings(ctx, gqlcluster.Wrap(polarisClient.GQL), gcpCluster.ID, cc.ClusterName.ValueString(), timezone, location)
+		res.Diagnostics.Append(diags...)
+		if !diags.HasError() {
+			cc.Timezone = types.StringValue(timezone)
+			cc.Location = types.StringValue(location)
+		}
+	}
+
 	// If the readback failed, Optional+Computed fields may still be unknown,
 	// which cannot be stored in state. Coerce any leftover unknowns to null so
 	// the successfully-created resource is still saved.
-	cc := &plan.ClusterConfig[0]
 	if cc.Timezone.IsUnknown() {
 		cc.Timezone = types.StringNull()
 	}
@@ -544,6 +607,11 @@ func (r *gcpCloudClusterResource) Read(ctx context.Context, req resource.ReadReq
 
 	var state gcpCloudClusterModel
 	res.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
+
+	res.Diagnostics.Append(checkGcpCloudClusterBlocks(state)...)
 	if res.Diagnostics.HasError() {
 		return
 	}
@@ -573,6 +641,12 @@ func (r *gcpCloudClusterResource) Update(ctx context.Context, req resource.Updat
 	var plan, state gcpCloudClusterModel
 	res.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	res.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if res.Diagnostics.HasError() {
+		return
+	}
+
+	res.Diagnostics.Append(checkGcpCloudClusterBlocks(plan)...)
+	res.Diagnostics.Append(checkGcpCloudClusterBlocks(state)...)
 	if res.Diagnostics.HasError() {
 		return
 	}
@@ -632,29 +706,30 @@ func (r *gcpCloudClusterResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	// Cluster name, timezone and location are updated together via one API.
+	settingsUpdated := false
 	if !planCC.ClusterName.Equal(stateCC.ClusterName) || !planCC.Timezone.Equal(stateCC.Timezone) || !planCC.Location.Equal(stateCC.Location) {
-		var parsedTimezone gqlcluster.Timezone
-		if tz := planCC.Timezone.ValueString(); tz != "" {
-			parsedTimezone, err = gqlcluster.ParseTimeZone(tz)
-			if err != nil {
-				res.Diagnostics.AddError("Invalid timezone", err.Error())
-				return
-			}
-		}
-		if _, err := gqlClusterAPI.UpdateSettings(ctx, gqlcluster.UpdatedSettings{
-			ClusterID: clusterID,
-			Name:      planCC.ClusterName.ValueString(),
-			Timezone:  parsedTimezone,
-			Address:   planCC.Location.ValueString(),
-		}); err != nil {
-			res.Diagnostics.AddError("Failed to update cluster settings", err.Error())
+		res.Diagnostics.Append(updateClusterSettings(ctx, gqlClusterAPI, clusterID,
+			planCC.ClusterName.ValueString(), planCC.Timezone.ValueString(), planCC.Location.ValueString())...)
+		if res.Diagnostics.HasError() {
 			return
 		}
+		settingsUpdated = true
 	}
 
 	if diags := r.refresh(ctx, polarisClient, &plan); diags.HasError() {
 		res.Diagnostics.Append(diags...)
 		return
+	}
+
+	// location is free text that RSC maps to the nearest place it knows, so the
+	// value it reports back is not guaranteed to be the string that was sent.
+	// Keep the values just applied rather than the ones read back, otherwise a
+	// normalising backend would fail the apply with an inconsistent result
+	// error. Drift is still picked up by Read.
+	if settingsUpdated {
+		plan.ClusterConfig[0].ClusterName = planCC.ClusterName
+		plan.ClusterConfig[0].Timezone = planCC.Timezone
+		plan.ClusterConfig[0].Location = planCC.Location
 	}
 
 	// Write-only attributes must be null in state.
@@ -694,6 +769,37 @@ func (r *gcpCloudClusterResource) Delete(ctx context.Context, req resource.Delet
 		res.Diagnostics.AddError("Failed to remove GCP cloud cluster", err.Error())
 		return
 	}
+}
+
+// updateClusterSettings applies the cluster name, timezone and location using
+// the cluster settings API. The mutation always writes all three fields, it
+// cannot express "leave this one unchanged", so the caller must pass the
+// current value for anything it doesn't intend to change.
+func updateClusterSettings(ctx context.Context, gqlClusterAPI gqlcluster.API, clusterID uuid.UUID, name, timezone, location string) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	// An empty timezone would be sent as the invalid CLUSTER_TIMEZONE_ enum
+	// value, which the backend rejects with an unhelpful error.
+	if timezone == "" {
+		diags.AddError("Invalid timezone", "A timezone is required to update the cluster settings.")
+		return diags
+	}
+	parsedTimezone, err := gqlcluster.ParseTimeZone(timezone)
+	if err != nil {
+		diags.AddError("Invalid timezone", err.Error())
+		return diags
+	}
+
+	if _, err := gqlClusterAPI.UpdateSettings(ctx, gqlcluster.UpdatedSettings{
+		ClusterID: clusterID,
+		Name:      name,
+		Timezone:  parsedTimezone,
+		Address:   location,
+	}); err != nil {
+		diags.AddError("Failed to update cluster settings", err.Error())
+	}
+
+	return diags
 }
 
 // buildCreateInput assembles the SDK CreateGcpClusterInput from the plan (for
@@ -827,6 +933,9 @@ func (r *gcpCloudClusterResource) refresh(ctx context.Context, polarisClient *po
 
 // refreshExisting re-reads the cluster and updates the model's computed fields
 // from RSC. It returns removed=true when the cluster no longer exists.
+//
+// The model must have passed checkGcpCloudClusterBlocks, its cluster_config
+// block is indexed directly.
 func (r *gcpCloudClusterResource) refreshExisting(ctx context.Context, polarisClient *polaris.Client, model *gcpCloudClusterModel) (bool, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -845,7 +954,6 @@ func (r *gcpCloudClusterResource) refreshExisting(ctx context.Context, polarisCl
 	if len(cloudClusters) == 0 {
 		return true, diags
 	}
-	cc := cloudClusters[0]
 
 	gqlClusterAPI := gqlcluster.Wrap(polarisClient.GQL)
 
@@ -885,7 +993,13 @@ func (r *gcpCloudClusterResource) refreshExisting(ctx context.Context, polarisCl
 	model.ClusterConfig[0].DNSNameServers = dnsSet
 	model.ClusterConfig[0].DNSSearchDomains = searchSet
 	model.ClusterConfig[0].NTPServers = ntpSet
-	model.VMConfig[0].CDMVersion = types.StringValue(cc.Version)
+
+	// TODO: Revisit this when in-place upgrades are supported.
+	// vm_config.cdm_version is deliberately not refreshed from the version
+	// reported by ListClusters. It is a create-time input and vm_config carries
+	// a list-level RequiresReplace, so writing the installed version back into
+	// it would turn an out-of-band cluster upgrade into a destroy and recreate
+	// of a running cluster.
 
 	return false, diags
 }
