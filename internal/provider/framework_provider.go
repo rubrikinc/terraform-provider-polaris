@@ -22,8 +22,11 @@ package provider
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -158,4 +161,44 @@ func (p *FrameworkProvider) ListResources(ctx context.Context) []func() list.Lis
 		newSSOGroupListResource,
 		newUserListResource,
 	}
+}
+
+// possibleValues returns a sentence describing the allowed values for use in an
+// attribute description. Each value is backtick-quoted and the last two are
+// joined by "and". An empty slice returns the empty string.
+func possibleValues[T ~string](values []T) string {
+	switch l := len(values); l {
+	case 0:
+		return ""
+	case 1:
+		return "Possible value is `" + string(values[0]) + "`"
+	default:
+		var sb strings.Builder
+		for i := range values {
+			if i == l-1 {
+				sb.WriteString(" and `" + string(values[i]) + "`")
+			} else {
+				sb.WriteString(", `" + string(values[i]) + "`")
+			}
+		}
+
+		return fmt.Sprintf("Possible values are %s", sb.String()[2:])
+	}
+}
+
+// decodeStringSetOrNil decodes a string types.Set into a []string, returning nil
+// when the set is null or unknown.
+//
+// A bare set.ElementsAs errors on an unknown set, which happens for an
+// Optional+Computed attribute the practitioner left unset (it is "known after
+// apply" in the plan). Guarding for null/unknown here lets callers decode a set
+// straight from the plan or config without repeating that check. Any decode
+// errors are appended to diags.
+func decodeStringSetOrNil(ctx context.Context, set types.Set, diags *diag.Diagnostics) []string {
+	if set.IsNull() || set.IsUnknown() {
+		return nil
+	}
+	var out []string
+	diags.Append(set.ElementsAs(ctx, &out, false)...)
+	return out
 }
