@@ -38,8 +38,8 @@ description: |-
 
 Required:
 
-- `admin_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
-- `admin_password` (String, Sensitive) Password for the cluster admin user. Changing this value will have no effect on the cluster.
+- `admin_email` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
+- `admin_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the cluster admin user. Changing this value will have no effect on the cluster.
 - `bucket_name` (String) Name of the GCS bucket to use for the cluster. Changing this forces a new resource to be created.
 - `cluster_name` (String) Unique name to assign to the cloud cluster.
 - `dns_name_servers` (Set of String) DNS name servers for the cluster.

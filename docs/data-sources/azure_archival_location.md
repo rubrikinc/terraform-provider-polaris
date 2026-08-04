@@ -38,6 +38,7 @@ data "polaris_azure_archival_location" "archival_location" {
 ### Optional
 
 - `archival_location_id` (String, Deprecated) Cloud native archival location ID (UUID). **Deprecated:** use `id` instead.
+- `cloud_account_id` (String) RSC cloud account ID (UUID).
 - `id` (String) Cloud native archival location ID (UUID).
 - `name` (String) Name of the cloud native archival location.
 
@@ -47,6 +48,7 @@ data "polaris_azure_archival_location" "archival_location" {
 - `container_name` (String) Azure storage container name.
 - `customer_managed_key` (Set of Object) Customer managed storage encryption. For `SPECIFIC_REGION`, a customer managed key for the specified region will be returned. For `SOURCE_REGION`, a customer managed key for each specified region will be returned, for other regions, data will be encrypted using platform managed keys. (see [below for nested schema](#nestedatt--customer_managed_key))
 - `location_template` (String) RSC location template. If a storage account region was specified, it will be `SPECIFIC_REGION`, otherwise `SOURCE_REGION`.
+- `network_access_type` (String) Azure storage account network access type. Possible values are `PRIVATE`, `PUBLIC` and `SELECTED_NETWORKS`.
 - `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`.
 - `storage_account_name_prefix` (String) Azure storage account name prefix. For `SOURCE_REGION`, the prefix cannot be longer than 16 characters. For `SPECIFIC_REGION`, the name cannot be longer than 24 characters. The value can only consist of numbers and lower case letters.
 - `storage_account_region` (String) Azure region to store the snapshots in (`SPECIFIC_REGION`). If not specified, the snapshots will be stored in the same region as the workload (`SOURCE_REGION`).

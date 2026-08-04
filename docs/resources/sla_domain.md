@@ -715,8 +715,9 @@ Optional:
 
 - `frequency_unit` (String) Frequency unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
 - `host_log_retention` (Number) Host log retention duration for archived redo logs.
-- `host_log_retention_unit` (String) Host log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `host_log_retention_unit` (String) Host log retention unit. Possible values are `MINUTES`, `HOURS`, `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
 - `log_retention_unit` (String) Log retention unit. Possible values are `DAYS`, `WEEKS`, `MONTHS`, `YEARS`. Default is `DAYS`.
+- `retain_archive_logs_indefinitely` (Boolean) When true, Oracle archive logs are retained indefinitely on the host and never deleted. Mutually exclusive with `host_log_retention`.
 
 
 <a id="nestedblock--postgres_db_cluster_config"></a>

@@ -188,8 +188,7 @@ resource "polaris_aws_exocompute" "application" {
 - `region` (String) AWS region to run the Exocompute instance in. Changing this forces a new resource to be created.
 - `subnet` (Block Set, Max: 2) AWS subnet for the cluster. Each subnet block accepts a `subnet_id` (Required) and an
   optional `pod_subnet_id`. Conflicts with `subnets`. Changing this forces a new resource to be created.
-  - `subnet_id` (String, Required) AWS subnet ID.
-  - `pod_subnet_id` (String, Optional) AWS subnet ID for the pods.
+  (see [below for nested schema](#nestedblock--subnet))
 - `subnets` (Set of String) AWS subnet IDs for the cluster subnets. Conflicts with `subnet`. Changing this forces a new
   resource to be created.
 - `vpc_id` (String) AWS VPC ID for the cluster network. Changing this forces a new resource to be created.
@@ -198,6 +197,41 @@ resource "polaris_aws_exocompute" "application" {
 
 - `id` (String) Exocompute configuration ID (UUID).
 - `polaris_managed` (Boolean) If true the security groups are managed by RSC.
+
+## Import
+
+To import an application exocompute configuration prepend `app-` to the ID of the configuration.
+
+Import is supported using the following syntax:
+
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = polaris_aws_exocompute.host
+  id = "58e2a8bb-078d-4f67-8b66-5515fd701c8e"
+}
+```
+
+
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```terraform
+% terraform import polaris_aws_exocompute.host 58e2a8bb-078d-4f67-8b66-5515fd701c8e
+```
+
+<a id="nestedblock--subnet"></a>
+### Nested Schema for `subnet`
+
+Required:
+
+- `subnet_id` (String) AWS subnet ID.
+
+Optional:
+
+- `pod_subnet_id` (String) AWS subnet ID for the pods.
 
 ## Import
 

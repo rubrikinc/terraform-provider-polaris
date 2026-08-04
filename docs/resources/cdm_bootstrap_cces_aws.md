@@ -71,7 +71,7 @@ resource "polaris_cdm_bootstrap_cces_aws" "default" {
 
 ### Optional
 
-- `cluster_node_ip` (String) IP address of the cluster node to connect to. If not specified, a random node from the `cluster_nodes` map will be used.
+- `cluster_node_ip_address` (String) IP address of the cluster node to connect to. If not specified, a random node from the `cluster_nodes` map will be used.
 - `cluster_nodes` (Map of String) The node name and IP formatted as a map.
 - `enable_encryption` (Boolean, Deprecated) When bootstrapping a Cloud Cluster this value must be `false`. **Deprecated:** not used. Only kept for backwards compatibility.
 - `enable_immutability` (Boolean) Flag to determine if versioning will be used on the S3 object storage to enable immutability.

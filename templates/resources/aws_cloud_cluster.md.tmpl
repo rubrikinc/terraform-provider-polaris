@@ -18,6 +18,7 @@ description: |-
 
 ### Required
 
+- `az_resilient` (Boolean) Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` and `use_placement_groups` must be false. Changing this forces a new resource to be created.
 - `cloud_account_id` (String) RSC cloud account ID (UUID).
 - `cluster_config` (Block List, Min: 1, Max: 1) Configuration for the cloud cluster. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--cluster_config))
 - `region` (String) AWS region to deploy the cluster in. Changing this forces a new resource to be created.
@@ -37,12 +38,13 @@ description: |-
 
 Required:
 
-- `admin_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
-- `admin_password` (String, Sensitive) Password for the cluster admin user. Changing this value will have no effect on the cluster.
+- `admin_email` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
+- `admin_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the cluster admin user. Changing this value will have no effect on the cluster.
 - `bucket_name` (String) Name of the S3 bucket to use for the cluster. Changing this forces a new resource to be created.
 - `cluster_name` (String) Unique name to assign to the cloud cluster.
 - `dns_name_servers` (Set of String) DNS name servers for the cluster.
 - `enable_immutability` (Boolean) Whether to enable immutability and object lock for the S3 bucket. Changing this forces a new resource to be created.
+- `force_cluster_delete_on_destroy` (Boolean) Whether to force delete the cluster on destroy.
 - `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure (can be useful for troubleshooting). Changing this forces a new resource to be created.
 - `ntp_servers` (Set of String) NTP servers for the cluster.
 - `num_nodes` (Number) Number of nodes in the cluster. Changing this forces a new resource to be created.
@@ -64,6 +66,7 @@ Required:
 - `instance_profile_name` (String) AWS instance profile name for the cluster nodes. Changing this forces a new resource to be created.
 - `instance_type` (String) AWS instance type for the cluster nodes. Changing this forces a new resource to be created. Supported values are `M5_4XLARGE`, `M6I_2XLARGE`, `M6I_4XLARGE`, `M6I_8XLARGE`, `R6I_4XLARGE`, `M6A_2XLARGE`, `M6A_4XLARGE`, `M6A_8XLARGE` and `R6A_4XLARGE`.
 - `security_group_ids` (Set of String) AWS security group IDs for the cluster nodes. Changing this forces a new resource to be created.
+- `subnet_az_config` (Block List) Subnet and availability zone pairs for Multi-AZ deployments. Required when `az_resilient` is true. Each block specifies a subnet and its availability zone. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--vm_config--subnet_az_config))
 - `subnet_id` (String) AWS subnet ID where the cluster nodes will be deployed. Changing this forces a new resource to be created.
 - `vpc_id` (String) AWS VPC ID where the cluster will be deployed. Changing this forces a new resource to be created.
 
@@ -74,6 +77,16 @@ Optional:
 Read-Only:
 
 - `cdm_product` (String) CDM Product Code. This is a read-only field and computed based on the CDM version.
+
+
+<a id="nestedblock--vm_config--subnet_az_config"></a>
+### Nested Schema for `vm_config.subnet_az_config`
+
+Required:
+
+- `availability_zone` (String) Availability zone name.
+- `subnet` (String) Subnet ID for this availability zone.
+
 
 
 <a id="nestedblock--timeouts"></a>
