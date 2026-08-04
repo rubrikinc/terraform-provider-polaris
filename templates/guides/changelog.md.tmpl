@@ -7,6 +7,11 @@ page_title: "Changelog"
 ## v1.9.1
 * New resource added for `polaris_azure_devops_organization` which onboards an Azure DevOps organization to RSC
   using a customer-supplied application (non-OAuth). [[docs](../resources/azure_devops_organization.md)]
+* New resource added for `polaris_gcp_cloud_cluster` which creates a Rubrik Cloud Data Management (CDM) cluster
+  with elastic storage (CCES) in GCP using RSC. The target GCP project must be onboarded to RSC with the
+  `SERVERS_AND_APPS` feature enabled before creating a cloud cluster. The `admin_email` and `admin_password`
+  fields are write-only, which requires Terraform v1.11.0 or later.
+  [[docs](../resources/gcp_cloud_cluster.md)]
 * New data source added for `polaris_azure_devops_script` which generates the Azure DevOps onboarding scripts to run
   against an organization out of band. [[docs](../data-sources/azure_devops_script.md)]
 * New data source added for `polaris_azure_devops_organization` which reads an onboarded Azure DevOps organization.
@@ -18,8 +23,14 @@ page_title: "Changelog"
 * New data source added for `polaris_azure_devops_permissions` which returns the permissions RSC requires for an
   Azure DevOps feature and its permission groups, along with the version of each permission group.
   [[docs](../data-sources/azure_devops_permissions.md)]
+* New data source added for `polaris_gcp_regions` which returns the GCP regions and their availability zones
+  RSC supports for a cloud account, for use with the `polaris_gcp_cloud_cluster` resource.
+  [[docs](../data-sources/gcp_regions.md)]
 * New list resource added for `polaris_azure_devops_organization` which lists onboarded Azure DevOps organizations
   for discovery and bulk import. [[docs](../list-resources/azure_devops_organization.md)]
+* Add support for Multi-AZ resiliency in the `polaris_gcp_cloud_cluster` resource. Set `az_resilient` to true and
+  provide a `subnet_az_config` block per availability zone. Requires at least three nodes and a region with at
+  least three zones. [[docs](../resources/gcp_cloud_cluster.md)]
 * Add support for `use_case` in the `polaris_azure_service_principal` resource, selecting whether the service
   principal is registered for cloud native protection (default) or Azure DevOps. The credentials are stored
   separately per use case. [[docs](../resources/azure_service_principal.md)]

@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -129,6 +130,7 @@ func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Res
 		newAwsAccountManagedStackResource,
 		newAzureDevOpsOrganizationResource,
 		newCustomRoleResource,
+		newGcpCloudClusterResource,
 		newRoleAssignmentResource,
 		newSSOGroupResource,
 		newUserResource,
@@ -147,6 +149,7 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 		newAzureDevOpsScriptDataSource,
 		newAzurePermissionGroupsDataSource,
 		newFeatureFlagDataSource,
+		newGcpRegionsDataSource,
 		newIdentityProviderDataSource,
 		newObjectsDataSource,
 		newRoleDataSource,
@@ -188,4 +191,21 @@ func possibleValues[T ~string](values []T) string {
 
 		return fmt.Sprintf("Possible values are %s", sb.String()[2:])
 	}
+}
+
+// decodeStringSetOrNil decodes a string types.Set into a []string, returning nil
+// when the set is null or unknown.
+//
+// A bare set.ElementsAs errors on an unknown set, which happens for an
+// Optional+Computed attribute the practitioner left unset (it is "known after
+// apply" in the plan). Guarding for null/unknown here lets callers decode a set
+// straight from the plan or config without repeating that check. Any decode
+// errors are appended to diags.
+func decodeStringSetOrNil(ctx context.Context, set types.Set, diags *diag.Diagnostics) []string {
+	if set.IsNull() || set.IsUnknown() {
+		return nil
+	}
+	var out []string
+	diags.Append(set.ElementsAs(ctx, &out, false)...)
+	return out
 }
