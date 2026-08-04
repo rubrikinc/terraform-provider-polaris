@@ -44,6 +44,8 @@ page_title: "Changelog"
 * Add support for the `GitHubOrganization` and `GitHubRepository` object types in the `polaris_object` data source,
   resolving a GitHub object to its RSC ID by name for use with the `polaris_sla_domain_assignment` resource.
   [[docs](../data-sources/object.md)]
+* Add support for the `GITHUB_OBJECT_TYPE` object type in the `polaris_sla_domain` resource, allowing GitHub objects
+  to be protected by an SLA Domain. [[docs](../resources/sla_domain.md)]
 * Add support for looking up the `polaris_azure_devops_organization` data source by `name`, in addition to `id` and
   `native_id`. [[docs](../data-sources/azure_devops_organization.md)]
 
