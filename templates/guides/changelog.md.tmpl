@@ -48,6 +48,14 @@ page_title: "Changelog"
   to be protected by an SLA Domain. [[docs](../resources/sla_domain.md)]
 * Add support for looking up the `polaris_azure_devops_organization` data source by `name`, in addition to `id` and
   `native_id`. [[docs](../data-sources/azure_devops_organization.md)]
+* Refresh the documentation templates for the `polaris_aws_cloud_cluster`, `polaris_azure_cloud_cluster`,
+  `polaris_gcp_cloud_cluster`, `polaris_aws_exocompute`, `polaris_cdm_bootstrap`,
+  `polaris_cdm_bootstrap_cces_aws`, `polaris_aws_cnp_account`, `polaris_aws_cnp_account_trust_policy` and
+  `polaris_sla_domain` resources, and the `polaris_aws_cnp_permissions`,
+  `polaris_azure_archival_location` and `polaris_sla_domain` data sources, so that the published
+  documentation matches the current schema. These templates hold their schema documentation inline, so it
+  does not update automatically. Notably, `admin_email` and `admin_password` on the cloud cluster resources
+  are now shown as write-only.
 
 ## v1.9.0
 * **Breaking Change:** When the `CNP_AZURE_SQL_SLA_REVAMP` feature is enabled, a V2 (Rubrik-managed) Azure SQL
