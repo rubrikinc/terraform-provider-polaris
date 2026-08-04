@@ -142,8 +142,9 @@ version changes.
 
 ### Reading Azure DevOps Objects
 
-Three new data sources read onboarded Azure DevOps objects: `polaris_azure_devops_organization` (by RSC `id` or
-`native_id`), `polaris_azure_devops_project` and `polaris_azure_devops_repository` (each by RSC `id` or `name`).
+Three new data sources read onboarded Azure DevOps objects: `polaris_azure_devops_organization` (by RSC `id`,
+`native_id`, or `name`), `polaris_azure_devops_project` and `polaris_azure_devops_repository` (each by RSC `id` or
+`name`).
 
 Each exposes the object's RSC ID as its `id` attribute, so it can be assigned an SLA Domain with the
 `polaris_sla_domain_assignment` resource:
@@ -192,3 +193,60 @@ Run `terraform query` to discover organizations, or `terraform query -generate-c
 a `resource` block and a matching `import` block for each one. The per-feature `permissions` signal and the
 `delete_snapshots_on_destroy` lifecycle setting are not stored in RSC and are left null; before applying, wire each
 feature's `permissions` field to a `polaris_azure_devops_permissions` data source.
+
+### Reading GitHub Objects
+
+Two new data sources read GitHub objects onboarded to RSC: `polaris_github_organization` (by RSC `id`, `name`, or
+`native_id`) and `polaris_github_repository` (by RSC `id`, or by `name`). The repository is the snappable object.
+
+GitHub organizations cannot be onboarded through the provider — onboard them in the RSC UI. Both data sources are
+read-only, so there is no onboarding resource or list resource for GitHub as there is for Azure DevOps.
+
+For a GitHub organization, `name` and `native_id` are different values: `name` is the organization login shown in the
+organization's URL (e.g. `my-org` in https://github.com/my-org), while `native_id` is GitHub's numeric organization ID
+(e.g. `54376070`), which is stable across organization renames.
+
+```terraform
+# Look up an organization by its login name.
+data "polaris_github_organization" "org" {
+  name = "my-org"
+}
+
+# Look up by native ID, GitHub's numeric organization ID.
+data "polaris_github_organization" "by_native_id" {
+  native_id = "54376070"
+}
+```
+
+Each data source exposes the object's RSC ID as its `id` attribute, so it can be assigned an SLA Domain with the
+`polaris_sla_domain_assignment` resource. Repository names are only unique within an organization, so set `org_id` when
+looking up a repository by name to disambiguate a name shared across organizations:
+
+```terraform
+data "polaris_github_repository" "repo" {
+  name   = "my-repo"
+  org_id = data.polaris_github_organization.org.id
+}
+
+data "polaris_sla_domain" "gold" {
+  name = "gold"
+}
+
+resource "polaris_sla_domain_assignment" "repo" {
+  sla_domain_id = data.polaris_sla_domain.gold.id
+  object_ids    = [data.polaris_github_repository.repo.id]
+}
+```
+
+The `polaris_object` data source also gains support for the `GitHubOrganization` and `GitHubRepository` object types,
+resolving an object to its RSC ID by name for use with the `polaris_sla_domain_assignment` resource. Because repository
+names are only unique within their organization, set the optional `org_id` (for a `GitHubRepository`) to disambiguate a
+name shared across organizations:
+
+```terraform
+data "polaris_object" "repo" {
+  object_type = "GitHubRepository"
+  name        = "my-repo"
+  org_id      = data.polaris_object.org.id
+}
+```

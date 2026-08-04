@@ -22,6 +22,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -35,34 +36,38 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/devops"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqldevops "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/devops"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
-const dataSourceAzureDevOpsOrganizationDescription = `
-The ´polaris_azure_devops_organization´ data source reads an onboarded Azure
-DevOps organization from RSC. Look it up by ´id´, ´name´, or ´native_id´. The
-´native_id´ is the Azure DevOps organization name shown in the organization's
-URL (e.g. ´my-org´ in https://dev.azure.com/my-org). For an Azure DevOps
-organization, ´name´ and ´native_id´ are the same value, so either can be used
-for the lookup.
+const dataSourceGitHubOrganizationDescription = `
+The ´polaris_github_organization´ data source reads an onboarded GitHub
+organization from RSC. Look it up by ´id´, ´name´, or ´native_id´. The ´name´
+is the GitHub organization login shown in the organization's URL (e.g. ´my-org´
+in https://github.com/my-org). The ´native_id´ is GitHub's numeric organization
+ID (e.g. ´54376070´), which is stable across organization renames. Unlike some
+other providers, a GitHub organization's ´name´ and ´native_id´ are different
+values.
+
+GitHub organizations cannot be onboarded through the provider; use the RSC UI
+to onboard them. This data source is read-only.
 `
 
 var (
-	_ datasource.DataSource              = &azureDevOpsOrganizationDataSource{}
-	_ datasource.DataSourceWithConfigure = &azureDevOpsOrganizationDataSource{}
+	_ datasource.DataSource              = &gitHubOrganizationDataSource{}
+	_ datasource.DataSourceWithConfigure = &gitHubOrganizationDataSource{}
 )
 
-type azureDevOpsOrganizationDataSource struct {
+type gitHubOrganizationDataSource struct {
 	client *client
 }
 
-type azureDevOpsOrganizationDataSourceModel struct {
+type gitHubOrganizationDataSourceModel struct {
 	ID                           types.String `tfsdk:"id"`
 	Name                         types.String `tfsdk:"name"`
 	NativeID                     types.String `tfsdk:"native_id"`
-	TenantDomain                 types.String `tfsdk:"tenant_domain"`
-	Cloud                        types.String `tfsdk:"cloud"`
+	OrgURL                       types.String `tfsdk:"org_url"`
 	Feature                      types.Set    `tfsdk:"feature"`
 	ExocomputeHostType           types.String `tfsdk:"exocompute_host_type"`
 	StorageType                  types.String `tfsdk:"storage_type"`
@@ -70,26 +75,25 @@ type azureDevOpsOrganizationDataSourceModel struct {
 	ExocomputeHostCloudAccountID types.String `tfsdk:"exocompute_host_cloud_account_id"`
 	ExocomputeRegion             types.String `tfsdk:"exocompute_region"`
 	ConnectionStatus             types.String `tfsdk:"connection_status"`
-	ProjectCount                 types.Int64  `tfsdk:"project_count"`
 	RepoCount                    types.Int64  `tfsdk:"repo_count"`
 	LastRefreshTime              types.String `tfsdk:"last_refresh_time"`
 }
 
-func newAzureDevOpsOrganizationDataSource() datasource.DataSource {
-	return &azureDevOpsOrganizationDataSource{}
+func newGitHubOrganizationDataSource() datasource.DataSource {
+	return &gitHubOrganizationDataSource{}
 }
 
-func (d *azureDevOpsOrganizationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, res *datasource.MetadataResponse) {
-	tflog.Trace(ctx, "azureDevOpsOrganizationDataSource.Metadata")
+func (d *gitHubOrganizationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, res *datasource.MetadataResponse) {
+	tflog.Trace(ctx, "gitHubOrganizationDataSource.Metadata")
 
-	res.TypeName = req.ProviderTypeName + "_" + keyAzureDevOpsOrganization
+	res.TypeName = req.ProviderTypeName + "_" + keyGitHubOrganization
 }
 
-func (d *azureDevOpsOrganizationDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, res *datasource.SchemaResponse) {
-	tflog.Trace(ctx, "azureDevOpsOrganizationDataSource.Schema")
+func (d *gitHubOrganizationDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, res *datasource.SchemaResponse) {
+	tflog.Trace(ctx, "gitHubOrganizationDataSource.Schema")
 
 	res.Schema = schema.Schema{
-		Description: description(dataSourceAzureDevOpsOrganizationDescription),
+		Description: description(dataSourceGitHubOrganizationDescription),
 		Attributes: map[string]schema.Attribute{
 			keyID: schema.StringAttribute{
 				Optional:    true,
@@ -102,24 +106,20 @@ func (d *azureDevOpsOrganizationDataSource) Schema(ctx context.Context, _ dataso
 				Validators: []validator.String{
 					stringvalidator.ExactlyOneOf(path.MatchRoot(keyID), path.MatchRoot(keyNativeID)),
 				},
-				Description: "Azure DevOps organization name. This is the organization name visible in the " +
-					"Azure DevOps URL (e.g., `my-org` from https://dev.azure.com/my-org). Exactly one of `id`, " +
-					"`name`, or `native_id` must be set.",
+				Description: "GitHub organization name. This is the organization login visible in the GitHub " +
+					"URL (e.g., `my-org` from https://github.com/my-org). Exactly one of `id`, `name`, or " +
+					"`native_id` must be set.",
 			},
 			keyNativeID: schema.StringAttribute{
 				Optional: true,
 				Computed: true,
-				Description: "Azure DevOps organization native identifier. This is the organization name " +
-					"visible in the Azure DevOps URL (e.g., `my-org` from https://dev.azure.com/my-org). " +
-					"Exactly one of `id`, `name`, or `native_id` must be set.",
+				Description: "GitHub organization native identifier. This is GitHub's numeric organization " +
+					"ID (e.g., `54376070`), which is stable across organization renames. Exactly one of " +
+					"`id`, `name`, or `native_id` must be set.",
 			},
-			keyTenantDomain: schema.StringAttribute{
+			keyOrgURL: schema.StringAttribute{
 				Computed:    true,
-				Description: "Azure AD tenant primary domain.",
-			},
-			keyCloud: schema.StringAttribute{
-				Computed:    true,
-				Description: "Azure cloud type.",
+				Description: "GitHub organization URL.",
 			},
 			keyFeature: schema.SetNestedAttribute{
 				Computed:    true,
@@ -151,20 +151,17 @@ func (d *azureDevOpsOrganizationDataSource) Schema(ctx context.Context, _ dataso
 				Description: "Archival location ID for backups. Set when `storage_type` is `BYOS`.",
 			},
 			keyExocomputeHostCloudAccountID: schema.StringAttribute{
-				Computed:    true,
-				Description: "RSC cloud account ID providing exocompute. Set when `exocompute_host_type` is `CUSTOMER_HOST`.",
+				Computed: true,
+				Description: "RSC cloud account ID providing exocompute. Set when `exocompute_host_type` is " +
+					"`CUSTOMER_HOST`.",
 			},
 			keyExocomputeRegion: schema.StringAttribute{
 				Computed:    true,
-				Description: "Azure region for Rubrik-hosted exocompute. Set when `exocompute_host_type` is `RUBRIK_HOST`.",
+				Description: "Region for Rubrik-hosted exocompute. Set when `exocompute_host_type` is `RUBRIK_HOST`.",
 			},
 			keyConnectionStatus: schema.StringAttribute{
 				Computed:    true,
 				Description: "Connection status of the organization.",
-			},
-			keyProjectCount: schema.Int64Attribute{
-				Computed:    true,
-				Description: "Number of projects in the organization.",
 			},
 			keyRepoCount: schema.Int64Attribute{
 				Computed:    true,
@@ -178,8 +175,8 @@ func (d *azureDevOpsOrganizationDataSource) Schema(ctx context.Context, _ dataso
 	}
 }
 
-func (d *azureDevOpsOrganizationDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, res *datasource.ConfigureResponse) {
-	tflog.Trace(ctx, "azureDevOpsOrganizationDataSource.Configure")
+func (d *gitHubOrganizationDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, res *datasource.ConfigureResponse) {
+	tflog.Trace(ctx, "gitHubOrganizationDataSource.Configure")
 
 	if req.ProviderData == nil {
 		return
@@ -187,10 +184,10 @@ func (d *azureDevOpsOrganizationDataSource) Configure(ctx context.Context, req d
 	d.client = req.ProviderData.(*client)
 }
 
-func (d *azureDevOpsOrganizationDataSource) Read(ctx context.Context, req datasource.ReadRequest, res *datasource.ReadResponse) {
-	tflog.Trace(ctx, "azureDevOpsOrganizationDataSource.Read")
+func (d *gitHubOrganizationDataSource) Read(ctx context.Context, req datasource.ReadRequest, res *datasource.ReadResponse) {
+	tflog.Trace(ctx, "gitHubOrganizationDataSource.Read")
 
-	var config azureDevOpsOrganizationDataSourceModel
+	var config gitHubOrganizationDataSourceModel
 	res.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if res.Diagnostics.HasError() {
 		return
@@ -202,43 +199,51 @@ func (d *azureDevOpsOrganizationDataSource) Read(ctx context.Context, req dataso
 		return
 	}
 
-	var org gqldevops.AzureOrganization
-	if !config.ID.IsNull() {
+	var org gqldevops.GitHubOrganization
+	switch {
+	case !config.ID.IsNull():
 		id, err := uuid.Parse(config.ID.ValueString())
 		if err != nil {
 			res.Diagnostics.AddError("Invalid organization ID", err.Error())
 			return
 		}
-		org, err = devops.Wrap(polarisClient).AzureOrganizationByID(ctx, id)
+		org, err = devops.Wrap(polarisClient).GitHubOrganizationByID(ctx, id)
 		if err != nil {
-			res.Diagnostics.AddError("Failed to read Azure DevOps organization", err.Error())
+			res.Diagnostics.AddError("Failed to read GitHub organization", err.Error())
 			return
 		}
-	} else {
-		// An Azure DevOps organization's name and native ID are the same value,
-		// so accept whichever the user set and resolve it with an exact-match
-		// name filter.
-		lookup := config.Name
-		if lookup.IsNull() {
-			lookup = config.NativeID
+	case !config.NativeID.IsNull():
+		// The native ID is GitHub's numeric organization ID, distinct from the
+		// name, so it is matched client-side rather than through a name filter.
+		nativeID := config.NativeID.ValueString()
+		org, err = devops.Wrap(polarisClient).GitHubOrganizationByNativeID(ctx, nativeID)
+		if err != nil {
+			if errors.Is(err, graphql.ErrNotFound) {
+				res.Diagnostics.AddError("GitHub organization not found",
+					fmt.Sprintf("no organization with native ID %q", nativeID))
+				return
+			}
+			res.Diagnostics.AddError("Failed to look up GitHub organization", err.Error())
+			return
 		}
-		name := lookup.ValueString()
+	default:
+		name := config.Name.ValueString()
 
-		candidates, err := devops.Wrap(polarisClient).AzureOrganizationsByName(ctx, name,
+		candidates, err := devops.Wrap(polarisClient).GitHubOrganizationsByName(ctx, name,
 			activeObjectFilters(hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}})...)
 		if err != nil {
-			res.Diagnostics.AddError("Failed to look up Azure DevOps organization", err.Error())
+			res.Diagnostics.AddError("Failed to look up GitHub organization", err.Error())
 			return
 		}
 
 		switch len(candidates) {
 		case 0:
-			res.Diagnostics.AddError("Azure DevOps organization not found", fmt.Sprintf("no organization named %q", name))
+			res.Diagnostics.AddError("GitHub organization not found", fmt.Sprintf("no organization named %q", name))
 			return
 		case 1:
 			org = candidates[0]
 		default:
-			res.Diagnostics.AddError("Multiple Azure DevOps organizations found",
+			res.Diagnostics.AddError("Multiple GitHub organizations found",
 				fmt.Sprintf("%d organizations are named %q; look up by id instead", len(candidates), name))
 			return
 		}
@@ -247,12 +252,14 @@ func (d *azureDevOpsOrganizationDataSource) Read(ctx context.Context, req dataso
 	config.ID = types.StringValue(org.ID.String())
 	config.Name = types.StringValue(org.Name)
 	config.NativeID = types.StringValue(org.NativeID)
-	config.TenantDomain = types.StringValue(org.TenantDomain)
-	config.Cloud = types.StringValue(fromAzureCloud(org.Cloud))
+	config.OrgURL = types.StringValue(org.OrgURL)
 	config.ConnectionStatus = types.StringValue(string(org.ConnectionStatus))
-	config.ProjectCount = types.Int64Value(int64(org.ProjectCount))
 	config.RepoCount = types.Int64Value(int64(org.RepoCount))
-	config.LastRefreshTime = lastRefreshTime(org)
+	if org.LastRefreshTime != nil {
+		config.LastRefreshTime = types.StringValue(org.LastRefreshTime.Format(time.RFC3339))
+	} else {
+		config.LastRefreshTime = types.StringNull()
+	}
 
 	// RUBRIK_HOST carries an exocompute region, CUSTOMER_HOST carries an
 	// exocompute cloud account.
@@ -264,8 +271,8 @@ func (d *azureDevOpsOrganizationDataSource) Read(ctx context.Context, req dataso
 		}
 		config.ExocomputeHostCloudAccountID = types.StringNull()
 	case gqldevops.HostTypeCustomer:
-		if org.CloudNativeExocompute != nil {
-			config.ExocomputeHostCloudAccountID = types.StringValue(org.CloudNativeExocompute.ID.String())
+		if org.Exocompute != nil {
+			config.ExocomputeHostCloudAccountID = types.StringValue(org.Exocompute.ID.String())
 		}
 		config.ExocomputeRegion = types.StringNull()
 	}
@@ -280,10 +287,10 @@ func (d *azureDevOpsOrganizationDataSource) Read(ctx context.Context, req dataso
 		config.ArchivalLocationID = types.StringNull()
 	}
 
-	// Read the organizations current features and permission groups.
-	perms, err := devops.Wrap(polarisClient).ListOrgPermissions(ctx, org.ID)
+	// Read the organization's current features and permission groups.
+	perms, err := devops.Wrap(polarisClient).GitHubListOrgPermissions(ctx, org.ID)
 	if err != nil {
-		res.Diagnostics.AddError("Failed to read Azure DevOps organization permissions", err.Error())
+		res.Diagnostics.AddError("Failed to read GitHub organization permissions", err.Error())
 		return
 	}
 	featureSet, diags := fromFeatures(perms.ToFeatures())
@@ -294,13 +301,4 @@ func (d *azureDevOpsOrganizationDataSource) Read(ctx context.Context, req dataso
 	config.Feature = featureSet
 
 	res.Diagnostics.Append(res.State.Set(ctx, config)...)
-}
-
-// lastRefreshTime returns the organization's last refresh time as an RFC3339
-// string value, or null when unset.
-func lastRefreshTime(org gqldevops.AzureOrganization) types.String {
-	if org.LastRefreshTime == nil {
-		return types.StringNull()
-	}
-	return types.StringValue(org.LastRefreshTime.Format(time.RFC3339))
 }

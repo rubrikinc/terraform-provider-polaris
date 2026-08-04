@@ -44,7 +44,7 @@ func requireAzureDevOpsFeatureFlag(t *testing.T) {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
-	const azureDevOps = core.FeatureFlagName("AZURE_DEVOPS_PROTECTION_ENABLED")
+	const azureDevOps = core.FeatureFlagAzureDevOpsProtection
 	if !c.flag(ctx, azureDevOps) {
 		t.Skipf("feature flag %s is not enabled", azureDevOps)
 	}

@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/devops"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
@@ -293,7 +294,7 @@ func readSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m any)
 			return diag.FromErr(err)
 		}
 
-		obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
+		obj, err := workaroundBrokenHierarchy(ctx, client, objectID, workload)
 		if err != nil {
 			if errors.Is(err, graphql.ErrNotFound) {
 				// Object no longer exists, skip it.
@@ -487,7 +488,7 @@ func deleteSLADomainAssignment(ctx context.Context, d *schema.ResourceData, m an
 			return diag.FromErr(err)
 		}
 
-		obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
+		obj, err := workaroundBrokenHierarchy(ctx, client, objectID, workload)
 		if err != nil {
 			if errors.Is(err, graphql.ErrNotFound) {
 				// Object no longer exists, skip.
@@ -638,7 +639,7 @@ func importDoNotProtectAssignment(ctx context.Context, d *schema.ResourceData, c
 	// For import, we use AllSubHierarchyType as we don't know the workload type.
 	objectIDsSet := &schema.Set{F: schema.HashString}
 	for _, objectID := range objectIDs {
-		obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, hierarchy.WorkloadAllSubHierarchyType)
+		obj, err := workaroundBrokenHierarchy(ctx, client, objectID, hierarchy.WorkloadAllSubHierarchyType)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get object %s: %w", objectID, err)
 		}
@@ -678,7 +679,7 @@ func waitForAssignment(ctx context.Context, client *polaris.Client, expectedDoma
 		pending := make([]uuid.UUID, 0, len(objectIDs))
 
 		for _, objectID := range objectIDs {
-			obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
+			obj, err := workaroundBrokenHierarchy(ctx, client, objectID, workload)
 			if err != nil {
 				return err
 			}
@@ -757,7 +758,7 @@ func waitForAssignmentRemoval(ctx context.Context, client *polaris.Client, curre
 		pending := make([]uuid.UUID, 0, len(objectIDs))
 
 		for _, objectID := range objectIDs {
-			obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
+			obj, err := workaroundBrokenHierarchy(ctx, client, objectID, workload)
 			if err != nil {
 				return err
 			}
@@ -863,4 +864,45 @@ func diffObjectIDs(d *schema.ResourceData) ([]uuid.UUID, []uuid.UUID, []uuid.UUI
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+// workaroundBrokenHierarchy looks up a hierarchy object by ID and workload.
+// When the workload is WorkloadAllSubHierarchyType and the generic lookup
+// fails, RSC may be returning an internal server error for object types that
+// currently do not support the generic hierarchy endpoint (Azure DevOps
+// projects, GitHub organizations, and GitHub repositories). In that case the
+// function retries with the object-type-specific query for each of those three
+// types and returns the first one that succeeds.
+func workaroundBrokenHierarchy(ctx context.Context, client *polaris.Client, objectID uuid.UUID, workload hierarchy.Workload) (gqlsla.HierarchyObject, error) {
+	obj, err := sla.Wrap(client).HierarchyObjectByIDAndWorkload(ctx, objectID, workload)
+
+	// Workaround for broken hierarchy, Azure DevOps Projects, GitHub Orgs and
+	// GitHub repositories all return an internal server error when querying
+	// them with the generic call, retry with an object specific call.
+	if err != nil && workload == hierarchy.WorkloadAllSubHierarchyType {
+		tflog.Debug(ctx, "Object lookup resulted in an error, trying workaround", map[string]any{
+			"object_id": objectID.String(),
+		})
+
+		adoProj, err := devops.Wrap(client).AzureProjectByID(ctx, objectID)
+		if err == nil {
+			return adoProj.HierarchyObject, nil
+		}
+
+		ghOrg, err := devops.Wrap(client).GitHubOrganizationByID(ctx, objectID)
+		if err == nil {
+			return ghOrg.HierarchyObject, nil
+		}
+
+		ghRepo, err := devops.Wrap(client).GitHubRepositoryByID(ctx, objectID)
+		if err == nil {
+			return ghRepo.HierarchyObject, nil
+		}
+
+		tflog.Debug(ctx, "Object lookup workaround did not solve the error", map[string]any{
+			"object_id": objectID.String(),
+		})
+	}
+
+	return obj, err
 }
