@@ -198,30 +198,6 @@ resource "polaris_aws_exocompute" "application" {
 - `id` (String) Exocompute configuration ID (UUID).
 - `polaris_managed` (Boolean) If true the security groups are managed by RSC.
 
-## Import
-
-To import an application exocompute configuration prepend `app-` to the ID of the configuration.
-
-Import is supported using the following syntax:
-
-
-In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
-
-```terraform
-import {
-  to = polaris_aws_exocompute.host
-  id = "58e2a8bb-078d-4f67-8b66-5515fd701c8e"
-}
-```
-
-
-
-The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
-
-```terraform
-% terraform import polaris_aws_exocompute.host 58e2a8bb-078d-4f67-8b66-5515fd701c8e
-```
-
 <a id="nestedblock--subnet"></a>
 ### Nested Schema for `subnet`
 
@@ -232,6 +208,7 @@ Required:
 Optional:
 
 - `pod_subnet_id` (String) AWS subnet ID for the pods.
+
 
 ## Import
 
