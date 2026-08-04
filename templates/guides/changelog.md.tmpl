@@ -13,6 +13,11 @@ page_title: "Changelog"
   fields at plan time when they are set for an `object_type` they do not apply to. Previously these fields were
   silently ignored for other object types. See the [v1.9.2 upgrade guide](upgrade_guide_v1.9.2.md).
   [[docs](../data-sources/object.md)]
+* New resource added for `polaris_azure_sql_managed_instance_backup_setup` which configures RSC to back up an Azure
+  SQL Managed Instance server. RSC connects to the managed instance using the SQL Server credentials in the
+  `sql_credentials` block and creates the user it uses to perform backups. The credentials are write-only, so they
+  never reach Terraform state, change `sql_credential_version` to send them again.
+  [[docs](../resources/azure_sql_managed_instance_backup_setup.md)]
 * Add support for the `CloudNativeTagRule` object type in the `polaris_object` data source, resolving a cloud native
   tag rule to its RSC ID by name for use with the `polaris_sla_domain_assignment` resource.
   [[docs](../data-sources/object.md)]

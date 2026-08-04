@@ -129,6 +129,7 @@ func (p *FrameworkProvider) Resources(ctx context.Context) []func() resource.Res
 		newAwsAccountManagedResource,
 		newAwsAccountManagedStackResource,
 		newAzureDevOpsOrganizationResource,
+		newAzureSQLManagedInstanceBackupSetupResource,
 		newCustomRoleResource,
 		newGcpCloudClusterResource,
 		newRoleAssignmentResource,
