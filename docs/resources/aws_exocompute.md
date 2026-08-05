@@ -188,8 +188,7 @@ resource "polaris_aws_exocompute" "application" {
 - `region` (String) AWS region to run the Exocompute instance in. Changing this forces a new resource to be created.
 - `subnet` (Block Set, Max: 2) AWS subnet for the cluster. Each subnet block accepts a `subnet_id` (Required) and an
   optional `pod_subnet_id`. Conflicts with `subnets`. Changing this forces a new resource to be created.
-  - `subnet_id` (String, Required) AWS subnet ID.
-  - `pod_subnet_id` (String, Optional) AWS subnet ID for the pods.
+  (see [below for nested schema](#nestedblock--subnet))
 - `subnets` (Set of String) AWS subnet IDs for the cluster subnets. Conflicts with `subnet`. Changing this forces a new
   resource to be created.
 - `vpc_id` (String) AWS VPC ID for the cluster network. Changing this forces a new resource to be created.
@@ -198,6 +197,18 @@ resource "polaris_aws_exocompute" "application" {
 
 - `id` (String) Exocompute configuration ID (UUID).
 - `polaris_managed` (Boolean) If true the security groups are managed by RSC.
+
+<a id="nestedblock--subnet"></a>
+### Nested Schema for `subnet`
+
+Required:
+
+- `subnet_id` (String) AWS subnet ID.
+
+Optional:
+
+- `pod_subnet_id` (String) AWS subnet ID for the pods.
+
 
 ## Import
 

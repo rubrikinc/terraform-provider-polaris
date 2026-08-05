@@ -147,6 +147,7 @@ resource "polaris_azure_cloud_cluster" "multi_az" {
 
 ### Optional
 
+- `az_resilient` (Boolean) Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` instead of a single `subnet` and `availability_zone`. Changing this forces a new resource to be created.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
@@ -158,10 +159,11 @@ resource "polaris_azure_cloud_cluster" "multi_az" {
 
 Required:
 
-- `admin_email` (String) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
-- `admin_password` (String, Sensitive) Password for the cluster admin user. Changing this value will have no effect on the cluster.
+- `admin_email` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Email address for the cluster admin user. Changing this value will have no effect on the cluster.
+- `admin_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the cluster admin user. Changing this value will have no effect on the cluster.
 - `cluster_name` (String) Unique name to assign to the cloud cluster.
 - `dns_name_servers` (Set of String) DNS name servers for the cluster.
+- `force_cluster_delete_on_destroy` (Boolean) Whether to force delete the cluster on destroy.
 - `keep_cluster_on_failure` (Boolean) Whether to keep the cluster on failure (can be useful for troubleshooting). Changing this forces a new resource to be created.
 - `ntp_servers` (Set of String) NTP servers for the cluster.
 - `num_nodes` (Number) Number of nodes in the cluster. Changing this forces a new resource to be created.
@@ -189,6 +191,7 @@ Required:
 - `resource_group_name` (String) Azure resource group name where the cluster will be deployed. Changing this forces a new resource to be created.
 - `storage_account_name` (String) Azure storage account name for the cluster. Changing this forces a new resource to be created.
 - `subnet` (String) Azure subnet name for the cluster nodes. Changing this forces a new resource to be created.
+- `subnet_az_config` (Block List) Subnet and availability zone pairs for Multi-AZ deployments. Required when `az_resilient` is true. Each block specifies a subnet and its availability zone. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--vm_config--subnet_az_config))
 - `user_assigned_managed_identity_name` (String) Name of the user-assigned managed identity. Changing this forces a new resource to be created.
 - `vnet` (String) Azure virtual network name. Changing this forces a new resource to be created.
 - `vnet_resource_group` (String) Azure resource group name for the virtual network. Changing this forces a new resource to be created.
@@ -201,6 +204,16 @@ Optional:
 Read-Only:
 
 - `cdm_product` (String) CDM Product Code. This is a read-only field and computed based on the CDM version.
+
+
+<a id="nestedblock--vm_config--subnet_az_config"></a>
+### Nested Schema for `vm_config.subnet_az_config`
+
+Required:
+
+- `availability_zone` (String) Availability zone identifier.
+- `subnet` (String) Subnet name for this availability zone.
+
 
 
 <a id="nestedblock--timeouts"></a>
