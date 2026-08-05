@@ -141,13 +141,13 @@ resource "polaris_azure_cloud_cluster" "multi_az" {
 
 ### Required
 
-- `az_resilient` (Boolean) Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` instead of a single `subnet` and `availability_zone`. Changing this forces a new resource to be created.
 - `cloud_account_id` (String) RSC cloud account ID (UUID).
 - `cluster_config` (Block List, Min: 1, Max: 1) Configuration for the cloud cluster. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--cluster_config))
 - `vm_config` (Block List, Min: 1, Max: 1) VM configuration for the cluster nodes. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--vm_config))
 
 ### Optional
 
+- `az_resilient` (Boolean) Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` instead of a single `subnet` and `availability_zone`. Changing this forces a new resource to be created.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

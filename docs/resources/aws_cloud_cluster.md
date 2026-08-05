@@ -134,7 +134,6 @@ resource "polaris_aws_cloud_cluster" "multi_az" {
 
 ### Required
 
-- `az_resilient` (Boolean) Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` and `use_placement_groups` must be false. Changing this forces a new resource to be created.
 - `cloud_account_id` (String) RSC cloud account ID (UUID).
 - `cluster_config` (Block List, Min: 1, Max: 1) Configuration for the cloud cluster. Changing this forces a new resource to be created. (see [below for nested schema](#nestedblock--cluster_config))
 - `region` (String) AWS region to deploy the cluster in. Changing this forces a new resource to be created.
@@ -142,6 +141,7 @@ resource "polaris_aws_cloud_cluster" "multi_az" {
 
 ### Optional
 
+- `az_resilient` (Boolean) Whether to deploy the cluster across multiple availability zones for AZ resiliency. When enabled, `subnet_az_config` blocks must be specified in `vm_config` and `use_placement_groups` must be false. Changing this forces a new resource to be created.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - `use_placement_groups` (Boolean) Whether to use placement groups for the cluster. Changing this forces a new resource to be created.
 
