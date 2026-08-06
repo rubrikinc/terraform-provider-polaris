@@ -4,6 +4,22 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.9.2
+* **Breaking Change:** The `timeouts` block in the `polaris_object` data source is now a nested attribute, so a custom
+  read timeout is written as `timeouts = { read = "10m" }` instead of `timeouts { read = "10m" }`. This is a result of
+  migrating the data source to the Terraform Plugin Framework. See the [v1.9.2 upgrade guide](upgrade_guide_v1.9.2.md).
+  [[docs](../data-sources/object.md)]
+* **Breaking Change:** The `polaris_object` data source now rejects the `subscription_id`, `org_id` and `project_id`
+  fields at plan time when they are set for an `object_type` they do not apply to. Previously these fields were
+  silently ignored for other object types. See the [v1.9.2 upgrade guide](upgrade_guide_v1.9.2.md).
+  [[docs](../data-sources/object.md)]
+* Add support for the `CloudNativeTagRule` object type in the `polaris_object` data source, resolving a cloud native
+  tag rule to its RSC ID by name for use with the `polaris_sla_domain_assignment` resource.
+  [[docs](../data-sources/object.md)]
+* No longer require `subscription_id` when `object_type` is `AzureNativeResourceGroup` in the `polaris_object` data
+  source. Set it only to disambiguate a resource group name shared across subscriptions.
+  [[docs](../data-sources/object.md)]
+
 ## v1.9.1
 * New resource added for `polaris_azure_devops_organization` which onboards an Azure DevOps organization to RSC
   using a customer-supplied application (non-OAuth). [[docs](../resources/azure_devops_organization.md)]

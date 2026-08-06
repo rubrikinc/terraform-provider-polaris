@@ -52,7 +52,10 @@ Supported object types:
 Additional object types will be added in future releases.
 `
 
-var _ datasource.DataSource = &objectsDataSource{}
+var (
+	_ datasource.DataSource              = &objectsDataSource{}
+	_ datasource.DataSourceWithConfigure = &objectsDataSource{}
+)
 
 type objectsDataSource struct {
 	client *client
@@ -150,96 +153,66 @@ func (d *objectsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	objectType := config.ObjectType.ValueString()
-	subIDStr := config.SubscriptionID.ValueString()
+	subscriptionID := config.SubscriptionID.ValueString()
 
-	azureAPI := azure.Wrap(polarisClient)
+	var objects []any
+	switch objectType {
+	case "AzureNativeResourceGroup":
+		filters := gqlazure.ResourceGroupFilters{}
+		if subscriptionID != "" {
+			id, err := uuid.Parse(subscriptionID)
+			if err != nil {
+				res.Diagnostics.AddError("Invalid subscription ID", err.Error())
+				return
+			}
+			nativeSub, err := azure.Wrap(polarisClient).NativeSubscriptionByCloudAccountID(ctx, id)
+			if err != nil {
+				res.Diagnostics.AddError("Failed to lookup subscription", err.Error())
+				return
+			}
+			filters.SubscriptionIDs = append(filters.SubscriptionIDs, nativeSub.ID)
+		}
 
-	// Both the azureNativeResourceGroups filter and each resource group's
-	// azureSubscriptionDetails.id use the native subscription FID, whereas the
-	// data source's subscription_id (input and output) is the RSC cloud account
-	// ID. List the native subscriptions once to translate between the two.
-	natives, err := azureAPI.NativeSubscriptions(ctx, "")
-	if err != nil {
-		res.Diagnostics.AddError("Failed to list Azure native subscriptions", err.Error())
-		return
-	}
-	fidByCloudAccount := make(map[uuid.UUID]uuid.UUID, len(natives))
-	cloudAccountByFID := make(map[string]string, len(natives))
-	for _, n := range natives {
-		fidByCloudAccount[n.CloudAccountID] = n.ID
-		cloudAccountByFID[n.ID.String()] = n.CloudAccountID.String()
-	}
-
-	var subIDs []uuid.UUID
-	if subIDStr != "" {
-		cloudAccountID, err := uuid.Parse(subIDStr)
+		groups, err := azure.Wrap(polarisClient).NativeResourceGroupsByFilter(ctx, filters)
 		if err != nil {
-			res.Diagnostics.AddError("Invalid subscription_id", err.Error())
+			res.Diagnostics.AddError("Failed to read Azure resource groups", err.Error())
 			return
 		}
 
-		// The filter matches on the native subscription FID, so translate the
-		// cloud account ID to its FID before scoping the lookup.
-		fid, ok := fidByCloudAccount[cloudAccountID]
-		if !ok {
-			res.Diagnostics.AddError("Unknown subscription_id",
-				fmt.Sprintf("no Azure native subscription found for RSC cloud account ID %s", cloudAccountID))
-			return
-		}
-		subIDs = []uuid.UUID{fid}
-	}
-
-	// Passing an empty nameSubstring disables the RSC substring filter, so
-	// every resource group in scope is returned.
-	rgs, err := azureAPI.NativeResourceGroups(ctx, subIDs, "")
-	if err != nil {
-		res.Diagnostics.AddError("Failed to read Azure native resource groups", err.Error())
-		return
-	}
-
-	slices.SortFunc(rgs, func(a, b gqlazure.NativeResourceGroup) int {
-		return cmp.Compare(a.ID, b.ID)
-	})
-
-	// RSC's azureNativeResourceGroups connection can return the same resource
-	// group on more than one page, especially while native discovery is still
-	// settling. Drop exact duplicates by object ID before building the Set — the
-	// framework hard-errors on duplicate Set elements. Keyed on ID (not name),
-	// so distinct resource groups that happen to share a name are preserved.
-	rgs = slices.CompactFunc(rgs, func(a, b gqlazure.NativeResourceGroup) bool {
-		return a.ID == b.ID
-	})
-
-	hash := sha256.New()
-	hash.Write([]byte(objectType))
-	hash.Write([]byte(subIDStr))
-
-	objectValues := make([]attr.Value, 0, len(rgs))
-	for _, rg := range rgs {
-		// azureSubscriptionDetails.id is the native subscription FID; map it
-		// back to the RSC cloud account ID so the output subscription_id matches
-		// the input and polaris_azure_subscription.id. Fall back to the raw
-		// value if the subscription is somehow not in the native subscription
-		// list.
-		subID := rg.Subscription.ID
-		if cloudAccount, ok := cloudAccountByFID[rg.Subscription.ID]; ok {
-			subID = cloudAccount
-		}
-
-		hash.Write([]byte(rg.ID))
-		hash.Write([]byte(rg.Name))
-		hash.Write([]byte(subID))
-
-		objectValue, diags := types.ObjectValue(objectAttrTypes(), map[string]attr.Value{
-			keyID:             types.StringValue(rg.ID),
-			keyName:           types.StringValue(rg.Name),
-			keySubscriptionID: types.StringValue(subID),
+		// Sort the groups by ID to make the hash backwards compatible with the
+		// old implementation.
+		slices.SortFunc(groups, func(lhs, rhs gqlazure.NativeResourceGroup) int {
+			return cmp.Compare(lhs.ID, rhs.ID)
 		})
-		res.Diagnostics.Append(diags...)
-		if res.Diagnostics.HasError() {
-			return
+
+		for _, group := range groups {
+			objects = append(objects, group)
 		}
-		objectValues = append(objectValues, objectValue)
+	}
+
+	idHash := sha256.New()
+	idHash.Write([]byte(objectType))
+	idHash.Write([]byte(subscriptionID))
+
+	objectValues := make([]attr.Value, 0, len(objects))
+	for _, obj := range objects {
+		switch object := obj.(type) {
+		case gqlazure.NativeResourceGroup:
+			idHash.Write([]byte(object.ID))
+			idHash.Write([]byte(object.Name))
+			idHash.Write([]byte(object.Subscription.CloudAccountID.String()))
+
+			objectValue, diags := types.ObjectValue(objectAttrTypes(), map[string]attr.Value{
+				keyID:             types.StringValue(object.ID),
+				keyName:           types.StringValue(object.Name),
+				keySubscriptionID: types.StringValue(object.Subscription.CloudAccountID.String()),
+			})
+			res.Diagnostics.Append(diags...)
+			if res.Diagnostics.HasError() {
+				return
+			}
+			objectValues = append(objectValues, objectValue)
+		}
 	}
 
 	objectsSet, diags := types.SetValue(types.ObjectType{AttrTypes: objectAttrTypes()}, objectValues)
@@ -248,14 +221,9 @@ func (d *objectsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	state := objectsModel{
-		ID:             types.StringValue(fmt.Sprintf("%x", hash.Sum(nil))),
-		ObjectType:     config.ObjectType,
-		SubscriptionID: config.SubscriptionID,
-		Objects:        objectsSet,
-	}
-
-	res.Diagnostics.Append(res.State.Set(ctx, &state)...)
+	config.ID = types.StringValue(fmt.Sprintf("%x", idHash.Sum(nil)))
+	config.Objects = objectsSet
+	res.Diagnostics.Append(res.State.Set(ctx, &config)...)
 }
 
 func objectAttrTypes() map[string]attr.Type {

@@ -153,6 +153,7 @@ func (p *FrameworkProvider) DataSources(ctx context.Context) []func() datasource
 		newGitHubOrganizationDataSource,
 		newGitHubRepositoryDataSource,
 		newIdentityProviderDataSource,
+		newObjectDataSource,
 		newObjectsDataSource,
 		newRoleDataSource,
 		newRoleTemplateDataSource,
