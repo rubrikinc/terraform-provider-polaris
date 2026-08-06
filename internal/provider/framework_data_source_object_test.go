@@ -21,8 +21,12 @@
 package provider
 
 import (
+	"slices"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -105,7 +109,7 @@ resource "polaris_azure_subscription" "default" {
 			"eastus2",
 		]
 	}
-  
+
 	depends_on = [polaris_azure_service_principal.default]
 }
 
@@ -144,4 +148,144 @@ func TestAccPolarisObject_azureSubscription(t *testing.T) {
 			),
 		}},
 	})
+}
+
+func TestValidateObjectConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config objectModel
+		// wantErrPaths lists the attribute paths that should produce a
+		// validation error, in any order. Empty means the config is valid.
+		wantErrPaths []string
+	}{
+		{
+			name: "NoParentIDs",
+			config: objectModel{
+				ObjectType: types.StringValue("AwsNativeEc2Instance"),
+			},
+		},
+		{
+			name: "UnknownObjectTypeSkipsValidation",
+			config: objectModel{
+				ObjectType:     types.StringUnknown(),
+				SubscriptionID: types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+				OrgID:          types.StringValue("550e8400-e29b-41d4-a716-446655440001"),
+				ProjectID:      types.StringValue("550e8400-e29b-41d4-a716-446655440002"),
+			},
+		},
+		{
+			name: "NullObjectTypeSkipsValidation",
+			config: objectModel{
+				ObjectType:     types.StringNull(),
+				SubscriptionID: types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+		},
+		{
+			name: "SubscriptionIDWithResourceGroup",
+			config: objectModel{
+				ObjectType:     types.StringValue("AzureNativeResourceGroup"),
+				SubscriptionID: types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+		},
+		{
+			name: "SubscriptionIDWithWrongType",
+			config: objectModel{
+				ObjectType:     types.StringValue("AwsNativeEc2Instance"),
+				SubscriptionID: types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+			wantErrPaths: []string{keySubscriptionID},
+		},
+		{
+			name: "OrgIDWithAzureDevOpsProject",
+			config: objectModel{
+				ObjectType: types.StringValue("AzureDevOpsProject"),
+				OrgID:      types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+		},
+		{
+			name: "OrgIDWithGitHubRepository",
+			config: objectModel{
+				ObjectType: types.StringValue("GitHubRepository"),
+				OrgID:      types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+		},
+		{
+			name: "OrgIDWithWrongType",
+			config: objectModel{
+				ObjectType: types.StringValue("GitHubOrganization"),
+				OrgID:      types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+			wantErrPaths: []string{keyOrgID},
+		},
+		{
+			name: "ProjectIDWithAzureDevOpsRepository",
+			config: objectModel{
+				ObjectType: types.StringValue("AzureDevOpsRepository"),
+				ProjectID:  types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+		},
+		{
+			name: "ProjectIDWithWrongType",
+			config: objectModel{
+				ObjectType: types.StringValue("AzureDevOpsProject"),
+				ProjectID:  types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+			wantErrPaths: []string{keyProjectID},
+		},
+		{
+			// A resource group accepts subscription_id but not org_id, so
+			// setting both flags only org_id.
+			name: "ResourceGroupWithSubscriptionAndOrgID",
+			config: objectModel{
+				ObjectType:     types.StringValue("AzureNativeResourceGroup"),
+				SubscriptionID: types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+				OrgID:          types.StringValue("550e8400-e29b-41d4-a716-446655440001"),
+			},
+			wantErrPaths: []string{keyOrgID},
+		},
+		{
+			name: "UnknownParentIDSkipped",
+			config: objectModel{
+				ObjectType:     types.StringValue("AwsNativeEc2Instance"),
+				SubscriptionID: types.StringUnknown(),
+			},
+		},
+		{
+			name: "MultipleViolations",
+			config: objectModel{
+				ObjectType:     types.StringValue("AwsNativeEc2Instance"),
+				SubscriptionID: types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+				OrgID:          types.StringValue("550e8400-e29b-41d4-a716-446655440001"),
+				ProjectID:      types.StringValue("550e8400-e29b-41d4-a716-446655440002"),
+			},
+			wantErrPaths: []string{keySubscriptionID, keyOrgID, keyProjectID},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateObjectConfig(tc.config)
+
+			var gotErrPaths []string
+			for _, d := range diags.Errors() {
+				dp, ok := d.(diag.DiagnosticWithPath)
+				if !ok {
+					t.Errorf("error diagnostic has no path: %s: %s", d.Summary(), d.Detail())
+					continue
+				}
+				gotErrPaths = append(gotErrPaths, dp.Path().String())
+			}
+
+			var wantErrPaths []string
+			for _, key := range tc.wantErrPaths {
+				wantErrPaths = append(wantErrPaths, path.Root(key).String())
+			}
+
+			slices.Sort(gotErrPaths)
+			slices.Sort(wantErrPaths)
+			if !slices.Equal(gotErrPaths, wantErrPaths) {
+				t.Errorf("error paths mismatch:\n got: %v\nwant: %v", gotErrPaths, wantErrPaths)
+			}
+		})
+	}
 }
