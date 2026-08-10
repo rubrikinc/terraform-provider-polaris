@@ -16,6 +16,10 @@ page_title: "Changelog"
 * Add support for the `CloudNativeTagRule` object type in the `polaris_object` data source, resolving a cloud native
   tag rule to its RSC ID by name for use with the `polaris_sla_domain_assignment` resource.
   [[docs](../data-sources/object.md)]
+* Add support for the `AzureSqlManagedInstanceServer` object type in the `polaris_object` data source, resolving an
+  Azure SQL Managed Instance server to its RSC ID by name for use with the `polaris_sla_domain_assignment` resource.
+  Set `subscription_id` to disambiguate a server name shared across subscriptions.
+  [[docs](../data-sources/object.md)]
 * No longer require `subscription_id` when `object_type` is `AzureNativeResourceGroup` in the `polaris_object` data
   source. Set it only to disambiguate a resource group name shared across subscriptions.
   [[docs](../data-sources/object.md)]
