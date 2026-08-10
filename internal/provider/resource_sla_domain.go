@@ -690,6 +690,32 @@ func resourceSLADomain() *schema.Resource {
 				MaxItems:    1,
 				Description: "Managed Volume configuration.",
 			},
+			keyAzurePostgresFlexibleServerConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyBackupRetentionInDays: {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Description: "Point-in-time restore retention, in days, that RSC enforces on the source " +
+								"flexible server. Must be between 7 and 35. Omit the block, or leave this at 0, to " +
+								"leave the server's existing Azure-side retention untouched.",
+							ValidateFunc: func(i any, k string) ([]string, []error) {
+								v := i.(int)
+								if v == 0 || (v >= 7 && v <= 35) {
+									return nil, nil
+								}
+								return nil, []error{fmt.Errorf(
+									"%s must be 0, or between 7 and 35, got %d", k, v)}
+							},
+						},
+					},
+				},
+				Optional: true,
+				MaxItems: 1,
+				Description: "Azure Postgres Flexible Server configuration. Only valid when `object_types` is " +
+					"exactly `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE`.",
+			},
 			keyPostgresDBClusterConfig: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -2326,6 +2352,10 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 				if err := validateAzureSQLManagedInstanceObjectType(azureSQLRevamp.Enabled, objectTypeList, azureSQLMIConfig, azureSQLConfig, schedule, backupLocations, archivalSpecs, replicationSpecs); err != nil {
 					return diag.FromErr(err)
 				}
+			case gqlsla.ObjectAzurePostgresFlexibleServer:
+				if err := validateAzurePostgresFlexibleServerObjectType(objectTypeList, backupLocations, archivalSpecs, replicationSpecs); err != nil {
+					return diag.FromErr(err)
+				}
 			case gqlsla.ObjectAzureBlob:
 				if blobConfig == nil {
 					return diag.Errorf("Azure Blob object type requires Azure Blob configuration")
@@ -2378,24 +2408,25 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			LocalRetentionLimit:    fromLocalRetention(d),
 			Name:                   d.Get(keyName).(string),
 			ObjectSpecificConfigs: &gqlsla.ObjectSpecificConfigs{
-				AWSDynamoDBConfig:               awsDynamoDBConfig,
-				AWSS3Config:                     awsS3Config,
-				AWSRDSConfig:                    awsRDSConfig,
-				AzureBlobConfig:                 blobConfig,
-				AzureSQLDatabaseDBConfig:        azureSQLConfig,
-				AzureSQLManagedInstanceDBConfig: azureSQLMIConfig,
-				VMwareVMConfig:                  vmwareVMConfig,
-				SapHanaConfig:                   sapHanaConfig,
-				DB2Config:                       db2Config,
-				MssqlConfig:                     mssqlConfig,
-				OracleConfig:                    oracleConfig,
-				MongoConfig:                     mongoConfig,
-				ManagedVolumeSlaConfig:          managedVolumeConfig,
-				PostgresDbClusterSlaConfig:      postgresDbClusterConfig,
-				MysqldbSlaConfig:                mysqldbConfig,
-				NcdSlaConfig:                    ncdConfig,
-				InformixSlaConfig:               informixConfig,
-				GcpCloudSqlConfig:               gcpCloudSqlConfig,
+				AWSDynamoDBConfig:                 awsDynamoDBConfig,
+				AWSS3Config:                       awsS3Config,
+				AWSRDSConfig:                      awsRDSConfig,
+				AzureBlobConfig:                   blobConfig,
+				AzurePostgresFlexibleServerConfig: fromAzurePostgresFlexibleServerConfig(d),
+				AzureSQLDatabaseDBConfig:          azureSQLConfig,
+				AzureSQLManagedInstanceDBConfig:   azureSQLMIConfig,
+				VMwareVMConfig:                    vmwareVMConfig,
+				SapHanaConfig:                     sapHanaConfig,
+				DB2Config:                         db2Config,
+				MssqlConfig:                       mssqlConfig,
+				OracleConfig:                      oracleConfig,
+				MongoConfig:                       mongoConfig,
+				ManagedVolumeSlaConfig:            managedVolumeConfig,
+				PostgresDbClusterSlaConfig:        postgresDbClusterConfig,
+				MysqldbSlaConfig:                  mysqldbConfig,
+				NcdSlaConfig:                      ncdConfig,
+				InformixSlaConfig:                 informixConfig,
+				GcpCloudSqlConfig:                 gcpCloudSqlConfig,
 			},
 			ObjectTypes:       objectTypes,
 			ReplicationSpecs:  replicationSpecs,
@@ -2573,6 +2604,10 @@ func readSLADomain(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyManagedVolumeConfig, toManagedVolumeConfig(slaDomain.ObjectSpecificConfigs.ManagedVolumeSlaConfig)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set(keyAzurePostgresFlexibleServerConfig,
+		toAzurePostgresFlexibleServerConfig(slaDomain.ObjectSpecificConfigs.AzurePostgresFlexibleServerConfig)); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyPostgresDBClusterConfig, toPostgresDbClusterConfig(slaDomain.ObjectSpecificConfigs.PostgresDbClusterSlaConfig)); err != nil {
@@ -3106,6 +3141,33 @@ func configHasLTRConfig(v any) bool {
 	return ok && len(ltr) > 0 && ltr[0] != nil
 }
 
+// validateAzurePostgresFlexibleServerObjectType validates an Azure Postgres
+// flexible server SLA.
+//
+// Two of these rules are not expressed in the RSC schema. The object type
+// cannot be combined with any other, matching the RSC UI, which does not allow
+// it. A backup location is mandatory because the Postgres object adapter
+// supports multiple backup locations but not multiple archival, so these SLAs
+// carry their location in backupLocationSpecs rather than the legacy
+// archivalSpecs.
+func validateAzurePostgresFlexibleServerObjectType(objectTypeList []any, backupLocations []gqlsla.BackupLocationSpec, archivalSpecs []gqlsla.ArchivalSpec, replicationSpecs []gqlsla.ReplicationSpec) error {
+	if len(objectTypeList) > 1 {
+		return fmt.Errorf("the Azure Postgres Flexible Server object type cannot be combined with other object types")
+	}
+	if len(archivalSpecs) > 0 {
+		return fmt.Errorf("the Azure Postgres Flexible Server object type stores its backup location in " +
+			"backup_location, not the archival block; remove the archival block")
+	}
+	if len(backupLocations) == 0 {
+		return fmt.Errorf("the Azure Postgres Flexible Server object type requires a backup_location")
+	}
+	if len(replicationSpecs) > 0 {
+		return fmt.Errorf("the Azure Postgres Flexible Server object type does not support replication")
+	}
+
+	return nil
+}
+
 // onlyAzureSQLObjectTypes reports whether every object type in the list is an
 // Azure SQL Database or Azure SQL Managed Instance. These two may be combined in
 // a single SLA (matching the UI) but not with any other object type.
@@ -3569,6 +3631,35 @@ func toManagedVolumeConfig(config *gqlsla.ManagedVolumeSlaConfig) []any {
 	return []any{map[string]any{
 		keyLogRetention:     config.LogRetention.Duration,
 		keyLogRetentionUnit: config.LogRetention.Unit,
+	}}
+}
+
+// fromAzurePostgresFlexibleServerConfig returns the Azure Postgres flexible
+// server configuration from the resource data, or nil when the block is absent.
+func fromAzurePostgresFlexibleServerConfig(d *schema.ResourceData) *gqlsla.AzurePostgresFlexibleServerConfig {
+	block, ok := d.GetOk(keyAzurePostgresFlexibleServerConfig)
+	if !ok {
+		return nil
+	}
+	if len(block.([]any)) == 0 || block.([]any)[0] == nil {
+		return nil
+	}
+
+	config := block.([]any)[0].(map[string]any)
+	return &gqlsla.AzurePostgresFlexibleServerConfig{
+		BackupRetentionInDays: config[keyBackupRetentionInDays].(int),
+	}
+}
+
+// toAzurePostgresFlexibleServerConfig returns the resource data representation
+// of the Azure Postgres flexible server configuration.
+func toAzurePostgresFlexibleServerConfig(config *gqlsla.AzurePostgresFlexibleServerConfig) []any {
+	if config == nil {
+		return nil
+	}
+
+	return []any{map[string]any{
+		keyBackupRetentionInDays: config.BackupRetentionInDays,
 	}}
 }
 

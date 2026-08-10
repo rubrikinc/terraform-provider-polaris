@@ -31,6 +31,7 @@ description: |-
 - `aws_dynamodb_config` (Block List, Max: 1) (see [below for nested schema](#nestedblock--aws_dynamodb_config))
 - `aws_rds_config` (Block List, Max: 1) AWS RDS continuous backups for point-in-time recovery. If continuous backup isn't specified, AWS provides 1 day of continuous backup by default for Aurora databases, which can be changed but not disable. (see [below for nested schema](#nestedblock--aws_rds_config))
 - `azure_blob_config` (Block List, Max: 1) Azure Blob Storage backup location for scheduled snapshots. To avoid early deletion fees, retain snapshots in cool tier archival locations for at least 30 days. (see [below for nested schema](#nestedblock--azure_blob_config))
+- `azure_postgres_flexible_server_config` (Block List, Max: 1) Azure Postgres Flexible Server configuration. Only valid when `object_types` is exactly `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE`. (see [below for nested schema](#nestedblock--azure_postgres_flexible_server_config))
 - `azure_sql_database_config` (Block List, Max: 1) Azure SQL Database continuous backups for point-in-time recovery. Continuous backups are stored in the source database. A V1 (Azure-managed) SLA also specifies `ltr_config`; a V2 (Rubrik-managed) SLA omits it and specifies a backup location and snapshot schedule. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_database_config))
 - `azure_sql_managed_instance_config` (Block List, Max: 1) Azure SQL MI log backups. A V1 (Azure-managed) SLA also specifies `ltr_config`; a V2 (Rubrik-managed) SLA omits it and specifies a backup location and snapshot schedule. Note, the changes will be applied during the next maintenance window. (see [below for nested schema](#nestedblock--azure_sql_managed_instance_config))
 - `backup_location` (Block List) (see [below for nested schema](#nestedblock--backup_location))
@@ -133,6 +134,16 @@ Optional:
 Required:
 
 - `archival_location_id` (String) Archival location ID (UUID).
+
+
+<a id="nestedblock--azure_postgres_flexible_server_config"></a>
+### Nested Schema for `azure_postgres_flexible_server_config`
+
+Optional:
+
+- `backup_retention_in_days` (Number) Point-in-time restore retention, in days, that RSC enforces on the source flexible server. Must be between 7 and 35. Omit the block, or leave this at 0, to leave the server's existing Azure-side retention untouched.
+
+~> **Note:** An SLA Domain with the `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE` object type cannot be combined with any other object type, and requires a `backup_location`. It stores its backup location in `backup_location` rather than the `archival` block.
 
 
 <a id="nestedblock--azure_sql_database_config"></a>

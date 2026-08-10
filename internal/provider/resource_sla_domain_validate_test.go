@@ -213,6 +213,66 @@ func TestConfigHasLTRConfig(t *testing.T) {
 
 // TestOnlyAzureSQLObjectTypes verifies that Azure SQL DB and MI may be combined
 // with each other but not with any other object type.
+// TestValidateAzurePostgresFlexibleServerObjectType covers the rules for an
+// Azure Postgres flexible server SLA. Two of them are not expressed in the RSC
+// schema: the object type cannot be combined with any other, matching the RSC
+// UI, and a backup location is mandatory because these SLAs use
+// backupLocationSpecs rather than the legacy archivalSpecs.
+func TestValidateAzurePostgresFlexibleServerObjectType(t *testing.T) {
+	pg := string(gqlsla.ObjectAzurePostgresFlexibleServer)
+	backupLocation := []gqlsla.BackupLocationSpec{{ArchivalGroupID: uuid.MustParse("f6b1f4e8-5d1e-4f4e-9b6f-3a1c2d5e7f90")}}
+
+	tests := []struct {
+		name             string
+		objectTypes      []any
+		backupLocations  []gqlsla.BackupLocationSpec
+		archivalSpecs    []gqlsla.ArchivalSpec
+		replicationSpecs []gqlsla.ReplicationSpec
+		wantErr          string
+	}{{
+		name:            "ValidWithBackupLocation",
+		objectTypes:     []any{pg},
+		backupLocations: backupLocation,
+	}, {
+		name:            "CombinedWithOtherObjectType",
+		objectTypes:     []any{pg, string(gqlsla.ObjectAzureSQLDatabase)},
+		backupLocations: backupLocation,
+		wantErr:         "cannot be combined with other object types",
+	}, {
+		name:            "MissingBackupLocation",
+		objectTypes:     []any{pg},
+		backupLocations: nil,
+		wantErr:         "requires a backup_location",
+	}, {
+		name:            "UsesLegacyArchivalBlock",
+		objectTypes:     []any{pg},
+		backupLocations: backupLocation,
+		archivalSpecs:   []gqlsla.ArchivalSpec{{Threshold: 0}},
+		wantErr:         "remove the archival block",
+	}, {
+		name:             "Replication",
+		objectTypes:      []any{pg},
+		backupLocations:  backupLocation,
+		replicationSpecs: []gqlsla.ReplicationSpec{{}},
+		wantErr:          "does not support replication",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateAzurePostgresFlexibleServerObjectType(
+				tt.objectTypes, tt.backupLocations, tt.archivalSpecs, tt.replicationSpecs)
+			switch {
+			case tt.wantErr == "" && err != nil:
+				t.Fatalf("unexpected error: %v", err)
+			case tt.wantErr != "" && err == nil:
+				t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+			case tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr):
+				t.Fatalf("error %q does not contain %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestOnlyAzureSQLObjectTypes(t *testing.T) {
 	tests := []struct {
 		name        string
