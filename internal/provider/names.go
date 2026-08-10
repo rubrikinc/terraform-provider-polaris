@@ -97,6 +97,7 @@ const (
 	keyOrgNativeIDs                                 = "org_native_ids"
 	keyOrgURL                                       = "org_url"
 	keyPostgresDBClusterConfig                      = "postgres_db_cluster_config"
+	keyPostgresFlexibleServerProtection             = "postgres_flexible_server_protection"
 	keyPowershellScript                             = "powershell_script"
 	keyProjectCount                                 = "project_count"
 	keyRepoCount                                    = "repo_count"

@@ -24,6 +24,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 
@@ -53,6 +54,12 @@ when the Terraform configuration is applied.
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature set.
+
+´AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RECOVERY´ - Represents the set of permissions required for all recovery
+    operations.
 
 ´AZURE_SQL_DB_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
@@ -141,6 +148,14 @@ are used when specifying the feature set.
 
 -> **Note:** As of now, ´sql_mi_protection´ does not support specifying an Azure
    resource group.
+
+~> **Note:** Unlike the other features, ´postgres_flexible_server_protection´
+   requires both an Azure resource group and a user-assigned managed identity,
+   so those fields are mandatory. RSC also requires the managed identity to be
+   in the same resource group as the feature, which means
+   ´user_assigned_managed_identity_resource_group_name´ must match
+   ´resource_group_name´. Create the managed identity out of band, for example
+   with the ´azurerm_user_assigned_identity´ resource.
 `
 
 func resourceAzureSubscription() *schema.Resource {
@@ -283,6 +298,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
+					keyPostgresFlexibleServerProtection,
 					keySQLDBProtection,
 					keySQLMIProtection,
 					keyServersAndApps,
@@ -446,6 +462,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeArchival,
 					keyCloudNativeProtection,
 					keyExocompute,
+					keyPostgresFlexibleServerProtection,
 					keySQLDBProtection,
 					keySQLMIProtection,
 					keyServersAndApps,
@@ -536,6 +553,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyExocompute,
+					keyPostgresFlexibleServerProtection,
 					keySQLDBProtection,
 					keySQLMIProtection,
 					keyServersAndApps,
@@ -635,12 +653,123 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeArchival,
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
+					keyPostgresFlexibleServerProtection,
 					keySQLDBProtection,
 					keySQLMIProtection,
 					keyServersAndApps,
 				},
 				Description: "Enable the RSC Exocompute feature for the Azure subscription. Provides snapshot " +
 					"indexing, file recovery, storage tiering, and application-consistent protection of Azure objects.",
+			},
+			keyPostgresFlexibleServerProtection: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyPermissionGroups: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								ValidateFunc: validation.StringInSlice([]string{
+									"BASIC", "RECOVERY",
+								}, false),
+							},
+							Optional: true,
+							Description: "Permission groups to assign to the Postgres Flexible Server Protection " +
+								"feature. Possible values are `BASIC` and `RECOVERY`.",
+						},
+						keyPermissions: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Description: "Permissions updated signal. When this field changes, the provider will notify " +
+								"RSC that the permissions for the feature has been updated. Use this field with the " +
+								"`polaris_azure_permissions` data source.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyRegions: {
+							Type: schema.TypeSet,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							MinItems: 1,
+							Required: true,
+							Description: "Azure regions to enable the Postgres Flexible Server Protection feature in. " +
+								"Should be specified in the standard Azure style, e.g. `eastus`.",
+						},
+						keyResourceGroupName: {
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "Name of the Azure resource group where RSC places all resources created by " +
+								"the feature. RSC assumes the resource group already exists. Changing this forces the " +
+								"RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyResourceGroupRegion: {
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "Region of the Azure resource group. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
+						},
+						keyResourceGroupTags: {
+							Type: schema.TypeMap,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional: true,
+							Description: "Tags to add to the Azure resource group. Changing this forces the RSC feature " +
+								"to be re-onboarded.",
+						},
+						keyStatus: {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: "Status of the Postgres Flexible Server Protection feature.",
+						},
+						keyUserAssignedManagedIdentityName: {
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "User-assigned managed identity name. RSC assigns this identity to the " +
+								"temporary and recovery flexible servers it creates, giving them an identity to access " +
+								"Key Vault. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyUserAssignedManagedIdentityPrincipalID: {
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "ID of the service principal object associated with the user-assigned managed " +
+								"identity. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyUserAssignedManagedIdentityRegion: {
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "User-assigned managed identity region. Should be specified in the standard " +
+								"Azure style, e.g. `eastus`. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringInSlice(gqlregion.AllRegionNames(), false),
+						},
+						keyUserAssignedManagedIdentityResourceGroupName: {
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "User-assigned managed identity resource group name. RSC requires the identity " +
+								"to be in the same resource group as the feature, so this must match " +
+								"`resource_group_name`. Changing this forces the RSC feature to be re-onboarded.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+					},
+				},
+				MaxItems: 1,
+				Optional: true,
+				AtLeastOneOf: []string{
+					keyCloudNativeArchival,
+					keyCloudNativeBlobProtection,
+					keyCloudNativeProtection,
+					keyExocompute,
+					keySQLDBProtection,
+					keySQLMIProtection,
+					keyServersAndApps,
+				},
+				Description: "Enable the RSC Postgres Flexible Server Protection feature for the Azure subscription. " +
+					"Provides centralized database backup management and recovery for an Azure Database for " +
+					"PostgreSQL flexible server deployment.",
 			},
 			keyServersAndApps: {
 				Type: schema.TypeList,
@@ -724,6 +853,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
+					keyPostgresFlexibleServerProtection,
 					keySQLDBProtection,
 					keySQLMIProtection,
 				},
@@ -878,6 +1008,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
+					keyPostgresFlexibleServerProtection,
 					keySQLMIProtection,
 					keyServersAndApps,
 				},
@@ -932,6 +1063,7 @@ func resourceAzureSubscription() *schema.Resource {
 					keyCloudNativeBlobProtection,
 					keyCloudNativeProtection,
 					keyExocompute,
+					keyPostgresFlexibleServerProtection,
 					keySQLDBProtection,
 					keyServersAndApps,
 				},
@@ -1016,6 +1148,7 @@ func azureCustomizeDiffSubscription(ctx context.Context, diff *schema.ResourceDi
 			protectionKeys := []string{
 				keyCloudNativeProtection,
 				keyCloudNativeBlobProtection,
+				keyPostgresFlexibleServerProtection,
 				keySQLDBProtection,
 				keySQLMIProtection,
 			}
@@ -1024,6 +1157,22 @@ func azureCustomizeDiffSubscription(ctx context.Context, diff *schema.ResourceDi
 					return errors.New("cloud_discovery cannot be removed while protection features are enabled")
 				}
 			}
+		}
+	}
+
+	// RSC requires the user-assigned managed identity of the Postgres Flexible
+	// Server Protection feature to live in the same resource group as the
+	// feature itself. Catch a mismatch here, where the field names are visible,
+	// rather than letting RSC reject the apply.
+	if blocks := diff.Get(keyPostgresFlexibleServerProtection).([]any); len(blocks) > 0 && blocks[0] != nil {
+		block := blocks[0].(map[string]any)
+		featureRG, _ := block[keyResourceGroupName].(string)
+		identityRG, _ := block[keyUserAssignedManagedIdentityResourceGroupName].(string)
+		if identityRG != "" && featureRG != "" && identityRG != featureRG {
+			return fmt.Errorf("%s: %s must match %s (%q != %q), RSC requires the user-assigned "+
+				"managed identity to be in the feature's resource group",
+				keyPostgresFlexibleServerProtection, keyUserAssignedManagedIdentityResourceGroupName,
+				keyResourceGroupName, identityRG, featureRG)
 		}
 	}
 
@@ -1441,6 +1590,13 @@ var azureKeyFeatureMap = map[string]orderedFeature{
 		orderSplitAdd:    209,
 		orderSplitRemove: 208,
 	},
+	keyPostgresFlexibleServerProtection: {
+		feature:          core.FeatureAzurePostgresFlexibleServerProtection,
+		orderAdd:         108,
+		orderRemove:      309,
+		orderSplitAdd:    219,
+		orderSplitRemove: 218,
+	},
 	keySQLDBProtection: {
 		feature:          core.FeatureAzureSQLDBProtection,
 		orderAdd:         105,
@@ -1532,7 +1688,7 @@ func updateAzureFeatureState(d *schema.ResourceData, key string, feature azure.F
 		block[keyResourceGroupTags] = tags
 	}
 
-	if feature.Equal(core.FeatureAzureSQLDBProtection) {
+	if feature.Equal(core.FeatureAzureSQLDBProtection) || feature.Equal(core.FeatureAzurePostgresFlexibleServerProtection) {
 		block[keyUserAssignedManagedIdentityName] = feature.UserAssignedManagedIdentity.Name
 		block[keyUserAssignedManagedIdentityPrincipalID] = feature.UserAssignedManagedIdentity.PrincipalID
 	}

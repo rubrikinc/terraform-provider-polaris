@@ -141,6 +141,99 @@ resource "polaris_azure_subscription" "default" {
 }
 `
 
+const azureSubscriptionPostgresTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_azure_service_principal" "default" {
+	credentials   = "{{ .Resource.Credentials }}"
+	tenant_domain = "{{ .Resource.TenantDomain }}"
+}
+
+resource "polaris_azure_subscription" "default" {
+	subscription_id   = "{{ .Resource.SubscriptionID }}"
+	subscription_name = "{{ .Resource.SubscriptionName }}"
+	tenant_domain     = "{{ .Resource.TenantDomain }}"
+
+	postgres_flexible_server_protection {
+		resource_group_name   = "{{ .Resource.PostgresFlexibleServer.ResourceGroupName }}"
+		resource_group_region = "{{ .Resource.PostgresFlexibleServer.ResourceGroupRegion }}"
+
+		user_assigned_managed_identity_name                = "{{ .Resource.PostgresFlexibleServer.ManagedIdentityName }}"
+		user_assigned_managed_identity_principal_id        = "{{ .Resource.PostgresFlexibleServer.ManagedIdentityPrincipalID }}"
+		user_assigned_managed_identity_region              = "{{ .Resource.PostgresFlexibleServer.ManagedIdentityRegion }}"
+		user_assigned_managed_identity_resource_group_name = "{{ .Resource.PostgresFlexibleServer.ResourceGroupName }}"
+
+		regions = [
+			"eastus2",
+		]
+	}
+
+	depends_on = [polaris_azure_service_principal.default]
+}
+`
+
+// TestAccPolarisAzureSubscription_postgresFlexibleServer onboards and offboards
+// the Postgres Flexible Server Protection feature.
+//
+// The feature is gated in RSC behind the
+// REL_ENABLE_AZURE_POSTGRES_FLEXIBLE_SERVER feature flag, and unlike the other
+// features it requires both a resource group and a user-assigned managed
+// identity that already exist in Azure, with the identity in the feature's
+// resource group. The test therefore skips unless the postgresFlexibleServer
+// section is present in TEST_AZURESUBSCRIPTION_FILE.
+func TestAccPolarisAzureSubscription_postgresFlexibleServer(t *testing.T) {
+	config, subscription, err := loadAzureTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if subscription.PostgresFlexibleServer.ResourceGroupName == "" ||
+		subscription.PostgresFlexibleServer.ManagedIdentityName == "" {
+		t.Skip("skipping, postgresFlexibleServer is not configured in TEST_AZURESUBSCRIPTION_FILE")
+	}
+
+	subscriptionPostgres, err := makeTerraformConfig(config, azureSubscriptionPostgresTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: subscriptionPostgres,
+			Check: resource.ComposeTestCheckFunc(
+				// Subscription resource
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "subscription_id", subscription.SubscriptionID),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default", "tenant_domain", subscription.TenantDomain),
+
+				// Postgres Flexible Server Protection feature
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default",
+					"postgres_flexible_server_protection.0.status", "CONNECTED"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default",
+					"postgres_flexible_server_protection.0.regions.#", "1"),
+				resource.TestCheckTypeSetElemAttr("polaris_azure_subscription.default",
+					"postgres_flexible_server_protection.0.regions.*", "eastus2"),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default",
+					"postgres_flexible_server_protection.0.resource_group_name",
+					subscription.PostgresFlexibleServer.ResourceGroupName),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default",
+					"postgres_flexible_server_protection.0.resource_group_region",
+					subscription.PostgresFlexibleServer.ResourceGroupRegion),
+
+				// RSC requires the managed identity to be in the feature's
+				// resource group, so the two must agree in state.
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default",
+					"postgres_flexible_server_protection.0.user_assigned_managed_identity_name",
+					subscription.PostgresFlexibleServer.ManagedIdentityName),
+				resource.TestCheckResourceAttr("polaris_azure_subscription.default",
+					"postgres_flexible_server_protection.0.user_assigned_managed_identity_resource_group_name",
+					subscription.PostgresFlexibleServer.ResourceGroupName),
+			),
+		}},
+	})
+}
+
 func TestAccPolarisAzureSubscription_entraGroupID(t *testing.T) {
 	config, subscription, err := loadAzureTestConfig()
 	if err != nil {
