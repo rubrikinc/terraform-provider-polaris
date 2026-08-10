@@ -7,12 +7,12 @@ description: |-
   name and type. This is useful for finding the ID of an object when only its
   name and type are known.
   Supported object types:
-  AwsNativeAccount - AWS Native AccountAwsNativeEbsVolume - AWS Native EBS VolumeAwsNativeEc2Instance - AWS Native EC2 InstanceAwsNativeRdsInstance - AWS Native RDS InstanceAzureDevOpsOrganization - Azure DevOps OrganizationAzureDevOpsProject - Azure DevOps ProjectAzureDevOpsRepository - Azure DevOps RepositoryAzureNativeResourceGroup - Azure Native Resource GroupAzureNativeSubscription - Azure Native SubscriptionAzureNativeVirtualMachine - Azure Native Virtual MachineAzureSqlManagedInstanceServer - Azure SQL Managed Instance ServerCloudNativeTagRule - Cloud Native Tag RuleGitHubOrganization - GitHub OrganizationGitHubRepository - GitHub Repository
-  -> Note: Azure resource group and SQL Managed Instance server names are
-  only unique within a subscription. When a name is shared across
-  subscriptions, set subscription_id to the parent subscription's RSC cloud
-  account ID to disambiguate; otherwise the lookup returns a "multiple objects
-  found" error.
+  AwsNativeAccount - AWS Native AccountAwsNativeEbsVolume - AWS Native EBS VolumeAwsNativeEc2Instance - AWS Native EC2 InstanceAwsNativeRdsInstance - AWS Native RDS InstanceAzureDevOpsOrganization - Azure DevOps OrganizationAzureDevOpsProject - Azure DevOps ProjectAzureDevOpsRepository - Azure DevOps RepositoryAzureNativeResourceGroup - Azure Native Resource GroupAzureNativeSubscription - Azure Native SubscriptionAzureNativeVirtualMachine - Azure Native Virtual MachineAzurePostgresFlexibleServer - Azure Postgres Flexible ServerAzureSqlManagedInstanceServer - Azure SQL Managed Instance ServerCloudNativeTagRule - Cloud Native Tag RuleGitHubOrganization - GitHub OrganizationGitHubRepository - GitHub Repository
+  -> Note: Azure resource group, SQL Managed Instance server and Postgres
+  flexible server names are only unique within a subscription. When a name is
+  shared across subscriptions, set subscription_id to the parent
+  subscription's RSC cloud account ID to disambiguate; otherwise the lookup
+  returns a "multiple objects found" error.
   -> Note: Azure DevOps project and repository names, and GitHub repository
   names, are only unique within their parent. When a name is shared across
   parents, set org_id (for AzureDevOpsProject or GitHubRepository)
@@ -37,16 +37,17 @@ Supported object types:
   * `AzureNativeResourceGroup` - Azure Native Resource Group
   * `AzureNativeSubscription` - Azure Native Subscription
   * `AzureNativeVirtualMachine` - Azure Native Virtual Machine
+  * `AzurePostgresFlexibleServer` - Azure Postgres Flexible Server
   * `AzureSqlManagedInstanceServer` - Azure SQL Managed Instance Server
   * `CloudNativeTagRule` - Cloud Native Tag Rule
   * `GitHubOrganization` - GitHub Organization
   * `GitHubRepository` - GitHub Repository
 
--> **Note:** Azure resource group and SQL Managed Instance server names are
-only unique within a subscription. When a name is shared across
-subscriptions, set `subscription_id` to the parent subscription's RSC cloud
-account ID to disambiguate; otherwise the lookup returns a "multiple objects
-found" error.
+-> **Note:** Azure resource group, SQL Managed Instance server and Postgres
+flexible server names are only unique within a subscription. When a name is
+shared across subscriptions, set `subscription_id` to the parent
+subscription's RSC cloud account ID to disambiguate; otherwise the lookup
+returns a "multiple objects found" error.
 
 -> **Note:** Azure DevOps project and repository names, and GitHub repository
 names, are only unique within their parent. When a name is shared across
@@ -86,13 +87,13 @@ data "polaris_object" "project" {
 ### Required
 
 - `name` (String) Exact object name to search for.
-- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureDevOpsOrganization`, `AzureDevOpsProject`, `AzureDevOpsRepository`, `AzureNativeResourceGroup`, `AzureNativeSubscription`, `AzureNativeVirtualMachine`, `AzureSqlManagedInstanceServer`, `CloudNativeTagRule`, `GitHubOrganization` and `GitHubRepository`.
+- `object_type` (String) Object type. Possible values are `AwsNativeAccount`, `AwsNativeEbsVolume`, `AwsNativeEc2Instance`, `AwsNativeRdsInstance`, `AzureDevOpsOrganization`, `AzureDevOpsProject`, `AzureDevOpsRepository`, `AzureNativeResourceGroup`, `AzureNativeSubscription`, `AzureNativeVirtualMachine`, `AzurePostgresFlexibleServer`, `AzureSqlManagedInstanceServer`, `CloudNativeTagRule`, `GitHubOrganization` and `GitHubRepository`.
 
 ### Optional
 
 - `org_id` (String) RSC object ID of the parent organization (UUID). May be set when `object_type` is `AzureDevOpsProject` to disambiguate a project name shared across organizations, when `object_type` is `AzureDevOpsRepository` to disambiguate a repository name shared across projects, or when `object_type` is `GitHubRepository` to disambiguate a repository name shared across organizations; must not be set for other object types.
 - `project_id` (String) RSC object ID of the parent Azure DevOps project (UUID). May be set when `object_type` is `AzureDevOpsRepository` to disambiguate a repository name shared across projects; must not be set for other object types.
-- `subscription_id` (String) RSC cloud account ID of the parent Azure subscription (UUID). May be set when `object_type` is `AzureNativeResourceGroup` or `AzureSqlManagedInstanceServer` to disambiguate a name shared across subscriptions; must not be set for other object types.
+- `subscription_id` (String) RSC cloud account ID of the parent Azure subscription (UUID). May be set when `object_type` is `AzureNativeResourceGroup`, `AzurePostgresFlexibleServer` or `AzureSqlManagedInstanceServer` to disambiguate a name shared across subscriptions; must not be set for other object types.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
