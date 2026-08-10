@@ -1688,7 +1688,19 @@ func updateAzureFeatureState(d *schema.ResourceData, key string, feature azure.F
 		block[keyResourceGroupTags] = tags
 	}
 
-	if feature.Equal(core.FeatureAzureSQLDBProtection) || feature.Equal(core.FeatureAzurePostgresFlexibleServerProtection) {
+	// Note, the Postgres Flexible Server Protection feature is deliberately not
+	// read back here. RSC requires and stores a user-assigned managed identity
+	// for the feature, but exposes no way to read it: the feature's
+	// userAssignedManagedIdentity field is only populated for Cloud Native
+	// Archival Encryption and Azure SQL DB Protection, and the feature-specific
+	// details type has no Postgres variant. Reading it back would therefore
+	// overwrite the configured values with empty strings and leave a permanent
+	// diff. The fields are required in the configuration, so state stays
+	// accurate without the read-back, at the cost of not detecting drift if the
+	// identity is changed outside Terraform. RSC not surfacing these details for
+	// the feature is a known open issue, so this can be revisited once a read
+	// path exists.
+	if feature.Equal(core.FeatureAzureSQLDBProtection) {
 		block[keyUserAssignedManagedIdentityName] = feature.UserAssignedManagedIdentity.Name
 		block[keyUserAssignedManagedIdentityPrincipalID] = feature.UserAssignedManagedIdentity.PrincipalID
 	}
