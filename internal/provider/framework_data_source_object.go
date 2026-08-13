@@ -59,16 +59,17 @@ Supported object types:
   * ´AzureNativeResourceGroup´ - Azure Native Resource Group
   * ´AzureNativeSubscription´ - Azure Native Subscription
   * ´AzureNativeVirtualMachine´ - Azure Native Virtual Machine
+  * ´AzurePostgresFlexibleServer´ - Azure Postgres Flexible Server
   * ´AzureSqlManagedInstanceServer´ - Azure SQL Managed Instance Server
   * ´CloudNativeTagRule´ - Cloud Native Tag Rule
   * ´GitHubOrganization´ - GitHub Organization
   * ´GitHubRepository´ - GitHub Repository
 
--> **Note:** Azure resource group and SQL Managed Instance server names are
-only unique within a subscription. When a name is shared across
-subscriptions, set ´subscription_id´ to the parent subscription's RSC cloud
-account ID to disambiguate; otherwise the lookup returns a "multiple objects
-found" error.
+-> **Note:** Azure resource group, SQL Managed Instance server and Postgres
+flexible server names are only unique within a subscription. When a name is
+shared across subscriptions, set ´subscription_id´ to the parent
+subscription's RSC cloud account ID to disambiguate; otherwise the lookup
+returns a "multiple objects found" error.
 
 -> **Note:** Azure DevOps project and repository names, and GitHub repository
 names, are only unique within their parent. When a name is shared across
@@ -124,6 +125,7 @@ func (d *objectDataSource) Schema(ctx context.Context, _ datasource.SchemaReques
 		"AzureNativeResourceGroup",
 		"AzureNativeSubscription",
 		"AzureNativeVirtualMachine",
+		"AzurePostgresFlexibleServer",
 		"AzureSqlManagedInstanceServer",
 		"CloudNativeTagRule",
 		"GitHubOrganization",
@@ -154,8 +156,9 @@ func (d *objectDataSource) Schema(ctx context.Context, _ datasource.SchemaReques
 			keySubscriptionID: schema.StringAttribute{
 				Optional: true,
 				Description: "RSC cloud account ID of the parent Azure subscription (UUID). May be set when " +
-					"`object_type` is `AzureNativeResourceGroup` or `AzureSqlManagedInstanceServer` to " +
-					"disambiguate a name shared across subscriptions; must not be set for other object types.",
+					"`object_type` is `AzureNativeResourceGroup`, `AzurePostgresFlexibleServer` or " +
+					"`AzureSqlManagedInstanceServer` to disambiguate a name shared across subscriptions; must " +
+					"not be set for other object types.",
 				Validators: []validator.String{
 					isUUID(),
 				},
@@ -232,7 +235,7 @@ func validateObjectConfig(config objectModel) diag.Diagnostics {
 	}{{
 		key:     keySubscriptionID,
 		value:   config.SubscriptionID,
-		allowed: []string{"AzureNativeResourceGroup", "AzureSqlManagedInstanceServer"},
+		allowed: []string{"AzureNativeResourceGroup", "AzurePostgresFlexibleServer", "AzureSqlManagedInstanceServer"},
 	}, {
 		key:     keyOrgID,
 		value:   config.OrgID,
@@ -525,6 +528,29 @@ func (d *objectDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		for _, r := range results {
 			objects = append(objects, r.Object)
 		}
+	case "AzurePostgresFlexibleServer":
+		results, err := hierarchy.ObjectsByName[hierarchy.AzurePostgresFlexibleServer](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
+		if err != nil {
+			res.Diagnostics.AddError("Failed to look up objects", err.Error())
+			return
+		}
+
+		// Postgres flexible server names are only unique within a subscription,
+		// and the inventory query has no subscription filter, so when
+		// subscription_id is set, narrow to that subscription client-side. The
+		// node's accountConnectionId is the RSC cloud account ID, so no native
+		// FID translation is needed.
+		subscriptionID, err := parentSubscriptionID(config)
+		if err != nil {
+			res.Diagnostics.AddError("Invalid subscription ID", err.Error())
+			return
+		}
+		for _, r := range results {
+			if subscriptionID != uuid.Nil && r.ResourceGroup.Subscription.CloudAccountID != subscriptionID {
+				continue
+			}
+			objects = append(objects, r.Object)
+		}
 	case "AzureSqlManagedInstanceServer":
 		results, err := hierarchy.ObjectsByName[hierarchy.AzureSQLManagedInstanceServer](ctx, api, name, hierarchy.WorkloadAllSubHierarchyType, activeFilters...)
 		if err != nil {
@@ -537,9 +563,13 @@ func (d *objectDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		// when subscription_id is set, narrow to that subscription client-side.
 		// The node's accountConnectionId is the RSC cloud account ID, so no
 		// native FID translation is needed.
-		subscriptionID := config.SubscriptionID.ValueString()
+		subscriptionID, err := parentSubscriptionID(config)
+		if err != nil {
+			res.Diagnostics.AddError("Invalid subscription ID", err.Error())
+			return
+		}
 		for _, r := range results {
-			if subscriptionID != "" && r.ResourceGroup.Subscription.CloudAccountID.String() != subscriptionID {
+			if subscriptionID != uuid.Nil && r.ResourceGroup.Subscription.CloudAccountID != subscriptionID {
 				continue
 			}
 			objects = append(objects, r.Object)
@@ -611,6 +641,20 @@ func (d *objectDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	config.ID = types.StringValue(objects[0].ID.String())
 	res.Diagnostics.Append(res.State.Set(ctx, config)...)
+}
+
+// parentSubscriptionID returns the RSC cloud account ID of the parent Azure
+// subscription in the configuration, or uuid.Nil when it is not set. It is
+// returned as a UUID so callers compare typed values rather than text, since the
+// schema validator accepts any format uuid.Parse does while the IDs read back
+// from RSC are always canonical.
+func parentSubscriptionID(config objectModel) (uuid.UUID, error) {
+	subscriptionID := config.SubscriptionID.ValueString()
+	if subscriptionID == "" {
+		return uuid.Nil, nil
+	}
+
+	return uuid.Parse(subscriptionID)
 }
 
 // activeObjectFilters returns the server-side hierarchy filters that exclude

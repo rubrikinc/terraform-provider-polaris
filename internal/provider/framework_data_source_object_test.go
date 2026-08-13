@@ -195,6 +195,13 @@ func TestValidateObjectConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "SubscriptionIDWithPostgresFlexibleServer",
+			config: objectModel{
+				ObjectType:     types.StringValue("AzurePostgresFlexibleServer"),
+				SubscriptionID: types.StringValue("550e8400-e29b-41d4-a716-446655440000"),
+			},
+		},
+		{
 			name: "SubscriptionIDWithWrongType",
 			config: objectModel{
 				ObjectType:     types.StringValue("AwsNativeEc2Instance"),
