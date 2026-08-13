@@ -1125,10 +1125,7 @@ func azureCustomizeDiffSubscription(ctx context.Context, diff *schema.ResourceDi
 	// Force a diff when the user's configured entra_group_id differs from
 	// the state value. Without this, the Optional+Computed combination
 	// causes Terraform SDK v2 to suppress user-initiated changes.
-	if diff.HasChange(keyEntraGroupID) {
-		if diff.Id() == "" {
-			return nil
-		}
+	if diff.Id() != "" && diff.HasChange(keyEntraGroupID) {
 		oldVal, newVal := diff.GetChange(keyEntraGroupID)
 		if newVal.(string) != "" && oldVal.(string) != newVal.(string) {
 			if err := diff.SetNew(keyEntraGroupID, newVal); err != nil {
@@ -1140,10 +1137,7 @@ func azureCustomizeDiffSubscription(ctx context.Context, diff *schema.ResourceDi
 	// Prevent removal of cloud_discovery when protection features are
 	// enabled. The Cloud Discovery feature is currently not required when
 	// onboarding protection features for a new account.
-	if diff.HasChange(keyCloudDiscovery) {
-		if diff.Id() == "" {
-			return nil
-		}
+	if diff.Id() != "" && diff.HasChange(keyCloudDiscovery) {
 		if block := diff.Get(keyCloudDiscovery).([]any); len(block) == 0 {
 			protectionKeys := []string{
 				keyCloudNativeProtection,
@@ -1355,7 +1349,26 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 					break
 				}
 			}
-			if diffAzureUserAssignedManagedIdentity(oldBlock, newBlock) && allowedToUpgradeMI {
+			// The managed identity of the Postgres Flexible Server Protection
+			// feature is deliberately not read back, see updateAzureFeatureState,
+			// so state holds empty values after an import. As the fields are
+			// required in the configuration, an empty value in state means unknown
+			// rather than changed. Comparing them would report a spurious change
+			// and, as the feature is not allowed to upgrade its managed identity,
+			// force a destructive re-onboard on the first apply after an import.
+			// Note, the Azure SQL DB Protection feature's identity fields are
+			// optional, so an empty value there is a real change to be upgraded.
+			miChanged := diffAzureUserAssignedManagedIdentity(oldBlock, newBlock)
+			if miChanged && feature.feature.Equal(core.FeatureAzurePostgresFlexibleServerProtection) {
+				if name, _ := oldBlock[keyUserAssignedManagedIdentityName].(string); name == "" {
+					tflog.Info(ctx, "managed identity not in state, skipping re-onboard", map[string]any{
+						"feature": feature.feature,
+					})
+					miChanged = false
+				}
+			}
+
+			if miChanged && allowedToUpgradeMI {
 				tflog.Info(ctx, "allowed to upgrade managed identity", map[string]any{
 					"feature": feature.feature,
 				})
@@ -1373,7 +1386,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 			// be updated when the feature is re-onboarded.
 			// MI changes for features not allowed to upgrade the MI also requires
 			// the feature to be re-onboarded.
-			if diffAzureFeatureResourceGroup(oldBlock, newBlock) || (diffAzureUserAssignedManagedIdentity(oldBlock, newBlock) && !allowedToUpgradeMI) {
+			if diffAzureFeatureResourceGroup(oldBlock, newBlock) || (miChanged && !allowedToUpgradeMI) {
 				updates = append(updates, updateOp{
 					op:      opAddFeature,
 					feature: feature.feature,
@@ -1551,7 +1564,7 @@ var azureKeyFeatureMap = map[string]orderedFeature{
 	keyCloudDiscovery: {
 		feature:          core.FeatureCloudDiscovery,
 		orderAdd:         99,
-		orderRemove:      308,
+		orderRemove:      309,
 		orderSplitAdd:    217,
 		orderSplitRemove: 216,
 	},
@@ -1593,7 +1606,7 @@ var azureKeyFeatureMap = map[string]orderedFeature{
 	keyPostgresFlexibleServerProtection: {
 		feature:          core.FeatureAzurePostgresFlexibleServerProtection,
 		orderAdd:         108,
-		orderRemove:      309,
+		orderRemove:      308,
 		orderSplitAdd:    219,
 		orderSplitRemove: 218,
 	},
