@@ -46,6 +46,12 @@ of roles and notify RSC about the updated.
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature.
 
+´AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´RECOVERY´ - Represents the set of permissions required for all recovery
+    operations.
+
 ´AZURE_SQL_DB_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
@@ -176,10 +182,12 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Optional:     true,
 				ExactlyOneOf: []string{keyFeature, keyFeatures},
 				Description: "RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` " +
-					"style. Possible values are `AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`, " +
+					"style. Possible values are `AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION`, " +
+					"`AZURE_SQL_DB_PROTECTION`, `AZURE_SQL_MI_PROTECTION`, " +
 					"`CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, " +
 					"`CLOUD_NATIVE_BLOB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS` and `EXOCOMPUTE`.",
 				ValidateFunc: validation.StringInSlice([]string{
+					"AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION",
 					"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_DISCOVERY",
 					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION",
 					"CLOUD_NATIVE_BLOB_PROTECTION", "CLOUD_NATIVE_PROTECTION",
@@ -191,6 +199,7 @@ func dataSourceAzurePermissions() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
+						"AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION",
 						"AZURE_SQL_DB_PROTECTION", "AZURE_SQL_MI_PROTECTION", "CLOUD_DISCOVERY",
 						"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION",
 						"CLOUD_NATIVE_BLOB_PROTECTION", "CLOUD_NATIVE_PROTECTION",
@@ -199,7 +208,8 @@ func dataSourceAzurePermissions() *schema.Resource {
 				},
 				MinItems: 1,
 				Optional: true,
-				Description: "RSC features. Possible values are `AZURE_SQL_DB_PROTECTION`, " +
+				Description: "RSC features. Possible values are " +
+					"`AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION`, `AZURE_SQL_DB_PROTECTION`, " +
 					"`AZURE_SQL_MI_PROTECTION`, `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
 					"`CLOUD_NATIVE_ARCHIVAL_ENCRYPTION`, `CLOUD_NATIVE_BLOB_PROTECTION`, " +
 					"`CLOUD_NATIVE_PROTECTION`, `SERVERS_AND_APPS` and `EXOCOMPUTE`. **Deprecated:** " +
