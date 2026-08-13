@@ -276,6 +276,21 @@ func dataSourceSLADomain() *schema.Resource {
 				Computed:    true,
 				Description: "Azure Blob Storage backup location for scheduled snapshots.",
 			},
+			keyAzurePostgresFlexibleServerConfig: {
+				Type: schema.TypeList,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						keyBackupRetentionInDays: {
+							Type:     schema.TypeInt,
+							Computed: true,
+							Description: "Point-in-time restore retention, in days, enforced on the source " +
+								"flexible server.",
+						},
+					},
+				},
+				Computed:    true,
+				Description: "Azure Postgres Flexible Server configuration.",
+			},
 			keyAzureSQLDatabaseConfig: {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
@@ -1246,6 +1261,10 @@ func slaDomainRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diag
 		return diag.FromErr(err)
 	}
 
+	if err := d.Set(keyAzurePostgresFlexibleServerConfig,
+		toAzurePostgresFlexibleServerConfig(slaDomain.ObjectSpecificConfigs.AzurePostgresFlexibleServerConfig)); err != nil {
+		return diag.FromErr(err)
+	}
 	if err := d.Set(keyAzureSQLDatabaseConfig, toAzureSQLConfig(slaDomain.ObjectSpecificConfigs.AzureSQLDatabaseDBConfig)); err != nil {
 		return diag.FromErr(err)
 	}

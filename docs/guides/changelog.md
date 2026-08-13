@@ -35,6 +35,11 @@ page_title: "Changelog"
   Azure Postgres flexible server to its RSC ID by name for use with the `polaris_sla_domain_assignment` resource.
   Set `subscription_id` to disambiguate a server name shared across subscriptions.
   [[docs](../data-sources/object.md)]
+* Add support for the `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE` object type and the
+  `azure_postgres_flexible_server_config` block in the `polaris_sla_domain` resource, allowing an SLA Domain to
+  protect Azure Postgres flexible servers and to set the point-in-time restore retention RSC enforces on the source
+  server. The object type cannot be combined with other object types and requires a `backup_location`.
+  [[docs](../resources/sla_domain.md#nested-schema-for-azure_postgres_flexible_server_config)]
 
 ## v1.9.1
 * New resource added for `polaris_azure_devops_organization` which onboards an Azure DevOps organization to RSC
