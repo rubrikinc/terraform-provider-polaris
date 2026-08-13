@@ -540,9 +540,13 @@ func (d *objectDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		// subscription_id is set, narrow to that subscription client-side. The
 		// node's accountConnectionId is the RSC cloud account ID, so no native
 		// FID translation is needed.
-		subscriptionID := config.SubscriptionID.ValueString()
+		subscriptionID, err := parentSubscriptionID(config)
+		if err != nil {
+			res.Diagnostics.AddError("Invalid subscription ID", err.Error())
+			return
+		}
 		for _, r := range results {
-			if subscriptionID != "" && r.ResourceGroup.Subscription.CloudAccountID.String() != subscriptionID {
+			if subscriptionID != uuid.Nil && r.ResourceGroup.Subscription.CloudAccountID != subscriptionID {
 				continue
 			}
 			objects = append(objects, r.Object)
@@ -559,9 +563,13 @@ func (d *objectDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		// when subscription_id is set, narrow to that subscription client-side.
 		// The node's accountConnectionId is the RSC cloud account ID, so no
 		// native FID translation is needed.
-		subscriptionID := config.SubscriptionID.ValueString()
+		subscriptionID, err := parentSubscriptionID(config)
+		if err != nil {
+			res.Diagnostics.AddError("Invalid subscription ID", err.Error())
+			return
+		}
 		for _, r := range results {
-			if subscriptionID != "" && r.ResourceGroup.Subscription.CloudAccountID.String() != subscriptionID {
+			if subscriptionID != uuid.Nil && r.ResourceGroup.Subscription.CloudAccountID != subscriptionID {
 				continue
 			}
 			objects = append(objects, r.Object)
@@ -633,6 +641,20 @@ func (d *objectDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	config.ID = types.StringValue(objects[0].ID.String())
 	res.Diagnostics.Append(res.State.Set(ctx, config)...)
+}
+
+// parentSubscriptionID returns the RSC cloud account ID of the parent Azure
+// subscription in the configuration, or uuid.Nil when it is not set. It is
+// returned as a UUID so callers compare typed values rather than text, since the
+// schema validator accepts any format uuid.Parse does while the IDs read back
+// from RSC are always canonical.
+func parentSubscriptionID(config objectModel) (uuid.UUID, error) {
+	subscriptionID := config.SubscriptionID.ValueString()
+	if subscriptionID == "" {
+		return uuid.Nil, nil
+	}
+
+	return uuid.Parse(subscriptionID)
 }
 
 // activeObjectFilters returns the server-side hierarchy filters that exclude
