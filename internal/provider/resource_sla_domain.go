@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -1179,7 +1178,8 @@ func resourceSLADomain() *schema.Resource {
 				Required: true,
 				Description: "Object types which can be protected by the SLA Domain. Possible values are " +
 					"`ACTIVE_DIRECTORY_OBJECT_TYPE`, `ATLASSIAN_JIRA_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
-					"`AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_DEVOPS_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
+					"`AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_DEVOPS_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE`, " +
+					"`AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
 					"`CASSANDRA_OBJECT_TYPE`, `D365_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, " +
 					"`GOOGLE_WORKSPACE_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `KUPR_OBJECT_TYPE`, " +
 					"`M365_BACKUP_STORAGE_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `MYSQLDB_OBJECT_TYPE`, " +
@@ -2394,10 +2394,6 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			objectTypes = append(objectTypes, objectType)
 		}
 
-		if err := validateAzurePostgresFlexibleServerConfig(azurePostgresConfig, objectTypes); err != nil {
-			return diag.FromErr(err)
-		}
-
 		createParams := gqlsla.CreateDomainParams{
 			ArchivalSpecs:          archivalSpecs,
 			BackupLocationSpecs:    backupLocations,
@@ -3104,21 +3100,30 @@ func validateAzureSQLSLA(name string, config *gqlsla.AzureDBConfig, schedule gql
 // SLA — the UI directs the user to create a new SLA Domain instead. Editing
 // retention values within a version is still allowed.
 func slaDomainCustomizeDiff(ctx context.Context, d *schema.ResourceDiff, m any) error {
-	if d.Id() == "" {
-		return nil // creating a new SLA — any backup service is allowed.
+	// Note, this runs on create as well as update, so it must not be placed
+	// behind a d.Id() check.
+	blocks, _ := d.Get(keyAzurePostgresFlexibleServerConfig).([]any)
+	objectTypes, _ := d.Get(keyObjectTypes).(*schema.Set)
+	if err := validateAzurePostgresFlexibleServerConfig(len(blocks) > 0, objectTypes); err != nil {
+		return err
 	}
 
-	for _, key := range []string{keyAzureSQLDatabaseConfig, keyAzureSQLManagedInstanceConfig} {
-		o, n := d.GetChange(key)
-		oList, _ := o.([]any)
-		nList, _ := n.([]any)
-		if len(oList) == 0 || len(nList) == 0 {
-			continue // config block added or removed wholesale — not an in-place service flip.
-		}
-		if configHasLTRConfig(o) != configHasLTRConfig(n) {
-			return fmt.Errorf("cannot change the backup service of an existing Azure SQL SLA Domain " +
-				"between Azure-managed (V1, with ltr_config) and Rubrik-managed (V2, without ltr_config); " +
-				"create a new SLA Domain to use a different backup service")
+	// Changing the backup service of an existing SLA domain is rejected below.
+	// Creating a new SLA domain with any backup service is allowed, so the
+	// check is scoped rather than returning early for the whole function.
+	if d.Id() != "" {
+		for _, key := range []string{keyAzureSQLDatabaseConfig, keyAzureSQLManagedInstanceConfig} {
+			o, n := d.GetChange(key)
+			oList, _ := o.([]any)
+			nList, _ := n.([]any)
+			if len(oList) == 0 || len(nList) == 0 {
+				continue // config block added or removed wholesale — not an in-place service flip.
+			}
+			if configHasLTRConfig(o) != configHasLTRConfig(n) {
+				return fmt.Errorf("cannot change the backup service of an existing Azure SQL SLA Domain " +
+					"between Azure-managed (V1, with ltr_config) and Rubrik-managed (V2, without ltr_config); " +
+					"create a new SLA Domain to use a different backup service")
+			}
 		}
 	}
 
@@ -3141,17 +3146,18 @@ func configHasLTRConfig(v any) bool {
 }
 
 // validateAzurePostgresFlexibleServerConfig validates that the Azure Postgres
-// flexible server configuration block is only used with its own object type.
+// flexible server configuration block is only used with its own object type,
+// enforcing what the field documents.
 //
-// The per object type validation only runs for the object types present in the
-// configuration, so a block belonging to an object type that is not selected
-// would otherwise be sent to RSC and silently ignored. This enforces what the
-// field documents.
-func validateAzurePostgresFlexibleServerConfig(config *gqlsla.AzurePostgresFlexibleServerConfig, objectTypes []gqlsla.ObjectType) error {
-	if config == nil {
+// This is called from CustomizeDiff so that it fails during plan rather than
+// part way through an apply. It cannot be a schema ValidateFunc: those receive
+// only their own attribute's value, so they cannot see object_types, and a block
+// cannot carry one at all.
+func validateAzurePostgresFlexibleServerConfig(configPresent bool, objectTypes *schema.Set) error {
+	if !configPresent {
 		return nil
 	}
-	if !slices.Contains(objectTypes, gqlsla.ObjectAzurePostgresFlexibleServer) {
+	if objectTypes == nil || !objectTypes.Contains(string(gqlsla.ObjectAzurePostgresFlexibleServer)) {
 		return fmt.Errorf("%s is only valid when %s is %s", keyAzurePostgresFlexibleServerConfig,
 			keyObjectTypes, gqlsla.ObjectAzurePostgresFlexibleServer)
 	}

@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 )
 
@@ -274,36 +275,47 @@ func TestValidateAzurePostgresFlexibleServerObjectType(t *testing.T) {
 }
 
 func TestValidateAzurePostgresFlexibleServerConfig(t *testing.T) {
-	config := &gqlsla.AzurePostgresFlexibleServerConfig{BackupRetentionInDays: 7}
+	objectTypeSet := func(objectTypes ...gqlsla.ObjectType) *schema.Set {
+		set := &schema.Set{F: schema.HashString}
+		for _, objectType := range objectTypes {
+			set.Add(string(objectType))
+		}
+		return set
+	}
 
 	tests := []struct {
-		name        string
-		config      *gqlsla.AzurePostgresFlexibleServerConfig
-		objectTypes []gqlsla.ObjectType
-		wantErr     string
+		name          string
+		configPresent bool
+		objectTypes   *schema.Set
+		wantErr       string
 	}{{
-		name:        "ConfigWithOwnObjectType",
-		config:      config,
-		objectTypes: []gqlsla.ObjectType{gqlsla.ObjectAzurePostgresFlexibleServer},
+		name:          "ConfigWithOwnObjectType",
+		configPresent: true,
+		objectTypes:   objectTypeSet(gqlsla.ObjectAzurePostgresFlexibleServer),
 	}, {
-		name:        "NoConfigNoObjectType",
-		config:      nil,
-		objectTypes: []gqlsla.ObjectType{gqlsla.ObjectAzureSQLDatabase},
+		name:          "NoConfigOtherObjectType",
+		configPresent: false,
+		objectTypes:   objectTypeSet(gqlsla.ObjectAzureSQLDatabase),
 	}, {
-		name:        "ConfigWithDifferentObjectType",
-		config:      config,
-		objectTypes: []gqlsla.ObjectType{gqlsla.ObjectAzureSQLDatabase},
-		wantErr:     "is only valid when object_types is",
+		name:          "ConfigWithDifferentObjectType",
+		configPresent: true,
+		objectTypes:   objectTypeSet(gqlsla.ObjectAzureSQLDatabase),
+		wantErr:       "is only valid when object_types is",
 	}, {
-		name:        "ConfigWithNoObjectTypes",
-		config:      config,
-		objectTypes: nil,
-		wantErr:     "is only valid when object_types is",
+		name:          "ConfigWithNoObjectTypes",
+		configPresent: true,
+		objectTypes:   objectTypeSet(),
+		wantErr:       "is only valid when object_types is",
+	}, {
+		name:          "ConfigWithNilObjectTypes",
+		configPresent: true,
+		objectTypes:   nil,
+		wantErr:       "is only valid when object_types is",
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateAzurePostgresFlexibleServerConfig(tt.config, tt.objectTypes)
+			err := validateAzurePostgresFlexibleServerConfig(tt.configPresent, tt.objectTypes)
 			switch {
 			case tt.wantErr == "" && err != nil:
 				t.Fatalf("unexpected error: %v", err)
