@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -696,18 +697,11 @@ func resourceSLADomain() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						keyBackupRetentionInDays: {
 							Type:     schema.TypeInt,
-							Optional: true,
+							Required: true,
 							Description: "Point-in-time restore retention, in days, that RSC enforces on the source " +
-								"flexible server. Must be between 7 and 35. Omit the block, or leave this at 0, to " +
-								"leave the server's existing Azure-side retention untouched.",
-							ValidateFunc: func(i any, k string) ([]string, []error) {
-								v := i.(int)
-								if v == 0 || (v >= 7 && v <= 35) {
-									return nil, nil
-								}
-								return nil, []error{fmt.Errorf(
-									"%s must be 0, or between 7 and 35, got %d", k, v)}
-							},
+								"flexible server. Must be between 7 and 35. Omit the whole block to leave the " +
+								"server's existing Azure-side retention untouched.",
+							ValidateFunc: validation.IntBetween(7, 35),
 						},
 					},
 				},
@@ -2218,6 +2212,7 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 		if err != nil {
 			return diag.FromErr(err)
 		}
+		azurePostgresConfig := fromAzurePostgresFlexibleServerConfig(d)
 		vmwareVMConfig, err := fromVMwareVMConfig(d)
 		if err != nil {
 			return diag.FromErr(err)
@@ -2399,6 +2394,10 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			objectTypes = append(objectTypes, objectType)
 		}
 
+		if err := validateAzurePostgresFlexibleServerConfig(azurePostgresConfig, objectTypes); err != nil {
+			return diag.FromErr(err)
+		}
+
 		createParams := gqlsla.CreateDomainParams{
 			ArchivalSpecs:          archivalSpecs,
 			BackupLocationSpecs:    backupLocations,
@@ -2412,7 +2411,7 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 				AWSS3Config:                       awsS3Config,
 				AWSRDSConfig:                      awsRDSConfig,
 				AzureBlobConfig:                   blobConfig,
-				AzurePostgresFlexibleServerConfig: fromAzurePostgresFlexibleServerConfig(d),
+				AzurePostgresFlexibleServerConfig: azurePostgresConfig,
 				AzureSQLDatabaseDBConfig:          azureSQLConfig,
 				AzureSQLManagedInstanceDBConfig:   azureSQLMIConfig,
 				VMwareVMConfig:                    vmwareVMConfig,
@@ -3139,6 +3138,25 @@ func configHasLTRConfig(v any) bool {
 	}
 	ltr, ok := block[keyLTRConfig].([]any)
 	return ok && len(ltr) > 0 && ltr[0] != nil
+}
+
+// validateAzurePostgresFlexibleServerConfig validates that the Azure Postgres
+// flexible server configuration block is only used with its own object type.
+//
+// The per object type validation only runs for the object types present in the
+// configuration, so a block belonging to an object type that is not selected
+// would otherwise be sent to RSC and silently ignored. This enforces what the
+// field documents.
+func validateAzurePostgresFlexibleServerConfig(config *gqlsla.AzurePostgresFlexibleServerConfig, objectTypes []gqlsla.ObjectType) error {
+	if config == nil {
+		return nil
+	}
+	if !slices.Contains(objectTypes, gqlsla.ObjectAzurePostgresFlexibleServer) {
+		return fmt.Errorf("%s is only valid when %s is %s", keyAzurePostgresFlexibleServerConfig,
+			keyObjectTypes, gqlsla.ObjectAzurePostgresFlexibleServer)
+	}
+
+	return nil
 }
 
 // validateAzurePostgresFlexibleServerObjectType validates an Azure Postgres

@@ -420,9 +420,9 @@ Required:
 <a id="nestedblock--azure_postgres_flexible_server_config"></a>
 ### Nested Schema for `azure_postgres_flexible_server_config`
 
-Optional:
+Required:
 
-- `backup_retention_in_days` (Number) Point-in-time restore retention, in days, that RSC enforces on the source flexible server. Must be between 7 and 35. Omit the block, or leave this at 0, to leave the server's existing Azure-side retention untouched.
+- `backup_retention_in_days` (Number) Point-in-time restore retention, in days, that RSC enforces on the source flexible server. Must be between 7 and 35. Omit the whole block to leave the server's existing Azure-side retention untouched.
 
 ~> **Note:** An SLA Domain with the `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE` object type cannot be combined with any other object type, and requires a `backup_location`. It stores its backup location in `backup_location` rather than the `archival` block.
 

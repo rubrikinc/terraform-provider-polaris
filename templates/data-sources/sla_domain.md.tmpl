@@ -29,6 +29,7 @@ description: |-
 - `aws_dynamodb_config` (List of Object) AWS DynamoDB configuration. (see [below for nested schema](#nestedatt--aws_dynamodb_config))
 - `aws_rds_config` (List of Object) AWS RDS continuous backups for point-in-time recovery. (see [below for nested schema](#nestedatt--aws_rds_config))
 - `azure_blob_config` (List of Object) Azure Blob Storage backup location for scheduled snapshots. (see [below for nested schema](#nestedatt--azure_blob_config))
+- `azure_postgres_flexible_server_config` (List of Object) Azure Postgres Flexible Server configuration. (see [below for nested schema](#nestedatt--azure_postgres_flexible_server_config))
 - `azure_sql_database_config` (List of Object) Azure SQL Database continuous backups for point-in-time recovery. (see [below for nested schema](#nestedatt--azure_sql_database_config))
 - `azure_sql_managed_instance_config` (List of Object) Azure SQL MI log backups. (see [below for nested schema](#nestedatt--azure_sql_managed_instance_config))
 - `backup_location` (List of Object) Backup locations for AWS S3 object type. (see [below for nested schema](#nestedatt--backup_location))
@@ -118,6 +119,14 @@ Read-Only:
 Read-Only:
 
 - `archival_location_id` (String) Archival location ID (UUID).
+
+
+<a id="nestedatt--azure_postgres_flexible_server_config"></a>
+### Nested Schema for `azure_postgres_flexible_server_config`
+
+Read-Only:
+
+- `backup_retention_in_days` (Number) Point-in-time restore retention, in days, enforced on the source flexible server.
 
 
 <a id="nestedatt--azure_sql_database_config"></a>

@@ -273,6 +273,49 @@ func TestValidateAzurePostgresFlexibleServerObjectType(t *testing.T) {
 	}
 }
 
+func TestValidateAzurePostgresFlexibleServerConfig(t *testing.T) {
+	config := &gqlsla.AzurePostgresFlexibleServerConfig{BackupRetentionInDays: 7}
+
+	tests := []struct {
+		name        string
+		config      *gqlsla.AzurePostgresFlexibleServerConfig
+		objectTypes []gqlsla.ObjectType
+		wantErr     string
+	}{{
+		name:        "ConfigWithOwnObjectType",
+		config:      config,
+		objectTypes: []gqlsla.ObjectType{gqlsla.ObjectAzurePostgresFlexibleServer},
+	}, {
+		name:        "NoConfigNoObjectType",
+		config:      nil,
+		objectTypes: []gqlsla.ObjectType{gqlsla.ObjectAzureSQLDatabase},
+	}, {
+		name:        "ConfigWithDifferentObjectType",
+		config:      config,
+		objectTypes: []gqlsla.ObjectType{gqlsla.ObjectAzureSQLDatabase},
+		wantErr:     "is only valid when object_types is",
+	}, {
+		name:        "ConfigWithNoObjectTypes",
+		config:      config,
+		objectTypes: nil,
+		wantErr:     "is only valid when object_types is",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateAzurePostgresFlexibleServerConfig(tt.config, tt.objectTypes)
+			switch {
+			case tt.wantErr == "" && err != nil:
+				t.Fatalf("unexpected error: %v", err)
+			case tt.wantErr != "" && err == nil:
+				t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+			case tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr):
+				t.Fatalf("error %q does not contain %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestOnlyAzureSQLObjectTypes(t *testing.T) {
 	tests := []struct {
 		name        string
