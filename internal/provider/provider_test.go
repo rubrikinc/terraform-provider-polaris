@@ -168,6 +168,19 @@ type testAzureSubscription struct {
 		SubnetID            string   `json:"subnetId"`
 	} `json:"exocompute"`
 
+	// PostgresFlexibleServer is optional in the test configuration file. The
+	// acceptance test using it skips when the section is absent, since the
+	// feature needs a pre-existing user-assigned managed identity in the
+	// feature's resource group.
+	PostgresFlexibleServer struct {
+		Regions                    []string `json:"regions"`
+		ResourceGroupName          string   `json:"resourceGroupName"`
+		ResourceGroupRegion        string   `json:"resourceGroupRegion"`
+		ManagedIdentityName        string   `json:"managedIdentityName"`
+		ManagedIdentityPrincipalID string   `json:"managedIdentityPrincipalId"`
+		ManagedIdentityRegion      string   `json:"managedIdentityRegion"`
+	} `json:"postgresFlexibleServer"`
+
 	VMName string `json:"vmName"`
 }
 
