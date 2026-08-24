@@ -40,6 +40,13 @@ page_title: "Changelog"
   protect Azure Postgres flexible servers and to set the point-in-time restore retention RSC enforces on the source
   server. The object type cannot be combined with other object types and requires a `backup_location`.
   [[docs](../resources/sla_domain.md#nested-schema-for-azure_postgres_flexible_server_config)]
+* Fix a bug in the `polaris_sla_domain` resource where an SLA Domain using the
+  `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE` object type could not be created or updated unless the AWS S3 multiple
+  backup locations feature was enabled for the RSC account. The `backup_location` was not passed on, failing with an
+  error stating that a `backup_location` is required. [[docs](../resources/sla_domain.md)]
+* Fix a bug in the `polaris_sla_domain` resource where a V2 (Rubrik-managed) Azure SQL Database or Azure SQL Managed
+  Instance SLA Domain would additionally send its `backup_location` as an AWS S3 configuration when the AWS S3
+  multiple backup locations feature was not enabled for the RSC account. [[docs](../resources/sla_domain.md)]
 
 ## v1.9.1
 * New resource added for `polaris_azure_devops_organization` which onboards an Azure DevOps organization to RSC

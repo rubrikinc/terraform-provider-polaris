@@ -370,3 +370,84 @@ func TestScheduleEmpty(t *testing.T) {
 		}
 	}
 }
+
+// TestAzureSQLUsesBackupLocation verifies which Azure SQL SLA Domains store
+// their backup location in the SLA-level backup location specs. Only V2
+// (Rubrik-managed) SLAs do, identified by the absence of an LTR config, and
+// only when the Azure SQL revamp feature is enabled for the account.
+func TestAzureSQLUsesBackupLocation(t *testing.T) {
+	v1 := &gqlsla.AzureDBConfig{LTRConfig: &gqlsla.AzureSQLLTRConfig{
+		WeeklyBackupRetention: &gqlsla.AzureSQLLTRRetention{Retention: 4, RetentionUnit: gqlsla.Weeks},
+	}}
+	v2 := &gqlsla.AzureDBConfig{LogRetentionInDays: 7}
+
+	tests := []struct {
+		name             string
+		revamp           bool
+		azureSQLConfig   *gqlsla.AzureDBConfig
+		azureSQLMIConfig *gqlsla.AzureDBConfig
+		want             bool
+	}{{
+		name:           "DatabaseV2",
+		revamp:         true,
+		azureSQLConfig: v2,
+		want:           true,
+	}, {
+		name:             "ManagedInstanceV2",
+		revamp:           true,
+		azureSQLMIConfig: v2,
+		want:             true,
+	}, {
+		name:             "DatabaseAndManagedInstanceV2",
+		revamp:           true,
+		azureSQLConfig:   v2,
+		azureSQLMIConfig: v2,
+		want:             true,
+	}, {
+		name:           "DatabaseV1",
+		revamp:         true,
+		azureSQLConfig: v1,
+		want:           false,
+	}, {
+		name:             "ManagedInstanceV1",
+		revamp:           true,
+		azureSQLMIConfig: v1,
+		want:             false,
+	}, {
+		name:             "DatabaseV1AndManagedInstanceV2",
+		revamp:           true,
+		azureSQLConfig:   v1,
+		azureSQLMIConfig: v2,
+		want:             true,
+	}, {
+		name:   "NoAzureSQLConfig",
+		revamp: true,
+		want:   false,
+	}, {
+		// The revamp feature gates the whole V1/V2 model. Without it the legacy
+		// Azure SQL behavior applies and there is no backup location.
+		name:           "RevampDisabledDatabaseV2",
+		revamp:         false,
+		azureSQLConfig: v2,
+		want:           false,
+	}, {
+		name:             "RevampDisabledManagedInstanceV2",
+		revamp:           false,
+		azureSQLMIConfig: v2,
+		want:             false,
+	}, {
+		name:           "RevampDisabledDatabaseV1",
+		revamp:         false,
+		azureSQLConfig: v1,
+		want:           false,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := azureSQLUsesBackupLocation(tt.revamp, tt.azureSQLConfig, tt.azureSQLMIConfig); got != tt.want {
+				t.Fatalf("azureSQLUsesBackupLocation(%v, %v, %v) = %v, want %v",
+					tt.revamp, tt.azureSQLConfig, tt.azureSQLMIConfig, got, tt.want)
+			}
+		})
+	}
+}
