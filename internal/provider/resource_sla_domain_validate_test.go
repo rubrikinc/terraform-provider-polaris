@@ -371,83 +371,93 @@ func TestScheduleEmpty(t *testing.T) {
 	}
 }
 
-// TestAzureSQLUsesBackupLocation verifies which Azure SQL SLA Domains store
-// their backup location in the SLA-level backup location specs. Only V2
-// (Rubrik-managed) SLAs do, identified by the absence of an LTR config, and
-// only when the Azure SQL revamp feature is enabled for the account.
-func TestAzureSQLUsesBackupLocation(t *testing.T) {
-	v1 := &gqlsla.AzureDBConfig{LTRConfig: &gqlsla.AzureSQLLTRConfig{
-		WeeklyBackupRetention: &gqlsla.AzureSQLLTRRetention{Retention: 4, RetentionUnit: gqlsla.Weeks},
-	}}
-	v2 := &gqlsla.AzureDBConfig{LogRetentionInDays: 7}
+// TestFromBackupLocation verifies the conversion of backup_location blocks into
+// SLA-level backup location specs, preserving order.
+func TestFromBackupLocation(t *testing.T) {
+	first, second := uuid.New(), uuid.New()
+	block := func(ids ...uuid.UUID) []any {
+		locations := make([]any, 0, len(ids))
+		for _, id := range ids {
+			locations = append(locations, map[string]any{keyArchivalGroupID: id.String()})
+		}
+		return locations
+	}
 
 	tests := []struct {
-		name             string
-		revamp           bool
-		azureSQLConfig   *gqlsla.AzureDBConfig
-		azureSQLMIConfig *gqlsla.AzureDBConfig
-		want             bool
+		name      string
+		locations []any
+		want      []uuid.UUID
 	}{{
-		name:           "DatabaseV2",
-		revamp:         true,
-		azureSQLConfig: v2,
-		want:           true,
+		name:      "None",
+		locations: nil,
 	}, {
-		name:             "ManagedInstanceV2",
-		revamp:           true,
-		azureSQLMIConfig: v2,
-		want:             true,
+		name:      "Empty",
+		locations: []any{},
 	}, {
-		name:             "DatabaseAndManagedInstanceV2",
-		revamp:           true,
-		azureSQLConfig:   v2,
-		azureSQLMIConfig: v2,
-		want:             true,
+		name:      "Single",
+		locations: block(first),
+		want:      []uuid.UUID{first},
 	}, {
-		name:           "DatabaseV1",
-		revamp:         true,
-		azureSQLConfig: v1,
-		want:           false,
+		name:      "MultiplePreservesOrder",
+		locations: block(second, first),
+		want:      []uuid.UUID{second, first},
 	}, {
-		name:             "ManagedInstanceV1",
-		revamp:           true,
-		azureSQLMIConfig: v1,
-		want:             false,
-	}, {
-		name:             "DatabaseV1AndManagedInstanceV2",
-		revamp:           true,
-		azureSQLConfig:   v1,
-		azureSQLMIConfig: v2,
-		want:             true,
-	}, {
-		name:   "NoAzureSQLConfig",
-		revamp: true,
-		want:   false,
-	}, {
-		// The revamp feature gates the whole V1/V2 model. Without it the legacy
-		// Azure SQL behavior applies and there is no backup location.
-		name:           "RevampDisabledDatabaseV2",
-		revamp:         false,
-		azureSQLConfig: v2,
-		want:           false,
-	}, {
-		name:             "RevampDisabledManagedInstanceV2",
-		revamp:           false,
-		azureSQLMIConfig: v2,
-		want:             false,
-	}, {
-		name:           "RevampDisabledDatabaseV1",
-		revamp:         false,
-		azureSQLConfig: v1,
-		want:           false,
+		// The archival_group_id schema validates the UUID, so this is not
+		// reachable from a configuration. Documented to pin the behavior.
+		name:      "InvalidUUIDDropsAll",
+		locations: []any{map[string]any{keyArchivalGroupID: "not-a-uuid"}},
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := azureSQLUsesBackupLocation(tt.revamp, tt.azureSQLConfig, tt.azureSQLMIConfig); got != tt.want {
-				t.Fatalf("azureSQLUsesBackupLocation(%v, %v, %v) = %v, want %v",
-					tt.revamp, tt.azureSQLConfig, tt.azureSQLMIConfig, got, tt.want)
+			specs := fromBackupLocation(tt.locations)
+			if len(specs) != len(tt.want) {
+				t.Fatalf("got %d specs, want %d", len(specs), len(tt.want))
+			}
+			for i, want := range tt.want {
+				if specs[i].ArchivalGroupID != want {
+					t.Fatalf("spec %d = %v, want %v", i, specs[i].ArchivalGroupID, want)
+				}
 			}
 		})
 	}
+}
+
+// TestFromAWSS3Config verifies the conversion of a backup_location block into
+// the legacy AWS S3 object specific config, which holds a single location.
+func TestFromAWSS3Config(t *testing.T) {
+	id := uuid.New()
+
+	t.Run("NoneYieldsNoConfig", func(t *testing.T) {
+		config, err := fromAWSS3Config(nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if config != nil {
+			t.Fatalf("expected nil config, got %v", config)
+		}
+	})
+	t.Run("Single", func(t *testing.T) {
+		config, err := fromAWSS3Config([]any{map[string]any{keyArchivalGroupID: id.String()}})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if config == nil || config.ArchivalLocationID != id {
+			t.Fatalf("got %v, want archival location %v", config, id)
+		}
+	})
+	t.Run("MultipleRejected", func(t *testing.T) {
+		_, err := fromAWSS3Config([]any{
+			map[string]any{keyArchivalGroupID: id.String()},
+			map[string]any{keyArchivalGroupID: uuid.New().String()},
+		})
+		if err == nil || !strings.Contains(err.Error(), "multiple backup locations not supported") {
+			t.Fatalf("expected multiple backup locations error, got %v", err)
+		}
+	})
+	t.Run("InvalidUUIDRejected", func(t *testing.T) {
+		if _, err := fromAWSS3Config([]any{map[string]any{keyArchivalGroupID: "not-a-uuid"}}); err == nil {
+			t.Fatal("expected an error, got nil")
+		}
+	})
 }

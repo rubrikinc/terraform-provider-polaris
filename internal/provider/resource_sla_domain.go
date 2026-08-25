@@ -2307,24 +2307,35 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			return diag.FromErr(err)
 		}
 
-		// Azure Postgres Flexible Server always stores its backup location in the
-		// specs. Its RSC-side multiple backup locations support is gated on the
-		// same feature flag as the object type itself, so it needs no flag here.
-		// AWS S3 is deliberately absent: it uses the specs only when the multiple
-		// backup locations feature is enabled and the legacy object specific
-		// config otherwise.
+		// backup_location is routed to one of two places depending on the object
+		// type. Azure Postgres Flexible Server and Azure SQL (V1/V2 model) store
+		// their backup location in the SLA-level backup location specs. AWS S3
+		// uses the specs when the multiple backup locations feature is enabled and
+		// the legacy object specific config otherwise. No other object type
+		// accepts a backup location.
+		//
+		// Azure SQL V1 (Azure-managed) SLAs must not carry a backup location at
+		// all. They are routed to the specs together with V2 so validateAzureSQLSLA
+		// sees the location and rejects it, rather than it silently being sent as
+		// an AWS S3 config.
 		objectTypeSet := d.Get(keyObjectTypes).(*schema.Set)
-		usesBackupLocation := azureSQLUsesBackupLocation(azureSQLRevamp.Enabled, azureSQLConfig, azureSQLMIConfig) ||
-			objectTypeSet.Contains(string(gqlsla.ObjectAzurePostgresFlexibleServer))
+		locations := d.Get(keyBackupLocation).([]any)
+		hasAWSS3 := objectTypeSet.Contains(string(gqlsla.ObjectAWSS3))
+		hasAzurePostgres := objectTypeSet.Contains(string(gqlsla.ObjectAzurePostgresFlexibleServer))
+		hasAzureSQL := objectTypeSet.Contains(string(gqlsla.ObjectAzureSQLDatabase)) ||
+			objectTypeSet.Contains(string(gqlsla.ObjectAzureSQLManagedInstance))
 
 		var backupLocations []gqlsla.BackupLocationSpec
 		var awsS3Config *gqlsla.AWSS3Config
-		if mbl.Enabled || usesBackupLocation {
-			backupLocations = fromBackupLocation(d)
-		} else {
-			if awsS3Config, err = fromAWSS3Config(d); err != nil {
+		switch {
+		case hasAWSS3 && !mbl.Enabled:
+			if awsS3Config, err = fromAWSS3Config(locations); err != nil {
 				return diag.FromErr(err)
 			}
+		case hasAWSS3 || hasAzurePostgres || (hasAzureSQL && azureSQLRevamp.Enabled):
+			backupLocations = fromBackupLocation(locations)
+		case len(locations) > 0:
+			return diag.Errorf("%s is not supported by the configured object types", keyBackupLocation)
 		}
 
 		var objectTypes []gqlsla.ObjectType
@@ -2871,8 +2882,7 @@ func toAWSRDSConfig(rdsConfig *gqlsla.AWSRDSConfig) []any {
 	}}
 }
 
-func fromAWSS3Config(d *schema.ResourceData) (*gqlsla.AWSS3Config, error) {
-	locations := d.Get(keyBackupLocation).([]any)
+func fromAWSS3Config(locations []any) (*gqlsla.AWSS3Config, error) {
 	if len(locations) == 0 {
 		return nil, nil
 	}
@@ -3189,22 +3199,6 @@ func validateAzurePostgresFlexibleServerObjectType(objectTypeList []any, backupL
 	}
 
 	return nil
-}
-
-// azureSQLUsesBackupLocation reports whether an Azure SQL Database or Managed
-// Instance SLA Domain stores its backup location in the SLA-level backup
-// location specs. Only V2 (Rubrik-managed) SLAs do. The SLA engine tells V1 and
-// V2 apart by the presence of the LTR config rather than by the object type, so
-// the object type alone is not enough to make the decision.
-//
-// Returns false when the Azure SQL revamp feature is disabled for the account,
-// where the legacy Azure SQL model applies and there is no backup location.
-func azureSQLUsesBackupLocation(revamp bool, azureSQLConfig, azureSQLMIConfig *gqlsla.AzureDBConfig) bool {
-	if !revamp {
-		return false
-	}
-	return (azureSQLConfig != nil && azureSQLConfig.LTRConfig == nil) ||
-		(azureSQLMIConfig != nil && azureSQLMIConfig.LTRConfig == nil)
 }
 
 // onlyAzureSQLObjectTypes reports whether every object type in the list is an
@@ -3949,19 +3943,19 @@ func toNcdConfig(config *gqlsla.NcdSlaConfig) []any {
 	return []any{result}
 }
 
-func fromBackupLocation(d *schema.ResourceData) []gqlsla.BackupLocationSpec {
-	var locations []gqlsla.BackupLocationSpec
-	for _, l := range d.Get(keyBackupLocation).([]any) {
+func fromBackupLocation(locations []any) []gqlsla.BackupLocationSpec {
+	var specs []gqlsla.BackupLocationSpec
+	for _, l := range locations {
 		l := l.(map[string]any)
 		groupID, err := uuid.Parse(l[keyArchivalGroupID].(string))
 		if err != nil {
 			return nil
 		}
-		locations = append(locations, gqlsla.BackupLocationSpec{
+		specs = append(specs, gqlsla.BackupLocationSpec{
 			ArchivalGroupID: groupID,
 		})
 	}
-	return locations
+	return specs
 }
 
 func toBackupLocations(slaDomain gqlsla.Domain, existing []any) ([]any, error) {

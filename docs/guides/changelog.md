@@ -47,6 +47,9 @@ page_title: "Changelog"
 * Fix a bug in the `polaris_sla_domain` resource where a V2 (Rubrik-managed) Azure SQL Database or Azure SQL Managed
   Instance SLA Domain would additionally send its `backup_location` as an AWS S3 configuration when the AWS S3
   multiple backup locations feature was not enabled for the RSC account. [[docs](../resources/sla_domain.md)]
+* The `polaris_sla_domain` resource now rejects `backup_location` when it is set for object types which do not support
+  one. Previously the block was sent as an AWS S3 configuration for any object type, where RSC ignored it.
+  [[docs](../resources/sla_domain.md)]
 
 ## v1.9.1
 * New resource added for `polaris_azure_devops_organization` which onboards an Azure DevOps organization to RSC
