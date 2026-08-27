@@ -54,6 +54,10 @@ page_title: "Changelog"
 * The `polaris_sla_domain` resource now rejects `backup_location` when it is set for object types which do not support
   one. Previously the block was sent as an AWS S3 configuration for any object type, where RSC ignored it.
   [[docs](../resources/sla_domain.md)]
+* The `polaris_azure_subscription` resource now reads back the name and the principal ID of the user-assigned managed
+  identity of the `postgres_flexible_server_protection` feature. Previously the identity was not read back at all,
+  leaving both fields empty in state after an import. Note, RSC does not return the region or the resource group name
+  of an identity, so those two fields are still not read back. [[docs](../resources/azure_subscription.md)]
 
 ## v1.9.1
 * New resource added for `polaris_azure_devops_organization` which onboards an Azure DevOps organization to RSC
