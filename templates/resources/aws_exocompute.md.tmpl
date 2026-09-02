@@ -24,9 +24,13 @@ description: |-
 ### Optional
 
 - `cluster_access` (String) EKS cluster access type. Possible values are `EKS_CLUSTER_ACCESS_TYPE_PUBLIC` and `EKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Can only be used with RSC managed configurations. Changing this forces a new resource to be created.
-- `cluster_security_group_id` (String) AWS security group ID for the cluster. Changing this forces a new resource to be created.
+- `cluster_security_group_id` (String) AWS security group ID for the cluster. Changing this forces a new resource to be
+  created. **Deprecated:** RSC now always creates and manages the Exocompute security groups for RSC managed
+  configurations, remove this field from the configuration.
 - `host_account_id` (String) Exocompute host cloud account ID. Changing this forces a new resource to be created.
-- `node_security_group_id` (String) AWS security group ID for the nodes. Changing this forces a new resource to be created.
+- `node_security_group_id` (String) AWS security group ID for the nodes. Changing this forces a new resource to be
+  created. **Deprecated:** RSC now always creates and manages the Exocompute security groups for RSC managed
+  configurations, remove this field from the configuration.
 - `region` (String) AWS region to run the Exocompute instance in. Changing this forces a new resource to be created.
 - `subnet` (Block Set, Max: 2) AWS subnet for the cluster. Each subnet block accepts a `subnet_id` (Required) and an
   optional `pod_subnet_id`. Conflicts with `subnets`. Changing this forces a new resource to be created.

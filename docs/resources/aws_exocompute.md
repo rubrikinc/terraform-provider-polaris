@@ -9,8 +9,7 @@ for AWS workloads.
 There are 3 types of Exocompute configurations:
  1. *RSC Managed Host* - When an RSC managed host configuration is created, RSC
     will automatically deploy the necessary resources in the specified AWS
-    region to run the Exocompute service. AWS security groups can be managed by
-    RSC or by the customer.
+    region to run the Exocompute service, including the AWS security groups.
  2. *Customer Managed Host* - When a customer managed host configuration is
     created, RSC will not deploy any resources. Instead it will use the AWS EKS
     cluster attached by the customer, using the
@@ -27,10 +26,8 @@ Since there are 3 types of Exocompute configurations, there are 3 ways to create
 a `polaris_aws_exocompute` resource:
  1. Using the `account_id`, `region`, `vpc_id` and `subnets` or `subnet` fields
     creates an RSC managed host configuration. Use the `subnet` block when pod
-    subnets are needed. The `cluster_security_group_id` and
-    `node_security_group_id` fields can be used to create an Exocompute
-    configuration where the customer manage the security groups. The
-    `cluster_access` field can be used to configure private EKS cluster access.
+    subnets are needed. The `cluster_access` field can be used to configure
+    private EKS cluster access.
  2. Using the `account_id` and `region` fields creates a customer managed host
     configuration. Note, the `polaris_aws_exocompute_cluster_attachment`
     resource must be used to attach an AWS EKS cluster to the Exocompute
@@ -53,8 +50,7 @@ for AWS workloads.
 There are 3 types of Exocompute configurations:
  1. *RSC Managed Host* - When an RSC managed host configuration is created, RSC
     will automatically deploy the necessary resources in the specified AWS
-    region to run the Exocompute service. AWS security groups can be managed by
-    RSC or by the customer.
+    region to run the Exocompute service, including the AWS security groups.
  2. *Customer Managed Host* - When a customer managed host configuration is
     created, RSC will not deploy any resources. Instead it will use the AWS EKS
     cluster attached by the customer, using the
@@ -71,10 +67,8 @@ Since there are 3 types of Exocompute configurations, there are 3 ways to create
 a `polaris_aws_exocompute` resource:
  1. Using the `account_id`, `region`, `vpc_id` and `subnets` or `subnet` fields
     creates an RSC managed host configuration. Use the `subnet` block when pod
-    subnets are needed. The `cluster_security_group_id` and
-    `node_security_group_id` fields can be used to create an Exocompute
-    configuration where the customer manage the security groups. The
-    `cluster_access` field can be used to configure private EKS cluster access.
+    subnets are needed. The `cluster_access` field can be used to configure
+    private EKS cluster access.
  2. Using the `account_id` and `region` fields creates a customer managed host
     configuration. Note, the `polaris_aws_exocompute_cluster_attachment`
     resource must be used to attach an AWS EKS cluster to the Exocompute
@@ -113,20 +107,6 @@ resource "polaris_aws_exocompute" "host_private" {
   region         = "us-east-2"
   vpc_id         = "vpc-4859acb9"
   cluster_access = "EKS_CLUSTER_ACCESS_TYPE_PRIVATE"
-
-  subnets = [
-    "subnet-ea67b67b",
-    "subnet-ea43ec78"
-  ]
-}
-
-# RSC managed Exocompute and customer managed security groups.
-resource "polaris_aws_exocompute" "host" {
-  account_id                = data.polaris_aws_account.host.id
-  cluster_security_group_id = "sg-005656347687b8170"
-  node_security_group_id    = "sg-00e147656785d7e2f"
-  region                    = "us-east-2"
-  vpc_id                    = "vpc-4859acb9"
 
   subnets = [
     "subnet-ea67b67b",
@@ -182,9 +162,13 @@ resource "polaris_aws_exocompute" "application" {
 ### Optional
 
 - `cluster_access` (String) EKS cluster access type. Possible values are `EKS_CLUSTER_ACCESS_TYPE_PUBLIC` and `EKS_CLUSTER_ACCESS_TYPE_PRIVATE`. Can only be used with RSC managed configurations. Changing this forces a new resource to be created.
-- `cluster_security_group_id` (String) AWS security group ID for the cluster. Changing this forces a new resource to be created.
+- `cluster_security_group_id` (String) AWS security group ID for the cluster. Changing this forces a new resource to be
+  created. **Deprecated:** RSC now always creates and manages the Exocompute security groups for RSC managed
+  configurations, remove this field from the configuration.
 - `host_account_id` (String) Exocompute host cloud account ID. Changing this forces a new resource to be created.
-- `node_security_group_id` (String) AWS security group ID for the nodes. Changing this forces a new resource to be created.
+- `node_security_group_id` (String) AWS security group ID for the nodes. Changing this forces a new resource to be
+  created. **Deprecated:** RSC now always creates and manages the Exocompute security groups for RSC managed
+  configurations, remove this field from the configuration.
 - `region` (String) AWS region to run the Exocompute instance in. Changing this forces a new resource to be created.
 - `subnet` (Block Set, Max: 2) AWS subnet for the cluster. Each subnet block accepts a `subnet_id` (Required) and an
   optional `pod_subnet_id`. Conflicts with `subnets`. Changing this forces a new resource to be created.

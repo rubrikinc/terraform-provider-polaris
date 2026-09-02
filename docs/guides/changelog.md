@@ -4,15 +4,19 @@ page_title: "Changelog"
 
 # Changelog
 
-## v1.9.2
+## v1.10.0
 * **Breaking Change:** The `timeouts` block in the `polaris_object` data source is now a nested attribute, so a custom
   read timeout is written as `timeouts = { read = "10m" }` instead of `timeouts { read = "10m" }`. This is a result of
-  migrating the data source to the Terraform Plugin Framework. See the [v1.9.2 upgrade guide](upgrade_guide_v1.9.2.md).
+  migrating the data source to the Terraform Plugin Framework. See the [v1.10.0 upgrade guide](upgrade_guide_v1.10.0.md).
   [[docs](../data-sources/object.md)]
 * **Breaking Change:** The `polaris_object` data source now rejects the `subscription_id`, `org_id` and `project_id`
   fields at plan time when they are set for an `object_type` they do not apply to. Previously these fields were
-  silently ignored for other object types. See the [v1.9.2 upgrade guide](upgrade_guide_v1.9.2.md).
+  silently ignored for other object types. See the [v1.10.0 upgrade guide](upgrade_guide_v1.10.0.md).
   [[docs](../data-sources/object.md)]
+* **Deprecated:** `cluster_security_group_id` and `node_security_group_id` in the `polaris_aws_exocompute`
+  resource. RSC now always creates and manages the Exocompute security groups for RSC managed configurations.
+  Existing configurations continue to work, but the fields will be removed in a future release. See the
+  [v1.10.0 upgrade guide](upgrade_guide_v1.10.0.md). [[docs](../resources/aws_exocompute.md)]
 * Add support for the `CloudNativeTagRule` object type in the `polaris_object` data source, resolving a cloud native
   tag rule to its RSC ID by name for use with the `polaris_sla_domain_assignment` resource.
   [[docs](../data-sources/object.md)]

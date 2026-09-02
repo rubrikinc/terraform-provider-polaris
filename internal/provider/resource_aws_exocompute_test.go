@@ -21,8 +21,12 @@
 package provider
 
 import (
+	"context"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -110,4 +114,73 @@ func TestAccPolarisAWSExocompute_basic(t *testing.T) {
 			),
 		}},
 	})
+}
+
+// awsExocomputeRawConfig returns a minimal RSC managed AWS exocompute
+// configuration. When withSecurityGroups is true, the deprecated
+// cluster_security_group_id and node_security_group_id fields are included.
+func awsExocomputeRawConfig(withSecurityGroups bool) map[string]any {
+	raw := map[string]any{
+		"account_id": "6f1a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8",
+		"region":     "us-east-2",
+		"vpc_id":     "vpc-4859acb9",
+		"subnets":    []any{"subnet-ea67b67b", "subnet-ea43ec78"},
+	}
+	if withSecurityGroups {
+		raw["cluster_security_group_id"] = "sg-005656347687b8170"
+		raw["node_security_group_id"] = "sg-00e147656785d7e2f"
+	}
+	return raw
+}
+
+// TestAWSExocomputeSecurityGroupDeprecationWarning verifies that the deprecated
+// security group fields only warn when they are set in the configuration. Both
+// fields are Optional and Computed, so a spurious warning would reach every RSC
+// managed user, including those who never set them.
+func TestAWSExocomputeSecurityGroupDeprecationWarning(t *testing.T) {
+	res := resourceAwsExocompute()
+
+	for _, diag := range res.Validate(terraform.NewResourceConfigRaw(awsExocomputeRawConfig(false))) {
+		if strings.Contains(strings.ToLower(diag.Summary), "deprecat") {
+			t.Errorf("unexpected deprecation diagnostic when the security group fields are absent: %s", diag.Summary)
+		}
+	}
+
+	var warnings int
+	for _, diag := range res.Validate(terraform.NewResourceConfigRaw(awsExocomputeRawConfig(true))) {
+		if strings.Contains(strings.ToLower(diag.Summary), "deprecat") {
+			warnings++
+		}
+	}
+	if warnings != 2 {
+		t.Errorf("expected 2 deprecation diagnostics when both security group fields are set, got %d", warnings)
+	}
+}
+
+// TestAWSExocomputeRemoveSecurityGroupsNoDiff verifies that removing the
+// deprecated security group fields from a configuration that already has them
+// applied produces no diff, and in particular does not force the exocompute
+// configuration to be replaced. This is what allows the fields to be dropped
+// from existing configurations without disturbing a running cluster.
+func TestAWSExocomputeRemoveSecurityGroupsNoDiff(t *testing.T) {
+	res := resourceAwsExocompute()
+
+	data := schema.TestResourceDataRaw(t, res.Schema, awsExocomputeRawConfig(true))
+	data.SetId("0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9")
+
+	diff, err := res.Diff(context.Background(), data.State(), terraform.NewResourceConfigRaw(awsExocomputeRawConfig(false)), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff == nil {
+		return
+	}
+	if diff.RequiresNew() {
+		t.Errorf("removing the security group fields forces a new resource: %v", diff.Attributes)
+	}
+	for key, attr := range diff.Attributes {
+		if strings.Contains(key, "security_group") {
+			t.Errorf("removing the security group fields diffs %s: %q -> %q", key, attr.Old, attr.New)
+		}
+	}
 }

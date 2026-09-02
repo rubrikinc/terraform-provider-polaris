@@ -27,20 +27,6 @@ resource "polaris_aws_exocompute" "host_private" {
   ]
 }
 
-# RSC managed Exocompute and customer managed security groups.
-resource "polaris_aws_exocompute" "host" {
-  account_id                = data.polaris_aws_account.host.id
-  cluster_security_group_id = "sg-005656347687b8170"
-  node_security_group_id    = "sg-00e147656785d7e2f"
-  region                    = "us-east-2"
-  vpc_id                    = "vpc-4859acb9"
-
-  subnets = [
-    "subnet-ea67b67b",
-    "subnet-ea43ec78"
-  ]
-}
-
 # RSC managed Exocompute with pod subnets.
 resource "polaris_aws_exocompute" "host_pods" {
   account_id = data.polaris_aws_account.host.id

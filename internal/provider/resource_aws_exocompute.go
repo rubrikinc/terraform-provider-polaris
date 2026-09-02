@@ -43,8 +43,7 @@ for AWS workloads.
 There are 3 types of Exocompute configurations:
  1. *RSC Managed Host* - When an RSC managed host configuration is created, RSC
     will automatically deploy the necessary resources in the specified AWS
-    region to run the Exocompute service. AWS security groups can be managed by
-    RSC or by the customer.
+    region to run the Exocompute service, including the AWS security groups.
  2. *Customer Managed Host* - When a customer managed host configuration is
     created, RSC will not deploy any resources. Instead it will use the AWS EKS
     cluster attached by the customer, using the
@@ -61,10 +60,8 @@ Since there are 3 types of Exocompute configurations, there are 3 ways to create
 a ´polaris_aws_exocompute´ resource:
  1. Using the ´account_id´, ´region´, ´vpc_id´ and ´subnets´ or ´subnet´ fields
     creates an RSC managed host configuration. Use the ´subnet´ block when pod
-    subnets are needed. The ´cluster_security_group_id´ and
-    ´node_security_group_id´ fields can be used to create an Exocompute
-    configuration where the customer manage the security groups. The
-    ´cluster_access´ field can be used to configure private EKS cluster access.
+    subnets are needed. The ´cluster_access´ field can be used to configure
+    private EKS cluster access.
  2. Using the ´account_id´ and ´region´ fields creates a customer managed host
     configuration. Note, the ´polaris_aws_exocompute_cluster_attachment´
     resource must be used to attach an AWS EKS cluster to the Exocompute
@@ -107,7 +104,10 @@ func resourceAwsExocompute() *schema.Resource {
 				ConflictsWith: []string{keyHostAccountID},
 				RequiredWith:  []string{keyNodeSecurityGroupID},
 				Description: "AWS security group ID for the cluster. Changing this forces a new resource to be " +
-					"created.",
+					"created. **Deprecated:** RSC now always creates and manages the Exocompute security " +
+					"groups for RSC managed configurations, remove this field from the configuration.",
+				Deprecated: "RSC now always creates and manages the Exocompute security groups for RSC " +
+					"managed configurations, remove this field from the configuration.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyHostAccountID: {
@@ -126,7 +126,10 @@ func resourceAwsExocompute() *schema.Resource {
 				ConflictsWith: []string{keyHostAccountID},
 				RequiredWith:  []string{keyClusterSecurityGroupID},
 				Description: "AWS security group ID for the nodes. Changing this forces a new resource to be " +
-					"created.",
+					"created. **Deprecated:** RSC now always creates and manages the Exocompute security " +
+					"groups for RSC managed configurations, remove this field from the configuration.",
+				Deprecated: "RSC now always creates and manages the Exocompute security groups for RSC " +
+					"managed configurations, remove this field from the configuration.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyPolarisManaged: {
