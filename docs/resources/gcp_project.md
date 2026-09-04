@@ -19,6 +19,15 @@ description: |-
   feature.EXPORT_AND_RESTORE - Represents the set of permissions required for export
   and restore operations.FILE_LEVEL_RECOVERY - Represents the set of permissions required for
   file-level recovery operations.
+  CLOUD_SQL_PROTECTION
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.EXPORT_AND_RESTORE - Represents the set of permissions required for export
+  and restore operations.
+  Note, RSC runs Cloud SQL archival and archived recovery on Exocompute, which
+  additionally requires the CLOUDSQL permission group on the EXOCOMPUTE
+  feature. That permission group is not yet supported by this provider, so a
+  project onboarded through Terraform supports backup and in-place restore from
+  a primary backup only.
   GCP_SHARED_VPC_HOST
   BASIC - Represents the basic set of permissions required to onboard the
   feature.
@@ -59,6 +68,18 @@ are used when specifying the feature.
     and restore operations.
   * `FILE_LEVEL_RECOVERY` - Represents the set of permissions required for
     file-level recovery operations.
+
+`CLOUD_SQL_PROTECTION`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
+  * `EXPORT_AND_RESTORE` - Represents the set of permissions required for export
+    and restore operations.
+
+  Note, RSC runs Cloud SQL archival and archived recovery on Exocompute, which
+  additionally requires the `CLOUDSQL` permission group on the `EXOCOMPUTE`
+  feature. That permission group is not yet supported by this provider, so a
+  project onboarded through Terraform supports backup and in-place restore from
+  a primary backup only.
 
 `GCP_SHARED_VPC_HOST`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -139,7 +160,7 @@ Optional:
 
 Required:
 
-- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.
+- `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.
 - `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `AUTOMATED_NETWORKING_SETUP` and `CLOUD_CLUSTER_ES`.
 
 Optional:

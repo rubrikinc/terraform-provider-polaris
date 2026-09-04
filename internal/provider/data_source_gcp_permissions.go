@@ -62,6 +62,12 @@ are used when specifying the feature.
   * ´FILE_LEVEL_RECOVERY´ - Represents the set of permissions required for
     file-level recovery operations.
 
+´CLOUD_SQL_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export
+    and restore operations.
+
 ´GCP_SHARED_VPC_HOST´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
@@ -113,11 +119,11 @@ func dataSourceGcpPermissions() *schema.Resource {
 				Optional:     true,
 				ExactlyOneOf: []string{keyFeatures},
 				Description: "RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. " +
-					"Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST`, " +
-					"`EXOCOMPUTE` and `SERVERS_AND_APPS`.",
+					"Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
+					"`CLOUD_SQL_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.",
 				ValidateFunc: validation.StringInSlice([]string{
-					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "GCP_SHARED_VPC_HOST", "EXOCOMPUTE",
-					"SERVERS_AND_APPS",
+					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_SQL_PROTECTION",
+					"GCP_SHARED_VPC_HOST", "EXOCOMPUTE", "SERVERS_AND_APPS",
 				}, false),
 			},
 			keyFeatures: {
@@ -125,15 +131,16 @@ func dataSourceGcpPermissions() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "GCP_SHARED_VPC_HOST", "EXOCOMPUTE",
-						"SERVERS_AND_APPS",
+						"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_SQL_PROTECTION",
+						"GCP_SHARED_VPC_HOST", "EXOCOMPUTE", "SERVERS_AND_APPS",
 					}, false),
 				},
 				Optional:     true,
 				MinItems:     1,
 				ExactlyOneOf: []string{keyFeature},
 				Description: "RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
-					"`GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`. **Deprecated:** use `feature` instead.",
+					"`CLOUD_SQL_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`. " +
+					"**Deprecated:** use `feature` instead.",
 				Deprecated: "Use `feature` instead",
 			},
 			keyHash: {

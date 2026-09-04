@@ -193,3 +193,69 @@ func TestAccPolarisGCPProject_feature(t *testing.T) {
 		}},
 	})
 }
+
+const gcpProjectCloudSQLTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_gcp_project" "default" {
+	credentials    = "{{ .Resource.Credentials }}"
+	project        = "{{ .Resource.ProjectID }}"
+	project_name   = "{{ .Resource.ProjectName }}"
+	project_number = {{ .Resource.ProjectNumber }}
+
+	feature {
+		name = "CLOUD_SQL_PROTECTION"
+		permission_groups = [
+			"BASIC",
+			"EXPORT_AND_RESTORE",
+		]
+	}
+}
+`
+
+// TestAccPolarisGCPProject_cloudSQL verifies that the Cloud SQL protection
+// feature can be onboarded on a GCP project.
+//
+// The test skips unless cloudSql is enabled in TEST_GCPPROJECT_FILE, since RSC
+// rejects the feature on accounts without the CNP_GCP_SQL_ENABLED feature flag.
+func TestAccPolarisGCPProject_cloudSQL(t *testing.T) {
+	config, project, err := loadGCPTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !project.CloudSQL.Enabled {
+		t.Skip("skipping, cloudSql is not enabled in TEST_GCPPROJECT_FILE")
+	}
+
+	projectCloudSQL, err := makeTerraformConfig(config, gcpProjectCloudSQLTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: projectCloudSQL,
+			Check: resource.ComposeTestCheckFunc(
+				// Project resource.
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_name", project.ProjectName),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_number", strconv.FormatInt(project.ProjectNumber, 10)),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "feature.#", "1"),
+
+				// Cloud SQL Protection feature.
+				resource.TestCheckTypeSetElemNestedAttrs("polaris_gcp_project.default", "feature.*", map[string]string{
+					"%":                   "4",
+					"name":                "CLOUD_SQL_PROTECTION",
+					"permissions":         "",
+					"permission_groups.#": "2",
+					"status":              "CONNECTED",
+				}),
+				resource.TestCheckTypeSetElemAttr("polaris_gcp_project.default", "feature.*.permission_groups.*", "BASIC"),
+				resource.TestCheckTypeSetElemAttr("polaris_gcp_project.default", "feature.*.permission_groups.*", "EXPORT_AND_RESTORE"),
+			),
+		}},
+	})
+}

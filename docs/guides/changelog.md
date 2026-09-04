@@ -44,6 +44,13 @@ page_title: "Changelog"
   protect Azure Postgres flexible servers and to set the point-in-time restore retention RSC enforces on the source
   server. The object type cannot be combined with other object types and requires a `backup_location`.
   [[docs](../resources/sla_domain.md#nested-schema-for-azure_postgres_flexible_server_config)]
+* Add support for the `CLOUD_SQL_PROTECTION` feature in the `polaris_gcp_permissions` data source, which backs up
+  Google Cloud SQL instances. The feature has the `BASIC` and `EXPORT_AND_RESTORE` permission groups.
+  [[docs](../data-sources/gcp_permissions.md)]
+* Add support for the `CLOUD_SQL_PROTECTION` feature in the `polaris_gcp_project` resource, which enables backup and
+  in-place restore of Google Cloud SQL instances. Note, RSC runs Cloud SQL archival and archived recovery on
+  Exocompute, which additionally requires the `CLOUDSQL` permission group on the `EXOCOMPUTE` feature. That
+  permission group is not supported yet. [[docs](../resources/gcp_project.md)]
 * Fix a bug in the `polaris_sla_domain` resource where an SLA Domain using the
   `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE` object type could not be created or updated unless the AWS S3 multiple
   backup locations feature was enabled for the RSC account. The `backup_location` was not passed on, failing with an
