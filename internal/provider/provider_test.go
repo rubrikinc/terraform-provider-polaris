@@ -210,6 +210,14 @@ type testGCPProject struct {
 		SubnetName string `json:"subnetName"`
 		VPCName    string `json:"vpcNetworkName"`
 	} `json:"exocompute"`
+
+	// Optional for acceptance tests, if not enabled the Cloud SQL test is
+	// skipped. RSC gates the Cloud SQL protection feature behind the
+	// CNP_GCP_SQL_ENABLED feature flag, so it cannot be onboarded on every
+	// account.
+	CloudSQL struct {
+		Enabled bool `json:"enabled"`
+	} `json:"cloudSql"`
 }
 
 // loadGCPTestConfig loads a GCP test configuration using the default
