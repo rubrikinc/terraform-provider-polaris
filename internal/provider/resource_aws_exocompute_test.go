@@ -21,8 +21,12 @@
 package provider
 
 import (
+	"context"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -110,4 +114,128 @@ func TestAccPolarisAWSExocompute_basic(t *testing.T) {
 			),
 		}},
 	})
+}
+
+// awsExocomputeRawConfig returns a minimal RSC managed AWS exocompute
+// configuration. When withSecurityGroups is true, the deprecated
+// cluster_security_group_id and node_security_group_id fields are included.
+func awsExocomputeRawConfig(withSecurityGroups bool) map[string]any {
+	raw := map[string]any{
+		"account_id": "6f1a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8",
+		"region":     "us-east-2",
+		"vpc_id":     "vpc-4859acb9",
+		"subnets":    []any{"subnet-ea67b67b", "subnet-ea43ec78"},
+	}
+	if withSecurityGroups {
+		raw["cluster_security_group_id"] = "sg-005656347687b8170"
+		raw["node_security_group_id"] = "sg-00e147656785d7e2f"
+	}
+	return raw
+}
+
+// TestAWSExocomputeSecurityGroupDeprecationWarning verifies that the deprecated
+// security group fields only warn when they are set in the configuration. Both
+// fields are Optional and Computed, so a spurious warning would reach every RSC
+// managed user, including those who never set them.
+func TestAWSExocomputeSecurityGroupDeprecationWarning(t *testing.T) {
+	res := resourceAwsExocompute()
+
+	for _, diag := range res.Validate(terraform.NewResourceConfigRaw(awsExocomputeRawConfig(false))) {
+		if strings.Contains(strings.ToLower(diag.Summary), "deprecat") {
+			t.Errorf("unexpected deprecation diagnostic when the security group fields are absent: %s", diag.Summary)
+		}
+	}
+
+	var warnings int
+	for _, diag := range res.Validate(terraform.NewResourceConfigRaw(awsExocomputeRawConfig(true))) {
+		if strings.Contains(strings.ToLower(diag.Summary), "deprecat") {
+			warnings++
+		}
+	}
+	if warnings != 2 {
+		t.Errorf("expected 2 deprecation diagnostics when both security group fields are set, got %d", warnings)
+	}
+}
+
+// awsExocomputeReadState builds the instance state the way awsReadExocompute
+// writes it, including the computed attributes a raw configuration leaves out.
+// Read populates both subnets and subnet, so a state built from configuration
+// alone is not representative of a deployed configuration.
+func awsExocomputeReadState(t *testing.T, clusterSecurityGroupID, nodeSecurityGroupID string, rscManaged bool) *terraform.InstanceState {
+	t.Helper()
+
+	res := resourceAwsExocompute()
+	data := schema.TestResourceDataRaw(t, res.Schema, map[string]any{})
+	data.SetId("0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9")
+
+	set := func(key string, value any) {
+		t.Helper()
+		if err := data.Set(key, value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	set(keyAccountID, "6f1a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8")
+	set(keyRegion, "us-east-2")
+	set(keyVPCID, "vpc-4859acb9")
+	set(keyClusterSecurityGroupID, clusterSecurityGroupID)
+	set(keyNodeSecurityGroupID, nodeSecurityGroupID)
+	set(keyPolarisManaged, rscManaged)
+	set(keyClusterAccess, "EKS_CLUSTER_ACCESS_TYPE_PUBLIC")
+
+	subnetIDs := schema.Set{F: schema.HashString}
+	subnetIDs.Add("subnet-ea67b67b")
+	subnetIDs.Add("subnet-ea43ec78")
+	set(keySubnets, &subnetIDs)
+
+	subnets := schema.Set{F: schema.HashResource(awsSubnetResource())}
+	subnets.Add(map[string]any{keySubnetID: "subnet-ea67b67b", keyPodSubnetID: ""})
+	subnets.Add(map[string]any{keySubnetID: "subnet-ea43ec78", keyPodSubnetID: ""})
+	set(keySubnet, &subnets)
+
+	return data.State()
+}
+
+// TestAWSExocomputeRemoveSecurityGroupsNoDiff verifies that dropping the
+// deprecated security group fields from a configuration which already has them
+// applied does not plan a change, and in particular does not force the
+// exocompute configuration to be replaced.
+//
+// The check goes through SimpleDiff, which is the entry point
+// PlanResourceChange uses. It does not cover the protocol layer above that, so
+// it is not a substitute for running terraform plan against a deployment.
+func TestAWSExocomputeRemoveSecurityGroupsNoDiff(t *testing.T) {
+	res := resourceAwsExocompute()
+	state := awsExocomputeReadState(t, "sg-005656347687b8170", "sg-00e147656785d7e2f", false)
+
+	diff, err := res.SimpleDiff(context.Background(), state, terraform.NewResourceConfigRaw(awsExocomputeRawConfig(false)), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff == nil {
+		return
+	}
+	if diff.RequiresNew() {
+		t.Errorf("dropping the security group fields forces a new resource: %v", diff.Attributes)
+	}
+	if !diff.Empty() {
+		t.Errorf("dropping the security group fields plans a change: %v", diff.Attributes)
+	}
+}
+
+// TestAWSExocomputeKeepSecurityGroupsForcesNew covers the opposite case. A
+// configuration which still supplies security group IDs for an exocompute
+// configuration RSC reports as RSC managed differs from the remote state, and
+// because both fields force a new resource that is planned as a replacement of
+// the exocompute configuration.
+func TestAWSExocomputeKeepSecurityGroupsForcesNew(t *testing.T) {
+	res := resourceAwsExocompute()
+	state := awsExocomputeReadState(t, "", "", true)
+
+	diff, err := res.SimpleDiff(context.Background(), state, terraform.NewResourceConfigRaw(awsExocomputeRawConfig(true)), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff == nil || !diff.RequiresNew() {
+		t.Error("expected supplying security group IDs for an RSC managed configuration to force a new resource")
+	}
 }
