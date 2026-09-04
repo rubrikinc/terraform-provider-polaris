@@ -143,13 +143,13 @@ resource "polaris_aws_exocompute" "host" {
   ]
 }
 ```
-Both fields are optional and computed, so removing them from the configuration does not produce a diff and does not
-replace the Exocompute configuration. The security groups already recorded in state stay there and the running cluster
-continues to use them, so removing the fields is safe and only silences the warning.
+Run `terraform plan` before applying the change and read the plan. Both fields are marked `ForceNew`, so if the plan
+does show a change to either of them it replaces the Exocompute configuration, which tears down and redeploys the
+Exocompute cluster. Treat a replacement in the plan as a maintenance operation rather than applying it straight away.
 
-If you want RSC to take ownership of the security groups for an existing configuration, the Exocompute configuration
-has to be recreated, for example with `terraform apply -replace=polaris_aws_exocompute.host`. This tears down and
-redeploys the Exocompute cluster, so plan it as a maintenance operation.
+Leaving the fields in place is the riskier option over time. Once RSC manages the security groups for a configuration,
+a configuration that still supplies security group IDs differs from what RSC reports for it, and because both fields
+force a new resource that difference is planned as a replacement of the Exocompute configuration.
 
 Customer managed Exocompute — where you attach your own EKS cluster with the
 `polaris_aws_exocompute_cluster_attachment` resource — never used these fields and is unaffected.
