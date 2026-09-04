@@ -1349,25 +1349,7 @@ func azureUpdateSubscription(ctx context.Context, d *schema.ResourceData, m any)
 					break
 				}
 			}
-			// The managed identity of the Postgres Flexible Server Protection
-			// feature is deliberately not read back, see updateAzureFeatureState,
-			// so state holds empty values after an import. As the fields are
-			// required in the configuration, an empty value in state means unknown
-			// rather than changed. Comparing them would report a spurious change
-			// and, as the feature is not allowed to upgrade its managed identity,
-			// force a destructive re-onboard on the first apply after an import.
-			// Note, the Azure SQL DB Protection feature's identity fields are
-			// optional, so an empty value there is a real change to be upgraded.
 			miChanged := diffAzureUserAssignedManagedIdentity(oldBlock, newBlock)
-			if miChanged && feature.feature.Equal(core.FeatureAzurePostgresFlexibleServerProtection) {
-				if name, _ := oldBlock[keyUserAssignedManagedIdentityName].(string); name == "" {
-					tflog.Info(ctx, "managed identity not in state, skipping re-onboard", map[string]any{
-						"feature": feature.feature,
-					})
-					miChanged = false
-				}
-			}
-
 			if miChanged && allowedToUpgradeMI {
 				tflog.Info(ctx, "allowed to upgrade managed identity", map[string]any{
 					"feature": feature.feature,
@@ -1701,19 +1683,10 @@ func updateAzureFeatureState(d *schema.ResourceData, key string, feature azure.F
 		block[keyResourceGroupTags] = tags
 	}
 
-	// Note, the Postgres Flexible Server Protection feature is deliberately not
-	// read back here. RSC requires and stores a user-assigned managed identity
-	// for the feature, but exposes no way to read it: the feature's
-	// userAssignedManagedIdentity field is only populated for Cloud Native
-	// Archival Encryption and Azure SQL DB Protection, and the feature-specific
-	// details type has no Postgres variant. Reading it back would therefore
-	// overwrite the configured values with empty strings and leave a permanent
-	// diff. The fields are required in the configuration, so state stays
-	// accurate without the read-back, at the cost of not detecting drift if the
-	// identity is changed outside Terraform. RSC not surfacing these details for
-	// the feature is a known open issue, so this can be revisited once a read
-	// path exists.
-	if feature.Equal(core.FeatureAzureSQLDBProtection) {
+	// Note, RSC only returns the name and the principal ID of the user-assigned
+	// managed identity, not its region or resource group. Those two fields keep
+	// the values already in state, so drift in them is not detected.
+	if feature.Equal(core.FeatureAzureSQLDBProtection) || feature.Equal(core.FeatureAzurePostgresFlexibleServerProtection) {
 		block[keyUserAssignedManagedIdentityName] = feature.UserAssignedManagedIdentity.Name
 		block[keyUserAssignedManagedIdentityPrincipalID] = feature.UserAssignedManagedIdentity.PrincipalID
 	}

@@ -370,3 +370,56 @@ func TestAccPolarisAzureSubscription_basic(t *testing.T) {
 		}},
 	})
 }
+
+func TestDiffAzureUserAssignedManagedIdentity(t *testing.T) {
+	block := func(name, principalID, region, rgName string) map[string]any {
+		return map[string]any{
+			keyUserAssignedManagedIdentityName:              name,
+			keyUserAssignedManagedIdentityPrincipalID:       principalID,
+			keyUserAssignedManagedIdentityRegion:            region,
+			keyUserAssignedManagedIdentityResourceGroupName: rgName,
+		}
+	}
+
+	tt := []struct {
+		name string
+		old  map[string]any
+		new  map[string]any
+		diff bool
+	}{{
+		name: "BothEmpty",
+		old:  map[string]any{},
+		new:  map[string]any{},
+	}, {
+		name: "NoManagedIdentityKeys",
+		old:  map[string]any{keyResourceGroupName: "rg"},
+		new:  map[string]any{keyResourceGroupName: "rg"},
+	}, {
+		name: "Identical",
+		old:  block("mi", "principal-id", "eastus", "rg"),
+		new:  block("mi", "principal-id", "eastus", "rg"),
+	}, {
+		name: "NameChanged",
+		old:  block("mi", "principal-id", "eastus", "rg"),
+		new:  block("other-mi", "principal-id", "eastus", "rg"),
+		diff: true,
+	}, {
+		name: "PrincipalIDChanged",
+		old:  block("mi", "principal-id", "eastus", "rg"),
+		new:  block("mi", "other-principal-id", "eastus", "rg"),
+		diff: true,
+	}, {
+		name: "ManagedIdentityAdded",
+		old:  block("", "", "", ""),
+		new:  block("mi", "principal-id", "eastus", "rg"),
+		diff: true,
+	}}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			if diff := diffAzureUserAssignedManagedIdentity(tc.old, tc.new); diff != tc.diff {
+				t.Errorf("diffAzureUserAssignedManagedIdentity() = %t, want %t", diff, tc.diff)
+			}
+		})
+	}
+}
