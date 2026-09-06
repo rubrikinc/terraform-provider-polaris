@@ -1,5 +1,6 @@
 ---
 page_title: "Upgrade Guide: beta release"
+subcategory: "Upgrade Guides"
 ---
 
 # Upgrade Guide Beta Release

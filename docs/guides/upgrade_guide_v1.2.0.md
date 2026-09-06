@@ -1,5 +1,6 @@
 ---
 page_title: "Upgrade Guide: v1.2.0"
+subcategory: "Upgrade Guides"
 ---
 
 # Upgrade Guide v1.2.0
