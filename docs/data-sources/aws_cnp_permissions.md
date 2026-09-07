@@ -31,6 +31,10 @@ are used when specifying the feature set.
 `CLOUD_NATIVE_S3_PROTECTION`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
+  * `EXPORT` - Represents the set of permissions required to export an S3
+    recovery to a newly created target bucket.
+  * `RECOVERY` - Represents the set of elevated permissions required to perform
+    recovery operations.
 
 `EXOCOMPUTE`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -92,6 +96,10 @@ are used when specifying the feature set.
 `CLOUD_NATIVE_S3_PROTECTION`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
+  * `EXPORT` - Represents the set of permissions required to export an S3
+    recovery to a newly created target bucket.
+  * `RECOVERY` - Represents the set of elevated permissions required to perform
+    recovery operations.
 
 `EXOCOMPUTE`
   * `BASIC` - Represents the basic set of permissions required to onboard the

@@ -259,8 +259,12 @@ func resourceAwsAccount() *schema.Resource {
 				Description: "Enable the Cloud Native DynamoDB Protection feature for the account.",
 			},
 			keyCloudNativeS3Protection: {
-				Type:        schema.TypeList,
-				Elem:        awsCFTFeatureResource([]core.PermissionGroup{core.PermissionGroupBasic}),
+				Type: schema.TypeList,
+				Elem: awsCFTFeatureResource([]core.PermissionGroup{
+					core.PermissionGroupBasic,
+					core.PermissionGroupExport,
+					core.PermissionGroupRecovery,
+				}),
 				MaxItems:    1,
 				Optional:    true,
 				Description: "Enable the Cloud Native S3 Protection feature for the account.",

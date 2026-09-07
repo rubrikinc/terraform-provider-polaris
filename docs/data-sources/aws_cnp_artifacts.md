@@ -22,7 +22,9 @@ description: |-
   feature.
   CLOUD_NATIVE_S3_PROTECTION
   BASIC - Represents the basic set of permissions required to onboard the
-  feature.
+  feature.EXPORT - Represents the set of permissions required to export an S3
+  recovery to a newly created target bucket.RECOVERY - Represents the set of elevated permissions required to perform
+  recovery operations.
   EXOCOMPUTE
   BASIC - Represents the basic set of permissions required to onboard the
   feature.RSC_MANAGED_CLUSTER - Represents the set of permissions required for the
@@ -71,6 +73,10 @@ are used when specifying the feature set.
 `CLOUD_NATIVE_S3_PROTECTION`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
+  * `EXPORT` - Represents the set of permissions required to export an S3
+    recovery to a newly created target bucket.
+  * `RECOVERY` - Represents the set of elevated permissions required to perform
+    recovery operations.
 
 `EXOCOMPUTE`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -183,4 +189,4 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 Required:
 
 - `name` (String) RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, `EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.
-- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `CLOUD_CLUSTER_ES`, `DOWNLOAD_FILE`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, `RECOVERY`, `RESTORE` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.
+- `permission_groups` (Set of String) RSC permission groups for the feature. Possible values are `BASIC`, `CLOUD_CLUSTER_ES`, `DOWNLOAD_FILE`, `EXPORT`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, `RECOVERY`, `RESTORE` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is interpreted as all applicable permission groups.

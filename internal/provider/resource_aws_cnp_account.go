@@ -73,6 +73,10 @@ are used when specifying the feature set.
 ´CLOUD_NATIVE_S3_PROTECTION´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
+  * ´EXPORT´ - Represents the set of permissions required to export an S3
+    recovery to a newly created target bucket.
+  * ´RECOVERY´ - Represents the set of elevated permissions required to perform
+    recovery operations.
 
 ´EXOCOMPUTE´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
@@ -575,7 +579,8 @@ func featureResource() *schema.Resource {
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
 						"BASIC", "RECOVERY", "RSC_MANAGED_CLUSTER", "CLOUD_CLUSTER_ES",
-						"EXPORT_POWER_ON", "EXPORT_POWER_OFF", "RESTORE", "DOWNLOAD_FILE",
+						"EXPORT", "EXPORT_POWER_ON", "EXPORT_POWER_OFF", "RESTORE",
+						"DOWNLOAD_FILE",
 						// The following permission groups cannot be used when onboarding an AWS account.
 						// They have been accepted in the past so we still silently allow them.
 						"EXPORT_AND_RESTORE", "FILE_LEVEL_RECOVERY", "SNAPSHOT_PRIVATE_ACCESS", "PRIVATE_ENDPOINT",
@@ -583,7 +588,7 @@ func featureResource() *schema.Resource {
 				},
 				Required: true,
 				Description: "RSC permission groups for the feature. Possible values are `BASIC`, " +
-					"`CLOUD_CLUSTER_ES`, `DOWNLOAD_FILE`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, " +
+					"`CLOUD_CLUSTER_ES`, `DOWNLOAD_FILE`, `EXPORT`, `EXPORT_POWER_ON`, `EXPORT_POWER_OFF`, " +
 					"`RECOVERY`, `RESTORE` and `RSC_MANAGED_CLUSTER`. For backwards compatibility, `[]` is " +
 					"interpreted as all applicable permission groups.",
 			},
