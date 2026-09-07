@@ -25,18 +25,23 @@ description: |-
   and restore operations.
   Note, RSC runs Cloud SQL archival and archived recovery on Exocompute, which
   additionally requires the CLOUDSQL permission group on the EXOCOMPUTE
-  feature. That permission group is not yet supported by this provider, so a
-  project onboarded through Terraform supports backup and in-place restore from
-  a primary backup only.
+  feature. When Exocompute uses a VPC network in a shared VPC host project, the
+  CLOUDSQL permission group is also required on the GCP_SHARED_VPC_HOST
+  feature of the host project.
   GCP_SHARED_VPC_HOST
   BASIC - Represents the basic set of permissions required to onboard the
-  feature.
+  feature.CLOUDSQL - Represents the set of permissions required to configure
+  Private Service Access on the shared VPC host project for Cloud SQL
+  protection.
   EXOCOMPUTE
   BASIC - Represents the basic set of permissions required to onboard the
   feature.AUTOMATED_NETWORKING_SETUP - Represents the set of permissions required
   for automated networking setup. When automated networking setup is enabled,
   RSC is responsible for creating and maintaining the networking resources for
-  Exocompute. See the polaris_gcp_exocompute resource for more information.
+  Exocompute. See the polaris_gcp_exocompute resource for more information.CLOUDSQL - Represents the set of permissions required for Cloud SQL
+  archival and archived recovery operations, covering Private Service Access
+  networking and the temporary Cloud SQL instances RSC creates. Requires
+  Cloud SQL protection to be enabled for the RSC account.
   SERVERS_AND_APPS
   CLOUD_CLUSTER_ES - Represents the set of permissions required to onboard
   the feature. Note, unlike other features, SERVERS_AND_APPS does not use
@@ -77,13 +82,16 @@ are used when specifying the feature.
 
   Note, RSC runs Cloud SQL archival and archived recovery on Exocompute, which
   additionally requires the `CLOUDSQL` permission group on the `EXOCOMPUTE`
-  feature. That permission group is not yet supported by this provider, so a
-  project onboarded through Terraform supports backup and in-place restore from
-  a primary backup only.
+  feature. When Exocompute uses a VPC network in a shared VPC host project, the
+  `CLOUDSQL` permission group is also required on the `GCP_SHARED_VPC_HOST`
+  feature of the host project.
 
 `GCP_SHARED_VPC_HOST`
   * `BASIC` - Represents the basic set of permissions required to onboard the
     feature.
+  * `CLOUDSQL` - Represents the set of permissions required to configure
+    Private Service Access on the shared VPC host project for Cloud SQL
+    protection.
 
 `EXOCOMPUTE`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -92,6 +100,10 @@ are used when specifying the feature.
     for automated networking setup. When automated networking setup is enabled,
     RSC is responsible for creating and maintaining the networking resources for
     Exocompute. See the `polaris_gcp_exocompute` resource for more information.
+  * `CLOUDSQL` - Represents the set of permissions required for Cloud SQL
+    archival and archived recovery operations, covering Private Service Access
+    networking and the temporary Cloud SQL instances RSC creates. Requires
+    Cloud SQL protection to be enabled for the RSC account.
 
 `SERVERS_AND_APPS`
   * `CLOUD_CLUSTER_ES` - Represents the set of permissions required to onboard
@@ -161,7 +173,7 @@ Optional:
 Required:
 
 - `name` (String) RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.
-- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `AUTOMATED_NETWORKING_SETUP` and `CLOUD_CLUSTER_ES`.
+- `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `AUTOMATED_NETWORKING_SETUP`, `CLOUD_CLUSTER_ES` and `CLOUDSQL`.
 
 Optional:
 

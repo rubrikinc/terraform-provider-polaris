@@ -49,8 +49,18 @@ page_title: "Changelog"
   [[docs](../data-sources/gcp_permissions.md)]
 * Add support for the `CLOUD_SQL_PROTECTION` feature in the `polaris_gcp_project` resource, which enables backup and
   in-place restore of Google Cloud SQL instances. Note, RSC runs Cloud SQL archival and archived recovery on
-  Exocompute, which additionally requires the `CLOUDSQL` permission group on the `EXOCOMPUTE` feature. That
-  permission group is not supported yet. [[docs](../resources/gcp_project.md)]
+  Exocompute, which additionally requires the `CLOUDSQL` permission group on the `EXOCOMPUTE` feature.
+  [[docs](../resources/gcp_project.md)]
+* Add support for the `CLOUDSQL` permission group of the `EXOCOMPUTE` and `GCP_SHARED_VPC_HOST` features in the
+  `polaris_gcp_permissions` data source. The permission group grants the Private Service Access networking
+  permissions and the temporary Cloud SQL instance permissions RSC uses for Cloud SQL archival and archived
+  recovery. [[docs](../data-sources/gcp_permissions.md)]
+* Add support for the `CLOUDSQL` permission group of the `EXOCOMPUTE` and `GCP_SHARED_VPC_HOST` features in the
+  `polaris_gcp_project` resource. Adding the permission group to the `EXOCOMPUTE` feature allows RSC to run Cloud
+  SQL archival and archived recovery on Exocompute. Add it to the `GCP_SHARED_VPC_HOST` feature of the host
+  project as well when Exocompute uses a VPC network in a shared VPC host project. Cloud SQL protection must be
+  enabled for the RSC account, otherwise RSC rejects the permission group.
+  [[docs](../resources/gcp_project.md)]
 * Fix a bug in the `polaris_sla_domain` resource where an SLA Domain using the
   `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE` object type could not be created or updated unless the AWS S3 multiple
   backup locations feature was enabled for the RSC account. The `backup_location` was not passed on, failing with an
