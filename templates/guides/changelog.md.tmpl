@@ -61,6 +61,12 @@ page_title: "Changelog"
   project as well when Exocompute uses a VPC network in a shared VPC host project. Cloud SQL protection must be
   enabled for the RSC account, otherwise RSC rejects the permission group.
   [[docs](../resources/gcp_project.md)]
+* Add support for the `EXPORT` and `RECOVERY` permission groups in the `CLOUD_NATIVE_S3_PROTECTION` feature in the
+  `polaris_aws_account` and `polaris_aws_cnp_account` resources, and in the `polaris_aws_cnp_artifacts` and
+  `polaris_aws_cnp_permissions` data sources. `RECOVERY` grants the AWS permissions required to write objects back
+  into an existing bucket, and `EXPORT` the permissions required to export an S3 recovery to a newly created target
+  bucket. Both require S3 recovery to be enabled for the RSC account.
+  [[docs](../resources/aws_cnp_account.md)]
 * Fix a bug in the `polaris_sla_domain` resource where an SLA Domain using the
   `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE` object type could not be created or updated unless the AWS S3 multiple
   backup locations feature was enabled for the RSC account. The `backup_location` was not passed on, failing with an
