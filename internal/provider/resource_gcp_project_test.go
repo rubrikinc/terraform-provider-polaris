@@ -21,10 +21,14 @@
 package provider
 
 import (
+	"context"
+	"os"
 	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 const gcpProjectTmpl = `
@@ -189,6 +193,93 @@ func TestAccPolarisGCPProject_feature(t *testing.T) {
 					"permission_groups.#": "1",
 					"status":              "CONNECTED",
 				}),
+			),
+		}},
+	})
+}
+
+const gcpProjectCloudSQLTmpl = `
+provider "polaris" {
+	credentials = "{{ .Provider.Credentials }}"
+}
+
+resource "polaris_gcp_project" "default" {
+	credentials    = "{{ .Resource.Credentials }}"
+	project        = "{{ .Resource.ProjectID }}"
+	project_name   = "{{ .Resource.ProjectName }}"
+	project_number = {{ .Resource.ProjectNumber }}
+
+	feature {
+		name = "CLOUD_SQL_PROTECTION"
+		permission_groups = [
+			"BASIC",
+			"EXPORT_AND_RESTORE",
+		]
+	}
+}
+`
+
+// requireCloudSQLFeatureFlag skips the test if the Cloud SQL protection feature
+// is not enabled for the account.
+func requireCloudSQLFeatureFlag(t *testing.T) {
+	t.Helper()
+
+	credentials := os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE")
+	if credentials == "" {
+		t.Skip("RUBRIK_POLARIS_SERVICEACCOUNT_FILE not set")
+	}
+
+	ctx := context.Background()
+	c, err := newClient(ctx, credentials, polaris.CacheParams{})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	const cloudSQL = core.FeatureFlagName("CNP_GCP_SQL_ENABLED")
+	if !c.flag(ctx, cloudSQL) {
+		t.Skipf("feature flag %s is not enabled", cloudSQL)
+	}
+}
+
+// TestAccPolarisGCPProject_cloudSQL verifies that the Cloud SQL protection
+// feature can be onboarded on a GCP project.
+//
+// The test skips unless the CNP_GCP_SQL_ENABLED feature flag is enabled for the
+// RSC account, since RSC rejects the feature without it.
+func TestAccPolarisGCPProject_cloudSQL(t *testing.T) {
+	requireCloudSQLFeatureFlag(t)
+
+	config, project, err := loadGCPTestConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projectCloudSQL, err := makeTerraformConfig(config, gcpProjectCloudSQLTmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: providerFactories,
+		Steps: []resource.TestStep{{
+			Config: projectCloudSQL,
+			Check: resource.ComposeTestCheckFunc(
+				// Project resource.
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project", project.ProjectID),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_name", project.ProjectName),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "project_number", strconv.FormatInt(project.ProjectNumber, 10)),
+				resource.TestCheckResourceAttr("polaris_gcp_project.default", "feature.#", "1"),
+
+				// Cloud SQL Protection feature.
+				resource.TestCheckTypeSetElemNestedAttrs("polaris_gcp_project.default", "feature.*", map[string]string{
+					"%":                   "4",
+					"name":                "CLOUD_SQL_PROTECTION",
+					"permissions":         "",
+					"permission_groups.#": "2",
+					"status":              "CONNECTED",
+				}),
+				resource.TestCheckTypeSetElemAttr("polaris_gcp_project.default", "feature.*.permission_groups.*", "BASIC"),
+				resource.TestCheckTypeSetElemAttr("polaris_gcp_project.default", "feature.*.permission_groups.*", "EXPORT_AND_RESTORE"),
 			),
 		}},
 	})
