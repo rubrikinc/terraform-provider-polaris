@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -273,9 +274,21 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.
 		return diag.FromErr(err)
 	}
 
+	// RSC enables some features on its own: CLOUD_COST_REPORT is added to any
+	// account carrying a workload feature which accrues AWS spend, regardless of
+	// the feature set passed when onboarding. Such a feature cannot be declared
+	// in the feature block, so tracking it would show up as a diff removing it.
+	// The diff applies, but it silently disables cost reporting for the account,
+	// and it returns the next time the features are onboarded, as RSC adds cost
+	// reporting again. Only the features which can be declared are tracked,
+	// which also keeps import from writing an undeclarable feature into state.
+	accountFeatures := slices.DeleteFunc(slices.Clone(account.Features), func(feature aws.Feature) bool {
+		return !slices.Contains(awsCnpFeatureNames, feature.Name)
+	})
+
 	externalID := d.Get(keyExternalID).(string)
-	features := make([]core.Feature, 0, len(account.Features))
-	for _, feature := range account.Features {
+	features := make([]core.Feature, 0, len(accountFeatures))
+	for _, feature := range accountFeatures {
 		features = append(features, feature.Feature)
 	}
 	roleChainingAccountID := account.RoleChainingAccountID
@@ -302,7 +315,7 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.
 		return diag.FromErr(err)
 	}
 	featureSet := &schema.Set{F: schema.HashResource(featureResource())}
-	for _, feature := range account.Features {
+	for _, feature := range accountFeatures {
 		groups := &schema.Set{F: schema.HashString}
 		for _, group := range feature.Feature.PermissionGroups {
 			groups.Add(string(group))
@@ -322,7 +335,7 @@ func awsReadCnpAccount(ctx context.Context, d *schema.ResourceData, m any) diag.
 		return diag.FromErr(err)
 	}
 	regions := &schema.Set{F: schema.HashString}
-	for _, feature := range account.Features {
+	for _, feature := range accountFeatures {
 		for _, region := range feature.Regions {
 			regions.Add(region)
 		}
@@ -461,12 +474,88 @@ func awsDeleteCnpAccount(ctx context.Context, d *schema.ResourceData, m any) dia
 	name := d.Get(keyName).(string)
 	nativeID := d.Get(keyNativeID).(string)
 
+	id, err := uuid.Parse(d.Id())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Read the account to find out which features RSC enabled on its own, see
+	// featuresToRemove.
+	account, err := aws.Wrap(client).AccountByID(ctx, id)
+	if errors.Is(err, graphql.ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// RSC removes every feature on the account when passed an empty feature
+	// list, so an empty result must not be handed to RemoveAccountWithIAM. What
+	// is left on the account then belongs to RSC or to another resource.
+	features = featuresToRemove(features, account)
+	if len(features) == 0 {
+		remaining := make([]string, 0, len(account.Features))
+		for _, feature := range account.Features {
+			remaining = append(remaining, feature.Name)
+		}
+		slices.Sort(remaining)
+
+		d.SetId("")
+		return diag.Diagnostics{{
+			Severity: diag.Warning,
+			Summary:  "AWS account not removed",
+			Detail: fmt.Sprintf("None of the features tracked in state are enabled on cloud account %s, so "+
+				"nothing was removed and the account was left in RSC. Features still enabled on the account: %s.",
+				id, strings.Join(remaining, ", ")),
+		}}
+	}
+
 	if err := aws.Wrap(client).RemoveAccountWithIAM(ctx, aws.AccountWithName(cloud, nativeID, name), features, deleteSnapshots); err != nil {
 		return diag.FromErr(err)
 	}
 
 	d.SetId("")
 	return nil
+}
+
+// featuresToRemove returns the features to remove when destroying an account:
+// the declared features tracked in state which RSC still has on the account,
+// plus CLOUD_COST_REPORT when RSC has it on the account.
+//
+// RSC removes the account once its last feature is removed, and it enables
+// CLOUD_COST_REPORT on its own (see awsReadCnpAccount) without ever removing it
+// along with the features it was enabled for, so removing only the declared
+// features would leave cost reporting behind, and the account with it. The
+// position of cost reporting in the result carries no meaning: it has no parent
+// and no child features, and the SDK reorders the list before sending it,
+// moving CLOUD_DISCOVERY last.
+//
+// Declared features which RSC no longer has, e.g. removed out of band, are
+// dropped. RSC rejects the removal of a feature the account does not have,
+// which would otherwise leave the resource impossible to destroy. The declared
+// features are matched by name, so the permission groups tracked in state are
+// kept.
+//
+// The other features RSC enables on its own are left to RSC. They are deletion
+// children of the declared features, e.g. CLOUDACCOUNTS is a deletion child of
+// CLOUD_NATIVE_PROTECTION, and are archived along with their parent. Naming
+// them here would be redundant, as RSC skips a feature already archived by the
+// time it is reached.
+//
+// The result is empty when RSC has none of the declared features and no cost
+// reporting. Callers must not pass an empty feature list to RSC, see
+// awsDeleteCnpAccount.
+func featuresToRemove(declared []core.Feature, account aws.CloudAccount) []core.Feature {
+	features := slices.DeleteFunc(slices.Clone(declared), func(feature core.Feature) bool {
+		_, ok := account.Feature(feature)
+		return !ok
+	})
+	if _, ok := account.Feature(core.FeatureCloudCostReport); ok {
+		features = append(features, core.FeatureCloudCostReport)
+	}
+
+	return features
 }
 
 func awsCustomizeDiffCnpAccount(ctx context.Context, diff *schema.ResourceDiff, m any) error {
@@ -567,11 +656,7 @@ func featureResource() *schema.Resource {
 				Description: "RSC feature name. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
 					"`CLOUD_NATIVE_DYNAMODB_PROTECTION`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_NATIVE_S3_PROTECTION`, " +
 					"`EXOCOMPUTE`, `KUBERNETES_PROTECTION`, `RDS_PROTECTION`, `ROLE_CHAINING` and `SERVERS_AND_APPS`.",
-				ValidateFunc: validation.StringInSlice([]string{
-					"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION",
-					"CLOUD_NATIVE_DYNAMODB_PROTECTION", "CLOUD_NATIVE_S3_PROTECTION", "KUBERNETES_PROTECTION",
-					"EXOCOMPUTE", "ROLE_CHAINING", "RDS_PROTECTION", "SERVERS_AND_APPS",
-				}, false),
+				ValidateFunc: validation.StringInSlice(awsCnpFeatureNames, false),
 			},
 			keyPermissionGroups: {
 				Type: schema.TypeSet,
