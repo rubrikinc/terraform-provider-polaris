@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -68,12 +69,8 @@ func resourceAwsCnpAccountAttachments() *schema.Resource {
 			keyFeatures: {
 				Type: schema.TypeSet,
 				Elem: &schema.Schema{
-					Type: schema.TypeString,
-					ValidateFunc: validation.StringInSlice([]string{
-						"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION",
-						"CLOUD_NATIVE_S3_PROTECTION", "CLOUD_NATIVE_DYNAMODB_PROTECTION", "EXOCOMPUTE",
-						"RDS_PROTECTION", "KUBERNETES_PROTECTION", "SERVERS_AND_APPS", "ROLE_CHAINING",
-					}, false),
+					Type:         schema.TypeString,
+					ValidateFunc: validation.StringInSlice(awsCnpFeatureNames, false),
 				},
 				Optional: true,
 				Computed: true,
@@ -186,8 +183,14 @@ func awsReadCnpAccountAttachments(ctx context.Context, d *schema.ResourceData, m
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	// Skip the features RSC enabled on its own, e.g. CLOUD_COST_REPORT, since
+	// they cannot be declared in the features field. See the comment in
+	// awsReadCnpAccount.
 	features := &schema.Set{F: schema.HashString}
 	for _, feature := range account.Features {
+		if !slices.Contains(awsCnpFeatureNames, feature.Feature.Name) {
+			continue
+		}
 		features.Add(feature.Feature.Name)
 	}
 

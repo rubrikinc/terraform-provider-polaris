@@ -74,6 +74,16 @@ page_title: "Changelog"
 * Fix a bug in the `polaris_sla_domain` resource where a V2 (Rubrik-managed) Azure SQL Database or Azure SQL Managed
   Instance SLA Domain would additionally send its `backup_location` as an AWS S3 configuration when the AWS S3
   multiple backup locations feature was not enabled for the RSC account. [[docs](../resources/sla_domain.md)]
+* Improve how features are tracked in the `polaris_aws_cnp_account` resource. RSC enables the `CLOUD_COST_REPORT`
+  feature on its own for accounts carrying a workload feature which accrues AWS spend, regardless of the feature set
+  passed when onboarding. As the feature cannot be declared in the `feature` block, it showed up as a diff removing
+  it, which silently disabled cost reporting for the account and came back the next time the features were onboarded.
+  Only the features which can be declared are tracked now, on import as well. The same applies to the `features`
+  field of the `polaris_aws_cnp_account_attachments` resource. [[docs](../resources/aws_cnp_account.md)]
+* Improve how an account is removed by the `polaris_aws_cnp_account` resource. RSC removes an account once its last
+  feature is removed, and it does not remove the `CLOUD_COST_REPORT` feature it enables on its own along with the
+  features it was enabled for, so cost reporting is now removed explicitly. Previously the account could remain in
+  RSC after the resource was destroyed. [[docs](../resources/aws_cnp_account.md)]
 * The `polaris_sla_domain` resource now rejects `backup_location` when it is set for object types which do not support
   one. Previously the block was sent as an AWS S3 configuration for any object type, where RSC ignored it.
   [[docs](../resources/sla_domain.md)]
