@@ -13,6 +13,9 @@ page_title: "Changelog"
   fields at plan time when they are set for an `object_type` they do not apply to. Previously these fields were
   silently ignored for other object types. See the [v1.10.0 upgrade guide](upgrade_guide_v1.10.0.md).
   [[docs](../data-sources/object.md)]
+* **Breaking Change:** The `polaris_sla_domain` resource now rejects `backup_location` when it is set for object types
+  which do not support one. Previously the block was sent as an AWS S3 configuration for any object type, where RSC
+  ignored it. See the [v1.10.0 upgrade guide](upgrade_guide_v1.10.0.md). [[docs](../resources/sla_domain.md)]
 * **Deprecated:** `cluster_security_group_id` and `node_security_group_id` in the `polaris_aws_exocompute`
   resource. RSC now always creates and manages the Exocompute security groups for RSC managed configurations.
   Existing configurations continue to work, but the fields will be removed in a future release. See the
@@ -40,9 +43,9 @@ page_title: "Changelog"
   Set `subscription_id` to disambiguate a server name shared across subscriptions.
   [[docs](../data-sources/object.md)]
 * Add support for the `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE` object type and the
-  `azure_postgres_flexible_server_config` block in the `polaris_sla_domain` resource, allowing an SLA Domain to
-  protect Azure Postgres flexible servers and to set the point-in-time restore retention RSC enforces on the source
-  server. The object type cannot be combined with other object types and requires a `backup_location`.
+  `azure_postgres_flexible_server_config` block in the `polaris_sla_domain` resource and data source, allowing an SLA
+  Domain to protect Azure Postgres flexible servers and to set the point-in-time restore retention RSC enforces on the
+  source server. The object type cannot be combined with other object types and requires a `backup_location`.
   [[docs](../resources/sla_domain.md#nested-schema-for-azure_postgres_flexible_server_config)]
 * Add support for the `CLOUD_SQL_PROTECTION` feature in the `polaris_gcp_permissions` data source, which backs up
   Google Cloud SQL instances. The feature has the `BASIC` and `EXPORT_AND_RESTORE` permission groups.
@@ -84,9 +87,6 @@ page_title: "Changelog"
   feature is removed, and it does not remove the `CLOUD_COST_REPORT` feature it enables on its own along with the
   features it was enabled for, so cost reporting is now removed explicitly. Previously the account could remain in
   RSC after the resource was destroyed. [[docs](../resources/aws_cnp_account.md)]
-* The `polaris_sla_domain` resource now rejects `backup_location` when it is set for object types which do not support
-  one. Previously the block was sent as an AWS S3 configuration for any object type, where RSC ignored it.
-  [[docs](../resources/sla_domain.md)]
 * The `polaris_azure_subscription` resource now reads back the name and the principal ID of the user-assigned managed
   identity of the `postgres_flexible_server_protection` feature. Previously the identity was not read back at all,
   leaving both fields empty in state after an import. Note, RSC does not return the region or the resource group name
