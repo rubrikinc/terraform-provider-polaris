@@ -9,8 +9,9 @@ resource "polaris_gcp_exocompute" "exocompute" {
   }
 
   regional_config {
-    region      = "us-east1"
-    subnet_name = "my-vpc-subnet-02"
-    vpc_name    = "my-vpc-02"
+    region               = "us-east1"
+    subnet_name          = "my-vpc-subnet-02"
+    vpc_name             = "my-vpc-02"
+    secondary_range_name = "my-pods-range"
   }
 }

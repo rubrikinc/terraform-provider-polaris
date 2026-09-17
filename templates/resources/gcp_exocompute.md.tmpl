@@ -12,32 +12,20 @@ description: |-
 {{if .HasExample}}
 ## Example Usage
 
+Exocompute is configured per region, using one `regional_config` block for each region the cluster should run in. The
+GKE pods use the `pods-cidr-range` secondary IP range on the subnet, unless another range is specified with the
+`secondary_range_name` field:
+
 {{tffile .ExampleFile}}
+
+To run Exocompute on a Shared VPC, where the VPC network belongs to a separate host project, specify the host project
+using the `host_project_id` field. Note, this is the GCP project ID of the host project, not the RSC cloud account ID,
+which is why the example below reads `project_id` and not `id` from the `polaris_gcp_project` data source:
+
+{{tffile "examples/resources/polaris_gcp_exocompute/shared-vpc.tf"}}
 {{end}}
 
-## Schema
-
-### Required
-
-- `cloud_account_id` (String) RSC cloud account ID. This is the ID of the `polaris_gcp_project` resource for which the Exocompute service runs. Changing this forces a new resource to be created.
-- `regional_config` (Block Set, Min: 1) Regional configuration for the Exocompute service. (see [below for nested schema](#nestedblock--regional_config))
-
-### Optional
-
-- `trigger_health_check` (Boolean) Trigger a health check for the Exocompute configuration. Defaults to `false`.
-
-### Read-Only
-
-- `id` (String) RSC Cloud Account ID (UUID).
-
-<a id="nestedblock--regional_config"></a>
-### Nested Schema for `regional_config`
-
-Optional:
-
-- `region` (String) GCP region to run the exocompute service in. Should be specified in the standard GCP style, e.g. `us-east1`.
-- `subnet_name` (String) Name of the GCP subnet to run the exocompute service in.
-- `vpc_name` (String) Name of the GCP VPC to run the exocompute service in.
+{{ .SchemaMarkdown | trimspace }}
 
 ## Import
 

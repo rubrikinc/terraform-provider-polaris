@@ -42,10 +42,18 @@ of the GCP project was onboarded without the ´AUTOMATED_NETWORKING_SETUP´
 permission group. If the GCP project was onboarded with the
 ´AUTOMATED_NETWORKING_SETUP´ permission group, RSC will automatically create
 and manage the networking resources for Exocompute.
+
+~> **Note:** Only a single ´polaris_gcp_exocompute´ resource should be created
+per cloud account. RSC maintains a single Exocompute configuration per cloud
+account, so multiple resources referring to the same ´cloud_account_id´
+overwrite each other's regional configurations. To run Exocompute in more than
+one region, add a ´regional_config´ block per region.
 `
 
-// This resource uses a template for its documentation, remember to update the
-// template if the documentation for any field changes.
+// gcpDefaultSecondaryRangeName is the name RSC gives the GKE pods secondary
+// IP range when the regional configuration doesn't specify one.
+const gcpDefaultSecondaryRangeName = "pods-cidr-range"
+
 func resourceGcpExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: gcpCreateExocompute,
@@ -89,12 +97,29 @@ func resourceGcpExocompute() *schema.Resource {
 func gcpRegionalConfigResource() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
+			keyHostProjectID: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "GCP project ID of the project hosting the VPC network. Only needed when the VPC " +
+					"network is a Shared VPC. When omitted, the VPC network is assumed to belong to the same GCP " +
+					"project as the Exocompute cluster. Note, this is the GCP project ID, e.g. " +
+					"`my-host-project`, and not the RSC cloud account ID.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
 			keyRegion: {
 				Type:     schema.TypeString,
 				Optional: true,
 				Description: "GCP region to run the exocompute service in. Should be specified in the standard GCP " +
 					"style, e.g. `us-east1`.",
 				ValidateFunc: validation.StringInSlice(gqlgcp.AllRegionNames(), false),
+			},
+			keySecondaryRangeName: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  gcpDefaultSecondaryRangeName,
+				Description: "Name of the GKE pods secondary IP range on the subnet. Defaults to " +
+					"`pods-cidr-range`.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keySubnetName: {
 				Type:         schema.TypeString,
@@ -216,9 +241,11 @@ func fromRegionalConfig(d *schema.ResourceData) []exocompute.RegionalConfig {
 	for _, config := range d.Get(keyRegionalConfig).(*schema.Set).List() {
 		config := config.(map[string]any)
 		configs = append(configs, exocompute.RegionalConfig{
-			Region:         gqlgcp.RegionFromName(config[keyRegion].(string)),
-			SubnetName:     config[keySubnetName].(string),
-			VPCNetworkName: config[keyVPCName].(string),
+			Region:             gqlgcp.RegionFromName(config[keyRegion].(string)),
+			SubnetName:         config[keySubnetName].(string),
+			VPCNetworkName:     config[keyVPCName].(string),
+			HostProjectID:      config[keyHostProjectID].(string),
+			SecondaryRangeName: config[keySecondaryRangeName].(string),
 		})
 	}
 
@@ -229,9 +256,11 @@ func toRegionalConfig(exoConfigs []exocompute.GCPConfiguration) *schema.Set {
 	configs := &schema.Set{F: schema.HashResource(gcpRegionalConfigResource())}
 	for _, exoConfig := range exoConfigs {
 		configs.Add(map[string]any{
-			keyRegion:     exoConfig.Config.Region.Name(),
-			keySubnetName: exoConfig.Config.SubnetName,
-			keyVPCName:    exoConfig.Config.VPCNetworkName,
+			keyRegion:             exoConfig.Config.Region.Name(),
+			keySubnetName:         exoConfig.Config.SubnetName,
+			keyVPCName:            exoConfig.Config.VPCNetworkName,
+			keyHostProjectID:      exoConfig.Config.HostProjectID,
+			keySecondaryRangeName: exoConfig.Config.SecondaryRangeName,
 		})
 	}
 
