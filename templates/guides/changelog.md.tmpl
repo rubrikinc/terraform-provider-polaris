@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.11.0
+* Add support for specifying the Shared VPC host project and the GKE pods secondary IP range in the
+  `regional_config` block of the `polaris_gcp_exocompute` resource, using the new `host_project_id` and
+  `secondary_range_name` fields. [[docs](../resources/gcp_exocompute.md)]
+
 ## v1.10.0
 * **Breaking Change:** The `timeouts` block in the `polaris_object` data source is now a nested attribute, so a custom
   read timeout is written as `timeouts = { read = "10m" }` instead of `timeouts { read = "10m" }`. This is a result of
