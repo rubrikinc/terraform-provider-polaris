@@ -156,3 +156,27 @@ resource "polaris_sla_domain" "azure_sql_v1" {
     }
   }
 }
+
+# GCP BigQuery SLA
+# - BigQuery backs up directly to its backup locations, so backup_location is
+#   required and the archival block is not used
+# - The most frequent schedule must take a snapshot at least every 7 days
+data "polaris_gcp_archival_location" "archival_location" {
+  name = "my-archival-location"
+}
+
+resource "polaris_sla_domain" "gcp_bigquery" {
+  name         = "gcp-bigquery"
+  description  = "GCP BigQuery SLA"
+  object_types = ["GCP_BIGQUERY_OBJECT_TYPE"]
+
+  daily_schedule {
+    frequency      = 1
+    retention      = 30
+    retention_unit = "DAYS"
+  }
+
+  backup_location {
+    archival_group_id = data.polaris_gcp_archival_location.archival_location.id
+  }
+}

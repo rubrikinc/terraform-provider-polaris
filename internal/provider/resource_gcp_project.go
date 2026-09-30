@@ -73,6 +73,24 @@ are used when specifying the feature.
   ´CLOUDSQL´ permission group is also required on the ´GCP_SHARED_VPC_HOST´
   feature of the host project.
 
+´GCP_BIGQUERY_PROTECTION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+  * ´EXPORT_AND_RESTORE´ - Represents the set of permissions required for export
+    and restore operations.
+
+´GCP_BIGQUERY_RESERVATION´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
+  Note, RSC runs BigQuery backup and recovery jobs on a BigQuery slot
+  reservation that it creates in a dedicated reservation project. The
+  reservation project is designated by onboarding it with the
+  ´GCP_BIGQUERY_RESERVATION´ feature. Only one project per RSC account can have
+  the feature, so to move it to another project, remove it from the current
+  project before adding it to the new one. Both BigQuery features require
+  BigQuery protection to be enabled for the RSC account.
+
 ´GCP_SHARED_VPC_HOST´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
@@ -438,11 +456,12 @@ func gcpFeatureResourceWithPermissionsAndStatus() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` " +
-					"and `SERVERS_AND_APPS`.",
+					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_BIGQUERY_PROTECTION`, " +
+					"`GCP_BIGQUERY_RESERVATION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.",
 				ValidateFunc: validation.StringInSlice([]string{
 					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_SQL_PROTECTION",
-					"GCP_SHARED_VPC_HOST", "EXOCOMPUTE", "SERVERS_AND_APPS",
+					"GCP_BIGQUERY_PROTECTION", "GCP_BIGQUERY_RESERVATION", "GCP_SHARED_VPC_HOST",
+					"EXOCOMPUTE", "SERVERS_AND_APPS",
 				}, false),
 			},
 			keyPermissionGroups: {

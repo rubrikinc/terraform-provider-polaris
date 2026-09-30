@@ -171,10 +171,12 @@ func gcpFeatureResourceWithStatus() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				Description: "RSC feature name. Possible values are `CLOUD_NATIVE_ARCHIVAL`, " +
-					"`CLOUD_NATIVE_PROTECTION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.",
+					"`CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_BIGQUERY_PROTECTION`, " +
+					"`GCP_BIGQUERY_RESERVATION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.",
 				ValidateFunc: validation.StringInSlice([]string{
-					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "GCP_SHARED_VPC_HOST", "EXOCOMPUTE",
-					"SERVERS_AND_APPS",
+					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_SQL_PROTECTION",
+					"GCP_BIGQUERY_PROTECTION", "GCP_BIGQUERY_RESERVATION", "GCP_SHARED_VPC_HOST",
+					"EXOCOMPUTE", "SERVERS_AND_APPS",
 				}, false),
 			},
 			keyPermissionGroups: {

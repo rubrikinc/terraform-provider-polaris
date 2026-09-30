@@ -293,6 +293,30 @@ resource "polaris_sla_domain" "azure_sql_v1" {
     }
   }
 }
+
+# GCP BigQuery SLA
+# - BigQuery backs up directly to its backup locations, so backup_location is
+#   required and the archival block is not used
+# - The most frequent schedule must take a snapshot at least every 7 days
+data "polaris_gcp_archival_location" "archival_location" {
+  name = "my-archival-location"
+}
+
+resource "polaris_sla_domain" "gcp_bigquery" {
+  name         = "gcp-bigquery"
+  description  = "GCP BigQuery SLA"
+  object_types = ["GCP_BIGQUERY_OBJECT_TYPE"]
+
+  daily_schedule {
+    frequency      = 1
+    retention      = 30
+    retention_unit = "DAYS"
+  }
+
+  backup_location {
+    archival_group_id = data.polaris_gcp_archival_location.archival_location.id
+  }
+}
 ```
 
 
@@ -302,7 +326,7 @@ resource "polaris_sla_domain" "azure_sql_v1" {
 ### Required
 
 - `name` (String) SLA Domain name.
-- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `ACTIVE_DIRECTORY_OBJECT_TYPE`, `ATLASSIAN_JIRA_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_DEVOPS_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `CASSANDRA_OBJECT_TYPE`, `D365_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `GITHUB_OBJECT_TYPE`, `GOOGLE_WORKSPACE_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `KUPR_OBJECT_TYPE`, `M365_BACKUP_STORAGE_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `MYSQLDB_OBJECT_TYPE`, `NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, `ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `PROXMOX_OBJECT_TYPE`, `SALESFORCE_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, `SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.
+- `object_types` (Set of String) Object types which can be protected by the SLA Domain. Possible values are `ACTIVE_DIRECTORY_OBJECT_TYPE`, `ATLASSIAN_JIRA_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, `AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_DEVOPS_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE`, `AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, `CASSANDRA_OBJECT_TYPE`, `D365_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_BIGQUERY_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, `GITHUB_OBJECT_TYPE`, `GOOGLE_WORKSPACE_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `KUPR_OBJECT_TYPE`, `M365_BACKUP_STORAGE_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `MYSQLDB_OBJECT_TYPE`, `NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, `ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `PROXMOX_OBJECT_TYPE`, `SALESFORCE_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, `SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types. `GCP_BIGQUERY_OBJECT_TYPE` cannot be combined with other object types, requires at least one `backup_location`, does not support the `archival` block, replication or a minute schedule, and requires snapshots to be taken at least every 7 days.
 
 ### Optional
 
@@ -532,6 +556,8 @@ Required:
 Required:
 
 - `archival_group_id` (String) Archival group ID (UUID).
+
+~> **Note:** An SLA Domain with the `GCP_BIGQUERY_OBJECT_TYPE` object type cannot be combined with any other object type. It backs up directly to its backup locations, so it requires at least one `backup_location` and does not support the `archival` block or replication. Its schedule cannot use `minute_schedule`, and its most frequent schedule must take a snapshot at least every 7 days, e.g., a `daily_schedule` with a `frequency` of at most 7 or a `weekly_schedule` with a `frequency` of 1.
 
 
 <a id="nestedblock--daily_schedule"></a>

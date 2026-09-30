@@ -8,6 +8,20 @@ page_title: "Changelog"
 * Add support for specifying the Shared VPC host project and the GKE pods secondary IP range in the
   `regional_config` block of the `polaris_gcp_exocompute` resource, using the new `host_project_id` and
   `secondary_range_name` fields. [[docs](../resources/gcp_exocompute.md)]
+* Add support for the `GCP_BIGQUERY_PROTECTION` and `GCP_BIGQUERY_RESERVATION` features in the `polaris_gcp_project`
+  resource. `GCP_BIGQUERY_PROTECTION` enables backup and restore of BigQuery datasets in the project.
+  `GCP_BIGQUERY_RESERVATION` designates the project where RSC creates the BigQuery slot reservation it runs BigQuery
+  backup and recovery jobs on. Only one project per RSC account can have the reservation feature. BigQuery protection
+  must be enabled for the RSC account. [[docs](../resources/gcp_project.md)]
+* Add support for the `GCP_BIGQUERY_PROTECTION` and `GCP_BIGQUERY_RESERVATION` features in the
+  `polaris_gcp_permissions` data source. `GCP_BIGQUERY_PROTECTION` has the `BASIC` and `EXPORT_AND_RESTORE` permission
+  groups, and `GCP_BIGQUERY_RESERVATION` has the `BASIC` permission group.
+  [[docs](../data-sources/gcp_permissions.md)]
+* Add support for the `GCP_BIGQUERY_OBJECT_TYPE` object type in the `polaris_sla_domain` resource, which is used to
+  protect BigQuery datasets. The object type cannot be combined with other object types, requires a
+  `backup_location`, and does not support the `archival` block, replication or a minute schedule. The most frequent
+  schedule must take a snapshot at least every 7 days. These rules are checked during plan.
+  [[docs](../resources/sla_domain.md)]
 
 ## v1.10.0
 * **Breaking Change:** The `timeouts` block in the `polaris_object` data source is now a nested attribute, so a custom

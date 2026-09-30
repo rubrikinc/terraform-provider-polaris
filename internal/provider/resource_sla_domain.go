@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -1180,13 +1181,16 @@ func resourceSLADomain() *schema.Resource {
 					"`ACTIVE_DIRECTORY_OBJECT_TYPE`, `ATLASSIAN_JIRA_OBJECT_TYPE`, `AWS_DYNAMODB_OBJECT_TYPE`, `AWS_EC2_EBS_OBJECT_TYPE`, `AWS_RDS_OBJECT_TYPE`, `AWS_S3_OBJECT_TYPE`, " +
 					"`AZURE_AD_OBJECT_TYPE`, `AZURE_BLOB_OBJECT_TYPE`, `AZURE_DEVOPS_OBJECT_TYPE`, `AZURE_OBJECT_TYPE`, `AZURE_POSTGRES_FLEXIBLE_SERVER_OBJECT_TYPE`, " +
 					"`AZURE_SQL_DATABASE_OBJECT_TYPE`, `AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE`, " +
-					"`CASSANDRA_OBJECT_TYPE`, `D365_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, " +
+					"`CASSANDRA_OBJECT_TYPE`, `D365_OBJECT_TYPE`, `DB2_OBJECT_TYPE`, `EXCHANGE_OBJECT_TYPE`, `FILESET_OBJECT_TYPE`, `GCP_BIGQUERY_OBJECT_TYPE`, `GCP_CLOUD_SQL_OBJECT_TYPE`, `GCP_OBJECT_TYPE`, " +
 					"`GOOGLE_WORKSPACE_OBJECT_TYPE`, `HYPERV_OBJECT_TYPE`, `INFORMIX_INSTANCE_OBJECT_TYPE`, `K8S_OBJECT_TYPE`, `KUPR_OBJECT_TYPE`, " +
 					"`M365_BACKUP_STORAGE_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `MYSQLDB_OBJECT_TYPE`, " +
 					"`NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, " +
 					"`ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `PROXMOX_OBJECT_TYPE`, `SALESFORCE_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, " +
 					"`SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. " +
-					"Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types.",
+					"Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types. " +
+					"`GCP_BIGQUERY_OBJECT_TYPE` cannot be combined with other object types, requires at least one " +
+					"`backup_location`, does not support the `archival` block, replication or a minute schedule, and " +
+					"requires snapshots to be taken at least every 7 days.",
 			},
 			keyQuarterlySchedule: {
 				Type: schema.TypeList,
@@ -2308,11 +2312,11 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 		}
 
 		// backup_location is routed to one of two places depending on the object
-		// type. Azure Postgres Flexible Server and Azure SQL (V1/V2 model) store
-		// their backup location in the SLA-level backup location specs. AWS S3
-		// uses the specs when the multiple backup locations feature is enabled and
-		// the legacy object specific config otherwise. No other object type
-		// accepts a backup location.
+		// type. Azure Postgres Flexible Server, Azure SQL (V1/V2 model) and GCP
+		// BigQuery store their backup location in the SLA-level backup location
+		// specs. AWS S3 uses the specs when the multiple backup locations feature
+		// is enabled and the legacy object specific config otherwise. No other
+		// object type accepts a backup location.
 		//
 		// Azure SQL V1 (Azure-managed) SLAs must not carry a backup location at
 		// all. They are routed to the specs together with V2 so validateAzureSQLSLA
@@ -2324,6 +2328,7 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 		hasAzurePostgres := objectTypeSet.Contains(string(gqlsla.ObjectAzurePostgresFlexibleServer))
 		hasAzureSQL := objectTypeSet.Contains(string(gqlsla.ObjectAzureSQLDatabase)) ||
 			objectTypeSet.Contains(string(gqlsla.ObjectAzureSQLManagedInstance))
+		hasGCPBigQuery := objectTypeSet.Contains(string(gqlsla.ObjectGCPBigQuery))
 
 		var backupLocations []gqlsla.BackupLocationSpec
 		var awsS3Config *gqlsla.AWSS3Config
@@ -2332,7 +2337,7 @@ func newSLADomainMutator(op string) func(ctx context.Context, d *schema.Resource
 			if awsS3Config, err = fromAWSS3Config(locations); err != nil {
 				return diag.FromErr(err)
 			}
-		case hasAWSS3 || hasAzurePostgres || (hasAzureSQL && azureSQLRevamp.Enabled):
+		case hasAWSS3 || hasAzurePostgres || (hasAzureSQL && azureSQLRevamp.Enabled) || hasGCPBigQuery:
 			backupLocations = fromBackupLocation(locations)
 		case len(locations) > 0:
 			return diag.Errorf("%s is not supported by the configured object types", keyBackupLocation)
@@ -3117,6 +3122,43 @@ func slaDomainCustomizeDiff(ctx context.Context, d *schema.ResourceDiff, m any) 
 		return err
 	}
 
+	// The number of backup_location blocks is not known during plan when the
+	// blocks are generated from values only known after apply. The check is
+	// then left to the CustomizeDiff run made when the plan is finalized
+	// during apply. A schedule frequency that is not yet known reads as 0,
+	// which passes the checks, for the same reason.
+	if objectTypes != nil && objectTypes.Contains(string(gqlsla.ObjectGCPBigQuery)) && d.NewValueKnown(keyBackupLocation) {
+		var schedule gqlsla.SnapshotSchedule
+		if gcpBigQueryPlannedBlockCount(d, keyMinuteSchedule) > 0 {
+			schedule.Minute = &gqlsla.MinuteSnapshotSchedule{}
+		}
+		if frequency, ok := gcpBigQueryPlannedFrequency(d, keyHourlySchedule); ok {
+			schedule.Hourly = &gqlsla.HourlySnapshotSchedule{BasicSchedule: gqlsla.BasicSnapshotSchedule{Frequency: frequency}}
+		}
+		if frequency, ok := gcpBigQueryPlannedFrequency(d, keyDailySchedule); ok {
+			schedule.Daily = &gqlsla.DailySnapshotSchedule{BasicSchedule: gqlsla.BasicSnapshotSchedule{Frequency: frequency}}
+		}
+		if frequency, ok := gcpBigQueryPlannedFrequency(d, keyWeeklySchedule); ok {
+			schedule.Weekly = &gqlsla.WeeklySnapshotSchedule{BasicSchedule: gqlsla.BasicSnapshotSchedule{Frequency: frequency}}
+		}
+		if gcpBigQueryPlannedBlockCount(d, keyMonthlySchedule) > 0 {
+			schedule.Monthly = &gqlsla.MonthlySnapshotSchedule{}
+		}
+		if gcpBigQueryPlannedBlockCount(d, keyQuarterlySchedule) > 0 {
+			schedule.Quarterly = &gqlsla.QuarterlySnapshotSchedule{}
+		}
+		if gcpBigQueryPlannedBlockCount(d, keyYearlySchedule) > 0 {
+			schedule.Yearly = &gqlsla.YearlySnapshotSchedule{}
+		}
+
+		err := validateGCPBigQueryObjectType(objectTypes.List(), schedule,
+			gcpBigQueryPlannedBlockCount(d, keyBackupLocation), gcpBigQueryPlannedBlockCount(d, keyArchival),
+			gcpBigQueryPlannedBlockCount(d, keyReplicationSpec))
+		if err != nil {
+			return err
+		}
+	}
+
 	// Changing the backup service of an existing SLA domain is rejected below.
 	// Creating a new SLA domain with any backup service is allowed, so the
 	// check is scoped rather than returning early for the whole function.
@@ -3172,6 +3214,86 @@ func validateAzurePostgresFlexibleServerConfig(configPresent bool, objectTypes *
 	}
 
 	return nil
+}
+
+// validateGCPBigQueryObjectType validates an SLA carrying the GCP BigQuery
+// object type.
+//
+// RSC rejects minute schedules for this object type, and requires the most
+// frequent schedule to take a snapshot at least every 7 days, since a longer
+// interval outlasts the BigQuery change history window and turns every
+// incremental backup into a full backup. Monthly, quarterly and yearly
+// schedules are always further apart than that, so the SLA needs an hourly,
+// daily or weekly schedule within the limit.
+//
+// The other rules are not expressed in the RSC schema. The object type cannot
+// be combined with any other, matching the RSC UI, which does not allow it. A
+// backup location is mandatory and the archival block is not used, because
+// BigQuery backs up directly to its backup locations, which are carried in
+// backupLocationSpecs rather than the legacy archivalSpecs.
+//
+// This is called from CustomizeDiff so that it fails during plan rather than
+// part way through an apply.
+func validateGCPBigQueryObjectType(objectTypeList []any, schedule gqlsla.SnapshotSchedule, backupLocationCount, archivalCount, replicationCount int) error {
+	if len(objectTypeList) > 1 {
+		return fmt.Errorf("the GCP BigQuery object type cannot be combined with other object types")
+	}
+	if archivalCount > 0 {
+		return fmt.Errorf("the GCP BigQuery object type stores its backup location in backup_location, not the " +
+			"archival block; remove the archival block")
+	}
+	if backupLocationCount == 0 {
+		return fmt.Errorf("the GCP BigQuery object type requires a backup_location")
+	}
+	if replicationCount > 0 {
+		return fmt.Errorf("the GCP BigQuery object type does not support replication")
+	}
+	if schedule.Minute != nil {
+		return fmt.Errorf("the GCP BigQuery object type does not support a minute schedule")
+	}
+
+	// The interval is measured by the most frequent schedule, in hours.
+	const maxIntervalHours = 7 * 24
+	var intervals []int
+	if schedule.Hourly != nil {
+		intervals = append(intervals, schedule.Hourly.BasicSchedule.Frequency)
+	}
+	if schedule.Daily != nil {
+		intervals = append(intervals, 24*schedule.Daily.BasicSchedule.Frequency)
+	}
+	if schedule.Weekly != nil {
+		intervals = append(intervals, 7*24*schedule.Weekly.BasicSchedule.Frequency)
+	}
+	hasLongSchedule := schedule.Monthly != nil || schedule.Quarterly != nil || schedule.Yearly != nil
+	if len(intervals) == 0 && !hasLongSchedule {
+		return nil
+	}
+	if len(intervals) == 0 || slices.Min(intervals) > maxIntervalHours {
+		return fmt.Errorf("the GCP BigQuery object type requires a snapshot at least every 7 days; add an " +
+			"hourly, daily or weekly schedule with an interval of at most 7 days")
+	}
+
+	return nil
+}
+
+// gcpBigQueryPlannedFrequency returns the planned frequency of the GCP BigQuery
+// SLA schedule block with the specified key, and whether the block is present.
+// A frequency that is not yet known reads as 0.
+func gcpBigQueryPlannedFrequency(d *schema.ResourceDiff, key string) (int, bool) {
+	blocks, _ := d.Get(key).([]any)
+	if len(blocks) == 0 {
+		return 0, false
+	}
+	block, _ := blocks[0].(map[string]any)
+	frequency, _ := block[keyFrequency].(int)
+	return frequency, true
+}
+
+// gcpBigQueryPlannedBlockCount returns the number of planned blocks with the
+// specified key for a GCP BigQuery SLA.
+func gcpBigQueryPlannedBlockCount(d *schema.ResourceDiff, key string) int {
+	blocks, _ := d.Get(key).([]any)
+	return len(blocks)
 }
 
 // validateAzurePostgresFlexibleServerObjectType validates an Azure Postgres

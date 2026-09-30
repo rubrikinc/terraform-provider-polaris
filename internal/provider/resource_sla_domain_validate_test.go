@@ -21,12 +21,15 @@
 package provider
 
 import (
+	"context"
 	"errors"
+	"maps"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 )
 
@@ -262,6 +265,203 @@ func TestValidateAzurePostgresFlexibleServerObjectType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateAzurePostgresFlexibleServerObjectType(
 				tt.objectTypes, tt.backupLocations, tt.archivalSpecs, tt.replicationSpecs)
+			switch {
+			case tt.wantErr == "" && err != nil:
+				t.Fatalf("unexpected error: %v", err)
+			case tt.wantErr != "" && err == nil:
+				t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+			case tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr):
+				t.Fatalf("error %q does not contain %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateGCPBigQueryObjectType(t *testing.T) {
+	bq := string(gqlsla.ObjectGCPBigQuery)
+	basic := func(frequency int) gqlsla.BasicSnapshotSchedule {
+		return gqlsla.BasicSnapshotSchedule{Frequency: frequency}
+	}
+	hourly := func(frequency int) *gqlsla.HourlySnapshotSchedule {
+		return &gqlsla.HourlySnapshotSchedule{BasicSchedule: basic(frequency)}
+	}
+	daily := func(frequency int) *gqlsla.DailySnapshotSchedule {
+		return &gqlsla.DailySnapshotSchedule{BasicSchedule: basic(frequency)}
+	}
+	weekly := func(frequency int) *gqlsla.WeeklySnapshotSchedule {
+		return &gqlsla.WeeklySnapshotSchedule{BasicSchedule: basic(frequency)}
+	}
+
+	tests := []struct {
+		name             string
+		objectTypes      []any
+		schedule         gqlsla.SnapshotSchedule
+		backupLocations  int
+		archivalSpecs    int
+		replicationSpecs int
+		wantErr          string
+	}{{
+		name:            "ValidDaily",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Daily: daily(1)},
+		backupLocations: 1,
+	}, {
+		name:            "ValidHourlyAtLimit",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Hourly: hourly(168)},
+		backupLocations: 1,
+	}, {
+		name:            "ValidDailyAtLimit",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Daily: daily(7)},
+		backupLocations: 1,
+	}, {
+		name:            "ValidWeeklyAtLimit",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Weekly: weekly(1)},
+		backupLocations: 2,
+	}, {
+		name:            "ValidMostFrequentScheduleWithinLimit",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Daily: daily(1), Weekly: weekly(2), Monthly: &gqlsla.MonthlySnapshotSchedule{}},
+		backupLocations: 1,
+	}, {
+		name:            "CombinedWithOtherObjectType",
+		objectTypes:     []any{bq, string(gqlsla.ObjectGCPCloudSQL)},
+		schedule:        gqlsla.SnapshotSchedule{Daily: daily(1)},
+		backupLocations: 1,
+		wantErr:         "cannot be combined with other object types",
+	}, {
+		name:            "MissingBackupLocation",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Daily: daily(1)},
+		backupLocations: 0,
+		wantErr:         "requires a backup_location",
+	}, {
+		name:            "UsesLegacyArchivalBlock",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Daily: daily(1)},
+		backupLocations: 1,
+		archivalSpecs:   1,
+		wantErr:         "remove the archival block",
+	}, {
+		name:             "Replication",
+		objectTypes:      []any{bq},
+		schedule:         gqlsla.SnapshotSchedule{Daily: daily(1)},
+		backupLocations:  1,
+		replicationSpecs: 1,
+		wantErr:          "does not support replication",
+	}, {
+		name:            "MinuteSchedule",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Minute: &gqlsla.MinuteSnapshotSchedule{}, Daily: daily(1)},
+		backupLocations: 1,
+		wantErr:         "does not support a minute schedule",
+	}, {
+		name:            "HourlyOverLimit",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Hourly: hourly(169)},
+		backupLocations: 1,
+		wantErr:         "at least every 7 days",
+	}, {
+		name:            "DailyOverLimit",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Daily: daily(8)},
+		backupLocations: 1,
+		wantErr:         "at least every 7 days",
+	}, {
+		name:            "WeeklyOverLimit",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Weekly: weekly(2)},
+		backupLocations: 1,
+		wantErr:         "at least every 7 days",
+	}, {
+		name:            "MonthlyOnly",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Monthly: &gqlsla.MonthlySnapshotSchedule{}},
+		backupLocations: 1,
+		wantErr:         "at least every 7 days",
+	}, {
+		name:            "QuarterlyAndYearlyOnly",
+		objectTypes:     []any{bq},
+		schedule:        gqlsla.SnapshotSchedule{Quarterly: &gqlsla.QuarterlySnapshotSchedule{}, Yearly: &gqlsla.YearlySnapshotSchedule{}},
+		backupLocations: 1,
+		wantErr:         "at least every 7 days",
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateGCPBigQueryObjectType(
+				tt.objectTypes, tt.schedule, tt.backupLocations, tt.archivalSpecs, tt.replicationSpecs)
+			switch {
+			case tt.wantErr == "" && err != nil:
+				t.Fatalf("unexpected error: %v", err)
+			case tt.wantErr != "" && err == nil:
+				t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+			case tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr):
+				t.Fatalf("error %q does not contain %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// unknownValue is how SDKv2 represents a value that is not known until apply in
+// a raw configuration. The SDK's own constant is in an internal package.
+const unknownValue = "74D93920-ED26-11E3-AC10-0800200C9A66"
+
+// TestSLADomainCustomizeDiffGCPBigQuery runs the GCP BigQuery checks through
+// SimpleDiff, the entry point PlanResourceChange uses, to cover how the planned
+// schedules and blocks are read, including values that are not known during
+// plan. Unknown values must never fail the plan, since CustomizeDiff runs again
+// with known values when the plan is finalized during apply.
+func TestSLADomainCustomizeDiffGCPBigQuery(t *testing.T) {
+	backupLocation := []any{map[string]any{keyArchivalGroupID: "f6b1f4e8-5d1e-4f4e-9b6f-3a1c2d5e7f90"}}
+	schedule := func(frequency any) []any {
+		return []any{map[string]any{keyFrequency: frequency, keyRetention: 7}}
+	}
+	monthly := []any{map[string]any{keyFrequency: 1, keyRetention: 12, keyDayOfMonth: "FIRST_DAY"}}
+
+	tests := []struct {
+		name    string
+		config  map[string]any
+		wantErr string
+	}{{
+		name:   "Valid",
+		config: map[string]any{keyDailySchedule: schedule(1), keyBackupLocation: backupLocation},
+	}, {
+		name:    "MissingBackupLocation",
+		config:  map[string]any{keyDailySchedule: schedule(1)},
+		wantErr: "requires a backup_location",
+	}, {
+		name:    "MinuteSchedule",
+		config:  map[string]any{keyMinuteSchedule: schedule(15), keyBackupLocation: backupLocation},
+		wantErr: "does not support a minute schedule",
+	}, {
+		name:    "WeeklyOverLimit",
+		config:  map[string]any{keyWeeklySchedule: schedule(2), keyBackupLocation: backupLocation},
+		wantErr: "at least every 7 days",
+	}, {
+		name:    "MonthlyOnly",
+		config:  map[string]any{keyMonthlySchedule: monthly, keyBackupLocation: backupLocation},
+		wantErr: "at least every 7 days",
+	}, {
+		name:   "UnknownFrequency",
+		config: map[string]any{keyHourlySchedule: schedule(unknownValue), keyMonthlySchedule: monthly, keyBackupLocation: backupLocation},
+	}, {
+		name:   "UnknownBackupLocations",
+		config: map[string]any{keyDailySchedule: schedule(1), keyBackupLocation: unknownValue},
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := map[string]any{
+				keyName:        "bigquery",
+				keyObjectTypes: []any{string(gqlsla.ObjectGCPBigQuery)},
+			}
+			maps.Copy(config, tt.config)
+
+			_, err := resourceSLADomain().SimpleDiff(context.Background(), &terraform.InstanceState{},
+				terraform.NewResourceConfigRaw(config), nil)
 			switch {
 			case tt.wantErr == "" && err != nil:
 				t.Fatalf("unexpected error: %v", err)
