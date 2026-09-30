@@ -1186,11 +1186,7 @@ func resourceSLADomain() *schema.Resource {
 					"`M365_BACKUP_STORAGE_OBJECT_TYPE`, `MANAGED_VOLUME_OBJECT_TYPE`, `MONGO_OBJECT_TYPE`, `MONGODB_OBJECT_TYPE`, `MSSQL_OBJECT_TYPE`, `MYSQLDB_OBJECT_TYPE`, " +
 					"`NAS_OBJECT_TYPE`, `NCD_OBJECT_TYPE`, `NUTANIX_OBJECT_TYPE`, `O365_OBJECT_TYPE`, `OKTA_OBJECT_TYPE`, `OLVM_OBJECT_TYPE`, `OPENSTACK_OBJECT_TYPE`, " +
 					"`ORACLE_OBJECT_TYPE`, `POSTGRES_DB_CLUSTER_OBJECT_TYPE`, `PROXMOX_OBJECT_TYPE`, `SALESFORCE_OBJECT_TYPE`, `SAP_HANA_OBJECT_TYPE`, " +
-					"`SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`. " +
-					"Note, `AZURE_SQL_DATABASE_OBJECT_TYPE` cannot be provided at the same time as other object types. " +
-					"`GCP_BIGQUERY_OBJECT_TYPE` cannot be combined with other object types, requires at least one " +
-					"`backup_location`, does not support the `archival` block, replication or a minute schedule, and " +
-					"requires snapshots to be taken at least every 7 days.",
+					"`SNAPMIRROR_CLOUD_OBJECT_TYPE`, `VCD_OBJECT_TYPE`, `VOLUME_GROUP_OBJECT_TYPE`, and `VSPHERE_OBJECT_TYPE`.",
 			},
 			keyQuarterlySchedule: {
 				Type: schema.TypeList,
