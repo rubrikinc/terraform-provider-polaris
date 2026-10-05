@@ -8,7 +8,9 @@ description: |-
   and data actions that each permission group requires. It exposes the same
   catalog used by RSC itself, so configurations can discover the available
   groups (for example, the BASIC and RECOVERY split on
-  AZURE_SQL_DB_PROTECTION) at plan time.
+  AZURE_SQL_DB_PROTECTION) at plan time. Only permission groups supported by
+  the provider are returned, RSC can offer permission groups which the provider
+  does not support yet.
   Each statement carries the scope it applies to and the kind of operation it
   authorises. Azure RBAC distinguishes management-plane operations (actions)
   from data-plane operations (data_actions), and many features require
@@ -35,7 +37,9 @@ available for a single RSC Azure feature, along with the Azure RBAC actions
 and data actions that each permission group requires. It exposes the same
 catalog used by RSC itself, so configurations can discover the available
 groups (for example, the `BASIC` and `RECOVERY` split on
-`AZURE_SQL_DB_PROTECTION`) at plan time.
+`AZURE_SQL_DB_PROTECTION`) at plan time. Only permission groups supported by
+the provider are returned, RSC can offer permission groups which the provider
+does not support yet.
 
 Each statement carries the scope it applies to and the kind of operation it
 authorises. Azure RBAC distinguishes management-plane operations (`actions`)

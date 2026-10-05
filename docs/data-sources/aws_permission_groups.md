@@ -7,7 +7,9 @@ description: |-
   available for a single RSC AWS feature, along with the IAM action statements
   that each permission group requires. It exposes the same catalog used by RSC
   itself, so configurations can discover the available groups (for example, the
-  BASIC and RECOVERY split on RDS_PROTECTION) at plan time.
+  BASIC and RECOVERY split on RDS_PROTECTION) at plan time. Only permission
+  groups supported by the provider are returned, RSC can offer permission groups
+  which the provider does not support yet.
   The IAM action statements returned are informational. To generate the IAM roles
   and policies needed for the IAM-based onboarding flow, use the
   polaris_aws_cnp_artifacts and polaris_aws_cnp_permissions data sources,
@@ -27,7 +29,9 @@ The `polaris_aws_permission_groups` data source returns the permission groups
 available for a single RSC AWS feature, along with the IAM action statements
 that each permission group requires. It exposes the same catalog used by RSC
 itself, so configurations can discover the available groups (for example, the
-`BASIC` and `RECOVERY` split on `RDS_PROTECTION`) at plan time.
+`BASIC` and `RECOVERY` split on `RDS_PROTECTION`) at plan time. Only permission
+groups supported by the provider are returned, RSC can offer permission groups
+which the provider does not support yet.
 
 The IAM action statements returned are informational. To generate the IAM roles
 and policies needed for the IAM-based onboarding flow, use the
