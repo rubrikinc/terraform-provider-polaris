@@ -44,7 +44,9 @@ available for a single RSC Azure feature, along with the Azure RBAC actions
 and data actions that each permission group requires. It exposes the same
 catalog used by RSC itself, so configurations can discover the available
 groups (for example, the ´BASIC´ and ´RECOVERY´ split on
-´AZURE_SQL_DB_PROTECTION´) at plan time.
+´AZURE_SQL_DB_PROTECTION´) at plan time. Only permission groups supported by
+the provider are returned, RSC can offer permission groups which the provider
+does not support yet.
 
 Each statement carries the scope it applies to and the kind of operation it
 authorises. Azure RBAC distinguishes management-plane operations (´actions´)
@@ -192,7 +194,61 @@ func (d *azurePermissionGroupsDataSource) Read(ctx context.Context, req datasour
 		return
 	}
 
+	// RSC can offer permission groups which the provider doesn't support yet.
+	// Only return the permission groups accepted by the Azure subscription
+	// resource for the feature, so the result passes its validation. Note, the
+	// SDK will provide this mapping in a future version.
+	supportedGroups := map[string][]core.PermissionGroup{
+		core.FeatureAzurePostgresFlexibleServerProtection.Name: {core.PermissionGroupBasic, core.PermissionGroupRecovery},
+		core.FeatureAzureSQLDBProtection.Name: {
+			core.PermissionGroupBackupV2,
+			core.PermissionGroupBasic,
+			core.PermissionGroupRecovery,
+		},
+		core.FeatureAzureSQLMIProtection.Name: {
+			core.PermissionGroupBackupV2,
+			core.PermissionGroupBasic,
+			core.PermissionGroupRecovery,
+		},
+		core.FeatureCloudDiscovery.Name: {core.PermissionGroupBasic},
+		core.FeatureCloudNativeArchival.Name: {
+			core.PermissionGroupBasic,
+			core.PermissionGroupEncryption,
+			core.PermissionGroupSQLArchival,
+		},
+		core.FeatureCloudNativeArchivalEncryption.Name: {core.PermissionGroupBasic, core.PermissionGroupEncryption},
+		core.FeatureCloudNativeBlobProtection.Name:     {core.PermissionGroupBasic, core.PermissionGroupRecovery},
+		core.FeatureCloudNativeProtection.Name: {
+			core.PermissionGroupBasic,
+			core.PermissionGroupCCES,
+			core.PermissionGroupExportAndRestore,
+			core.PermissionGroupExportAndRestorePowerOffVM,
+			core.PermissionGroupFileLevelRecovery,
+			core.PermissionGroupSnapshotPrivateAccess,
+		},
+		core.FeatureExocompute.Name: {
+			core.PermissionGroupAKSCustomPrivateDNSZone,
+			core.PermissionGroupAutomatedNetworkingSetup,
+			core.PermissionGroupBasic,
+			core.PermissionGroupCustomerManagedCluster,
+			core.PermissionGroupPrivateEndpoints,
+			core.PermissionGroupServiceEndpointAutomation,
+		},
+		core.FeatureServerAndApps.Name: {
+			core.PermissionGroupCCES,
+			core.PermissionGroupSAPHanaSSBasic,
+			core.PermissionGroupSAPHanaSSRecovery,
+		},
+	}
 	groups := slices.Clone(featurePerms[0].PermissionGroups)
+	n := 0
+	for _, pg := range groups {
+		if slices.Contains(supportedGroups[featureName], pg.PermissionGroup) {
+			groups[n] = pg
+			n++
+		}
+	}
+	groups = groups[:n]
 	slices.SortFunc(groups, func(a, b gqlazure.PermissionGroupInfo) int {
 		return cmp.Compare(string(a.PermissionGroup), string(b.PermissionGroup))
 	})

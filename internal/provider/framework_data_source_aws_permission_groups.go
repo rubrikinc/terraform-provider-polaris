@@ -43,7 +43,9 @@ The ´polaris_aws_permission_groups´ data source returns the permission groups
 available for a single RSC AWS feature, along with the IAM action statements
 that each permission group requires. It exposes the same catalog used by RSC
 itself, so configurations can discover the available groups (for example, the
-´BASIC´ and ´RECOVERY´ split on ´RDS_PROTECTION´) at plan time.
+´BASIC´ and ´RECOVERY´ split on ´RDS_PROTECTION´) at plan time. Only permission
+groups supported by the provider are returned, RSC can offer permission groups
+which the provider does not support yet.
 
 The IAM action statements returned are informational. To generate the IAM roles
 and policies needed for the IAM-based onboarding flow, use the
@@ -174,7 +176,48 @@ func (d *awsPermissionGroupsDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 
+	// RSC can offer permission groups which the provider doesn't support yet.
+	// Only return the permission groups accepted by the AWS account resources
+	// for the feature, so the result passes their validation. Note, the SDK
+	// will provide this mapping in a future version.
+	supportedGroups := map[string][]core.PermissionGroup{
+		core.FeatureCloudDiscovery.Name:                {core.PermissionGroupBasic},
+		core.FeatureCloudNativeArchival.Name:           {core.PermissionGroupBasic},
+		core.FeatureCloudNativeDynamoDBProtection.Name: {core.PermissionGroupBasic, core.PermissionGroupRecovery},
+		core.FeatureCloudNativeProtection.Name: {
+			core.PermissionGroupBasic,
+			core.PermissionGroupDownloadFile,
+			core.PermissionGroupExportPowerOff,
+			core.PermissionGroupExportPowerOn,
+			core.PermissionGroupRestore,
+		},
+		core.FeatureCloudNativeS3Protection.Name: {
+			core.PermissionGroupBasic,
+			core.PermissionGroupExport,
+			core.PermissionGroupRecovery,
+		},
+		core.FeatureCyberRecoveryDataClassificationData.Name:     {core.PermissionGroupBasic},
+		core.FeatureCyberRecoveryDataClassificationMetadata.Name: {core.PermissionGroupBasic},
+		core.FeatureDSPMData.Name:                                {core.PermissionGroupBasic},
+		core.FeatureDSPMMetadata.Name:                            {core.PermissionGroupBasic},
+		core.FeatureExocompute.Name:                              {core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster},
+		core.FeatureKubernetesProtection.Name:                    {core.PermissionGroupBasic},
+		core.FeatureLaminarCrossAccount.Name:                     {core.PermissionGroupBasic},
+		core.FeatureLaminarInternal.Name:                         {core.PermissionGroupBasic},
+		core.FeatureOutpost.Name:                                 {core.PermissionGroupBasic},
+		core.FeatureRDSProtection.Name:                           {core.PermissionGroupBasic, core.PermissionGroupRecovery},
+		core.FeatureRoleChaining.Name:                            {core.PermissionGroupBasic},
+		core.FeatureServerAndApps.Name:                           {core.PermissionGroupCCES},
+	}
 	groups := slices.Clone(featurePerms[0].PermissionsGroupPermissions)
+	n := 0
+	for _, pg := range groups {
+		if slices.Contains(supportedGroups[featureName], pg.PermissionsGroup) {
+			groups[n] = pg
+			n++
+		}
+	}
+	groups = groups[:n]
 	slices.SortFunc(groups, func(a, b gqlaws.PermissionsGroupPermissions) int {
 		return cmp.Compare(string(a.PermissionsGroup), string(b.PermissionsGroup))
 	})
