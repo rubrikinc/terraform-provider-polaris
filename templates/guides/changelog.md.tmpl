@@ -24,8 +24,8 @@ page_title: "Changelog"
   [[docs](../resources/sla_domain.md)]
 * Fix a bug in the `polaris_aws_permission_groups` and `polaris_azure_permission_groups` data sources where permission
   groups not supported by the provider were returned, which failed validation when the result was passed to the account
-  resources. Only permission groups supported by the provider are now returned.
-  [[docs](../data-sources/aws_permission_groups.md)]
+  resources. Only permission groups supported by the provider are now returned. See the
+  [v1.11.0 upgrade guide](upgrade_guide_v1.11.0.md). [[docs](../data-sources/aws_permission_groups.md)]
 
 ## v1.10.0
 * **Breaking Change:** The `timeouts` block in the `polaris_object` data source is now a nested attribute, so a custom
