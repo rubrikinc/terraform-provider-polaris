@@ -103,12 +103,8 @@ func resourceAwsExocompute() *schema.Resource {
 				ForceNew:      true,
 				ConflictsWith: []string{keyHostAccountID},
 				RequiredWith:  []string{keyNodeSecurityGroupID},
-				Description: "AWS security group ID for the cluster. Changing this forces a new resource to be " +
-					"created. **Deprecated:** RSC now always creates and manages the Exocompute security " +
-					"groups for RSC managed configurations, remove this field from the configuration.",
-				Deprecated: "RSC now always creates and manages the Exocompute security groups for RSC " +
-					"managed configurations, remove this field from the configuration.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				Description:   "AWS security group ID for the cluster. Changing this forces a new resource to be created.",
+				ValidateFunc:  validation.StringIsNotWhiteSpace,
 			},
 			keyHostAccountID: {
 				Type:         schema.TypeString,
@@ -125,12 +121,8 @@ func resourceAwsExocompute() *schema.Resource {
 				ForceNew:      true,
 				ConflictsWith: []string{keyHostAccountID},
 				RequiredWith:  []string{keyClusterSecurityGroupID},
-				Description: "AWS security group ID for the nodes. Changing this forces a new resource to be " +
-					"created. **Deprecated:** RSC now always creates and manages the Exocompute security " +
-					"groups for RSC managed configurations, remove this field from the configuration.",
-				Deprecated: "RSC now always creates and manages the Exocompute security groups for RSC " +
-					"managed configurations, remove this field from the configuration.",
-				ValidateFunc: validation.StringIsNotWhiteSpace,
+				Description:   "AWS security group ID for the nodes. Changing this forces a new resource to be created.",
+				ValidateFunc:  validation.StringIsNotWhiteSpace,
 			},
 			keyPolarisManaged: {
 				Type:        schema.TypeBool,
