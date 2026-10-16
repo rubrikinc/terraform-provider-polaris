@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.11.1
+* Remove the deprecation of `cluster_security_group_id` and `node_security_group_id` in the `polaris_aws_exocompute`
+  resource. RSC will continue to support security groups passed in by users, so the fields no longer produce a
+  deprecation warning and do not need to be removed from the configuration. [[docs](../resources/aws_exocompute.md)]
+
 ## v1.11.0
 * Add support for specifying the Shared VPC host project and the GKE pods secondary IP range in the
   `regional_config` block of the `polaris_gcp_exocompute` resource, using the new `host_project_id` and
