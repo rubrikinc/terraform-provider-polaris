@@ -23,10 +23,15 @@ resource "polaris_azure_exocompute" "host" {
     cluster_access                      = "AKS_CLUSTER_ACCESS_TYPE_PRIVATE"
     cluster_tier                        = "AKS_CLUSTER_TIER_FREE"
     disk_encryption_at_host             = true
+    disk_encryption_set_id              = "/subscriptions/65774f88-da6a-11eb-bc8f-e798f8b54eba/.../diskEncryptionSets/my-disk-encryption-set"
+    health_check_vm_name_prefix         = "my-health-check"
     max_node_count                      = "AKS_NODE_COUNT_BUCKET_SMALL"
+    postgres_private_dns_zone_id        = "/subscriptions/65774f88-da6a-11eb-bc8f-e798f8b54eba/.../privateDnsZones/my-server.private.postgres.database.azure.com"
+    postgres_subnet_id                  = "/subscriptions/65774f88-da6a-11eb-bc8f-e798f8b54eba/.../virtualNetworks/test/subnets/postgres"
     private_exocompute_dns_zone_id      = "/subscriptions/65774f88-da6a-11eb-bc8f-e798f8b54eba/.../privateDnsZones/privatelink.eastus2.azmk8s.io"
     resource_group_prefix               = "my-resource-group-prefix"
     snapshot_private_access_dns_zone_id = "/subscriptions/65774f88-da6a-11eb-bc8f-e798f8b54eba/.../privateDnsZones/privatelink.blob.core.windows.net"
+    sql_private_dns_zone_id             = "/subscriptions/65774f88-da6a-11eb-bc8f-e798f8b54eba/.../privateDnsZones/privatelink.database.windows.net"
     user_defined_routing                = true
   }
 }
