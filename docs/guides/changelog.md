@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.11.2
+* Update Go version to 1.26.10.
+* No longer build the provider for 32-bit ARM on Windows (`windows_arm`). Windows on ARM64 (`windows_arm64`) is still
+  built.
+
 ## v1.11.1
 * Remove the deprecation of `cluster_security_group_id` and `node_security_group_id` in the `polaris_aws_exocompute`
   resource. RSC will continue to support security groups passed in by users, so the fields no longer produce a
