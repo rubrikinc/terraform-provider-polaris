@@ -579,14 +579,14 @@ func resourceAzureSubscription() *schema.Resource {
 								ValidateFunc: validation.StringInSlice([]string{
 									"BASIC", "PRIVATE_ENDPOINTS", "CUSTOMER_MANAGED_BASIC",
 									"AKS_CUSTOM_PRIVATE_DNS_ZONE", "SERVICE_ENDPOINT_AUTOMATION",
-									"AUTOMATED_NETWORKING_SETUP",
+									"AUTOMATED_NETWORKING_SETUP", "ENCRYPTION",
 								}, false),
 							},
 							Optional: true,
 							Description: "Permission groups to assign to the Exocompute feature. Possible values " +
 								"are `BASIC`, `PRIVATE_ENDPOINTS`, `CUSTOMER_MANAGED_BASIC`, " +
-								"`AKS_CUSTOM_PRIVATE_DNS_ZONE`, `SERVICE_ENDPOINT_AUTOMATION` and " +
-								"`AUTOMATED_NETWORKING_SETUP`.",
+								"`AKS_CUSTOM_PRIVATE_DNS_ZONE`, `SERVICE_ENDPOINT_AUTOMATION`, " +
+								"`AUTOMATED_NETWORKING_SETUP` and `ENCRYPTION`.",
 						},
 						keyPermissions: {
 							Type:     schema.TypeString,

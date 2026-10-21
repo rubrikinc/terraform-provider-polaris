@@ -4,6 +4,22 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.12.0
+* Add support for the Azure Postgres Flexible Server networking, the Azure SQL private DNS zone, the disk encryption
+  set and the health check virtual machine name prefix to the `optional_config` block in the `polaris_azure_exocompute`
+  resource, using the new `postgres_subnet_id`, `postgres_private_dns_zone_id`, `sql_private_dns_zone_id`,
+  `disk_encryption_set_id` and `health_check_vm_name_prefix` fields. The `postgres_subnet_id` and
+  `postgres_private_dns_zone_id` fields must be specified together. They are for subscriptions where the
+  `AUTOMATED_NETWORKING_SETUP` permission group has not been granted. [[docs](../resources/azure_exocompute.md)]
+* Add support for the `ENCRYPTION` permission group for the Exocompute feature in the `polaris_azure_subscription`
+  resource and the `polaris_azure_permission_groups` data source.
+  [[docs](../resources/azure_subscription.md)]
+* Fix a bug in `polaris_azure_exocompute` where creating the resource failed when a private DNS zone was in a different
+  subscription than the Exocompute VNet, or when the subnet had blocking network security group rules. RSC only
+  reports these as warnings, and the RSC UI lets the user continue past them, so they no longer block creation. All
+  other validation failures, such as a delegated subnet or an invalid private DNS zone, still block creation.
+  [[docs](../resources/azure_exocompute.md)]
+
 ## v1.11.2
 * Update Go version to 1.26.10.
 * No longer build the provider for 32-bit ARM on Windows (`windows_arm`). Windows on ARM64 (`windows_arm64`) is still

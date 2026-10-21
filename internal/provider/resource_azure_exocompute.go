@@ -169,6 +169,25 @@ func resourceAzureExocompute() *schema.Resource {
 							Description: "Enable disk encryption at host. Defaults to `false`. Changing this forces " +
 								"a new resource to be created.",
 						},
+						keyDiskEncryptionSetID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the disk encryption set used to encrypt the disks of " +
+								"the cluster nodes with customer managed keys. Changing this forces a new resource " +
+								"to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyHealthCheckVMNamePrefix: {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Description: "Name prefix of the virtual machine RSC launches for the Exocompute health " +
+								"check. If empty, RSC uses its default prefix. RSC validates the prefix and rejects " +
+								"values that would produce an invalid Azure virtual machine name. Changing this " +
+								"forces a new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
 						keyMaxNodeCount: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -186,6 +205,30 @@ func resourceAzureExocompute() *schema.Resource {
 								string(gqlexocompute.AzureClusterNodeCountLarge),
 								string(gqlexocompute.AzureClusterNodeCountXLarge),
 							}, false),
+						},
+						keyPostgresPrivateDNSZoneID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the private DNS zone used to resolve the FQDNs of " +
+								"RSC managed Azure Postgres Flexible Servers from the Exocompute subnet. The name of " +
+								"the zone must end with `.postgres.database.azure.com` and the zone must be linked " +
+								"to the Exocompute VNet. Must be specified together with `postgres_subnet_id`. " +
+								"Changing this forces a new resource to be created.",
+							RequiredWith: []string{keyOptionalConfig + ".0." + keyPostgresSubnetID},
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyPostgresSubnetID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the subnet used for VNet integration of RSC managed " +
+								"Azure Postgres Flexible Servers. The subnet must be in the Exocompute VNet, " +
+								"delegated to `Microsoft.DBforPostgreSQL/flexibleServers`, at least `/28` in size, " +
+								"and different from the Exocompute subnet. Must be specified together with " +
+								"`postgres_private_dns_zone_id`. Changing this forces a new resource to be created.",
+							RequiredWith: []string{keyOptionalConfig + ".0." + keyPostgresPrivateDNSZoneID},
+							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyPrivateExocomputeDNSZoneID: {
 							Type:     schema.TypeString,
@@ -213,6 +256,16 @@ func resourceAzureExocompute() *schema.Resource {
 								"which will resolve private endpoints linked to snapshots. If empty, a new private " +
 								"DNS zone will be created in the Exocompute resource group. Changing this forces a " +
 								"new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keySQLPrivateDNSZoneID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the private DNS zone used to resolve Azure SQL " +
+								"private endpoints. The name of the zone must be `privatelink.database.windows.net` " +
+								"and the zone must be linked to the Exocompute VNet. Changing this forces a new " +
+								"resource to be created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyUserDefinedRouting: {
@@ -476,10 +529,15 @@ func fromAzureOptionalConfig(d *schema.ResourceData) *gqlexocompute.AzureOptiona
 		ClusterAccess:              gqlexocompute.AzureClusterAccess(config[keyClusterAccess].(string)),
 		ClusterTier:                gqlexocompute.AzureClusterTier(config[keyClusterTier].(string)),
 		DiskEncryptionAtHost:       config[keyDiskEncryptionAtHost].(bool),
+		DiskEncryptionSetID:        config[keyDiskEncryptionSetID].(string),
 		ExocomputePrivateDnsZoneID: config[keyPrivateExocomputeDNSZoneID].(string),
+		HealthCheckVMNamePrefix:    config[keyHealthCheckVMNamePrefix].(string),
 		NodeCount:                  gqlexocompute.AzureClusterNodeCount(config[keyMaxNodeCount].(string)),
 		NodeRGPrefix:               config[keyResourceGroupPrefix].(string),
+		PostgresPrivateDnsZoneID:   config[keyPostgresPrivateDNSZoneID].(string),
+		PostgresSubnetID:           config[keyPostgresSubnetID].(string),
 		SnapshotPrivateDnsZoneId:   config[keySnapshotPrivateAccessDNSZoneID].(string),
+		SQLPrivateDnsZoneID:        config[keySQLPrivateDNSZoneID].(string),
 		UserDefinedRouting:         config[keyUserDefinedRouting].(bool),
 		WhitelistRubrikIPs:         config[keyAllowlistRubrikIPs].(bool),
 	}
@@ -501,10 +559,15 @@ func toAzureOptionalConfig(config *gqlexocompute.AzureOptionalConfig) []any {
 		keyClusterAccess:                  string(config.ClusterAccess),
 		keyClusterTier:                    string(config.ClusterTier),
 		keyDiskEncryptionAtHost:           config.DiskEncryptionAtHost,
+		keyDiskEncryptionSetID:            config.DiskEncryptionSetID,
+		keyHealthCheckVMNamePrefix:        config.HealthCheckVMNamePrefix,
 		keyMaxNodeCount:                   string(config.NodeCount),
+		keyPostgresPrivateDNSZoneID:       config.PostgresPrivateDnsZoneID,
+		keyPostgresSubnetID:               config.PostgresSubnetID,
 		keyPrivateExocomputeDNSZoneID:     config.ExocomputePrivateDnsZoneID,
 		keyResourceGroupPrefix:            config.NodeRGPrefix,
 		keySnapshotPrivateAccessDNSZoneID: config.SnapshotPrivateDnsZoneId,
+		keySQLPrivateDNSZoneID:            config.SQLPrivateDnsZoneID,
 		keyUserDefinedRouting:             config.UserDefinedRouting,
 	}}
 }
