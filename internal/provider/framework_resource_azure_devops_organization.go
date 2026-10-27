@@ -291,10 +291,10 @@ func (r *azureDevOpsOrganizationResource) Schema(ctx context.Context, _ resource
 							Description: fmt.Sprintf("Permission groups to enable for the feature. At least one is "+
 								"required. %s. Re-run the onboarding script against the organization to grant the "+
 								"new permissions before applying a change.",
-								possibleValues(devops.AzureSupportedPermissionGroupNames())),
+								possibleValues(core.AzureDevOpsOrganizationPermissionGroupNames())),
 							Validators: []validator.Set{
 								setvalidator.SizeAtLeast(1),
-								setvalidator.ValueStringsAre(stringvalidator.OneOf(devops.AzureSupportedPermissionGroupNames()...)),
+								setvalidator.ValueStringsAre(stringvalidator.OneOf(core.AzureDevOpsOrganizationPermissionGroupNames()...)),
 							},
 						},
 						keyPermissions: schema.StringAttribute{

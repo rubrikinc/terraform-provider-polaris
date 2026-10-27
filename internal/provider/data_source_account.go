@@ -31,9 +31,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -203,7 +200,11 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 		return diag.FromErr(err)
 	}
 
-	awsPermGroups, err := gqlaws.Wrap(client.GQL).AllPermissionsGroupsByFeature(ctx, aws.SupportedFeatures(), gqlaws.ServiceTypeNonBaaS)
+	var awsFeatures []core.Feature
+	for _, name := range core.AWSAccountAllowlistNames() {
+		awsFeatures = append(awsFeatures, core.Feature{Name: name})
+	}
+	awsPermGroups, err := gqlaws.Wrap(client.GQL).AllPermissionsGroupsByFeature(ctx, awsFeatures, gqlaws.ServiceTypeNonBaaS)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -213,7 +214,11 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 	}
 
 	// Populate Azure features block with permission groups.
-	azurePermGroups, err := gqlazure.Wrap(client.GQL).AllPermissionsGroupsByFeature(ctx, azure.SupportedFeatures())
+	var azureFeatures []core.Feature
+	for _, name := range core.AzureSubscriptionAllowlistNames() {
+		azureFeatures = append(azureFeatures, core.Feature{Name: name})
+	}
+	azurePermGroups, err := gqlazure.Wrap(client.GQL).AllPermissionsGroupsByFeature(ctx, azureFeatures)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -223,7 +228,11 @@ func accountRead(ctx context.Context, d *schema.ResourceData, m any) diag.Diagno
 	}
 
 	// Populate GCP features block with permission groups.
-	gcpPermGroups, err := gqlgcp.Wrap(client.GQL).AllPermissionsGroupsByFeature(ctx, gcp.SupportedFeatures())
+	var gcpFeatures []core.Feature
+	for _, name := range core.GCPProjectAllowlistNames() {
+		gcpFeatures = append(gcpFeatures, core.Feature{Name: name})
+	}
+	gcpPermGroups, err := gqlgcp.Wrap(client.GQL).AllPermissionsGroupsByFeature(ctx, gcpFeatures)
 	if err != nil {
 		return diag.FromErr(err)
 	}
