@@ -21,8 +21,10 @@
 package provider
 
 import (
+	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -112,4 +114,81 @@ func TestAccPolarisAzureExocompute_basic(t *testing.T) {
 			),
 		}},
 	})
+}
+
+// TestAzureExocomputeOptionalConfigDiff verifies that the optional_config
+// fields added after v1.11.2 keep the value stored in RSC when they are not
+// set, and that changing one of them replaces the Exocompute configuration.
+func TestAzureExocomputeOptionalConfigDiff(t *testing.T) {
+	const id = "550e8400-e29b-41d4-a716-446655440000"
+	const cloudAccountID = "550e8400-e29b-41d4-a716-446655440001"
+
+	// The new fields hold values configured in RSC, e.g. using the RSC UI.
+	state := map[string]string{
+		"id":                               id,
+		"cloud_account_id":                 cloudAccountID,
+		"region":                           "eastus2",
+		"subnet":                           "subnet",
+		"optional_config.#":                "1",
+		"optional_config.0.cluster_access": "AKS_CLUSTER_ACCESS_TYPE_PRIVATE",
+		"optional_config.0.cluster_tier":   "AKS_CLUSTER_TIER_FREE",
+		"optional_config.0.max_node_count": "AKS_NODE_COUNT_BUCKET_MEDIUM",
+		"optional_config.0.disk_encryption_set_id":       "des",
+		"optional_config.0.health_check_vm_name_prefix":  "prefix",
+		"optional_config.0.postgres_private_dns_zone_id": "postgres-zone",
+		"optional_config.0.postgres_subnet_id":           "postgres-subnet",
+		"optional_config.0.sql_private_dns_zone_id":      "sql-zone",
+	}
+
+	testCases := []struct {
+		name            string
+		optionalConfig  map[string]any
+		wantRequiresNew bool
+		wantRequiresKey string
+	}{{
+		name:           "UnsetFieldsKeepTheStoredValues",
+		optionalConfig: map[string]any{"cluster_access": "AKS_CLUSTER_ACCESS_TYPE_PRIVATE"},
+	}, {
+		name: "SameValuesAreNoChange",
+		optionalConfig: map[string]any{
+			"disk_encryption_set_id":       "des",
+			"health_check_vm_name_prefix":  "prefix",
+			"postgres_private_dns_zone_id": "postgres-zone",
+			"postgres_subnet_id":           "postgres-subnet",
+			"sql_private_dns_zone_id":      "sql-zone",
+		},
+	}, {
+		name:            "ChangedPrefixReplaces",
+		optionalConfig:  map[string]any{"health_check_vm_name_prefix": "other"},
+		wantRequiresNew: true,
+		wantRequiresKey: "optional_config.0.health_check_vm_name_prefix",
+	}}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			diff, err := resourceAzureExocompute().Diff(context.Background(),
+				&terraform.InstanceState{ID: id, Attributes: state},
+				terraform.NewResourceConfigRaw(map[string]any{
+					"cloud_account_id": cloudAccountID,
+					"region":           "eastus2",
+					"subnet":           "subnet",
+					"optional_config":  []any{tc.optionalConfig},
+				}), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !tc.wantRequiresNew {
+				if diff != nil && !diff.Empty() {
+					t.Fatalf("expected no diff, got: %v", diff)
+				}
+				return
+			}
+			if diff == nil || !diff.RequiresNew() {
+				t.Fatalf("expected the resource to be replaced, diff: %v", diff)
+			}
+			if !diff.Attributes[tc.wantRequiresKey].RequiresNew {
+				t.Errorf("expected %s to require a new resource", tc.wantRequiresKey)
+			}
+		})
+	}
 }

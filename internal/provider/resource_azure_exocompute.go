@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
@@ -169,6 +170,46 @@ func resourceAzureExocompute() *schema.Resource {
 							Description: "Enable disk encryption at host. Defaults to `false`. Changing this forces " +
 								"a new resource to be created.",
 						},
+						// The fields added after v1.11.2 are computed, so a value configured
+						// in RSC, e.g. using the RSC UI, does not replace the resource when
+						// the field is not set.
+						keyDiskEncryptionSetID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the disk encryption set used to encrypt the disks of " +
+								"the cluster nodes with customer managed keys. The disk encryption set must be in the " +
+								"same region as the Exocompute configuration. RSC ignores the disk encryption set " +
+								"unless the `CNP_AZURE_AKS_CMK_ENABLED` feature flag is enabled for the RSC account, " +
+								"and RSC does not validate the disk encryption set when the Exocompute configuration " +
+								"is created. To let RSC list the disk encryption sets, add the `ENCRYPTION` " +
+								"permission group to the Exocompute feature of the `polaris_azure_subscription` " +
+								"resource. If not set, the value in RSC is kept. Changing this forces a new resource " +
+								"to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						// RSC can change the prefix in place, but only with a mutation which
+						// replaces all Exocompute configurations of the cloud account, which
+						// races with changes to the other configurations in the same apply.
+						keyHealthCheckVMNamePrefix: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							Description: "Name prefix of the virtual machine RSC launches for the Exocompute health " +
+								"check. RSC appends a marker and a UUID to the prefix. The prefix can be at most 22 " +
+								"characters long, can only contain letters, digits and hyphens, and must start and " +
+								"end with a letter or a digit. When RSC has no prefix, it uses " +
+								"`test-aks-connectivity-rk-`. If not set, the value in RSC is kept. Changing this " +
+								"forces a new resource to be created.",
+							ValidateFunc: validation.All(
+								validation.StringLenBetween(1, 22),
+								validation.StringMatch(regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$`),
+									"must only contain letters, digits and hyphens, and must start and end with a "+
+										"letter or a digit"),
+							),
+						},
 						keyMaxNodeCount: {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -186,6 +227,37 @@ func resourceAzureExocompute() *schema.Resource {
 								string(gqlexocompute.AzureClusterNodeCountLarge),
 								string(gqlexocompute.AzureClusterNodeCountXLarge),
 							}, false),
+						},
+						keyPostgresPrivateDNSZoneID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the private DNS zone used to resolve the FQDNs of " +
+								"RSC managed Azure Postgres Flexible Servers from the Exocompute subnet. The name of " +
+								"the zone must end with `.postgres.database.azure.com` and the zone must be linked " +
+								"to the Exocompute VNet. Must be specified together with `postgres_subnet_id`. " +
+								"Requires the `REL_ENABLE_AZURE_POSTGRES_FLEXIBLE_SERVER` feature flag to be enabled for " +
+								"the RSC account. If not set, the value in RSC is kept. Changing this forces a new " +
+								"resource to be created.",
+							RequiredWith: []string{keyOptionalConfig + ".0." + keyPostgresSubnetID},
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keyPostgresSubnetID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the subnet used for VNet integration of RSC managed " +
+								"Azure Postgres Flexible Servers. RSC uses these servers to back up Azure Postgres " +
+								"Flexible Servers with private access. The subnet must be in the Exocompute VNet, " +
+								"delegated to `Microsoft.DBforPostgreSQL/flexibleServers`, at least `/28` in size, " +
+								"and different from the Exocompute subnet. Must be specified together with " +
+								"`postgres_private_dns_zone_id`. Requires the `REL_ENABLE_AZURE_POSTGRES_FLEXIBLE_SERVER` " +
+								"feature flag to be enabled for the RSC account. If not set, the value in RSC is kept. " +
+								"Changing this forces a new resource to be created.",
+							RequiredWith: []string{keyOptionalConfig + ".0." + keyPostgresPrivateDNSZoneID},
+							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyPrivateExocomputeDNSZoneID: {
 							Type:     schema.TypeString,
@@ -213,6 +285,21 @@ func resourceAzureExocompute() *schema.Resource {
 								"which will resolve private endpoints linked to snapshots. If empty, a new private " +
 								"DNS zone will be created in the Exocompute resource group. Changing this forces a " +
 								"new resource to be created.",
+							ValidateFunc: validation.StringIsNotWhiteSpace,
+						},
+						keySQLPrivateDNSZoneID: {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							Description: "Azure resource ID of the private DNS zone used to resolve the private " +
+								"endpoints of the Azure SQL servers RSC uses to back up Azure SQL Databases. The name " +
+								"of the zone must be `privatelink.database.windows.net` and the zone must be linked to " +
+								"the Exocompute VNet. RSC only uses the zone when the " +
+								"`REL_ENABLE_AZURE_SQL_DB_PRIVATE_ENDPOINT_AUTOMATION` feature flag is enabled for the " +
+								"RSC account and the Exocompute feature has the `PRIVATE_ENDPOINTS` permission group. " +
+								"If not set, the value in RSC is kept. Changing this forces a new resource to be " +
+								"created.",
 							ValidateFunc: validation.StringIsNotWhiteSpace,
 						},
 						keyUserDefinedRouting: {
@@ -476,10 +563,15 @@ func fromAzureOptionalConfig(d *schema.ResourceData) *gqlexocompute.AzureOptiona
 		ClusterAccess:              gqlexocompute.AzureClusterAccess(config[keyClusterAccess].(string)),
 		ClusterTier:                gqlexocompute.AzureClusterTier(config[keyClusterTier].(string)),
 		DiskEncryptionAtHost:       config[keyDiskEncryptionAtHost].(bool),
+		DiskEncryptionSetID:        config[keyDiskEncryptionSetID].(string),
 		ExocomputePrivateDnsZoneID: config[keyPrivateExocomputeDNSZoneID].(string),
+		HealthCheckVMNamePrefix:    config[keyHealthCheckVMNamePrefix].(string),
 		NodeCount:                  gqlexocompute.AzureClusterNodeCount(config[keyMaxNodeCount].(string)),
 		NodeRGPrefix:               config[keyResourceGroupPrefix].(string),
+		PostgresPrivateDnsZoneID:   config[keyPostgresPrivateDNSZoneID].(string),
+		PostgresSubnetID:           config[keyPostgresSubnetID].(string),
 		SnapshotPrivateDnsZoneId:   config[keySnapshotPrivateAccessDNSZoneID].(string),
+		SQLPrivateDnsZoneID:        config[keySQLPrivateDNSZoneID].(string),
 		UserDefinedRouting:         config[keyUserDefinedRouting].(bool),
 		WhitelistRubrikIPs:         config[keyAllowlistRubrikIPs].(bool),
 	}
@@ -501,10 +593,15 @@ func toAzureOptionalConfig(config *gqlexocompute.AzureOptionalConfig) []any {
 		keyClusterAccess:                  string(config.ClusterAccess),
 		keyClusterTier:                    string(config.ClusterTier),
 		keyDiskEncryptionAtHost:           config.DiskEncryptionAtHost,
+		keyDiskEncryptionSetID:            config.DiskEncryptionSetID,
+		keyHealthCheckVMNamePrefix:        config.HealthCheckVMNamePrefix,
 		keyMaxNodeCount:                   string(config.NodeCount),
+		keyPostgresPrivateDNSZoneID:       config.PostgresPrivateDnsZoneID,
+		keyPostgresSubnetID:               config.PostgresSubnetID,
 		keyPrivateExocomputeDNSZoneID:     config.ExocomputePrivateDnsZoneID,
 		keyResourceGroupPrefix:            config.NodeRGPrefix,
 		keySnapshotPrivateAccessDNSZoneID: config.SnapshotPrivateDnsZoneId,
+		keySQLPrivateDNSZoneID:            config.SQLPrivateDnsZoneID,
 		keyUserDefinedRouting:             config.UserDefinedRouting,
 	}}
 }
