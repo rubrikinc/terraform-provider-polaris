@@ -231,6 +231,7 @@ func (d *azurePermissionGroupsDataSource) Read(ctx context.Context, req datasour
 			core.PermissionGroupAutomatedNetworkingSetup,
 			core.PermissionGroupBasic,
 			core.PermissionGroupCustomerManagedCluster,
+			core.PermissionGroupEncryption,
 			core.PermissionGroupPrivateEndpoints,
 			core.PermissionGroupServiceEndpointAutomation,
 		},

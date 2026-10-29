@@ -106,19 +106,19 @@ func (d *azureDevOpsPermissionsDataSource) Schema(ctx context.Context, _ datasou
 			keyFeature: schema.StringAttribute{
 				Required: true,
 				Description: fmt.Sprintf("RSC Azure DevOps feature to look up permissions for. %s.",
-					possibleValues(devops.AzureSupportedFeatureNames())),
+					possibleValues(core.AzureDevOpsOrganizationFeatureNames())),
 				Validators: []validator.String{
-					stringvalidator.OneOf(devops.AzureSupportedFeatureNames()...),
+					stringvalidator.OneOf(core.AzureDevOpsOrganizationFeatureNames()...),
 				},
 			},
 			keyPermissionGroups: schema.SetAttribute{
 				Required:    true,
 				ElementType: types.StringType,
 				Description: fmt.Sprintf("Permission groups to look up for the feature. %s.",
-					possibleValues(devops.AzureSupportedPermissionGroupNames())),
+					possibleValues(core.AzureDevOpsOrganizationPermissionGroupNames())),
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
-					setvalidator.ValueStringsAre(stringvalidator.OneOf(devops.AzureSupportedPermissionGroupNames()...)),
+					setvalidator.ValueStringsAre(stringvalidator.OneOf(core.AzureDevOpsOrganizationPermissionGroupNames()...)),
 				},
 			},
 			keyPermissions: schema.StringAttribute{
@@ -170,7 +170,7 @@ func (d *azureDevOpsPermissionsDataSource) Read(ctx context.Context, req datasou
 		feature = feature.WithPermissionGroups(core.PermissionGroup(group))
 	}
 
-	if err := devops.AzureCheckFeature(feature); err != nil {
+	if err := core.CheckAzureDevOpsOrganizationFeature(feature); err != nil {
 		res.Diagnostics.AddError("Unsupported Azure DevOps feature or permission group", err.Error())
 		return
 	}

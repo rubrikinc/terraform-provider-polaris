@@ -35,6 +35,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/devops"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqldevops "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/devops"
 )
 
@@ -165,10 +166,10 @@ func (d *azureDevOpsScriptDataSource) Schema(ctx context.Context, _ datasource.S
 							Required:    true,
 							ElementType: types.StringType,
 							Description: fmt.Sprintf("Permission groups to enable for the feature. At least one is "+
-								"required. %s.", possibleValues(devops.AzureSupportedPermissionGroupNames())),
+								"required. %s.", possibleValues(core.AzureDevOpsOrganizationPermissionGroupNames())),
 							Validators: []validator.Set{
 								setvalidator.SizeAtLeast(1),
-								setvalidator.ValueStringsAre(stringvalidator.OneOf(devops.AzureSupportedPermissionGroupNames()...)),
+								setvalidator.ValueStringsAre(stringvalidator.OneOf(core.AzureDevOpsOrganizationPermissionGroupNames()...)),
 							},
 						},
 					},
