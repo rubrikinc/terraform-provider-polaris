@@ -166,6 +166,8 @@ resource "polaris_azure_exocompute" "application" {
 - `region` (String) Azure region to run the exocompute service in. Should be specified in the standard Azure style, e.g. `eastus`. Changing this forces a new resource to be created.
 - `subnet` (String) Azure subnet ID of the cluster subnet corresponding to the Exocompute configuration. This subnet will be used to allocate IP addresses to the nodes of the cluster. Changing this forces a new resource to be created.
 - `subscription_id` (String, Deprecated) RSC cloud account ID. This is the ID of the `polaris_azure_subscription` resource for which the Exocompute service runs. Changing this forces a new resource to be created. **Deprecated:** use `cloud_account_id` instead.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `trigger_health_check` (Boolean) Trigger a health check of the Exocompute configuration when it's created, or when the field is changed to `true`, and wait for the result. A health check which fails or doesn't finish is reported as a warning. Ignored for customer managed configurations. Defaults to `false`. See [Health Checks](#health-checks).
 
 ### Read-Only
 
@@ -191,6 +193,32 @@ Optional:
 - `snapshot_private_access_dns_zone_id` (String) Azure resource ID of the private DNS zone linked to the exocompute VNet, which will resolve private endpoints linked to snapshots. If empty, a new private DNS zone will be created in the Exocompute resource group. Changing this forces a new resource to be created.
 - `sql_private_dns_zone_id` (String) Azure resource ID of the private DNS zone used to resolve the private endpoints of the Azure SQL servers RSC uses to back up Azure SQL Databases. The name of the zone must be `privatelink.database.windows.net` and the zone must be linked to the Exocompute VNet. RSC only uses the zone when the `REL_ENABLE_AZURE_SQL_DB_PRIVATE_ENDPOINT_AUTOMATION` feature flag is enabled for the RSC account and the Exocompute feature has the `PRIVATE_ENDPOINTS` permission group. If not set, the value in RSC is kept. Changing this forces a new resource to be created.
 - `user_defined_routing` (Boolean) Enable user defined routing. This allows the route for the Exocompute egress traffic to be configured. Defaults to `false`. Changing this forces a new resource to be created.
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String) Create resource timeout (defaults to `60m`).
+- `update` (String) Update resource timeout (defaults to `60m`).
+
+## Health Checks
+
+Setting `trigger_health_check` to `true` makes the provider start an RSC health check of the Exocompute configuration
+after the configuration is created, and wait for the result. Changing `trigger_health_check` from `false` to `true` on an
+existing configuration also starts a health check, without replacing the configuration. Changing it to `false` has no
+effect. Importing a configuration with `trigger_health_check` set to `true` starts a health check on the first apply.
+
+-> **Note:** RSC runs the health check on an RSC managed cluster in the cloud account. When there is no running cluster
+   in the region, RSC first launches one, so the health check can take around 30 minutes. Use the `timeouts` block to
+   change how long the provider waits.
+
+~> **Note:** A health check which reports the configuration as anything but healthy, a health check which doesn't
+   finish before the timeout, and a health check which RSC refuses to start, e.g. because one is already running, are
+   reported as warnings. The Exocompute configuration is kept.
+
+`trigger_health_check` is ignored for customer managed configurations, RSC runs their health checks when it reconciles
+the attached cluster.
 
 ## Import
 

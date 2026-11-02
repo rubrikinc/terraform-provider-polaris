@@ -22,10 +22,16 @@ package provider
 
 import (
 	"context"
+	"maps"
+	"strconv"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 var azureExocomputeTmpl = `
@@ -190,5 +196,120 @@ func TestAzureExocomputeOptionalConfigDiff(t *testing.T) {
 				t.Errorf("expected %s to require a new resource", tc.wantRequiresKey)
 			}
 		})
+	}
+}
+
+// TestExocomputeRunHealthCheckCustomerManaged verifies that no health check is
+// triggered for a customer managed Exocompute configuration, and that this is
+// reported as a warning. The client is nil, so any RSC call would panic.
+func TestExocomputeRunHealthCheckCustomerManaged(t *testing.T) {
+	diags := exocomputeRunHealthCheck(context.Background(), nil, core.CloudVendorAzure,
+		"550e8400-e29b-41d4-a716-446655440000", true, time.Hour)
+	if len(diags) != 1 || diags[0].Severity != diag.Warning {
+		t.Fatalf("expected a single warning, got: %v", diags)
+	}
+}
+
+// TestExocomputeTriggerHealthCheckDiff verifies that trigger_health_check on
+// the AWS and Azure Exocompute resources is updated in place, so that changing
+// it never replaces the Exocompute configuration, and that state created
+// before the field existed has no diff when the field is not set.
+func TestExocomputeTriggerHealthCheckDiff(t *testing.T) {
+	const id = "550e8400-e29b-41d4-a716-446655440000"
+	const cloudAccountID = "550e8400-e29b-41d4-a716-446655440001"
+
+	resources := []struct {
+		name     string
+		resource *schema.Resource
+		state    map[string]string
+		config   map[string]any
+	}{{
+		name:     "AWS",
+		resource: resourceAwsExocompute(),
+		state: map[string]string{
+			"id":                        id,
+			"account_id":                cloudAccountID,
+			"region":                    "us-east-2",
+			"vpc_id":                    "vpc",
+			"cluster_access":            "",
+			"cluster_security_group_id": "",
+			"node_security_group_id":    "",
+			"polaris_managed":           "true",
+			"subnet.#":                  "0",
+			"subnets.#":                 "2",
+			"subnets." + strconv.Itoa(schema.HashString("subnet-1")): "subnet-1",
+			"subnets." + strconv.Itoa(schema.HashString("subnet-2")): "subnet-2",
+		},
+		config: map[string]any{
+			"account_id": cloudAccountID,
+			"region":     "us-east-2",
+			"vpc_id":     "vpc",
+			"subnets":    []any{"subnet-1", "subnet-2"},
+		},
+	}, {
+		name:     "Azure",
+		resource: resourceAzureExocompute(),
+		state: map[string]string{
+			"id":               id,
+			"cloud_account_id": cloudAccountID,
+			"region":           "eastus2",
+			"subnet":           "subnet",
+		},
+		config: map[string]any{
+			"cloud_account_id": cloudAccountID,
+			"region":           "eastus2",
+			"subnet":           "subnet",
+		},
+	}}
+
+	testCases := []struct {
+		name        string
+		stateValue  string
+		configValue any
+		wantUpdate  bool
+	}{{
+		name: "UnsetInStateAndConfigIsNoChange",
+	}, {
+		name:        "UnsetToTrueUpdatesInPlace",
+		configValue: true,
+		wantUpdate:  true,
+	}, {
+		name:        "TrueToFalseUpdatesInPlace",
+		stateValue:  "true",
+		configValue: false,
+		wantUpdate:  true,
+	}}
+	for _, r := range resources {
+		for _, tc := range testCases {
+			t.Run(r.name+tc.name, func(t *testing.T) {
+				state := maps.Clone(r.state)
+				if tc.stateValue != "" {
+					state["trigger_health_check"] = tc.stateValue
+				}
+				config := maps.Clone(r.config)
+				if tc.configValue != nil {
+					config["trigger_health_check"] = tc.configValue
+				}
+
+				diff, err := r.resource.Diff(context.Background(), &terraform.InstanceState{ID: id, Attributes: state},
+					terraform.NewResourceConfigRaw(config), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if !tc.wantUpdate {
+					if diff != nil && !diff.Empty() {
+						t.Fatalf("expected no diff, got: %v", diff)
+					}
+					return
+				}
+				if diff == nil || diff.Attributes["trigger_health_check"] == nil {
+					t.Fatalf("expected trigger_health_check to change, diff: %v", diff)
+				}
+				if diff.RequiresNew() {
+					t.Fatalf("expected an in-place update, diff: %v", diff)
+				}
+			})
+		}
 	}
 }

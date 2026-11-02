@@ -23,7 +23,9 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -32,6 +34,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqlexocompute "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
@@ -80,6 +83,7 @@ func resourceAwsExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: awsCreateExocompute,
 		ReadContext:   awsReadExocompute,
+		UpdateContext: awsUpdateExocompute,
 		DeleteContext: awsDeleteExocompute,
 
 		Description: description(resourceAWSExocomputeDescription),
@@ -154,6 +158,15 @@ func resourceAwsExocompute() *schema.Resource {
 					"to be created.",
 				ValidateFunc: validation.StringInSlice(gqlaws.AllRegionNames(), false),
 			},
+			keyTriggerHealthCheck: {
+				Type:          schema.TypeBool,
+				Optional:      true,
+				ConflictsWith: []string{keyHostAccountID},
+				Description: "Trigger a health check of the Exocompute configuration when it's created, or when the " +
+					"field is changed to `true`, and wait for the result. A health check which fails or doesn't " +
+					"finish is reported as a warning. Ignored for customer managed configurations. Defaults to " +
+					"`false`.",
+			},
 			keySubnet: {
 				Type:          schema.TypeSet,
 				Elem:          awsSubnetResource(),
@@ -204,6 +217,10 @@ func resourceAwsExocompute() *schema.Resource {
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
+		},
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(60 * time.Minute),
+			Update: schema.DefaultTimeout(60 * time.Minute),
 		},
 	}
 }
@@ -279,8 +296,26 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		d.SetId(id.String())
 	}
 
+	var diags diag.Diagnostics
+	if d.Get(keyTriggerHealthCheck).(bool) {
+		diags = exocomputeRunHealthCheck(ctx, m, core.CloudVendorAWS, d.Id(), d.Get(keyVPCID).(string) == "",
+			d.Timeout(schema.TimeoutCreate))
+	}
+
 	awsReadExocompute(ctx, d, m)
-	return nil
+	return diags
+}
+
+func awsUpdateExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	tflog.Trace(ctx, "awsUpdateExocompute")
+
+	var diags diag.Diagnostics
+	if d.HasChange(keyTriggerHealthCheck) && d.Get(keyTriggerHealthCheck).(bool) {
+		diags = exocomputeRunHealthCheck(ctx, m, core.CloudVendorAWS, d.Id(), d.Get(keyVPCID).(string) == "",
+			d.Timeout(schema.TimeoutUpdate))
+	}
+
+	return append(diags, awsReadExocompute(ctx, d, m)...)
 }
 
 func awsReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
@@ -404,6 +439,73 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 		if err = exocompute.Wrap(client).RemoveAWSConfiguration(ctx, configID); err != nil {
 			return diag.FromErr(err)
 		}
+	}
+
+	return nil
+}
+
+// exocomputeRunHealthCheck triggers a health check of the AWS or Azure
+// Exocompute configuration with the specified ID and waits for the result.
+// The configuration has already been created when this is called, so a
+// failure to trigger the health check, a health check which doesn't report
+// the configuration as healthy, or a timeout, is returned as a warning. An
+// error would taint the resource, which would replace a working configuration
+// on the next apply. For a customer managed configuration no health check is
+// triggered, since RSC runs its health checks when it reconciles the attached
+// cluster.
+func exocomputeRunHealthCheck(ctx context.Context, m any, cloudVendor core.CloudVendor, id string, customerManaged bool, timeout time.Duration) diag.Diagnostics {
+	if customerManaged {
+		return diag.Diagnostics{{
+			Severity: diag.Warning,
+			Summary:  "Exocompute health check ignored",
+			Detail: "trigger_health_check is ignored for customer managed Exocompute configurations, RSC runs " +
+				"their health checks when it reconciles the attached cluster.",
+		}}
+	}
+
+	configID, err := uuid.Parse(id)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	polarisClient, err := m.(*client).polaris()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	jobID, err := exocompute.Wrap(polarisClient).TriggerHealthCheck(ctx, cloudVendor, configID)
+	if err != nil {
+		return diag.Diagnostics{{
+			Severity: diag.Warning,
+			Summary:  "Exocompute health check not started",
+			Detail:   err.Error(),
+		}}
+	}
+
+	// Stop waiting a minute before the resource operation times out, to leave
+	// time to read back the configuration. Short timeouts keep half for the
+	// wait.
+	waitCtx, cancel := context.WithTimeout(ctx, max(timeout-time.Minute, timeout/2))
+	defer cancel()
+	status, err := exocompute.Wrap(polarisClient).WaitForHealthCheck(waitCtx, cloudVendor, configID, jobID)
+	if err != nil {
+		return diag.Diagnostics{{
+			Severity: diag.Warning,
+			Summary:  "Exocompute health check result not available",
+			Detail: fmt.Sprintf("Health check job %s did not finish: %s. Check the result in the RSC UI.",
+				jobID, err),
+		}}
+	}
+	if status.Status != gqlexocompute.HealthCheckStatusHealthy {
+		detail := fmt.Sprintf("Health check job %s finished with status %s.", jobID, status.Status)
+		if status.FailureReason != "" {
+			detail += " " + status.FailureReason
+		}
+		detail += " See the Exocompute events in the RSC activity log for details."
+		return diag.Diagnostics{{
+			Severity: diag.Warning,
+			Summary:  "Exocompute health check failed",
+			Detail:   detail,
+		}}
 	}
 
 	return nil
