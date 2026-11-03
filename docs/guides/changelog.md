@@ -22,6 +22,11 @@ page_title: "Changelog"
   reports these as warnings, and the RSC UI lets the user continue past them, so they no longer block creation. All
   other validation failures, such as a delegated subnet or an invalid private DNS zone, still block creation.
   [[docs](../resources/azure_exocompute.md)]
+* Fix a bug in `polaris_azure_cloud_cluster` where reading the resource failed with an internal error from
+  `azureCcCdmVersions` when RSC reported the cluster region in a different format than the native Azure region name,
+  e.g. `GermanyWestCentral` instead of `germanywestcentral`. This caused `terraform plan` to fail during refresh. The
+  region is now matched case-insensitively, and the `region` field of the `vm_config` block is used if the region
+  reported by RSC still can't be parsed. [[docs](../resources/azure_cloud_cluster.md)]
 
 ## v1.11.2
 * Update Go version to 1.26.10.
