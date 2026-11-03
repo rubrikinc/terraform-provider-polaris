@@ -64,16 +64,16 @@ pipeline {
         // Enable verbose Go SDK logging
         RUBRIK_POLARIS_LOGLEVEL='trace'
 
-        // Recent versions of Go added support for post-quantum cryptography algorithms
-        // x25519Kyber768Draft00 (Go 1.23) and X25519MLKEM768 (Go 1.24, where Kyber
-        // was removed). Both of them are enabled by default, but that causes
+        // Go 1.24 added support for the post-quantum cryptography algorithm
+        // X25519MLKEM768. It is enabled by default, but that causes
         // TLS timeout issues against some systems like Palo Alto
         // that can't handle the increased size of ClientHello-messages.
-        // With these enabled the ClientHello message spans two TCP frames instead
-        // of just one with them disabled.
+        // With it enabled the ClientHello message spans two TCP frames instead
+        // of just one with it disabled.
         //
-        // We use GODEBUG to disable both here to cover for both Go 1.23 and Go 1.24.
-        GODEBUG = "tlskyber=0,tlsmlkem=0"
+        // We use GODEBUG to disable it here. The tlskyber setting, which
+        // controlled x25519Kyber768Draft00 in Go 1.23, was removed in Go 1.24.
+        GODEBUG = "tlsmlkem=0"
     }
     stages {
         stage('Lint') {
