@@ -23,6 +23,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -590,7 +591,12 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		return diag.FromErr(err)
 	}
 	// get CDM product code from cloudAccountID and region
-	region := azureRegion.RegionFromName(cloudCluster.CloudInfo.Region)
+	stateRegion := d.Get(keyVMConfig).([]any)[0].(map[string]any)[keyRegion].(string)
+	region := azureCloudClusterRegion(cloudCluster.CloudInfo.Region, stateRegion)
+	if region == azureRegion.RegionUnknown {
+		return diag.Errorf("failed to determine region of cloud cluster %q: unknown RSC region %q and unknown state region %q",
+			id, cloudCluster.CloudInfo.Region, stateRegion)
+	}
 	cdmProducts, err := gqlcloudcluster.Wrap(client.GQL).AllAzureCdmVersions(ctx, cloudAccount.ID, region)
 	if err != nil {
 		return diag.FromErr(err)
@@ -839,4 +845,17 @@ func azureUpdateCloudCluster(ctx context.Context, d *schema.ResourceData, m any)
 	}
 
 	return azureReadCloudCluster(ctx, d, m)
+}
+
+// azureCloudClusterRegion returns the region of an Azure cloud cluster. The
+// region name reported by RSC, cloudInfo.region, is a user-friendly name which
+// isn't guaranteed to be in the native Azure format, e.g. "GermanyWestCentral"
+// instead of "germanywestcentral". Azure region names are case-insensitive, so
+// the RSC region name is lowercased before parsing. If the RSC region name
+// can't be parsed, the region from the Terraform state is used.
+func azureCloudClusterRegion(rscRegion, stateRegion string) azureRegion.Region {
+	if region := azureRegion.RegionFromName(strings.ToLower(rscRegion)); region != azureRegion.RegionUnknown {
+		return region
+	}
+	return azureRegion.RegionFromName(stateRegion)
 }
