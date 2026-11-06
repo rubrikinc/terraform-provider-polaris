@@ -154,7 +154,7 @@ func gcpArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any)
 	if err := d.Set(keyCloudAccountID, targetTemplate.CloudAccount.ID.String()); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus); err != nil {
+	if err := d.Set(keyConnectionStatus, targetMapping.ConnectionStatus.Status); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyCustomerManagedKey, fromGCPCustomerManagedKeys(targetTemplate.CMKInfo)); err != nil {
@@ -166,7 +166,7 @@ func gcpArchivalLocationRead(ctx context.Context, d *schema.ResourceData, m any)
 	if err := d.Set(keyName, targetMapping.Name); err != nil {
 		return diag.FromErr(err)
 	}
-	if err := d.Set(keyRegion, targetTemplate.Region); err != nil {
+	if err := d.Set(keyRegion, targetTemplate.Region.Name()); err != nil {
 		return diag.FromErr(err)
 	}
 	if err := d.Set(keyStorageClass, fromGCPStorageClass(targetTemplate.StorageClass)); err != nil {
