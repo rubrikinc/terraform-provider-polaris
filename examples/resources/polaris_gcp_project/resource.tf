@@ -46,3 +46,20 @@ resource "polaris_gcp_project" "bigquery_reservation" {
     permission_groups = ["BASIC"]
   }
 }
+
+# With Cloud Discovery.
+resource "polaris_gcp_project" "cloud_discovery" {
+  project        = "my-discovery-project"
+  project_name   = "My Discovery Project"
+  project_number = 123456789012
+
+  feature {
+    name              = "CLOUD_DISCOVERY"
+    permission_groups = ["BASIC"]
+  }
+
+  feature {
+    name              = "CLOUD_NATIVE_PROTECTION"
+    permission_groups = ["BASIC", "EXPORT_AND_RESTORE"]
+  }
+}

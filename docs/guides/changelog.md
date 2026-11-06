@@ -23,6 +23,18 @@ page_title: "Changelog"
   or doesn't finish is reported as a warning and the configuration is kept. Changing the field doesn't replace the
   configuration. The resources also get a `timeouts` block, the create and update timeouts default to 60 minutes.
   [[docs](../resources/aws_exocompute.md)] [[docs](../resources/azure_exocompute.md)]
+* Add support for the `CLOUD_DISCOVERY` feature in the `polaris_gcp_project` resource and the `polaris_gcp_project` and
+  `polaris_gcp_permissions` data sources. Cloud Discovery is the read-only parent of the GCP protection features and has
+  the single permission group `BASIC`. It is optional, but when enabled it must outlive the protection features, so the
+  provider rejects a plan that removes it from a project that still has one, and removes it last when the project is
+  destroyed. Previously, a project with Cloud Discovery enabled, e.g. using the RSC UI, read the feature into the state
+  but couldn't declare it, so every plan proposed removing it. Such a project now fails to plan until the feature is
+  added to the configuration, see the [v1.12.0 upgrade guide](upgrade_guide_v1.12.0.md).
+  [[docs](../resources/gcp_project.md)]
+* Improve the `polaris_aws_cnp_permissions` data source to request permissions the same way as the RSC UI. On RSC
+  accounts with AWS cloud cost reporting enabled, the data source can return an additional customer managed policy for
+  the `CLOUD_COST_REPORT` feature, which RSC adds to AWS accounts with features that accrue AWS spend. See the
+  [v1.12.0 upgrade guide](upgrade_guide_v1.12.0.md). [[docs](../data-sources/aws_cnp_permissions.md)]
 * Fix a bug in `polaris_azure_exocompute` where creating the resource failed when a private DNS zone was in a different
   subscription than the Exocompute VNet, or when the subnet had blocking network security group rules. RSC only
   reports these as warnings, and the RSC UI lets the user continue past them, so they no longer block creation. All
