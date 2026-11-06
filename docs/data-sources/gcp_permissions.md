@@ -12,6 +12,9 @@ description: |-
   Permission Groups
   Following is a list of features and their applicable permission groups. These
   are used when specifying the feature.
+  CLOUD_DISCOVERY
+  BASIC - Represents the basic set of permissions required to onboard the
+  feature.
   CLOUD_NATIVE_ARCHIVAL
   BASIC - Represents the basic set of permissions required to onboard the
   feature.ENCRYPTION - Represents the set of permissions required for encryption
@@ -71,6 +74,10 @@ and notify RSC about the updated.
 ## Permission Groups
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature.
+
+`CLOUD_DISCOVERY`
+  * `BASIC` - Represents the basic set of permissions required to onboard the
+    feature.
 
 `CLOUD_NATIVE_ARCHIVAL`
   * `BASIC` - Represents the basic set of permissions required to onboard the
@@ -151,8 +158,8 @@ data "polaris_gcp_permissions" "cloud_native_archival" {
 
 ### Optional
 
-- `feature` (String) RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_BIGQUERY_PROTECTION`, `GCP_BIGQUERY_RESERVATION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.
-- `features` (Set of String, Deprecated) RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_BIGQUERY_PROTECTION`, `GCP_BIGQUERY_RESERVATION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`. **Deprecated:** use `feature` instead.
+- `feature` (String) RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_BIGQUERY_PROTECTION`, `GCP_BIGQUERY_RESERVATION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.
+- `features` (Set of String, Deprecated) RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, `CLOUD_SQL_PROTECTION`, `GCP_BIGQUERY_PROTECTION`, `GCP_BIGQUERY_RESERVATION`, `GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`. **Deprecated:** use `feature` instead.
 - `permission_groups` (Set of String) Permission groups for the RSC feature. Possible values are `BASIC`, `ENCRYPTION`, `EXPORT_AND_RESTORE`, `FILE_LEVEL_RECOVERY`, `AUTOMATED_NETWORKING_SETUP`, `CLOUD_CLUSTER_ES` and `CLOUDSQL`.
 
 ### Read-Only

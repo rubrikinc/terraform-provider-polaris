@@ -48,6 +48,10 @@ and notify RSC about the updated.
 Following is a list of features and their applicable permission groups. These
 are used when specifying the feature.
 
+´CLOUD_DISCOVERY´
+  * ´BASIC´ - Represents the basic set of permissions required to onboard the
+    feature.
+
 ´CLOUD_NATIVE_ARCHIVAL´
   * ´BASIC´ - Represents the basic set of permissions required to onboard the
     feature.
@@ -136,11 +140,11 @@ func dataSourceGcpPermissions() *schema.Resource {
 				Optional:     true,
 				ExactlyOneOf: []string{keyFeatures},
 				Description: "RSC feature. Note that the feature must be given in the `EXAMPLE_FEATURE_NAME` style. " +
-					"Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
+					"Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
 					"`CLOUD_SQL_PROTECTION`, `GCP_BIGQUERY_PROTECTION`, `GCP_BIGQUERY_RESERVATION`, " +
 					"`GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`.",
 				ValidateFunc: validation.StringInSlice([]string{
-					"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_SQL_PROTECTION",
+					"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_SQL_PROTECTION",
 					"GCP_BIGQUERY_PROTECTION", "GCP_BIGQUERY_RESERVATION", "GCP_SHARED_VPC_HOST",
 					"EXOCOMPUTE", "SERVERS_AND_APPS",
 				}, false),
@@ -150,7 +154,7 @@ func dataSourceGcpPermissions() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						"CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_SQL_PROTECTION",
+						"CLOUD_DISCOVERY", "CLOUD_NATIVE_ARCHIVAL", "CLOUD_NATIVE_PROTECTION", "CLOUD_SQL_PROTECTION",
 						"GCP_BIGQUERY_PROTECTION", "GCP_BIGQUERY_RESERVATION", "GCP_SHARED_VPC_HOST",
 						"EXOCOMPUTE", "SERVERS_AND_APPS",
 					}, false),
@@ -158,7 +162,8 @@ func dataSourceGcpPermissions() *schema.Resource {
 				Optional:     true,
 				MinItems:     1,
 				ExactlyOneOf: []string{keyFeature},
-				Description: "RSC features. Possible values are `CLOUD_NATIVE_ARCHIVAL`, `CLOUD_NATIVE_PROTECTION`, " +
+				Description: "RSC features. Possible values are `CLOUD_DISCOVERY`, `CLOUD_NATIVE_ARCHIVAL`, " +
+					"`CLOUD_NATIVE_PROTECTION`, " +
 					"`CLOUD_SQL_PROTECTION`, `GCP_BIGQUERY_PROTECTION`, `GCP_BIGQUERY_RESERVATION`, " +
 					"`GCP_SHARED_VPC_HOST`, `EXOCOMPUTE` and `SERVERS_AND_APPS`. **Deprecated:** use `feature` " +
 					"instead.",
