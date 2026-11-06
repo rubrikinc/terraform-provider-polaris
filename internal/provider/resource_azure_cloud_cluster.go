@@ -591,9 +591,7 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		return diag.FromErr(err)
 	}
 	// get CDM product code from cloudAccountID and region
-	vmConfigList := d.Get(keyVMConfig).([]any)
-	vmConfigMap := vmConfigList[0].(map[string]any)
-	stateRegion, _ := vmConfigMap[keyRegion].(string)
+	stateRegion := d.Get(keyVMConfig).([]any)[0].(map[string]any)[keyRegion].(string)
 	region := azureCloudClusterRegion(cloudCluster.CloudInfo.Region, stateRegion)
 	if region == azureRegion.RegionUnknown {
 		return diag.Errorf("failed to determine region of cloud cluster %q: unknown RSC region %q and unknown state region %q",
@@ -617,6 +615,8 @@ func azureReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 	clusterConfigMap := clusterConfigList[0].(map[string]any)
 
 	// Check if the CDM version changed
+	vmConfigList := d.Get(keyVMConfig).([]any)
+	vmConfigMap := vmConfigList[0].(map[string]any)
 	vmConfigMap[keyCDMVersion] = cloudCluster.Version
 	vmConfigMap[keyCDMProduct] = productCode
 
