@@ -25,6 +25,7 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -33,6 +34,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqlexocompute "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
@@ -85,6 +87,7 @@ func resourceAzureExocompute() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: azureCreateExocompute,
 		ReadContext:   azureReadExocompute,
+		UpdateContext: azureUpdateExocompute,
 		DeleteContext: azureDeleteExocompute,
 
 		Description: description(resourceAzureExocomputeDescription),
@@ -358,9 +361,22 @@ func resourceAzureExocompute() *schema.Resource {
 				Deprecated:   "use `cloud_account_id` instead.",
 				ValidateFunc: validation.IsUUID,
 			},
+			keyTriggerHealthCheck: {
+				Type:          schema.TypeBool,
+				Optional:      true,
+				ConflictsWith: []string{keyHostCloudAccountID},
+				Description: "Trigger a health check of the Exocompute configuration when it's created, or when the " +
+					"field is changed to `true`, and wait for the result. A health check which fails or doesn't " +
+					"finish is reported as a warning. Ignored for customer managed configurations. Defaults to " +
+					"`false`.",
+			},
 		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
+		},
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(60 * time.Minute),
+			Update: schema.DefaultTimeout(60 * time.Minute),
 		},
 		SchemaVersion: 1,
 		StateUpgraders: []schema.StateUpgrader{{
@@ -434,8 +450,28 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 		d.SetId(exoConfigID.String())
 	}
 
+	var diags diag.Diagnostics
+	if d.Get(keyTriggerHealthCheck).(bool) {
+		diags = exocomputeRunHealthCheck(ctx, client, core.CloudVendorAzure, d.Id(), d.Get(keySubnet).(string) == "")
+	}
+
 	azureReadExocompute(ctx, d, m)
-	return nil
+	return diags
+}
+
+func azureUpdateExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	tflog.Trace(ctx, "azureUpdateExocompute")
+
+	var diags diag.Diagnostics
+	if d.HasChange(keyTriggerHealthCheck) && d.Get(keyTriggerHealthCheck).(bool) {
+		client, err := m.(*client).polaris()
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		diags = exocomputeRunHealthCheck(ctx, client, core.CloudVendorAzure, d.Id(), d.Get(keySubnet).(string) == "")
+	}
+
+	return append(diags, azureReadExocompute(ctx, d, m)...)
 }
 
 func azureReadExocompute(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {

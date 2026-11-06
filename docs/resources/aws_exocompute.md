@@ -171,6 +171,8 @@ resource "polaris_aws_exocompute" "application" {
   (see [below for nested schema](#nestedblock--subnet))
 - `subnets` (Set of String) AWS subnet IDs for the cluster subnets. Conflicts with `subnet`. Changing this forces a new
   resource to be created.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `trigger_health_check` (Boolean) Trigger a health check of the Exocompute configuration when it's created, or when the field is changed to `true`, and wait for the result. A health check which fails or doesn't finish is reported as a warning. Ignored for customer managed configurations. Defaults to `false`. See [Health Checks](#health-checks).
 - `vpc_id` (String) AWS VPC ID for the cluster network. Changing this forces a new resource to be created.
 
 ### Read-Only
@@ -189,6 +191,31 @@ Optional:
 
 - `pod_subnet_id` (String) AWS subnet ID for the pods.
 
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String) Create resource timeout (defaults to `60m`).
+- `update` (String) Update resource timeout (defaults to `60m`).
+
+## Health Checks
+
+Setting `trigger_health_check` to `true` makes the provider start an RSC health check of the Exocompute configuration
+after the configuration is created, and wait for the result. Changing `trigger_health_check` from `false` to `true` on an
+existing configuration also starts a health check, without replacing the configuration. Changing it to `false` has no
+effect. Importing a configuration with `trigger_health_check` set to `true` starts a health check on the first apply.
+
+-> **Note:** RSC runs the health check on an RSC managed cluster in the cloud account. When there is no running cluster
+   in the region, RSC first launches one, so the health check can take around 30 minutes. Use the `timeouts` block to
+   change how long the provider waits.
+
+~> **Note:** A health check which reports the configuration as anything but healthy, a health check which doesn't
+   finish before the timeout, and a health check which RSC refuses to start, e.g. because one is already running, are
+   reported as warnings. The Exocompute configuration is kept.
+
+`trigger_health_check` is ignored for customer managed configurations, RSC runs their health checks when it reconciles
+the attached cluster.
 
 ## Import
 
