@@ -17,6 +17,12 @@ page_title: "Changelog"
   resource and the `polaris_azure_permission_groups` data source. The group lets RSC list the disk encryption sets in the
   subscription, and is used together with the `disk_encryption_set_id` field in the `polaris_azure_exocompute` resource.
   [[docs](../resources/azure_subscription.md)]
+* Add support for health checks in the `polaris_aws_exocompute` and `polaris_azure_exocompute` resources, using the new
+  `trigger_health_check` field. When the field is `true`, the provider starts an RSC health check after the Exocompute
+  configuration is created, or when the field is changed to `true`, and waits for the result. A health check which fails
+  or doesn't finish is reported as a warning and the configuration is kept. Changing the field doesn't replace the
+  configuration. The resources also get a `timeouts` block, the create and update timeouts default to 60 minutes.
+  [[docs](../resources/aws_exocompute.md)] [[docs](../resources/azure_exocompute.md)]
 * Fix a bug in `polaris_azure_exocompute` where creating the resource failed when a private DNS zone was in a different
   subscription than the Exocompute VNet, or when the subnet had blocking network security group rules. RSC only
   reports these as warnings, and the RSC UI lets the user continue past them, so they no longer block creation. All
