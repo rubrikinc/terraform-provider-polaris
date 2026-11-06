@@ -452,8 +452,7 @@ func azureCreateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 
 	var diags diag.Diagnostics
 	if d.Get(keyTriggerHealthCheck).(bool) {
-		diags = exocomputeRunHealthCheck(ctx, m, core.CloudVendorAzure, d.Id(), d.Get(keySubnet).(string) == "",
-			d.Timeout(schema.TimeoutCreate))
+		diags = exocomputeRunHealthCheck(ctx, client, core.CloudVendorAzure, d.Id(), d.Get(keySubnet).(string) == "")
 	}
 
 	azureReadExocompute(ctx, d, m)
@@ -465,8 +464,11 @@ func azureUpdateExocompute(ctx context.Context, d *schema.ResourceData, m interf
 
 	var diags diag.Diagnostics
 	if d.HasChange(keyTriggerHealthCheck) && d.Get(keyTriggerHealthCheck).(bool) {
-		diags = exocomputeRunHealthCheck(ctx, m, core.CloudVendorAzure, d.Id(), d.Get(keySubnet).(string) == "",
-			d.Timeout(schema.TimeoutUpdate))
+		client, err := m.(*client).polaris()
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		diags = exocomputeRunHealthCheck(ctx, client, core.CloudVendorAzure, d.Id(), d.Get(keySubnet).(string) == "")
 	}
 
 	return append(diags, azureReadExocompute(ctx, d, m)...)

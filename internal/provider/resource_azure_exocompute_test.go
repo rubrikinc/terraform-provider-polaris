@@ -25,7 +25,6 @@ import (
 	"maps"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -204,7 +203,7 @@ func TestAzureExocomputeOptionalConfigDiff(t *testing.T) {
 // reported as a warning. The client is nil, so any RSC call would panic.
 func TestExocomputeRunHealthCheckCustomerManaged(t *testing.T) {
 	diags := exocomputeRunHealthCheck(context.Background(), nil, core.CloudVendorAzure,
-		"550e8400-e29b-41d4-a716-446655440000", true, time.Hour)
+		"550e8400-e29b-41d4-a716-446655440000", true)
 	if len(diags) != 1 || diags[0].Severity != diag.Warning {
 		t.Fatalf("expected a single warning, got: %v", diags)
 	}

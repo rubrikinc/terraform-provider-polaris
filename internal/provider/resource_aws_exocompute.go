@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -298,8 +299,7 @@ func awsCreateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 
 	var diags diag.Diagnostics
 	if d.Get(keyTriggerHealthCheck).(bool) {
-		diags = exocomputeRunHealthCheck(ctx, m, core.CloudVendorAWS, d.Id(), d.Get(keyVPCID).(string) == "",
-			d.Timeout(schema.TimeoutCreate))
+		diags = exocomputeRunHealthCheck(ctx, client, core.CloudVendorAWS, d.Id(), d.Get(keyVPCID).(string) == "")
 	}
 
 	awsReadExocompute(ctx, d, m)
@@ -311,8 +311,11 @@ func awsUpdateExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 
 	var diags diag.Diagnostics
 	if d.HasChange(keyTriggerHealthCheck) && d.Get(keyTriggerHealthCheck).(bool) {
-		diags = exocomputeRunHealthCheck(ctx, m, core.CloudVendorAWS, d.Id(), d.Get(keyVPCID).(string) == "",
-			d.Timeout(schema.TimeoutUpdate))
+		client, err := m.(*client).polaris()
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		diags = exocomputeRunHealthCheck(ctx, client, core.CloudVendorAWS, d.Id(), d.Get(keyVPCID).(string) == "")
 	}
 
 	return append(diags, awsReadExocompute(ctx, d, m)...)
@@ -453,7 +456,11 @@ func awsDeleteExocompute(ctx context.Context, d *schema.ResourceData, m interfac
 // on the next apply. For a customer managed configuration no health check is
 // triggered, since RSC runs its health checks when it reconciles the attached
 // cluster.
-func exocomputeRunHealthCheck(ctx context.Context, m any, cloudVendor core.CloudVendor, id string, customerManaged bool, timeout time.Duration) diag.Diagnostics {
+//
+// The triggerHealthCheck parameter of the create mutations isn't used, since
+// RSC ignores any error from it and returns no job ID, so there is no way to
+// tell which health check result belongs to the configuration.
+func exocomputeRunHealthCheck(ctx context.Context, client *polaris.Client, cloudVendor core.CloudVendor, id string, customerManaged bool) diag.Diagnostics {
 	if customerManaged {
 		return diag.Diagnostics{{
 			Severity: diag.Warning,
@@ -467,12 +474,8 @@ func exocomputeRunHealthCheck(ctx context.Context, m any, cloudVendor core.Cloud
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	polarisClient, err := m.(*client).polaris()
-	if err != nil {
-		return diag.FromErr(err)
-	}
 
-	jobID, err := exocompute.Wrap(polarisClient).TriggerHealthCheck(ctx, cloudVendor, configID)
+	jobID, err := exocompute.Wrap(client).TriggerHealthCheck(ctx, cloudVendor, configID)
 	if err != nil {
 		return diag.Diagnostics{{
 			Severity: diag.Warning,
@@ -481,12 +484,7 @@ func exocomputeRunHealthCheck(ctx context.Context, m any, cloudVendor core.Cloud
 		}}
 	}
 
-	// Stop waiting a minute before the resource operation times out, to leave
-	// time to read back the configuration. Short timeouts keep half for the
-	// wait.
-	waitCtx, cancel := context.WithTimeout(ctx, max(timeout-time.Minute, timeout/2))
-	defer cancel()
-	status, err := exocompute.Wrap(polarisClient).WaitForHealthCheck(waitCtx, cloudVendor, configID, jobID)
+	status, err := exocompute.Wrap(client).WaitForHealthCheck(ctx, cloudVendor, configID, jobID)
 	if err != nil {
 		return diag.Diagnostics{{
 			Severity: diag.Warning,
