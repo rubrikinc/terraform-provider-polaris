@@ -146,7 +146,7 @@ func azureCreatePrivateContainerRegistry(ctx context.Context, d *schema.Resource
 	}
 
 	d.SetId(id.String())
-	awsReadPrivateContainerRegistry(ctx, d, m)
+	azureReadPrivateContainerRegistry(ctx, d, m)
 	return nil
 }
 
@@ -165,6 +165,10 @@ func azureReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceDa
 	pcrInfo, err := pcr.Wrap(client).AzureRegistry(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if pcrInfo.PCRDetails.RegistryURL == "" {
+		d.SetId("")
+		return nil
 	}
 
 	if err := d.Set(keyCloudAccountID, id.String()); err != nil {
@@ -192,7 +196,7 @@ func azureUpdatePrivateContainerRegistry(ctx context.Context, d *schema.Resource
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	appID, err := uuid.Parse(d.Id())
+	appID, err := uuid.Parse(d.Get(keyAppID).(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}

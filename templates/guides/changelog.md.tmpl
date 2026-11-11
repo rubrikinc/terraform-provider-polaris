@@ -4,6 +4,12 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.12.1
+* Fix a bug in `polaris_azure_private_container_registry` where updating the resource sent the RSC cloud account ID as
+  the Azure app ID, and where the resource was read back as an AWS registry after creation.
+* Fix a bug in `polaris_aws_private_container_registry` and `polaris_azure_private_container_registry` where a registry
+  removed outside of Terraform was not detected, leaving the resource in state with empty values.
+
 ## v1.12.0
 * Add support for the Azure Postgres Flexible Server networking, the Azure SQL private DNS zone, the disk encryption
   set and the health check virtual machine name prefix to the `optional_config` block in the `polaris_azure_exocompute`
