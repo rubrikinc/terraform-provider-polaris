@@ -177,6 +177,10 @@ func awsReadPrivateContainerRegistry(ctx context.Context, d *schema.ResourceData
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	if pcrInfo.PCRDetails.RegistryURL == "" {
+		d.SetId("")
+		return nil
+	}
 
 	if err := d.Set(keyAccountID, id.String()); err != nil {
 		return diag.FromErr(err)
