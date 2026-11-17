@@ -178,6 +178,7 @@ data "polaris_aws_cnp_permissions" "permissions" {
 
 - `cloud` (String) AWS cloud type. Possible values are `STANDARD`, `CHINA` and `GOV`. Default value is `STANDARD`.
 - `ec2_recovery_role_path` (String) AWS EC2 recovery role path.
+- `native_id` (String) AWS account ID. When specified, the policies are those required by the role mode of the account, e.g. the policies of each feature are returned for the role of that feature for an account using multiple roles. For an account not yet onboarded to RSC, the policies are those of a new account. When not specified, the policies are those of an account using a single role.
 
 ### Read-Only
 

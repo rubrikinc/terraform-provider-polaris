@@ -124,6 +124,15 @@ func dataSourceAwsArtifacts() *schema.Resource {
 				Computed:    true,
 				Description: "Instance profile keys for the RSC features.",
 			},
+			keyNativeID: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "AWS account ID. When specified, the artifacts are those required by the role mode of the " +
+					"account, e.g. one role per feature for an account using multiple roles. For an account not yet " +
+					"onboarded to RSC, the artifacts are those of a new account. When not specified, the artifacts " +
+					"are those of an account using a single role.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
 			keyRoleKeys: {
 				Type:        schema.TypeSet,
 				Elem:        &schema.Schema{Type: schema.TypeString},
@@ -159,7 +168,11 @@ func awsArtifactsRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	}
 
 	// Request artifacts.
-	profiles, roles, err := aws.Wrap(client).Artifacts(ctx, cloud, features)
+	profiles, roles, err := aws.Wrap(client).ArtifactsWithParams(ctx, aws.ArtifactsParams{
+		Cloud:    cloud,
+		Features: features,
+		NativeID: d.Get(keyNativeID).(string),
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}

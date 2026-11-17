@@ -161,6 +161,15 @@ func dataSourceAwsPermissions() *schema.Resource {
 				Computed:    true,
 				Description: "Managed policies.",
 			},
+			keyNativeID: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "AWS account ID. When specified, the policies are those required by the role mode of the " +
+					"account, e.g. the policies of each feature are returned for the role of that feature for an " +
+					"account using multiple roles. For an account not yet onboarded to RSC, the policies are those of " +
+					"a new account. When not specified, the policies are those of an account using a single role.",
+				ValidateFunc: validation.StringIsNotWhiteSpace,
+			},
 			keyRoleKey: {
 				Type:         schema.TypeString,
 				Required:     true,
@@ -196,7 +205,12 @@ func awsPermissionsRead(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(err)
 	}
 
-	customerPolicies, managedPolicies, err := aws.Wrap(client).Permissions(ctx, cloud, features, ec2RecoveryRolePath)
+	customerPolicies, managedPolicies, err := aws.Wrap(client).PermissionsWithParams(ctx, aws.PermissionsParams{
+		Cloud:               cloud,
+		Features:            features,
+		EC2RecoveryRolePath: ec2RecoveryRolePath,
+		NativeID:            d.Get(keyNativeID).(string),
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
