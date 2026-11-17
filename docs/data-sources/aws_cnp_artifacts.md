@@ -176,6 +176,7 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 ### Optional
 
 - `cloud` (String) AWS cloud type. Possible values are `STANDARD`, `CHINA` and `GOV`. Default value is `STANDARD`.
+- `native_id` (String) AWS account ID. When specified, the artifacts are those required by the role mode of the account, e.g. one role per feature for an account using multiple roles. For an account not yet onboarded to RSC, the artifacts are those of a new account. When not specified, the artifacts are those of an account using a single role.
 
 ### Read-Only
 

@@ -4,6 +4,14 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.13.0
+* Add support for AWS accounts using multiple roles in the `polaris_aws_cnp_artifacts` and `polaris_aws_cnp_permissions`
+  data sources, using the new `native_id` field. Given the AWS account ID, the data sources return the roles and
+  policies of the role mode of the account, e.g. one role per feature for an account using multiple roles, matching
+  the trust policies of the `polaris_aws_cnp_account` resource. Without `native_id`, the data sources return the roles
+  and policies of an account using a single role, as before. See the
+  [v1.13.0 upgrade guide](upgrade_guide_v1.13.0.md). [[docs](../data-sources/aws_cnp_artifacts.md)]
+
 ## v1.12.1
 * Fix a bug in `polaris_azure_private_container_registry` where updating the resource sent the RSC cloud account ID as
   the Azure app ID, and where the resource was read back as an AWS registry after creation.
