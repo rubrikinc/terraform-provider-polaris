@@ -499,7 +499,7 @@ func awsCreateCloudCluster(ctx context.Context, d *schema.ResourceData, m any) d
 		vmConfigMap[keyCDMProduct] = cloudcluster.CdmProduct
 		d.Set(keyVMConfig, []any{vmConfigMap})
 	}
-	d.Set(keyCloudAccountID, cloudcluster.CloudAccountID)
+	d.Set(keyCloudAccountID, cloudcluster.CloudAccountID.String())
 
 	// Read back the created resource to populate computed fields. A failed
 	// readback must not be returned as an error: the resource was successfully
@@ -568,7 +568,7 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	vmConfigMap[keyCDMVersion] = cloudCluster.Version
 
 	// Read DNS, NTP, and DNS Search Domains from API and check if they match the Terraform state
-	dnsServers, err := gqlcluster.Wrap(client).DNSServers(ctx, uuid.MustParse(d.Id()))
+	dnsServers, err := gqlcluster.Wrap(client).DNSServers(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -585,7 +585,7 @@ func awsReadCloudCluster(ctx context.Context, d *schema.ResourceData, m any) dia
 	}
 	clusterConfigMap[keyDNSSearchDomains] = &dnsSearchDomainsSet
 
-	ntpServers, err := gqlcluster.Wrap(client).NTPServers(ctx, uuid.MustParse(d.Id()))
+	ntpServers, err := gqlcluster.Wrap(client).NTPServers(ctx, id)
 	if err != nil {
 		return diag.FromErr(err)
 	}
