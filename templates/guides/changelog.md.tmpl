@@ -4,6 +4,11 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.12.2
+* Fix a bug in `polaris_aws_cloud_cluster` where setting the `cloud_account_id` field in the state failed after the cloud
+  cluster was created. The planned value was kept and the error was only logged, except when the provider was run by an
+  acceptance test, where the error crashed the provider.
+
 ## v1.12.1
 * Fix a bug in `polaris_azure_private_container_registry` where updating the resource sent the RSC cloud account ID as
   the Azure app ID, and where the resource was read back as an AWS registry after creation.
