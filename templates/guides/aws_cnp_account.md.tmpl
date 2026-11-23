@@ -20,6 +20,8 @@ Using these resources, it's possible to add an AWS account to RSC without using 
 To add an AWS account to RSC using the new CNP resources, start by using the `polaris_aws_cnp_artifacts` data source:
 ```terraform
 data "polaris_aws_cnp_artifacts" "artifacts" {
+  native_id = "123456789123"
+
   feature {
     name = "CLOUD_NATIVE_PROTECTION"
 
@@ -31,14 +33,20 @@ data "polaris_aws_cnp_artifacts" "artifacts" {
 ```
 One or more `feature` blocks lists the RSC features to enabled for the AWS account. Use the `polaris_account` data
 source to obtain a list of RSC features available for the RSC account. The `polaris_aws_cnp_artifacts` data source
-returns the instance profiles and roles, referred to as _artifacts_ by RSC, which are required by RSC.
+returns the instance profiles and roles, referred to as _artifacts_ by RSC, which are required by RSC. `native_id` is
+the AWS account ID. RSC onboards an account with either a single `CROSSACCOUNT` role or one role per feature, and with
+`native_id` the data source returns the roles matching the account. Pass the account ID directly to the data sources as
+a literal or an input variable known at plan time. Referencing the `polaris_aws_cnp_account` resource can defer the
+data reads until apply, leaving the role keys unknown during planning and preventing onboarding with a single
+`terraform apply`.
 
 Next, use the `polaris_aws_cnp_permissions` data source to obtain the role permission policies, customer managed
 policies and managed policies, required by RSC:
 ```terraform
 data "polaris_aws_cnp_permissions" "permissions" {
-  for_each = data.polaris_aws_cnp_artifacts.artifacts.role_keys
-  role_key = each.key
+  for_each  = data.polaris_aws_cnp_artifacts.artifacts.role_keys
+  native_id = "123456789123"
+  role_key  = each.key
 
   dynamic "feature" {
     for_each = data.polaris_aws_cnp_artifacts.artifacts.feature
@@ -63,7 +71,7 @@ resource "polaris_aws_cnp_account" "account" {
   ]
 
   dynamic "feature" {
-    for_each = polaris_aws_cnp_artifacts.artifacts.features
+    for_each = data.polaris_aws_cnp_artifacts.artifacts.feature
     content {
       name              = feature.value["name"]
       permission_groups = feature.value["permission_groups"]
@@ -89,7 +97,7 @@ locals {
 
 resource "aws_iam_instance_profile" "profile" {
   for_each    = data.polaris_aws_cnp_artifacts.artifacts.instance_profile_keys
-  name_prefix = "rubrik-${lower(each.key)}-"
+  name_prefix = "${substr("rubrik-${lower(each.key)}", 0, 37)}-"
   role        = aws_iam_role.role[each.value].name
 }
 
@@ -97,7 +105,10 @@ resource "aws_iam_role" "role" {
   for_each            = data.polaris_aws_cnp_artifacts.artifacts.role_keys
   assume_role_policy  = local.trust_policies[each.key]
   managed_policy_arns = data.polaris_aws_cnp_permissions.permissions[each.key].managed_policies
-  name_prefix         = "rubrik-${lower(each.key)}-"
+
+  # AWS limits name_prefix to 38 characters, which some role keys of an account
+  # using one role per feature exceed.
+  name_prefix = "${substr("rubrik-${lower(each.key)}", 0, 37)}-"
 
   dynamic "inline_policy" {
     for_each = data.polaris_aws_cnp_permissions.permissions[each.key].customer_managed_policies

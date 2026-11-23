@@ -4,6 +4,13 @@ page_title: "Changelog"
 
 # Changelog
 
+## v1.13.0
+* Add support for AWS accounts using multiple roles in the `polaris_aws_cnp_artifacts` and `polaris_aws_cnp_permissions`
+  data sources, using the new `native_id` field. Given the AWS account ID, the data sources return the roles and
+  policies matching the account's trust policies, or the role mode RSC uses for new accounts if it has not been
+  onboarded yet. Omitting `native_id` preserves the legacy single-role response.
+  See the [v1.13.0 upgrade guide](upgrade_guide_v1.13.0.md). [[docs](../data-sources/aws_cnp_artifacts.md)]
+
 ## v1.12.2
 * Fix a bug in `polaris_aws_cloud_cluster` where setting the `cloud_account_id` field in the state failed after the cloud
   cluster was created. The planned value was kept and the error was only logged, except when the provider was run by an
