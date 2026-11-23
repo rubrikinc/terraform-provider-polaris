@@ -166,8 +166,9 @@ func dataSourceAwsPermissions() *schema.Resource {
 				Optional: true,
 				Description: "AWS account ID. When specified, the policies are those required by the role mode of the " +
 					"account, e.g. the policies of each feature are returned for the role of that feature for an " +
-					"account using multiple roles. For an account not yet onboarded to RSC, the policies are those of " +
-					"a new account. When not specified, the policies are those of an account using a single role.",
+					"account using multiple roles. For an account not yet onboarded to RSC, the policies follow the " +
+					"role mode RSC uses for new accounts. When omitted, RSC returns the policies for the legacy " +
+					"single-role configuration.",
 				ValidateFunc: validation.StringIsNotWhiteSpace,
 			},
 			keyRoleKey: {

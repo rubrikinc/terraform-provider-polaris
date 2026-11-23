@@ -35,9 +35,10 @@ One or more `feature` blocks lists the RSC features to enabled for the AWS accou
 source to obtain a list of RSC features available for the RSC account. The `polaris_aws_cnp_artifacts` data source
 returns the instance profiles and roles, referred to as _artifacts_ by RSC, which are required by RSC. `native_id` is
 the AWS account ID. RSC onboards an account with either a single `CROSSACCOUNT` role or one role per feature, and with
-`native_id` the data source returns the roles matching the account. Give the account ID as a value known when planning,
-e.g. a literal or a variable, and not as a reference to the `polaris_aws_cnp_account` resource, so the role keys are
-known when planning and the account is onboarded with a single `terraform apply`.
+`native_id` the data source returns the roles matching the account. Pass the account ID directly to the data sources as
+a literal or an input variable known at plan time. Referencing the `polaris_aws_cnp_account` resource can defer the
+data reads until apply, leaving the role keys unknown during planning and preventing onboarding with a single
+`terraform apply`.
 
 Next, use the `polaris_aws_cnp_permissions` data source to obtain the role permission policies, customer managed
 policies and managed policies, required by RSC:

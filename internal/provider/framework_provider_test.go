@@ -99,9 +99,7 @@ func loadRSCTestConf() (testRSCConfig, error) {
 }
 
 // loadAWSTestConf loads the AWS test configuration using the filename pointed
-// to by the TEST_AWSACCOUNT_FILE environment variables.
-//
-//lint:ignore U1000 Will be used by AWS Framework acceptance tests.
+// to by the TEST_AWSACCOUNT_FILE environment variable.
 func loadAWSTestConf() (testAWSAccount, error) {
 	buf, err := os.ReadFile(os.Getenv(awsAccountFileEnv))
 	if err != nil {
