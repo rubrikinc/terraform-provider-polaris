@@ -138,7 +138,7 @@ func dataSourceAzureArchivalLocation() *schema.Resource {
 			keyStorageTier: {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Azure storage tier. Possible values are `COOL` and `HOT`. Default value is `COOL`.",
+				Description: "Azure storage tier. Possible values are `ARCHIVE`, `COLD`, `COOL` and `HOT`.",
 			},
 		},
 	}

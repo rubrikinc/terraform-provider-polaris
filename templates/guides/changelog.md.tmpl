@@ -10,6 +10,8 @@ page_title: "Changelog"
   policies matching the account's trust policies, or the role mode RSC uses for new accounts if it has not been
   onboarded yet. Omitting `native_id` preserves the legacy single-role response.
   See the [v1.13.0 upgrade guide](upgrade_guide_v1.13.0.md). [[docs](../data-sources/aws_cnp_artifacts.md)]
+* Add support for the `ARCHIVE` and `COLD` storage tiers in the `storage_tier` field of the
+  `polaris_azure_archival_location` resource. [[docs](../resources/azure_archival_location.md)]
 
 ## v1.12.2
 * Fix a bug in `polaris_aws_cloud_cluster` where setting the `cloud_account_id` field in the state failed after the cloud

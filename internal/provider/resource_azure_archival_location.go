@@ -163,8 +163,8 @@ func resourceAzureArchivalLocation() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "COOL",
-				Description:  "Azure storage tier. Possible values are `COOL` and `HOT`. Default value is `COOL`.",
-				ValidateFunc: validation.StringInSlice([]string{"COOL", "HOT"}, false),
+				Description:  "Azure storage tier. Possible values are `ARCHIVE`, `COLD`, `COOL` and `HOT`. Default value is `COOL`.",
+				ValidateFunc: validation.StringInSlice([]string{"ARCHIVE", "COLD", "COOL", "HOT"}, false),
 			},
 		},
 		Importer: &schema.ResourceImporter{
