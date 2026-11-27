@@ -35,7 +35,7 @@ description: |-
 - `storage_account_name_prefix` (String) Azure storage account name prefix. For `SOURCE_REGION`, the prefix cannot be longer than 16 characters. For `SPECIFIC_REGION`, the name cannot be longer than 24 characters. The value can only consist of numbers and lower case letters.
 - `storage_account_region` (String) Azure region to store the snapshots in (`SPECIFIC_REGION`). If not specified, the snapshots will be stored in the same region as the workload (`SOURCE_REGION`).
 - `storage_account_tags` (Map of String) Azure storage account tags. Each tag will be added to the storage account created by RSC.
-- `storage_tier` (String) Azure storage tier. Possible values are `COOL` and `HOT`. Default value is `COOL`.
+- `storage_tier` (String) Azure storage tier. Possible values are `ARCHIVE`, `COLD`, `COOL` and `HOT`.
 
 <a id="nestedatt--customer_managed_key"></a>
 ### Nested Schema for `customer_managed_key`

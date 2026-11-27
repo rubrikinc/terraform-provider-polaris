@@ -96,7 +96,7 @@ resource "polaris_azure_archival_location" "archival_location" {
 - `redundancy` (String) Azure storage redundancy. Possible values are `GRS`, `GZRS`, `LRS`, `RA_GRS`, `RA_GZRS` and `ZRS`. Default value is `LRS`. Changing this forces a new resource to be created.
 - `storage_account_region` (String) Azure region to store the snapshots in. If not specified, the snapshots will be stored in the same region as the workload. Changing this forces a new resource to be created.
 - `storage_account_tags` (Map of String) Azure storage account tags. Each tag will be added to the storage account created by RSC.
-- `storage_tier` (String) Azure storage tier. Possible values are `COOL` and `HOT`. Default value is `COOL`.
+- `storage_tier` (String) Azure storage tier. Possible values are `ARCHIVE`, `COLD`, `COOL` and `HOT`. Default value is `COOL`.
 
 ### Read-Only
 
